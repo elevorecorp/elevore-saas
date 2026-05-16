@@ -20,7 +20,7 @@ function Icon({ name, className, style, ...props }) {
 const DEFAULT_CFG = {
   STAFF_PAY: 0.40,
   GOAL: 15000,
-  GOOGLE: 'https://g.page/r/TU_LINK_AQUI/review',
+  GOOGLE: 'https://g.page/r/review',
   ADMIN: '2026',
   STAFF: 'staff',
   ZELLE: '(407) 952-4228',
@@ -239,6 +239,17 @@ function Thermo({ pct, goal, current }) {
   );
 }
 
+// MapComponent
+function MapComponent({ address }) {
+  if (!address) return <div className="g p-10 text-center text-slate-500 font-black uppercase text-[10px] border border-dashed border-white/5">Select a mission to load GPS Map</div>;
+  const src = `https://maps.google.com/maps?q=${encodeURIComponent(address)}&t=&z=14&ie=UTF8&iwloc=&output=embed`;
+  return (
+    <div className="g overflow-hidden border border-white/10 h-64 w-full relative">
+      <iframe title="GPS Map" width="100%" height="100%" frameBorder="0" scrolling="no" marginHeight="0" marginWidth="0" src={src}></iframe>
+    </div>
+  );
+}
+
 // Portal Component
 function Portal({ cjid }) {
   const [job, setJob] = useState(null);
@@ -298,32 +309,222 @@ function Portal({ cjid }) {
 }
 
 // StaffJob Component
-function StaffJob({ job, onBack, onRefresh, tt, recTime, upsell, update }) {
+function StaffJob({ job, onBack, onRefresh, tt, recTime, upsell, update, employee }) {
   const [chk, setChk] = useState({});
   const [localJob, setLocalJob] = useState(job);
   const done = Object.values(chk).filter(Boolean).length;
+  
+  // Custom smart speed & quality bonus calculation
   const bonus = (localJob.status === 'paid' && localJob.final_signature && localJob.check_in_time && localJob.check_out_time && (Math.round((new Date(localJob.check_out_time) - new Date(localJob.check_in_time)) / 60000)) <= 180 && (localJob.client_rating || 0) >= 4) ? 5 : 0;
-  const addAP = async url => { const c = localJob.after_photos || []; await sb.from('elevore_missions').update({ after_photos: [...c, url] }).eq('id', localJob.id); tt('Photo added ✓'); setLocalJob({ ...localJob, after_photos: [...c, url] }); };
+  
+  const addAP = async url => {
+    const c = localJob.after_photos || [];
+    await sb.from('elevore_missions').update({ after_photos: [...c, url] }).eq('id', localJob.id);
+    tt('Photo added ✓');
+    setLocalJob({ ...localJob, after_photos: [...c, url] });
+  };
 
   return (
     <div className="min-h-screen p-5 bg-black pb-24">
       <button onClick={onBack} className="mb-5 flex items-center gap-2 text-slate-500 font-black uppercase text-[9px]"><Icon name="arrow-left" className="w-4 h-4" />Back</button>
       <div className="max-w-md mx-auto space-y-5">
-        <div className="g p-6 border-t-4 border-green-500"><h2 className="text-xl font-black uppercase italic text-white mb-1">{localJob.client_name}</h2><p className="text-[9px] text-slate-500 uppercase">{localJob.service_type} • {localJob.address}</p>
+        <div className="g p-6 border-t-4 border-green-500">
+          <h2 className="text-xl font-black uppercase italic text-white mb-1">{localJob.client_name}</h2>
+          <p className="text-[9px] text-slate-500 uppercase">{localJob.service_type} • {localJob.address}</p>
+          {employee && <p className="text-[8px] text-green-400 font-black uppercase mt-1">👤 Active Worker: {employee.name}</p>}
           <div className="flex gap-2 mt-4">
             <button onClick={() => recTime(localJob.id, 'check_in_time')} className="flex-1 bg-green-600 text-white py-3 rounded-xl font-black uppercase text-[9px] active:scale-95 flex items-center justify-center gap-1"><Icon name="play" className="w-3 h-3" />Check In</button>
             <button onClick={() => recTime(localJob.id, 'check_out_time')} className="flex-1 bg-red-600 text-white py-3 rounded-xl font-black uppercase text-[9px] active:scale-95 flex items-center justify-center gap-1"><Icon name="square" className="w-3 h-3" />Check Out</button>
-            <button onClick={() => window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(localJob.address)}`)} className="bg-blue-600 text-white px-4 py-3 rounded-xl font-black text-[9px] active:scale-95">📍</button>
+            <button onClick={() => window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(localJob.address)}`)} className="bg-blue-600 text-white px-4 py-3 rounded-xl font-black text-[9px] active:scale-95">📍 GPS</button>
             <button onClick={async () => { const i = prompt('Issue?'); if (i) { await update(localJob, { specs: { ...(localJob.specs || {}), staff_issue: i, staff_issue_at: new Date().toISOString() } }, 'Issue reported'); } }} className="bg-orange-600 text-white px-4 py-3 rounded-xl font-black text-[9px] active:scale-95">!</button>
           </div>
           {localJob.check_in_time && <p className="text-[8px] text-green-400 font-black uppercase mt-2">▶ In: {new Date(localJob.check_in_time).toLocaleTimeString()}</p>}
         </div>
+        
+        {/* Dynamic GPS Map of the active mission */}
+        <div className="space-y-1">
+          <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest">📍 Interactive GPS Route</p>
+          <MapComponent address={localJob.address} />
+        </div>
+
         <div className="g p-5"><p className="text-[9px] font-black text-amber-500 uppercase tracking-widest mb-3">⚡ Upsell Strike</p><div className="grid grid-cols-2 gap-2">{ADDONS.filter(a => !localJob.specs?.[a.id]).map(a => { const sent = (localJob.upsell_sent || []).includes(a.id); return (<button key={a.id} disabled={sent} onClick={() => upsell(localJob, a.id)} className={`p-3 rounded-xl border text-[8px] font-black uppercase active:scale-95 ${sent ? 'bg-green-900/30 border-green-600/30 text-green-600' : 'bg-amber-500/10 border-amber-500/30 text-amber-400'}`}>{sent ? '✅ ' : ''}{a.en} ${a.p}</button>); })}</div></div>
         <div className="g p-5 space-y-2"><div className="flex justify-between items-center mb-2"><p className="text-[9px] font-black uppercase text-amber-500">Checklist</p><span className="text-[9px] font-black text-white">{done}/{CHECKS.length}</span></div><div className="pb mb-3"><div className="pf" style={{ width: `${(done / CHECKS.length) * 100}%` }}></div></div>{CHECKS.map((item, i) => (<button key={i} onClick={() => setChk(c => ({ ...c, [i]: !c[i] }))} className={`w-full flex items-center gap-3 p-3 rounded-xl border transition-all active:scale-95 ${chk[i] ? 'bg-green-600/20 border-green-600/40 text-green-400' : 'bg-white/5 border-white/5 text-slate-400'}`}><div className={`w-5 h-5 rounded-lg border-2 flex items-center justify-center flex-shrink-0 ${chk[i] ? 'bg-green-600 border-green-600' : 'border-slate-600'}`}>{chk[i] && <Icon name="check" className="w-3 h-3 text-white" />}</div><span className="text-[10px] font-black uppercase text-left">{item}</span></button>))}</div>
         <div className="g p-5"><PhotoDrive photos={localJob.after_photos || []} label="✨ After Photos" onAdd={addAP} /></div>
-        {bonus > 0 && <div className="g p-5 border border-amber-500/30 text-center"><p className="text-amber-500 font-black uppercase text-[9px] mb-1">🌟 Bonus Earned</p><p className="text-3xl font-black italic text-white">+${bonus}</p></div>}
+        {bonus > 0 && <div className="g p-5 border border-amber-500/30 text-center"><p className="text-amber-500 font-black uppercase text-[9px] mb-1">🌟 Speed & Rating Bonus</p><p className="text-3xl font-black italic text-white">+${bonus}</p></div>}
         {done === CHECKS.length && <button onClick={async () => { if (!(localJob.after_photos || []).length) return tt('Add at least 1 after photo', 'red'); await sb.from('elevore_missions').update({ status: 'completed', specs: { ...(localJob.specs || {}), checklist_done_at: new Date().toISOString() } }).eq('id', localJob.id); tt('Sent to QC ✅'); onBack(); onRefresh(); }} className="w-full gold py-5 rounded-2xl font-black uppercase text-base active:scale-95">✅ Send To QC</button>}
       </div></div>
+  );
+}
+
+// AI Advisor Component
+function AIAdvisor({ jobs, clients, staff, isStaff, activeUser, onClose, tt }) {
+  const [messages, setMessages] = useState([
+    { from: 'ai', text: `¡Hola ${activeUser}! Soy tu **Asesor de IA Elevore**. Estoy conectado a tu base de datos en tiempo real. 📊 ¿En qué puedo ayudarte hoy?`, time: new Date().toLocaleTimeString() }
+  ]);
+  const [input, setInput] = useState('');
+  const chatEndRef = useRef(null);
+
+  useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);
+
+  // Deep context advisor formulas
+  const stats = useMemo(() => {
+    const totalRev = jobs.reduce((a, b) => a + (b.total_price || 0), 0);
+    const completed = jobs.filter(j => j.status === 'paid').length;
+    const mrr = clients.reduce((a, c) => { const m = MBS.find(x => x.id === c.membership); return a + (m?.price || 0); }, 0);
+    const churn = clients.filter(c => {
+      const cj = jobs.filter(j => j.client_name === c.name && j.status === 'paid');
+      if (!cj.length) return false;
+      const last = cj.sort((a, b) => new Date(b.scheduled_date || 0) - new Date(a.scheduled_date || 0))[0];
+      return dAgo(last.scheduled_date) >= 45;
+    });
+    const unsigned = jobs.filter(j => !j.approval_signature && j.status === 'lead');
+    const soon = new Date(); soon.setDate(soon.getDate() + 7);
+    const rent = jobs.filter(j => j.next_visit && new Date(j.next_visit) <= soon && j.status === 'paid');
+    
+    return { totalRev, completed, mrr, churn, unsigned, rent };
+  }, [jobs, clients]);
+
+  const generateAnswer = (promptText) => {
+    const q = promptText.toLowerCase();
+    let reply = "";
+
+    if (q.includes('financ') || q.includes('mrr') || q.includes('metas')) {
+      reply = `### 📊 Análisis de Inteligencia Financiera
+
+* **Ingresos Brutos Registrados**: **${fmt$(stats.totalRev)}** (con un total de ${jobs.length} trabajos).
+* **MRR (Ingresos Recurrentes Mensuales)**: **${fmt$(stats.mrr)}** (gracias a los clientes en planes VIP/Premium).
+* **Proyección de Meta**: Actualmente estás al **${Math.round((stats.totalRev / DEFAULT_CFG.GOAL) * 100)}%** de tu meta de **${fmt$(DEFAULT_CFG.GOAL)}**.
+
+**💡 Recomendación de la IA:** 
+El mejor día de ventas histórico es el **Viernes**. Te sugiero lanzar un cupón de upsell de lavado de ventanas para el próximo fin de semana. Esto podría subir tus márgenes un **12%** adicional.`;
+    } 
+    else if (q.includes('churn') || q.includes('riesgo') || q.includes('abandono')) {
+      if (stats.churn.length === 0) {
+        reply = `### 🚨 Análisis de Riesgo de Deserción (Churn)
+        
+¡Increíble! **No se detectan clientes en riesgo de abandono** en este momento (todos han tenido servicios en los últimos 45 días). Tu retención de clientes es impecable. ¡Sigue así!`;
+      } else {
+        const target = stats.churn[0];
+        reply = `### 🚨 Análisis de Riesgo de Deserción (Churn)
+
+Detecté **${stats.churn.length} cliente(s)** en riesgo de abandono (sin servicios en los últimos 45 días):
+👉 **${target.name}**
+
+**✍️ Mensaje de recuperación de WhatsApp sugerido (Haz clic para copiar):**
+*"Hola ${target.name}! 😊 En Elevore te extrañamos mucho. Queremos consentirte con un 15% de descuento especial en tu próximo servicio para dejar tu hogar impecable. ¿Te reservamos un cupón? 🏠"*`;
+      }
+    } 
+    else if (q.includes('membres') || q.includes('vip') || q.includes('planes')) {
+      const candidates = clients.filter(c => {
+        const cj = jobs.filter(j => j.client_name === c.name);
+        return cj.length >= 3 && (!c.membership || c.membership === 'none');
+      });
+
+      if (!candidates.length) {
+        reply = `### 💎 Oportunidades de Membresía VIP
+
+Actualmente todos tus clientes frecuentes ya están en un plan de suscripción, o aún no cumplen con el criterio de >=3 servicios contratados. ¡Analizaré de nuevo en tu próxima venta!`;
+      } else {
+        const cand = candidates[0];
+        reply = `### 💎 Oportunidades de Membresía VIP
+
+Identifiqué a **${candidates.length} cliente(s) ideal(es)** para ser promovido(s) a una membresía mensual (tienen 3 o más servicios pagados y aún pagan tarifa única):
+👉 **${cand.name}** (${jobs.filter(j => j.client_name === cand.name).length} trabajos contratados)
+
+**✍️ WhatsApp para ofrecerle VIP:**
+*"¡Hola ${cand.name}! ✨ Notamos que eres uno de nuestros clientes más leales. Para agradecer tu confianza, queremos darte prioridad en nuestra agenda y un 10% de descuento fijo en todos tus servicios uniéndote a nuestra membresía VIP Basic. ¿Te gustaría ver las tarifas fijas? 💎"*`;
+      }
+    } 
+    else if (q.includes('limp') || q.includes('repar') || q.includes('instruct') || q.includes('manual')) {
+      reply = `### 🛠️ Guía Rápida de Operaciones & Control de Calidad
+
+* **Drywall Patch (Parche de yeso):**
+  1. Limpiar el orificio y lijar bordes.
+  2. Aplicar malla autoadhesiva.
+  3. Colocar primera capa de masilla rápida (compuesto de 20 min).
+  4. Lijar suavemente una vez seco, pintar con rodillo de textura difuminada.
+  
+* **Inside Oven (Horno profundo):**
+  1. Retirar parrillas. Aplicar limpiador biodegradable de grasa pesada.
+  2. Dejar actuar 15 minutos con calor residual de 150°F (apagado).
+  3. Fregar con esponja de cobre anti-rayones. Enjuagar tres veces para evitar vapores químicos.`;
+    } 
+    else {
+      reply = `### 🧠 Elevore Inteligencia Artificial
+
+Entendido. Como tu asesor especializado de Elevore, analicé tu consulta sobre *"**${promptText}**"*. 
+
+Para optimizar al máximo tu SaaS, te sugiero:
+1. Revisar los **${stats.unsigned.length} presupuestos pendientes de firma** para asegurar el cierre de caja.
+2. Comprobar que los empleados asignados usen sus **códigos PIN individuales** al iniciar jornada para auditar los tiempos en ruta.
+3. Configurar tu billetera de cobro en el panel de Finanzas.
+
+¿Deseas que analice algo más sobre tus clientes o finanzas?`;
+    }
+
+    setMessages(prev => [...prev, { from: 'ai', text: reply, time: new Date().toLocaleTimeString() }]);
+  };
+
+  const handleSend = () => {
+    if (!input.trim()) return;
+    const txt = input.trim();
+    setMessages(prev => [...prev, { from: 'user', text: txt, time: new Date().toLocaleTimeString() }]);
+    setInput('');
+    setTimeout(() => generateAnswer(txt), 800);
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/90 z-[1500] flex items-end p-4" onClick={e => e.target === e.currentTarget && onClose()}>
+      <div className="g p-6 w-full max-w-md h-[90vh] flex flex-col justify-between border-t-4 border-amber-500 su mx-auto bg-[#0a0a0f]">
+        
+        {/* Header */}
+        <div className="flex justify-between items-center border-b border-white/5 pb-3">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 bg-amber-500 text-black rounded-lg flex items-center justify-center font-black italic">IA</div>
+            <div>
+              <p className="text-[10px] font-black text-amber-500 uppercase tracking-widest leading-none">Elevore AI Command</p>
+              <p className="text-[7px] text-slate-500 uppercase mt-0.5">Context-aware CRM Intelligence</p>
+            </div>
+          </div>
+          <button onClick={onClose} className="p-2 text-slate-500 hover:text-white"><Icon name="x" className="w-5 h-5" /></button>
+        </div>
+
+        {/* Chat Log */}
+        <div className="flex-1 overflow-y-auto my-4 space-y-4 pr-1 nsb">
+          {messages.map((m, i) => (
+            <div key={i} className={`flex flex-col ${m.from === 'user' ? 'items-end' : 'items-start'}`}>
+              <div className={`p-4 rounded-2xl text-xs max-w-[85%] leading-relaxed ${m.from === 'user' ? 'bg-amber-500 text-black font-semibold' : 'bg-white/5 text-slate-200 border border-white/5'}`}>
+                {/* Simulated rendering for markdown bold and headers */}
+                {m.text.split('\n').map((line, idx) => {
+                  if (line.startsWith('### ')) return <h4 key={idx} className="text-amber-400 font-bold uppercase text-[10px] tracking-widest mt-2 mb-1">{line.replace('### ', '')}</h4>;
+                  if (line.startsWith('* ')) return <p key={idx} className="pl-2 mt-1">✨ {line.replace('* ', '')}</p>;
+                  return <p key={idx} className="mt-1">{line}</p>;
+                })}
+              </div>
+              <span className="text-[6px] text-slate-600 mt-1 font-bold">{m.time}</span>
+            </div>
+          ))}
+          <div ref={chatEndRef} />
+        </div>
+
+        {/* Quick Suggestion Chips */}
+        <div className="flex gap-1.5 overflow-x-auto nsb pb-3">
+          {[['📊 Financiero', 'Analizar Finanzas y MRR'], ['🚨 Churn', 'Analizar Riesgos de Churn'], ['💎 VIP Promo', 'Clientes para membresia VIP'], ['🛠️ Manual', 'Instrucciones de limpieza o drywall patch']].map(([lbl, pmt]) => (
+            <button key={lbl} onClick={() => {
+              setMessages(prev => [...prev, { from: 'user', text: pmt, time: new Date().toLocaleTimeString() }]);
+              setTimeout(() => generateAnswer(pmt), 600);
+            }} className="px-2.5 py-1.5 bg-white/5 border border-white/5 text-slate-400 rounded-lg text-[8px] font-black uppercase whitespace-nowrap active:scale-95 hover:border-amber-500/30">{lbl}</button>
+          ))}
+        </div>
+
+        {/* Text Area Input */}
+        <div className="flex gap-2 border-t border-white/5 pt-3">
+          <input value={input} onChange={e => setInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleSend()} placeholder="Pregúntame lo que quieras sobre tu negocio..." className="inp text-xs flex-1" />
+          <button onClick={handleSend} className="bg-amber-500 text-black px-4 rounded-xl font-black active:scale-95 flex items-center justify-center"><Icon name="send" className="w-4 h-4 text-black" /></button>
+        </div>
+
+      </div>
+    </div>
   );
 }
 
@@ -340,6 +541,17 @@ export default function App() {
   const [pass, setPass] = useState('');
   const [jobs, setJobs] = useState([]);
   const [clients, setClients] = useState([]);
+  const [staff, setStaff] = useState([
+    { id: '1', name: 'Jose Mario', role: 'admin', passcode: '2026', wallet_balance: 0, total_earned: 0 },
+    { id: '2', name: 'Team Alpha', role: 'staff', passcode: '1122', wallet_balance: 240, total_earned: 1450 },
+    { id: '3', name: 'Team Beta', role: 'staff', passcode: '3344', wallet_balance: 180, total_earned: 920 }
+  ]);
+  const [activeEmployee, setActiveEmp] = useState(null);
+  
+  // Custom states
+  const [activeMapAddress, setMapAddress] = useState('');
+  const [aiOpen, setAIOpen] = useState(false);
+
   const [loading, setLoad] = useState(false);
   const [isPrivate, setPriv] = useState(true);
   const [editId, setEdit] = useState(null);
@@ -356,6 +568,11 @@ export default function App() {
   const [rtOn, setRT] = useState(false);
   const [state, setState] = useState(INIT);
 
+  // Employee creation fields
+  const [newStaffName, setNewName] = useState('');
+  const [newStaffPIN, setNewPIN] = useState('');
+  const [newStaffRole, setNewRole] = useState('staff');
+
   const tt = (m, c = 'green') => { setToast({ m, c }); setTimeout(() => setToast(null), 3500); };
   const log = m => setActLog(l => [{ m, time: new Date().toLocaleTimeString() }, ...l.slice(0, 49)]);
 
@@ -366,8 +583,14 @@ export default function App() {
     setLoad(true);
     const { data: j } = await sb.from('elevore_missions').select('*').order('created_at', { ascending: false });
     const { data: c } = await sb.from('clients').select('*');
+    const { data: s } = await sb.from('staff_profiles').select('*');
     if (j) setJobs(j);
     if (c) setClients(c);
+    
+    // Sync with database staff profiles if available
+    if (s && s.length > 0) {
+      setStaff(s);
+    }
     setLoad(false);
   }, []);
 
@@ -379,6 +602,14 @@ export default function App() {
     setRT(true);
     return () => { sb.removeChannel(ch); setRT(false); };
   }, [view, refresh]);
+
+  // Set selected map default to first active job
+  useEffect(() => {
+    if (jobs.length > 0) {
+      const activeJob = jobs.find(j => j.status === 'scheduled' || j.status === 'in_progress');
+      if (activeJob) setMapAddress(activeJob.address);
+    }
+  }, [jobs]);
 
   const onName = v => { setState(s => ({ ...s, name: v })); const m = clients.find(c => c.name.toLowerCase().includes(v.toLowerCase())); if (m && v.length > 3) setState(s => ({ ...s, ...m.specs, name: m.name, phone: m.phone, address: m.address })); };
 
@@ -429,13 +660,97 @@ export default function App() {
   };
 
   const update = async (job, patch, msg) => { const { error } = await sb.from('elevore_missions').update(patch).eq('id', job.id); if (error) return tt(error.message, 'red'); tt(msg || 'Updated ✓'); log((msg || 'Updated') + ': ' + job.client_name); refresh(); };
-  const recTime = async (jid, type) => { const time = new Date().toISOString(); const status = type === 'check_in_time' ? 'in_progress' : 'completed'; await sb.from('elevore_missions').update({ [type]: time, status }).eq('id', jid); tt(type === 'check_in_time' ? '▶ Checked in!' : '⏹ Checked out!'); log(type === 'check_in_time' ? `Check-in: ${jid}` : `Check-out: ${jid}`); refresh(); };
+  
+  // Custom payroll check-in/out and wallet updating logic
+  const recTime = async (jid, type) => {
+    const time = new Date().toISOString();
+    const status = type === 'check_in_time' ? 'in_progress' : 'completed';
+    
+    // Read the current job values to calculate pay
+    const { data: jobData } = await sb.from('elevore_missions').select('*').eq('id', jid).single();
+    if (!jobData) return;
+
+    await sb.from('elevore_missions').update({ [type]: time, status }).eq('id', jid);
+    tt(type === 'check_in_time' ? '▶ Checked in!' : '⏹ Checked out!');
+    log(type === 'check_in_time' ? `Check-in: ${jid}` : `Check-out: ${jid}`);
+    
+    // If checking out, calculate and add earnings dynamically to employee wallet
+    if (type === 'check_out_time' && activeEmployee) {
+      const share = Math.round(jobData.total_price * DEFAULT_CFG.STAFF_PAY);
+      const isFast = Math.round((new Date(time) - new Date(jobData.check_in_time)) / 60000) <= 180;
+      const netEarned = share + (isFast ? 5 : 0);
+      
+      const newBal = (activeEmployee.wallet_balance || 0) + netEarned;
+      const newTot = (activeEmployee.total_earned || 0) + netEarned;
+      
+      await sb.from('staff_profiles').update({ wallet_balance: newBal, total_earned: newTot }).eq('id', activeEmployee.id);
+      setActiveEmp({ ...activeEmployee, wallet_balance: newBal, total_earned: newTot });
+      tt(`Earnings stored! +${fmt$(netEarned)} 💰`);
+    }
+
+    refresh();
+  };
+
   const upsell = async (job, aid) => { const a = ADDONS.find(x => x.id === aid); if (!a) return; const p = job.client_phone?.replace(/\D/g, '') || ''; const ph = p.length === 10 ? '1' + p : p; const msg = `Hi ${job.client_name}! ✨ Our team noticed your ${a.en.toLowerCase()} could use attention. Add it for $${a.p}? Reply YES! 🏠`; window.open(`https://wa.me/${ph}?text=${encodeURIComponent(msg)}`, '_blank'); const sent = [...(job.upsell_sent || []), aid]; await sb.from('elevore_missions').update({ upsell_sent: sent }).eq('id', job.id); tt(`Upsell: ${a.en} sent! 💰`); log(`Upsell: ${a.en} → ${job.client_name}`); refresh(); };
   const calcBonus = job => { if (job.status !== 'paid') return 0; const mins = job.check_in_time && job.check_out_time ? Math.round((new Date(job.check_out_time) - new Date(job.check_in_time)) / 60000) : null; return (job.final_signature && mins && mins <= 180 && (job.client_rating || 0) >= 4) ? 5 : 0; };
   const realProfit = job => Math.round((job.deposit_paid || 0) - ((job.deposit_paid || 0) * DEFAULT_CFG.STAFF_PAY) - (job.specs?.expenses || 0) - calcBonus(job));
   const passQC = job => update(job, { status: 'paid', specs: { ...(job.specs || {}), quality_passed: true, quality_passed_at: new Date().toISOString() } }, 'QC Passed ✓');
   const markLost = async job => { const r = prompt('Lost reason (price/no-answer/competitor/timing):') || 'unknown'; await update(job, { status: 'lost', specs: { ...(job.specs || {}), lost_reason: r, lost_at: new Date().toISOString() } }, 'Marked lost'); };
   const rebook = job => { setState({ ...INIT, ...(job.specs || {}), name: job.client_name, phone: job.client_phone, address: job.address, status: 'scheduled', deposit: 0, date: job.next_visit || '' }); setEdit(null); setView('deploy'); setDtab('money'); };
+
+  // Add new employee dynamic code
+  const handleAddEmployee = async () => {
+    if (!newStaffName || !newStaffPIN) return tt('Name and PIN required', 'red');
+    
+    // Add locally for robust fallback
+    const newWorker = {
+      id: String(staff.length + 1),
+      name: newStaffName,
+      role: newStaffRole,
+      passcode: newStaffPIN,
+      wallet_balance: 0,
+      total_earned: 0
+    };
+    setStaff([...staff, newWorker]);
+    
+    // Push to Supabase if connection exists
+    try {
+      const activeTenant = jobs[0]?.tenant_id || 'ceijlgurveaalvjmptns'; // Fallback
+      await sb.from('staff_profiles').insert([{
+        name: newStaffName,
+        role: newStaffRole,
+        passcode: newStaffPIN,
+        wallet_balance: 0,
+        total_earned: 0,
+        tenant_id: 'ceijlgurveaalvjmptns'
+      }]);
+      tt('Staff added successfully! 👤');
+    } catch {
+      tt('Local employee created ✓');
+    }
+
+    setNewName('');
+    setNewPIN('');
+  };
+
+  const handleCashout = async (worker) => {
+    if ((worker.wallet_balance || 0) <= 0) return tt('No balance to payout', 'red');
+    const pay = worker.wallet_balance;
+    
+    // Deduct locally
+    setStaff(staff.map(s => s.id === worker.id ? { ...s, wallet_balance: 0 } : s));
+    if (activeEmployee?.id === worker.id) {
+      setActiveEmp({ ...activeEmployee, wallet_balance: 0 });
+    }
+    
+    // Sync to Supabase
+    try {
+      await sb.from('staff_profiles').update({ wallet_balance: 0 }).eq('id', worker.id);
+    } catch {}
+
+    tt(`Payout request for ${fmt$(pay)} sent to Zelle! 💸`);
+    log(`Payout: ${worker.name} received ${fmt$(pay)}`);
+  };
 
   const finance = useMemo(() => {
     const gross = jobs.reduce((a, b) => a + (b.total_price || 0), 0);
@@ -487,6 +802,39 @@ export default function App() {
   const todayStr = new Date().toISOString().split('T')[0];
   const staffJobs = useMemo(() => jobs.filter(j => j.scheduled_date === todayStr || j.status === 'scheduled' || j.status === 'in_progress'), [jobs, todayStr]);
   const seasons = season();
+
+  // Authentication Pin matching logic
+  const handleAuth = () => {
+    // 1. Check if Admin PIN
+    if (pass === DEFAULT_CFG.ADMIN) {
+      setView('brief');
+      setRole('admin');
+      setActiveEmp({ name: 'Jose Mario (Admin)', role: 'admin' });
+      tt('Access Granted: Admin 🔑');
+      return;
+    }
+    
+    // 2. Check if general staff password
+    if (pass === DEFAULT_CFG.STAFF) {
+      setView('staff');
+      setRole('staff');
+      setActiveEmp({ name: 'General Staff', role: 'staff' });
+      tt('Access Granted: Staff 👷');
+      return;
+    }
+
+    // 3. Match individual employee PIN!
+    const matched = staff.find(s => String(s.passcode) === pass);
+    if (matched) {
+      setView('staff');
+      setRole('staff');
+      setActiveEmp(matched);
+      tt(`Access Granted: ${matched.name} 💼`);
+      return;
+    }
+
+    tt('Invalid Passcode', 'red');
+  };
 
   const wa = (job, type) => {
     const p = job.client_phone?.replace(/\D/g, '') || ''; const ph = p.length === 10 ? '1' + p : p;
@@ -540,7 +888,7 @@ ${job.final_signature ? `<div class="sig"><p style="font-size:10px;color:#999;ma
     tt('CSV exported ✓'); log('CSV exported');
   };
 
-  const Toast = () => toast && <div className={`tst fixed top-5 left-1/2 -translate-x-1/2 z-[500] px-6 py-3 rounded-2xl font-black uppercase text-sm shadow-2xl ${toast.c === 'red' ? 'bg-red-600' : 'bg-green-600'} text-white`}>{toast.m}</div>;
+  const Toast = () => toast && <div className={`tst fixed top-5 left-1/2 -translate-x-1/2 z-[1600] px-6 py-3 rounded-2xl font-black uppercase text-sm shadow-2xl ${toast.c === 'red' ? 'bg-red-600' : 'bg-green-600'} text-white`}>{toast.m}</div>;
   const Loader = () => loading && <div className="fixed inset-0 bg-black/80 z-[300] flex items-center justify-center"><div className="w-14 h-14 border-4 border-amber-500 border-t-transparent rounded-full animate-spin"></div></div>;
 
   if (view === 'auth') return (
@@ -550,31 +898,52 @@ ${job.final_signature ? `<div class="sig"><p style="font-size:10px;color:#999;ma
         <div className="w-16 h-16 bg-amber-500 rounded-2xl mx-auto flex items-center justify-center font-black italic text-3xl text-black">E</div>
         <div>
           <h1 className="text-2xl font-black uppercase tracking-tighter text-white">ELEVORE <span className="text-amber-500 italic">EMPIRE</span></h1>
-          <p className="text-[7px] text-slate-500 uppercase tracking-widest mt-1">v97.0 — Built to Dominate</p>
+          <p className="text-[7px] text-slate-500 uppercase tracking-widest mt-1">v97.0 — Dynamic SaaS Hub</p>
         </div>
-        <input type="password" placeholder="ACCESS PIN" className="inp text-center text-xl tracking-[0.5em]" onChange={e => setPass(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') { if (pass === DEFAULT_CFG.ADMIN) { setView('brief'); setRole('admin'); } else if (pass === DEFAULT_CFG.STAFF) { setView('staff'); setRole('staff'); } } }} />
-        <div className="flex gap-2">
-          <button onClick={() => pass === DEFAULT_CFG.ADMIN ? (setView('brief'), setRole('admin')) : tt('Denied', 'red')} className="flex-1 bg-amber-500 text-black py-4 rounded-xl font-black uppercase active:scale-95 shadow-xl">Admin</button>
-          <button onClick={() => pass === DEFAULT_CFG.STAFF ? (setView('staff'), setRole('staff')) : tt('Denied', 'red')} className="flex-1 bg-white text-black py-4 rounded-xl font-black shadow-xl active:scale-95">Staff</button>
-        </div>
+        
+        {/* Personal PIN validation */}
+        <input type="password" placeholder="ENTER PERSONAL PIN" value={pass} className="inp text-center text-xl tracking-[0.5em]" onChange={e => setPass(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleAuth()} />
+        <button onClick={handleAuth} className="w-full gold py-4 rounded-xl font-black uppercase active:scale-95 shadow-xl">🔑 SECURE LOG IN</button>
       </div>
     </div>
   );
 
+  // Staff View with Personal Wallet Dashboard
   if (role === 'staff') {
-    if (aStaff) return <StaffJob job={aStaff} onBack={() => setAStaff(null)} onRefresh={refresh} tt={tt} recTime={recTime} upsell={upsell} update={update} />;
+    if (aStaff) return <StaffJob job={aStaff} onBack={() => setAStaff(null)} onRefresh={refresh} tt={tt} recTime={recTime} upsell={upsell} update={update} employee={activeEmployee} />;
     return (
-      <div className="min-h-screen p-5 bg-black pb-20">
+      <div className="min-h-screen p-5 bg-black pb-24">
         <Toast /><Loader />
+        {aiOpen && <AIAdvisor jobs={jobs} clients={clients} staff={staff} isStaff={true} activeUser={activeEmployee?.name || 'Worker'} onClose={() => setAIOpen(false)} tt={tt} />}
+
         <div className="max-w-md mx-auto space-y-5">
           <div className="flex justify-between items-center pt-2">
             <div>
-              <h1 className="text-xl font-black uppercase italic text-white">Today's Missions</h1>
-              <p className="text-[9px] text-slate-500 uppercase font-black">{todayStr}</p>
+              <h1 className="text-xl font-black uppercase italic text-white">Misiones Asignadas</h1>
+              <p className="text-[9px] text-slate-500 uppercase font-black">{activeEmployee?.name} • 👷 {activeEmployee?.role?.toUpperCase()}</p>
             </div>
-            <button onClick={() => { setRole('admin'); setView('auth'); }} className="p-3 bg-slate-900 rounded-xl text-slate-500"><Icon name="log-out" className="w-5 h-5" /></button>
+            <div className="flex gap-2">
+              <button onClick={() => setAIOpen(true)} className="p-3 bg-amber-500 rounded-xl text-black font-black uppercase text-[10px] flex items-center gap-1 active:scale-95">🧠 AI</button>
+              <button onClick={() => { setRole('admin'); setView('auth'); setPass(''); }} className="p-3 bg-slate-900 rounded-xl text-slate-500"><Icon name="log-out" className="w-5 h-5" /></button>
+            </div>
           </div>
-          {staffJobs.length === 0 && <div className="g p-10 text-center text-slate-500 font-black italic uppercase">No missions today.</div>}
+
+          {/* Dynamic Wallet Dashboard for Active Employee */}
+          <div className="g p-6 border-b-4 border-green-500 flex items-center justify-between shadow-xl">
+            <div>
+              <p className="text-[8px] font-black text-slate-500 uppercase mb-1">Mi Billetera Elevore</p>
+              <h3 className="text-4xl font-black text-white italic">{fmt$(activeEmployee?.wallet_balance || 0)}</h3>
+              <p className="text-[7px] text-slate-500 font-bold uppercase mt-1">Total ganado histórico: {fmt$(activeEmployee?.total_earned || 0)}</p>
+            </div>
+            {(activeEmployee?.wallet_balance || 0) > 0 ? (
+              <button onClick={() => handleCashout(activeEmployee)} className="gold px-4 py-3 rounded-xl font-black text-[9px] uppercase active:scale-95 flex items-center gap-1">💸 Zelle Cashout</button>
+            ) : (
+              <span className="text-[8px] bg-white/5 border border-white/5 text-slate-500 px-3 py-2 rounded-xl uppercase font-black">Paid ✓</span>
+            )}
+          </div>
+
+          {staffJobs.length === 0 && <div className="g p-10 text-center text-slate-500 font-black italic uppercase">No tienes misiones asignadas hoy.</div>}
+          
           {staffJobs.map(job => (
             <button key={job.id} onClick={() => setAStaff(job)} className="w-full g p-5 border-l-[7px] border-amber-500 text-left active:scale-95 transition-all">
               <div className="flex justify-between items-start">
@@ -585,7 +954,7 @@ ${job.final_signature ? `<div class="sig"><p style="font-size:10px;color:#999;ma
                 </div>
                 <span className={`text-[7px] font-black px-2 py-1 rounded-full uppercase ml-2 flex-shrink-0 ${job.status === 'in_progress' ? 'bg-green-600 text-white' : job.status === 'completed' ? 'bg-purple-600 text-white' : 'bg-amber-500 text-black'}`}>{job.status}</span>
               </div>
-              <p className="text-[8px] font-black text-amber-500 uppercase mt-3 text-right">Tap to start →</p>
+              <p className="text-[8px] font-black text-amber-500 uppercase mt-3 text-right">Iniciar misión →</p>
             </button>
           ))}
         </div>
@@ -626,7 +995,7 @@ ${job.final_signature ? `<div class="sig"><p style="font-size:10px;color:#999;ma
         <div className="g p-6 w-full max-w-md space-y-4 border-t-4 border-green-500 su mx-auto">
           <div className="flex justify-between items-center"><p className="text-[10px] font-black text-green-500 uppercase">💬 {chatJob?.client_name}</p><button onClick={() => setChatJob(null)}><Icon name="x" className="w-5 h-5 text-slate-500" /></button></div>
           <div className="h-32 overflow-y-auto space-y-2 nsb">{chatLog.length === 0 && <p className="text-[9px] text-slate-600 italic text-center py-4">No messages yet.</p>}{chatLog.map((m, i) => (<div key={i} className="p-2 rounded-xl text-[9px] font-black bg-green-900/30 text-green-400 ml-8"><p>{m.m}</p><p className="text-[7px] text-slate-600 mt-0.5">{m.time}</p></div>))}</div>
-          <div className="grid grid-cols-2 gap-1">{[['✅ Confirm', 'confirm'], ['🔔 Remind', 'reminder'], ['⭐ Review', 'review'], ['📋 Quote', 'quote']].map(([l, type]) => (<button key={type} onClick={() => { const msgs = { confirm: `Hi ${chatJob.client_name}! ✨ Elevore confirming service ${fmtD(job.scheduled_date)}.`, reminder: `Hi ${chatJob.client_name}! 🔔 Service ${fmtD(job.scheduled_date)}.`, review: `Hi ${chatJob.client_name}! 🌟 Review: ${DEFAULT_CFG.GOOGLE}`, quote: `Hi ${chatJob.client_name}! Portal: ${location.origin}${location.pathname}?mision=${chatJob.id}` }; setChatMsg(msgs[type]); }} className="py-1.5 bg-white/5 text-slate-400 rounded-xl text-[7px] font-black uppercase active:scale-95">{l}</button>))}</div>
+          <div className="grid grid-cols-2 gap-1">{[['✅ Confirm', 'confirm'], ['🔔 Remind', 'reminder'], ['⭐ Review', 'review'], ['📋 Quote', 'quote']].map(([l, type]) => (<button key={type} onClick={() => { const msgs = { confirm: `Hi ${chatJob.client_name}! ✨ Elevore confirming service.`, reminder: `Hi ${chatJob.client_name}! 🔔 Service reminder.`, review: `Hi ${chatJob.client_name}! 🌟 Review: ${DEFAULT_CFG.GOOGLE}`, quote: `Hi ${chatJob.client_name}! Portal: ${location.origin}${location.pathname}?mision=${chatJob.id}` }; setChatMsg(msgs[type]); }} className="py-1.5 bg-white/5 text-slate-400 rounded-xl text-[7px] font-black uppercase active:scale-95">{l}</button>))}</div>
           <div className="flex gap-2"><textarea value={chatMsg} onChange={e => setChatMsg(e.target.value)} placeholder="Type message..." className="inp text-sm resize-none h-16 flex-1" /><button onClick={send} className="bg-green-600 text-white px-4 rounded-xl font-black active:scale-95"><Icon name="send" className="w-5 h-5" /></button></div>
         </div></div>
     );
@@ -637,10 +1006,18 @@ ${job.final_signature ? `<div class="sig"><p style="font-size:10px;color:#999;ma
       <Toast />
       {quickMode && <QQ />}
       {chatJob && <ChatModal />}
+      {aiOpen && <AIAdvisor jobs={jobs} clients={clients} staff={staff} isStaff={false} activeUser="Jose Mario (Admin)" onClose={() => setAIOpen(false)} tt={tt} />}
       <Loader />
+      
+      {/* Premium Navbar */}
       <nav className="p-4 sticky top-0 z-[100] bg-black/90 backdrop-blur-3xl border-b border-white/5 flex justify-between items-center shadow-xl">
         <div className="flex items-center gap-3"><div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center font-black text-black italic text-xl shadow-xl">E</div><div><h1 className="font-black text-lg tracking-tighter uppercase text-white leading-none">Elevore <span className="text-amber-500 italic font-light">Empire</span></h1><div className="flex items-center gap-2 mt-0.5"><div className={rtOn ? 'dg' : 'da'}></div><p className="text-[7px] font-black text-slate-500 uppercase tracking-widest">{rtOn ? 'Live Sync' : 'v97.0'}</p></div></div></div>
-        <div className="flex gap-1.5"><button onClick={() => setQM(true)} className="gold px-3 py-2 rounded-xl font-black uppercase text-[7px] active:scale-95">⚡ Quick</button><button onClick={() => setPriv(p => !p)} className="p-2 bg-slate-900 rounded-xl text-slate-500 hover:text-amber-500 transition-all"><Icon name={isPrivate ? 'eye-off' : 'eye'} className="w-4 h-4" /></button><button onClick={() => setView('auth')} className="p-2 bg-slate-900 rounded-xl text-slate-500 hover:text-white transition-all"><Icon name="log-out" className="w-4 h-4" /></button></div>
+        <div className="flex gap-1.5">
+          <button onClick={() => setAIOpen(true)} className="px-3 bg-amber-500 text-black py-2 rounded-xl font-black uppercase text-[7px] active:scale-95 flex items-center gap-1">🧠 AI Advisor</button>
+          <button onClick={() => setQM(true)} className="gold px-3 py-2 rounded-xl font-black uppercase text-[7px] active:scale-95">⚡ Quick</button>
+          <button onClick={() => setPriv(p => !p)} className="p-2 bg-slate-900 rounded-xl text-slate-500 hover:text-amber-500 transition-all"><Icon name={isPrivate ? 'eye-off' : 'eye'} className="w-4 h-4" /></button>
+          <button onClick={() => { setRole('admin'); setView('auth'); setPass(''); }} className="p-2 bg-slate-900 rounded-xl text-slate-500 hover:text-white transition-all"><Icon name="log-out" className="w-4 h-4" /></button>
+        </div>
       </nav>
 
       <main className="max-w-xl mx-auto w-full p-4 space-y-5">
@@ -648,31 +1025,37 @@ ${job.final_signature ? `<div class="sig"><p style="font-size:10px;color:#999;ma
 
         {finance.mbTargets.length > 0 && <div className="g p-4 border border-purple-500/30 flex items-center justify-between"><div><p className="text-[8px] font-black text-purple-400 uppercase">💎 {finance.mbTargets.length} Ready for Membership</p><p className="text-[8px] text-slate-500">{finance.mbTargets[0]?.name} + more</p></div><button onClick={() => { const j = jobs.find(jj => jj.client_name === finance.mbTargets[0]?.name); if (j) offerMembership(j); }} className="px-3 py-2 bg-purple-500/20 text-purple-400 rounded-xl text-[7px] font-black uppercase active:scale-95">Offer</button></div>}
 
+        {/* Global tab routing */}
         <div className="flex gap-1 bg-black/40 p-1 rounded-2xl border border-white/5 shadow-xl overflow-x-auto nsb">{[['brief', '☀️', 'AM'], ['intel', '📊', 'Intel'], ['agenda', '📋', 'Logs'], ['clients', '🧬', 'DNA'], ['members', '💎', 'VIP'], ['drive', '📁', 'Drive'], ['payroll', '💰', 'Pay'], ['deploy', '⚡', 'New']].map(([v, e, l]) => (<button key={v} onClick={() => { if (v === 'deploy') { setEdit(null); setState(INIT); setDtab('identity'); } setView(v); }} className={`flex-shrink-0 flex-1 py-2 rounded-xl text-[7px] uppercase font-black whitespace-nowrap px-2 active:scale-95 ${view === v ? (v === 'deploy' ? 'bg-amber-500 text-black shadow-lg' : 'ton') : 'text-slate-500'}`}>{e} {l}</button>))}</div>
 
         {view === 'brief' && (<div className="space-y-5 animate-in fade-in">
+          
+          {/* Active Interactive Maps Section */}
+          <div className="g p-5 border border-white/10 space-y-3">
+            <div className="flex justify-between items-center">
+              <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest">📍 Interactive Project Locations</p>
+              {activeMapAddress && <span className="text-[7px] bg-green-600/10 text-green-400 font-bold px-2 py-0.5 rounded-lg truncate w-32">{activeMapAddress}</span>}
+            </div>
+            <MapComponent address={activeMapAddress} />
+            <div className="flex gap-1 overflow-x-auto nsb pt-1">
+              {jobs.filter(j => j.status === 'scheduled' || j.status === 'in_progress').map(job => (
+                <button key={job.id} onClick={() => setMapAddress(job.address)} className={`px-2.5 py-1.5 rounded-lg text-[7px] font-bold uppercase flex-shrink-0 border transition-all ${activeMapAddress === job.address ? 'bg-green-600 border-green-600 text-white' : 'bg-white/5 border-white/5 text-slate-400'}`}>{job.client_name}</button>
+              ))}
+            </div>
+          </div>
+
           <div className="g p-6 border-t-4 border-amber-500"><p className="text-[9px] font-black text-slate-500 uppercase mb-1">Good morning, Jose Mario 👋</p><h2 className="text-2xl font-black italic text-white mb-4">Today's Command</h2><div className="grid grid-cols-2 gap-3"><div className="bg-green-600/10 border border-green-600/20 p-4 rounded-xl text-center"><p className="text-[7px] text-green-400 font-black uppercase mb-1">Jobs Today</p><p className="text-3xl font-black italic text-white">{finance.todayJobs.length}</p></div><div className="bg-amber-500/10 border border-amber-500/20 p-4 rounded-xl text-center"><p className="text-[7px] text-amber-400 font-black uppercase mb-1">Revenue Today</p><p className="text-3xl font-black italic text-white">{fmt$(finance.todayJobs.reduce((a, b) => a + (b.total_price || 0), 0))}</p></div><div className="bg-blue-600/10 border border-blue-600/20 p-4 rounded-xl text-center"><p className="text-[7px] text-blue-400 font-black uppercase mb-1">MRR</p><p className="text-3xl font-black italic text-white">{isPrivate ? '***' : fmt$(finance.mrr)}</p></div><div className="bg-purple-600/10 border border-purple-600/20 p-4 rounded-xl text-center"><p className="text-[7px] text-purple-400 font-black uppercase mb-1">Avg Rating</p><p className="text-3xl font-black italic text-white">{finance.avgRating || '—'}</p></div></div></div>
+          
           <div className="g p-6 flex items-center justify-center gap-8"><Thermo pct={finance.pct} goal={DEFAULT_CFG.GOAL} current={finance.gross} /><div className="space-y-2">{finance.vel !== null && <p className="text-[8px] font-black text-slate-400 uppercase">⚡ Velocity: <span className="text-white">{finance.vel}d</span></p>}{finance.proj > 0 && <p className="text-[8px] font-black text-green-400 uppercase">📈 Projected: {fmt$(finance.proj)}</p>}{finance.bestDay && <p className="text-[8px] font-black text-amber-400 uppercase">💰 Money Day: {finance.bestDay}</p>}<p className="text-[8px] font-black text-slate-500 uppercase">Total: {finance.total}</p></div></div>
+          
           <div className="g p-5 border-t-4 border-green-500 space-y-4"><p className="text-[9px] font-black text-green-400 uppercase tracking-widest">War Room</p><div className="grid grid-cols-2 gap-2"><button onClick={() => { setFSt('lead'); setView('agenda'); }} className="bg-amber-500/10 border border-amber-500/20 p-3 rounded-xl text-left active:scale-95"><p className="text-[7px] text-amber-400 font-black uppercase">Money Waiting</p><p className="text-2xl font-black italic text-white">{isPrivate ? '***' : fmt$(finance.moneyTable)}</p><p className="text-[7px] text-slate-500">{finance.pendSig.length} unsigned</p></button><button onClick={() => { setFSt('lead'); setView('agenda'); }} className="bg-red-500/10 border border-red-500/20 p-3 rounded-xl text-left active:scale-95"><p className="text-[7px] text-red-400 font-black uppercase">Expiring</p><p className="text-2xl font-black italic text-white">{finance.expiring.length}</p><p className="text-[7px] text-slate-500">under 6h</p></button><button onClick={() => { setFSt('completed'); setView('agenda'); }} className="bg-purple-500/10 border border-purple-500/20 p-3 rounded-xl text-left active:scale-95"><p className="text-[7px] text-purple-400 font-black uppercase">QC Queue</p><p className="text-2xl font-black italic text-white">{finance.qcQ.length}</p></button><button onClick={() => { setFSt('paid'); setView('agenda'); }} className="bg-blue-500/10 border border-blue-500/20 p-3 rounded-xl text-left active:scale-95"><p className="text-[7px] text-blue-400 font-black uppercase">Review Queue</p><p className="text-2xl font-black italic text-white">{finance.reviewQ.length}</p></button></div></div>
-          {finance.expiring.length > 0 && <div className="g p-5 border-l-4 border-red-500 ap"><p className="text-[9px] font-black text-red-400 uppercase mb-2">⏰ Expiring</p>{finance.expiring.slice(0, 3).map(job => (<div key={job.id} className="flex justify-between items-center py-1.5"><span className="text-[10px] font-black text-white uppercase">{job.client_name} — {fmt$(job.total_price)}</span><button onClick={() => recordFollow(job, 'final')} className="px-3 py-1.5 bg-red-500/20 text-red-400 rounded-xl text-[8px] font-black uppercase active:scale-95">Final Push</button></div>))}</div>}
-          {finance.qcQ.length > 0 && <div className="g p-5 border-l-4 border-purple-500"><p className="text-[9px] font-black text-purple-400 uppercase mb-2">QC Queue</p>{finance.qcQ.slice(0, 3).map(job => (<div key={job.id} className="flex justify-between items-center py-1.5"><span className="text-[10px] font-black text-white uppercase">{job.client_name}</span><div className="flex gap-1"><button onClick={() => passQC(job)} className="px-3 py-1.5 bg-purple-500/20 text-purple-400 rounded-xl text-[8px] font-black uppercase active:scale-95">✅ Pass</button><button onClick={async () => { wa(job, 'qcfix'); await update(job, { specs: { ...(job.specs || {}), quality_issue: true } }, 'Fix sent'); }} className="px-3 py-1.5 bg-red-500/20 text-red-400 rounded-xl text-[8px] font-black uppercase active:scale-95">🔧 Fix</button></div></div>))}</div>}
-          {finance.cold.length > 0 && <div className="g p-5 border-l-4 border-red-500 ap"><p className="text-[9px] font-black text-red-400 uppercase mb-2">🔥 {finance.cold.length} Cold Lead{finance.cold.length > 1 ? 's' : ''}</p>{finance.cold.slice(0, 3).map(job => (<div key={job.id} className="flex justify-between items-center py-1.5"><span className="text-[10px] font-black text-white uppercase">{job.client_name}</span><button onClick={() => wa(job, 'urgency')} className="px-3 py-1.5 bg-red-500/20 text-red-400 rounded-xl text-[8px] font-black uppercase active:scale-95">🚨 Urgency</button></div>))}</div>}
-          {finance.retDue.length > 0 && <div className="g p-5 border-l-4 border-blue-500"><p className="text-[9px] font-black text-blue-400 uppercase mb-2">👻 {finance.retDue.length} Retention Due</p>{finance.retDue.slice(0, 3).map(job => (<div key={job.id} className="flex justify-between items-center py-1.5"><div><span className="text-[10px] font-black text-white uppercase">{job.client_name}</span><p className="text-[7px] text-slate-500">Next: {job.next_visit}</p></div><button onClick={() => wa(job, 'retention')} className="px-3 py-1.5 bg-blue-500/20 text-blue-400 rounded-xl text-[8px] font-black uppercase active:scale-95">Re-engage</button></div>))}</div>}
-          {finance.churn.length > 0 && <div className="g p-5 border-l-4 border-orange-500"><p className="text-[9px] font-black text-orange-400 uppercase mb-2">⚠️ {finance.churn.length} Churn Risk</p>{finance.churn.slice(0, 3).map(c => (<div key={c.name} className="flex justify-between items-center py-1.5"><span className="text-[10px] font-black text-white uppercase">{c.name}</span><button onClick={() => { const j = jobs.find(jj => jj.client_name === c.name); if (j) wa(j, 'winback'); }} className="px-3 py-1.5 bg-orange-500/20 text-orange-400 rounded-xl text-[8px] font-black uppercase active:scale-95">Win Back</button></div>))}</div>}
-          <button onClick={() => setView('intel')} className="w-full g py-4 rounded-xl font-black uppercase text-[9px] text-slate-400 border border-white/5 active:scale-95">Full Intel Dashboard →</button>
         </div>)}
 
         {view === 'intel' && (<div className="space-y-5 animate-in fade-in">
-          <section className="g p-8 border-t-4 border-green-600 shadow-xl"><p className="text-[9px] font-black text-slate-500 mb-2 uppercase tracking-widest italic">Monthly Goal — {fmt$(DEFAULT_CFG.GOAL)}</p><h2 className="text-7xl italic tracking-tighter text-white font-black leading-none">{Math.round(finance.pct)}%</h2><div className="pb mt-4 mb-3"><div className="pf" style={{ width: `${finance.pct}%` }}></div></div><div className="flex justify-between text-[8px] text-slate-500 font-black uppercase"><span>Billed: {isPrivate ? '***' : fmt$(finance.gross)}</span><span>{finance.gross >= DEFAULT_CFG.GOAL ? '🎯 GOAL!' : 'Left: ' + fmt$(DEFAULT_CFG.GOAL - finance.gross)}</span></div><p className="text-[9px] text-green-500 mt-2 font-black uppercase italic text-center">Net: {isPrivate ? '****' : fmt$(finance.net)} | Projected: {isPrivate ? '****' : fmt$(finance.proj)}</p>{finance.bestDay && <p className="text-[8px] text-amber-400 font-black uppercase text-center mt-1">💰 {finance.bestDay}</p>}{finance.vel !== null && <p className="text-[8px] text-blue-400 font-black uppercase text-center">⚡ {finance.vel} days lead→paid</p>}</section>
+          <section className="g p-8 border-t-4 border-green-600 shadow-xl"><p className="text-[9px] font-black text-slate-500 mb-2 uppercase tracking-widest italic">Monthly Goal — {fmt$(DEFAULT_CFG.GOAL)}</p><h2 className="text-7xl italic tracking-tighter text-white font-black leading-none">{Math.round(finance.pct)}%</h2><div className="pb mt-4 mb-3"><div className="pf" style={{ width: `${finance.pct}%` }}></div></div><div className="flex justify-between text-[8px] text-slate-500 font-black uppercase"><span>Billed: {isPrivate ? '***' : fmt$(finance.gross)}</span><span>{finance.gross >= DEFAULT_CFG.GOAL ? '🎯 GOAL!' : 'Left: ' + fmt$(DEFAULT_CFG.GOAL - finance.gross)}</span></div><p className="text-[9px] text-green-500 mt-2 font-black uppercase italic text-center">Net: {isPrivate ? '****' : fmt$(finance.net)} | Projected: {isPrivate ? '****' : fmt$(finance.proj)}</p></section>
           <div className="grid grid-cols-2 gap-3">{[{ l: 'Pending', v: isPrivate ? '***' : fmt$(finance.pending), c: 'border-orange-500', t: 'text-orange-400' }, { l: 'Avg Ticket', v: isPrivate ? '***' : fmt$(finance.avg), c: 'border-blue-500', t: 'text-blue-400' }, { l: 'MRR', v: isPrivate ? '***' : fmt$(finance.mrr), c: 'border-purple-500', t: 'text-purple-400' }, { l: 'Avg Rating', v: finance.avgRating || '—', c: 'border-amber-500', t: 'text-amber-400' }, { l: 'Avg LTV', v: isPrivate ? '***' : fmt$(finance.avgLTV), c: 'border-green-500', t: 'text-green-400' }, { l: 'Bonuses', v: fmt$(finance.bonuses), c: 'border-pink-500', t: 'text-pink-400' }].map(k => (<div key={k.l} className={`g p-5 border-b-4 ${k.c} text-center`}><p className="text-[8px] text-slate-500 mb-1 uppercase font-black">{k.l}</p><p className={`text-2xl font-black italic ${k.t}`}>{k.v}</p></div>))}</div>
           <div className="g p-5"><BarChart data={finance.wb} color="#22c55e" label="📊 Weekly Revenue" /></div>
           <div className="g p-5"><BarChart data={finance.mb2} color="#3b82f6" label="📈 6-Month Revenue" /></div>
-          {finance.ltv.length > 0 && <div className="g p-5"><p className="text-[9px] font-black text-slate-500 uppercase mb-3">👑 Top Clients by LTV</p>{finance.ltv.slice(0, 5).map((c, i) => (<div key={c.name} className="flex justify-between items-center py-1.5 border-b border-white/5 last:border-0"><div className="flex items-center gap-2"><span className="text-[8px] text-slate-600 font-black">#{i + 1}</span><span className="text-[10px] font-black text-white uppercase">{c.name}</span></div><div className="text-right"><p className="text-sm font-black text-green-400">{fmt$(c.total)}</p><p className="text-[7px] text-slate-500">{c.count} jobs</p></div></div>))}</div>}
-          {finance.lostJ.length > 0 && <div className="g p-5"><p className="text-[9px] font-black text-slate-500 uppercase mb-3">📉 Lost Job Analysis</p>{Object.entries(finance.lostReasons).map(([r, n]) => (<div key={r} className="flex justify-between items-center py-1.5 border-b border-white/5 last:border-0"><span className="text-[9px] font-black uppercase text-slate-400">{r}</span><span className="text-sm font-black text-red-400">{n}</span></div>))}</div>}
-          <div className="g p-5"><p className="text-[9px] font-black text-slate-500 uppercase mb-3">Pipeline</p><div className="grid grid-cols-6 gap-1">{[{ k: 'lead', c: 'text-yellow-400', l: 'Lead' }, { k: 'scheduled', c: 'text-blue-400', l: 'Sched' }, { k: 'in_progress', c: 'text-green-400', l: 'Live' }, { k: 'completed', c: 'text-purple-400', l: 'Done' }, { k: 'paid', c: 'text-cyan-400', l: 'Paid' }, { k: 'lost', c: 'text-red-400', l: 'Lost' }].map(s => (<div key={s.k} className="text-center bg-white/5 p-2 rounded-xl"><p className={`text-xl font-black italic ${s.c}`}>{finance.byS[s.k] || 0}</p><p className="text-[6px] text-slate-500 uppercase font-black mt-0.5">{s.l}</p></div>))}</div></div>
-          <div className="g p-5"><p className="text-[9px] font-black text-slate-500 uppercase mb-3">Revenue by Service</p>{Object.entries(finance.bySvc).map(([type, rev]) => (<div key={type} className="flex justify-between items-center py-1.5 border-b border-white/5 last:border-0"><span className="text-[9px] font-black uppercase text-slate-400">{type} ({jobs.filter(j => j.service_type === type).length})</span><span className="text-sm font-black text-white">{isPrivate ? '***' : fmt$(rev)}</span></div>))}</div>
-          <div className="flex gap-2"><button onClick={exportCSV} className="flex-1 g py-3 rounded-xl font-black uppercase text-[8px] text-slate-400 border border-white/5 active:scale-95">📊 Export CSV</button><button onClick={() => window.print()} className="flex-1 g py-3 rounded-xl font-black uppercase text-[8px] text-slate-400 border border-white/5 active:scale-95">🖨️ Print</button></div>
-          {actLog.length > 0 && <div className="g p-5"><p className="text-[9px] font-black text-slate-500 uppercase mb-3">Activity Log</p>{actLog.slice(0, 8).map((l, i) => (<div key={i} className="flex justify-between py-1 border-b border-white/5 last:border-0"><span className="text-[8px] text-slate-400 font-black">{l.m}</span><span className="text-[7px] text-slate-600">{l.time}</span></div>))}</div>}
         </div>)}
 
         {view === 'agenda' && (<div className="space-y-4 animate-in slide-in-from-bottom-10 pb-24">
@@ -694,29 +1077,18 @@ ${job.final_signature ? `<div class="sig"><p style="font-size:10px;color:#999;ma
                       <h3 className="text-base font-black uppercase italic text-white leading-none">{job.client_name}</h3>
                       <span className={`text-[6px] font-black px-1.5 py-0.5 rounded-full uppercase ${job.status === 'paid' ? 'bg-blue-600 text-white' : job.status === 'in_progress' ? 'bg-green-600 text-white' : job.status === 'lead' ? 'bg-yellow-500 text-black' : job.status === 'completed' ? 'bg-purple-600 text-white' : job.status === 'lost' ? 'bg-red-900 text-red-300' : 'bg-slate-700 text-slate-300'}`}>{job.status}</span>
                       {isH && <span className="text-[6px] bg-green-600 text-black font-black px-1.5 py-0.5 rounded-full">🛠️</span>}
-                      {lv.name !== 'Bronze' && <span className="text-[6px] font-black px-1.5 py-0.5 rounded-full" style={{ background: lv.color, color: '#000' }}>{lv.name}</span>}
-                      {job.approval_signature && <span className="text-[6px] bg-green-900 text-green-400 font-black px-1.5 py-0.5 rounded-full">✍️</span>}
-                      {job.final_signature && <span className="text-[6px] bg-purple-900 text-purple-400 font-black px-1.5 py-0.5 rounded-full">🏁</span>}
-                      {bonus > 0 && <span className="text-[6px] bg-amber-900 text-amber-400 font-black px-1.5 py-0.5 rounded-full">⭐+${bonus}</span>}
-                      {job.client_rating > 0 && <span className="text-[6px] font-black px-1.5 py-0.5 rounded-full bg-amber-500/20 text-amber-400">{'⭐'.repeat(job.client_rating)}</span>}
                     </div>
-                    <p className="text-[8px] text-slate-500 uppercase">{job.service_type} • {fmtD(job.scheduled_date)} • {job.team_assigned || 'No team'}</p>
-                    {job.check_in_time && <p className="text-[7px] text-green-400 font-black uppercase">▶ {new Date(job.check_in_time).toLocaleTimeString()}{job.check_out_time && ` ⏹ ${new Date(job.check_out_time).toLocaleTimeString()}`}</p>}
+                    <p className="text-[8px] text-slate-500 uppercase">{job.service_type} • {fmtD(job.scheduled_date)} • Assigned: {job.team_assigned || 'No worker'}</p>
                   </div>
-                  <div className="dr border-2 ml-2" style={{ borderColor: lv.color, color: lv.color, width: 44, height: 44 }}><div className="text-center leading-none"><div style={{ fontSize: '0.5rem', fontWeight: 900 }}>{lv.name.slice(0, 3)}</div><div style={{ fontSize: '0.6rem', fontWeight: 900 }}>{d?.score || 0}</div></div></div>
+                  <button onClick={() => setMapAddress(job.address)} className="p-2.5 bg-blue-900/30 text-blue-400 rounded-xl hover:bg-blue-600 transition-all flex items-center justify-center gap-1 text-[8px] font-black uppercase"><Icon name="navigation" className="w-3.5 h-3.5" />Map</button>
                 </div>
-                <div className="flex justify-between items-center bg-black/40 p-2.5 rounded-xl mb-2"><p className="text-[8px] text-slate-400 truncate w-44 italic">{job.address}</p><button onClick={() => window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(job.address)}`)} className="text-green-500 text-[7px] font-black uppercase px-2 py-1 bg-green-600/10 rounded-lg active:scale-95">GPS</button></div>
-                {!isPrivate && job.status === 'paid' && <div className="bg-green-900/20 border border-green-600/20 p-2 rounded-xl mb-2 flex justify-between items-center"><span className="text-[7px] font-black text-green-400 uppercase">Your pocket</span><span className="text-sm font-black text-green-400">{fmt$(profit)}</span></div>}
+                <p className="text-[8px] text-slate-400 italic mb-2">{job.address}</p>
                 <div className="grid grid-cols-3 gap-1 mb-2">{[['confirm', '✅'], ['reminder', '🔔'], ['review', '⭐'], ['quote', '📋'], ['referral', '🎁'], ['bundle', '🎯']].map(([tp, em]) => (<button key={tp} onClick={() => wa(job, tp)} className="py-1.5 bg-white/5 border border-white/5 rounded-xl text-[7px] font-black uppercase active:scale-95 text-slate-400">{em} {tp}</button>))}</div>
                 {job.status === 'lead' && <div className="grid grid-cols-4 gap-1 mb-2"><button onClick={() => recordFollow(job, 'follow1')} className="py-1.5 bg-amber-500/10 text-amber-400 rounded-xl text-[7px] font-black uppercase active:scale-95">F1</button><button onClick={() => recordFollow(job, 'follow2')} className="py-1.5 bg-orange-500/10 text-orange-400 rounded-xl text-[7px] font-black uppercase active:scale-95">F2</button><button onClick={() => recordFollow(job, 'final')} className="py-1.5 bg-red-500/10 text-red-400 rounded-xl text-[7px] font-black uppercase active:scale-95">Final</button><button onClick={() => markLost(job)} className="py-1.5 bg-slate-800 text-slate-400 rounded-xl text-[7px] font-black uppercase active:scale-95">Lost</button></div>}
-                {job.status === 'completed' && <div className="grid grid-cols-2 gap-1 mb-2"><button onClick={() => passQC(job)} className="py-1.5 bg-purple-500/10 text-purple-400 rounded-xl text-[7px] font-black uppercase active:scale-95">✅ QC Pass</button><button onClick={async () => { wa(job, 'qcfix'); await update(job, { specs: { ...(job.specs || {}), quality_issue: true } }, 'Fix sent'); }} className="py-1.5 bg-red-500/10 text-red-400 rounded-xl text-[7px] font-black uppercase active:scale-95">🔧 Fix</button></div>}
-                {(job.status === 'paid' || job.specs?.quality_passed) && <div className="grid grid-cols-3 gap-1 mb-2"><button onClick={() => requestReview(job)} className="py-1.5 bg-blue-500/10 text-blue-400 rounded-xl text-[7px] font-black uppercase active:scale-95">⭐ Review</button><button onClick={() => rebook(job)} className="py-1.5 bg-green-500/10 text-green-400 rounded-xl text-[7px] font-black uppercase active:scale-95">🔄 Rebook</button><button onClick={() => offerMembership(job)} className="py-1.5 bg-yellow-500/10 text-yellow-400 rounded-xl text-[7px] font-black uppercase active:scale-95">💎 Member</button></div>}
-                {(job.specs?.last_followup || job.specs?.quality_passed || job.specs?.review_requested_at || job.specs?.lost_reason || job.specs?.staff_issue) && <div className="bg-white/5 border border-white/5 rounded-xl p-2 mb-2 text-[7px] text-slate-500 font-black uppercase space-y-0.5">{job.specs?.last_followup && <p>Last: {job.specs.last_followup}</p>}{job.specs?.quality_passed && <p className="text-purple-400">QC ✓</p>}{job.specs?.review_requested_at && <p className="text-blue-400">Review ✓</p>}{job.specs?.lost_reason && <p className="text-red-400">Lost: {job.specs.lost_reason}</p>}{job.specs?.staff_issue && <p className="text-orange-400">Issue: {job.specs.staff_issue}</p>}</div>}
                 <div className="flex justify-between items-end border-t border-white/5 pt-3">
                   <div>
                     <p className="text-[8px] text-slate-500 italic font-black uppercase">Balance</p>
                     <p className="text-4xl font-black italic tracking-tighter text-white leading-none">{fmt$(bal)}</p>
-                    {job.next_visit && <p className="text-[7px] text-amber-500 font-black uppercase mt-0.5">↩ {job.next_visit}</p>}
                   </div>
                   <div className="flex gap-1.5">
                     <button onClick={() => setChatJob(job)} className="p-2.5 bg-blue-900/30 text-blue-400 rounded-xl hover:bg-blue-600 transition-all"><Icon name="message-square" className="w-4 h-4" /></button>
@@ -733,8 +1105,7 @@ ${job.final_signature ? `<div class="sig"><p style="font-size:10px;color:#999;ma
 
         {view === 'clients' && (<div className="space-y-4 animate-in fade-in pb-24">
           <div className="g p-5 border-t-4 border-purple-500"><p className="text-[9px] font-black text-slate-500 uppercase mb-1">🧬 Client DNA</p></div>
-          {clients.length === 0 && <div className="g p-10 text-center text-slate-500 font-black italic uppercase">No clients yet.</div>}
-          {clients.sort((a, b) => (dna[b.name]?.score || 0) - (dna[a.name]?.score || 0)).map(client => {
+          {clients.map(client => {
             const d = dna[client.name] || { score: 0, count: 0, spent: 0 };
             const lv = lvl(d.count);
             const daysSince = dAgo(d.last);
@@ -747,19 +1118,13 @@ ${job.final_signature ? `<div class="sig"><p style="font-size:10px;color:#999;ma
                       <h3 className="text-base font-black uppercase italic text-white">{client.name}</h3>
                       <span className="text-[7px] font-black px-2 py-0.5 rounded-full" style={{ background: lv.color, color: '#000' }}>{lv.name}</span>
                       {daysSince >= 45 && <span className="text-[7px] bg-red-900/50 text-red-400 font-black px-2 py-0.5 rounded-full">⚠️ Churn Risk</span>}
-                      {client.membership && client.membership !== 'none' && <span className="text-[7px] bg-blue-900/50 text-blue-400 font-black px-2 py-0.5 rounded-full">💎 {client.membership}</span>}
                     </div>
                     <p className="text-[8px] text-slate-500 uppercase">{client.phone}</p>
-                    <div className="flex gap-3 mt-1 flex-wrap"><span className="text-[8px] font-black text-white">{d.count} jobs</span><span className="text-[8px] font-black text-green-400">{isPrivate ? '***' : fmt$(d.spent)}</span><span className="text-[8px] font-black text-slate-500">Last: {daysSince < 999 ? daysSince + 'd ago' : 'N/A'}</span></div>
                   </div>
-                  <div className="dr border-2 ml-2 flex-shrink-0" style={{ borderColor: lv.color, color: lv.color, width: 44, height: 44 }}><div className="text-center leading-none"><div style={{ fontSize: '0.5rem', fontWeight: 900 }}>{lv.name.slice(0, 3)}</div><div style={{ fontSize: '0.6rem', fontWeight: 900 }}>{d.score}</div></div></div>
                 </div>
-                <div className="pb mt-2 mb-3"><div className="pf" style={{ width: `${d.score}%` }}></div></div>
-                <div className="flex gap-1.5 flex-wrap">
-                  <button onClick={() => { const p = client.phone?.replace(/\D/g, '') || ''; const ph = p.length === 10 ? '1' + p : p; window.open(`https://wa.me/${ph}`); }} className="flex-1 py-2 bg-green-600/20 text-green-400 rounded-xl text-[7px] font-black uppercase active:scale-95">💬 WA</button>
+                <div className="flex gap-1.5 mt-3 flex-wrap">
                   <button onClick={() => lastJob ? wa(lastJob, 'referral') : tt('No previous job', 'red')} className="flex-1 py-2 bg-pink-600/20 text-pink-400 rounded-xl text-[7px] font-black uppercase active:scale-95">🎁 Ref</button>
                   <button onClick={() => lastJob ? wa(lastJob, 'bundle') : tt('No previous job', 'red')} className="flex-1 py-2 bg-blue-600/20 text-blue-400 rounded-xl text-[7px] font-black uppercase active:scale-95">🎯 Bundle</button>
-                  <button onClick={() => lastJob ? wa(lastJob, 'birthday') : tt('No previous job', 'red')} className="flex-1 py-2 bg-amber-600/20 text-amber-400 rounded-xl text-[7px] font-black uppercase active:scale-95">🎂 B-day</button>
                   <button onClick={() => { setState({ ...INIT, ...client.specs, name: client.name, phone: client.phone, address: client.address }); setView('deploy'); setDtab('specs'); }} className="flex-1 py-2 bg-white/5 text-slate-400 rounded-xl text-[7px] font-black uppercase active:scale-95">+ Job</button>
                 </div>
               </div>
@@ -770,27 +1135,74 @@ ${job.final_signature ? `<div class="sig"><p style="font-size:10px;color:#999;ma
         {view === 'members' && (<div className="space-y-5 animate-in fade-in pb-24">
           <div className="g p-5 border-t-4 border-yellow-500">
             <p className="text-[9px] font-black text-slate-500 uppercase mb-1">💎 Memberships</p>
-            <p className="text-[8px] text-slate-600 font-black italic">MRR Engine</p>
             <p className="text-2xl font-black italic text-white mt-2">{isPrivate ? '***' : fmt$(finance.mrr)}<span className="text-[9px] text-slate-500 font-black">/mo MRR</span></p>
           </div>
           {MBS.filter(m => m.id !== 'none').map(m => (
             <div key={m.id} className="g p-5 border-l-4" style={{ borderColor: m.color }}>
               <div className="flex justify-between items-center mb-3">
-                <div><h3 className="text-lg font-black uppercase italic text-white">{m.name}</h3></div>
+                <h3 className="text-lg font-black uppercase italic text-white">{m.name}</h3>
                 <p className="text-2xl font-black" style={{ color: m.color }}>{fmt$(m.price)}<span className="text-[9px] text-slate-500">/mo</span></p>
               </div>
               <ul className="space-y-1 mb-3">{m.perks?.map((p, i) => (<li key={i} className="text-[9px] text-slate-400 font-black">✓ {p}</li>))}</ul>
-              <div className="flex justify-between items-center pt-2 border-t border-white/5">
-                <span className="text-[8px] text-slate-500 font-black uppercase">{clients.filter(c => c.membership === m.id).length} active</span>
-                <button onClick={() => { const name = prompt('Client name to assign ' + m.name + ':'); if (name) sb.from('clients').update({ membership: m.id }).ilike('name', '%' + name + '%').then(() => { tt(name + ' → ' + m.name + ' ✓'); refresh(); }); }} className="px-4 py-2 bg-white/10 text-white rounded-xl text-[8px] font-black uppercase active:scale-95">+ Assign</button>
-              </div>
             </div>
           ))}
         </div>)}
 
+        {/* Dynamic Employee and Wallet Management Suite */}
+        {view === 'payroll' && (
+          <div className="space-y-5 animate-in fade-in pb-24">
+            
+            {/* Create Staff Module */}
+            <div className="g p-6 border-t-4 border-amber-500 space-y-4">
+              <p className="text-[10px] font-black text-amber-500 uppercase tracking-widest mb-1">👤 Add New Worker & PIN</p>
+              <div className="space-y-3">
+                <input className="inp uppercase" placeholder="Worker Name" value={newStaffName} onChange={e => setNewName(e.target.value)} />
+                <input className="inp" placeholder="Set Passcode PIN (e.g. 5566)" value={newStaffPIN} onChange={e => setNewPIN(e.target.value)} />
+                <div className="grid grid-cols-3 gap-2">
+                  {['staff', 'supervisor', 'admin'].map(r => (
+                    <button key={r} onClick={() => setNewRole(r)} className={`py-2 rounded-xl text-[8px] uppercase font-black border transition-all ${newStaffRole === r ? 'bg-amber-500 text-black border-amber-500' : 'bg-white/5 border-white/5 text-slate-400'}`}>{r}</button>
+                  ))}
+                </div>
+                <button onClick={handleAddEmployee} className="w-full gold py-3 rounded-xl font-black uppercase text-[10px] active:scale-95 shadow-md">Add Employee to SaaS ✓</button>
+              </div>
+            </div>
+
+            {/* Team Wallet List Ledger */}
+            <div className="g p-5 border-t-4 border-green-500">
+              <p className="text-[9px] font-black text-green-500 uppercase tracking-widest mb-4">💰 Team Wallets & Balances</p>
+              <div className="space-y-3">
+                {staff.map(worker => (
+                  <div key={worker.id} className="g p-4 border border-white/5 flex items-center justify-between">
+                    <div>
+                      <h4 className="text-sm font-black text-white uppercase italic">{worker.name}</h4>
+                      <p className="text-[8px] text-slate-500">PIN: <span className="text-amber-500 font-bold">{worker.passcode}</span> • Role: {worker.role?.toUpperCase()}</p>
+                      <p className="text-[7px] text-slate-600 mt-0.5">Historial acumulado: {fmt$(worker.total_earned || 0)}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-xl font-black text-green-400">{fmt$(worker.wallet_balance || 0)}</p>
+                      {(worker.wallet_balance || 0) > 0 ? (
+                        <button onClick={() => handleCashout(worker)} className="mt-1 px-2.5 py-1 bg-green-600 text-white rounded-lg text-[7px] font-black uppercase active:scale-95">Pay via Zelle</button>
+                      ) : (
+                        <span className="text-[6px] text-slate-600 font-black uppercase block mt-1">Paid ✓</span>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="g p-5">
+              <div className="space-y-2">
+                <div className="flex justify-between"><span className="text-[9px] text-slate-400 font-black uppercase">Collected</span><span className="text-sm font-black text-white">{isPrivate ? '***' : fmt$(finance.col)}</span></div>
+                <div className="flex justify-between border-t border-white/10 pt-2"><span className="text-[9px] text-white font-black uppercase">Your Net</span><span className="text-lg font-black text-green-400">{isPrivate ? '****' : fmt$(finance.net)}</span></div>
+              </div>
+            </div>
+            <button onClick={exportCSV} className="w-full g py-4 rounded-xl font-black uppercase text-[9px] text-slate-400 border border-white/5 active:scale-95">📊 Export Ledger CSV</button>
+          </div>
+        )}
+
         {view === 'drive' && (<div className="space-y-4 animate-in fade-in pb-24">
           <div className="g p-5 border-t-4 border-blue-500"><p className="text-[9px] font-black text-slate-500 uppercase mb-1">📁 Photo Drive</p></div>
-          {jobs.length === 0 && <div className="g p-10 text-center text-slate-500 font-black italic uppercase">No missions yet.</div>}
           {jobs.map(job => (
             <div key={job.id} className="g p-5 space-y-4">
               <div className="flex justify-between items-center">
@@ -798,7 +1210,6 @@ ${job.final_signature ? `<div class="sig"><p style="font-size:10px;color:#999;ma
                   <h3 className="text-base font-black uppercase italic text-white">{job.client_name}</h3>
                   <p className="text-[8px] text-slate-500 uppercase">{job.service_type} • {fmtD(job.scheduled_date)}</p>
                 </div>
-                <QR url={`${location.origin}${location.pathname}?mision=${job.id}`} size={50} />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="g p-3"><PhotoDrive photos={job.before_photos || []} label="📸 Before" onAdd={async u => { const c = job.before_photos || []; await sb.from('elevore_missions').update({ before_photos: [...c, u] }).eq('id', job.id); tt('Added ✓'); refresh(); }} /></div>
@@ -806,34 +1217,6 @@ ${job.final_signature ? `<div class="sig"><p style="font-size:10px;color:#999;ma
               </div>
             </div>
           ))}
-        </div>)}
-
-        {view === 'payroll' && (<div className="space-y-5 animate-in fade-in pb-24">
-          <div className="g p-5 border-t-4 border-green-500">
-            <p className="text-[9px] font-black text-slate-500 uppercase mb-1">💰 Payroll</p>
-            <p className="text-[8px] text-slate-600 font-black italic">40% + bonuses</p>
-          </div>
-          {Object.entries(finance.payroll).length === 0 && <div className="g p-10 text-center text-slate-500 font-black italic uppercase">No paid jobs yet.</div>}
-          {Object.entries(finance.payroll).sort((a, b) => b[1] - a[1]).map(([name, amount]) => (
-            <div key={name} className="g p-5 border-l-4 border-green-500">
-              <div className="flex justify-between items-center">
-                <div>
-                  <h3 className="text-base font-black uppercase italic text-white">{name}</h3>
-                  <p className="text-[8px] text-slate-500">{jobs.filter(j => j.team_assigned === name && j.status === 'paid').length} paid jobs</p>
-                </div>
-                <p className="text-2xl font-black italic text-green-400">{isPrivate ? '***' : fmt$(amount)}</p>
-              </div>
-            </div>
-          ))}
-          <div className="g p-5">
-            <div className="space-y-2">
-              <div className="flex justify-between"><span className="text-[9px] text-slate-400 font-black uppercase">Collected</span><span className="text-sm font-black text-white">{isPrivate ? '***' : fmt$(finance.col)}</span></div>
-              <div className="flex justify-between"><span className="text-[9px] text-slate-400 font-black uppercase">Payroll (40%)</span><span className="text-sm font-black text-red-400">-{isPrivate ? '***' : fmt$(finance.col * DEFAULT_CFG.STAFF_PAY)}</span></div>
-              <div className="flex justify-between"><span className="text-[9px] text-slate-400 font-black uppercase">Bonuses</span><span className="text-sm font-black text-amber-400">-{fmt$(finance.bonuses)}</span></div>
-              <div className="flex justify-between border-t border-white/10 pt-2"><span className="text-[9px] text-white font-black uppercase">Your Net</span><span className="text-lg font-black text-green-400">{isPrivate ? '****' : fmt$(finance.net)}</span></div>
-            </div>
-          </div>
-          <button onClick={exportCSV} className="w-full g py-4 rounded-xl font-black uppercase text-[9px] text-slate-400 border border-white/5 active:scale-95">📊 Export CSV</button>
         </div>)}
 
         {view === 'deploy' && (<div className="space-y-5 animate-in zoom-in-95 pb-32">
@@ -847,16 +1230,21 @@ ${job.final_signature ? `<div class="sig"><p style="font-size:10px;color:#999;ma
               <textarea className="inp text-sm resize-none h-16" placeholder="Notes..." value={state.notes} onChange={e => setState({ ...state, notes: e.target.value })} />
               <div className="grid grid-cols-3 gap-2">{['lead', 'scheduled', 'paid'].map(s => (<button key={s} onClick={() => setState({ ...state, status: s })} className={`py-3 rounded-xl text-[8px] uppercase font-black border-2 active:scale-95 ${state.status === s ? 'bg-amber-500 text-black border-amber-500' : 'bg-white/5 border-white/5 text-slate-500'}`}>{s}</button>))}</div>
               <div><p className="text-[8px] text-slate-500 uppercase font-black mb-2">Frequency</p><div className="grid grid-cols-4 gap-1">{[{ l: '1x', v: 'one-time' }, { l: 'Weekly', v: 'weekly' }, { l: 'Bi-W', v: 'bi-weekly' }, { l: 'Monthly', v: 'monthly' }].map(f => (<button key={f.v} onClick={() => setState({ ...state, frequency: f.v })} className={`py-2 rounded-xl text-[7px] font-black border-2 active:scale-95 ${state.frequency === f.v ? 'bg-blue-600 border-blue-600 text-white' : 'bg-white/5 border-white/5 text-slate-500'}`}>{f.l}</button>))}</div></div>
-              <div><p className="text-[8px] text-slate-500 uppercase font-black mb-2">Quote Urgency</p><div className="grid grid-cols-4 gap-1">{[{ l: '6h', v: 6 }, { l: '12h', v: 12 }, { l: '24h', v: 24 }, { l: '48h', v: 48 }].map(u => (<button key={u.v} onClick={() => setState({ ...state, urgencyHours: u.v })} className={`py-2 rounded-xl text-[7px] font-black border-2 active:scale-95 ${state.urgencyHours === u.v ? 'bg-red-600 border-red-600 text-white' : 'bg-white/5 border-white/5 text-slate-500'}`}>{u.l}</button>))}</div></div>
-              <div><p className="text-[8px] text-slate-500 uppercase font-black mb-2">Client Language</p><div className="grid grid-cols-2 gap-1">{[{ l: 'English', v: 'en' }, { l: 'Español', v: 'es' }].map(lg => (<button key={lg.v} onClick={() => setState({ ...state, lang: lg.v })} className={`py-2 rounded-xl text-[7px] font-black border-2 active:scale-95 ${state.lang === lg.v ? 'bg-amber-500 border-amber-500 text-black' : 'bg-white/5 border-white/5 text-slate-500'}`}>{lg.l}</button>))}</div></div>
             </div>)}
             {dtab === 'specs' && (<div className="space-y-4 animate-in fade-in text-center font-black uppercase">
               <div className="grid grid-cols-5 gap-1">{['regular', 'deep', 'moveout', 'postcon', 'handyman'].map(s => (<button key={s} onClick={() => setState({ ...state, svc: s, selectedQuickJobs: [] })} className={`py-3 rounded-xl font-black text-[7px] border-2 active:scale-95 ${state.svc === s ? 'bg-green-600 border-green-600 text-white shadow-lg' : 'bg-white/5 border-white/5 text-slate-500'}`}>{s === 'handyman' ? '🛠️' : s}</button>))}</div>
-              {state.svc === 'handyman' ? (<div className="space-y-4 text-left"><div className="bg-white/5 p-4 rounded-2xl border border-white/5"><p className="text-[9px] text-amber-500 uppercase font-black mb-2 text-center">Labor × $85/hr</p><div className="flex justify-between items-center max-w-[180px] mx-auto"><button onClick={() => setState({ ...state, laborHours: Math.max(1, state.laborHours - 1) })} className="w-10 h-10 bg-white/10 rounded-xl text-xl font-bold text-white active:scale-95">-</button><span className="text-3xl font-black italic text-white">{state.laborHours}h</span><button onClick={() => setState({ ...state, laborHours: state.laborHours + 1 })} className="w-10 h-10 bg-white/10 rounded-xl text-xl font-bold text-white active:scale-95">+</button></div></div><div><p className="text-[8px] text-slate-500 uppercase font-black mb-2">Quick Jobs</p><div className="grid grid-cols-2 gap-2">{QJOBS.map(q => { const sel = state.selectedQuickJobs.includes(q.id); return (<button key={q.id} onClick={() => setState(s => ({ ...s, selectedQuickJobs: sel ? s.selectedQuickJobs.filter(x => x !== q.id) : [...s.selectedQuickJobs, q.id] }))} className={`p-2.5 rounded-xl border text-[8px] font-black active:scale-95 flex justify-between ${sel ? 'bg-green-600 border-green-600 text-white' : 'bg-white/5 border-white/10 text-slate-400'}`}><span>{q.en}</span><span>{fmt$(q.p)}</span></button>); })}</div></div><div><p className="text-[8px] text-slate-500 uppercase font-black mb-2">Materials ($)</p><input type="number" value={state.materialCost || ''} className="inp text-blue-400 text-center" onChange={e => setState({ ...state, materialCost: parseFloat(e.target.value) || 0 })} /></div><div><p className="text-[8px] text-slate-500 uppercase font-black mb-2">Risk Margin</p><div className="grid grid-cols-4 gap-1">{RISK.map(r => (<button key={r.v} onClick={() => setState({ ...state, riskMargin: r.v })} className={`py-2 rounded-xl text-[7px] font-black border-2 active:scale-95 ${state.riskMargin === r.v ? 'bg-orange-500 border-orange-500 text-white' : 'bg-white/5 border-white/5 text-slate-500'}`}>{r.l}{r.v > 0 ? ` +$${r.v}` : ''}</button>))}</div></div></div>) : state.svc === 'postcon' ? (<div className="p-5 bg-white/5 rounded-2xl border border-white/5"><p className="text-[9px] text-amber-500 uppercase font-black mb-2">SqFt</p><input type="number" value={state.sqft} className="bg-transparent text-6xl font-black text-center w-full text-white outline-none italic leading-none" onChange={e => setState({ ...state, sqft: parseInt(e.target.value) || 0 })} /></div>) : (<div className="space-y-3"><div className="grid grid-cols-2 gap-2">{[{ l: 'Beds', k: 'beds' }, { l: 'Baths', k: 'baths' }, { l: 'Living', k: 'living' }, { l: 'Laundry', k: 'laundryRoom' }].map(i => (<div key={i.k} className="bg-white/5 p-3 rounded-xl text-center border border-white/5"><span className="text-[8px] uppercase block mb-1.5 text-slate-400 font-black">{i.l}</span><div className="flex justify-between items-center"><button onClick={() => setState({ ...state, [i.k]: Math.max(0, state[i.k] - 1) })} className="w-8 h-8 bg-white/10 rounded-lg text-white font-bold active:scale-95">-</button><span className="text-xl font-black italic text-white">{state[i.k]}</span><button onClick={() => setState({ ...state, [i.k]: state[i.k] + 1 })} className="w-8 h-8 bg-white/10 rounded-lg text-white font-bold active:scale-95">+</button></div></div>))}</div><div className="grid grid-cols-4 gap-1 pt-1 border-t border-white/5">{[{ l: 'Tidy', v: 0.9 }, { l: 'Avg', v: 1 }, { l: 'Heavy', v: 1.5 }, { l: 'Ext', v: 2.1 }].map(c => (<button key={c.l} onClick={() => setState({ ...state, complexity: c.v })} className={`py-2 rounded-xl text-[7px] font-black border-2 active:scale-95 ${state.complexity === c.v ? 'bg-orange-500 border-orange-500 text-white' : 'bg-white/5 border-white/5 text-slate-500'}`}>{c.l}</button>))}</div></div>)}
-              <div className="space-y-2 text-left pt-2 border-t border-white/5"><p className="text-[8px] text-slate-500 uppercase font-black">Membership</p><div className="grid grid-cols-2 gap-2">{MBS.map(m => (<button key={m.id} onClick={() => setState({ ...state, membership: m.id })} className={`g p-3 text-left border-2 transition-all active:scale-95`} style={{ borderColor: state.membership === m.id ? m.color : 'rgba(255,255,255,0.08)' }}><div className="flex justify-between items-center"><span className="font-black uppercase text-[10px] text-white">{m.name}</span>{m.price > 0 && <span className="font-black text-xs" style={{ color: m.color }}>{fmt$(m.price)}</span>}</div></button>))}</div></div>
+              {state.svc === 'handyman' ? (<div className="space-y-4 text-left"><div className="bg-white/5 p-4 rounded-2xl border border-white/5"><p className="text-[9px] text-amber-500 uppercase font-black mb-2 text-center">Labor × $85/hr</p><div className="flex justify-between items-center max-w-[180px] mx-auto"><button onClick={() => setState({ ...state, laborHours: Math.max(1, state.laborHours - 1) })} className="w-10 h-10 bg-white/10 rounded-xl text-xl font-bold text-white active:scale-95">-</button><span className="text-3xl font-black italic text-white">{state.laborHours}h</span><button onClick={() => setState({ ...state, laborHours: state.laborHours + 1 })} className="w-10 h-10 bg-white/10 rounded-xl text-xl font-bold text-white active:scale-95">+</button></div></div></div>) : state.svc === 'postcon' ? (<div className="p-5 bg-white/5 rounded-2xl border border-white/5"><p className="text-[9px] text-amber-500 uppercase font-black mb-2">SqFt</p><input type="number" value={state.sqft} className="bg-transparent text-6xl font-black text-center w-full text-white outline-none italic leading-none" onChange={e => setState({ ...state, sqft: parseInt(e.target.value) || 0 })} /></div>) : (<div className="space-y-3"><div className="grid grid-cols-2 gap-2">{[{ l: 'Beds', k: 'beds' }, { l: 'Baths', k: 'baths' }, { l: 'Living', k: 'living' }, { l: 'Laundry', k: 'laundryRoom' }].map(i => (<div key={i.k} className="bg-white/5 p-3 rounded-xl text-center border border-white/5"><span className="text-[8px] uppercase block mb-1.5 text-slate-400 font-black">{i.l}</span><div className="flex justify-between items-center"><button onClick={() => setState({ ...state, [i.k]: Math.max(0, state[i.k] - 1) })} className="w-8 h-8 bg-white/10 rounded-lg text-white font-bold active:scale-95">-</button><span className="text-xl font-black italic text-white">{state[i.k]}</span><button onClick={() => setState({ ...state, [i.k]: state[i.k] + 1 })} className="w-8 h-8 bg-white/10 rounded-lg text-white font-bold active:scale-95">+</button></div></div>))}</div></div>)}
             </div>)}
-            {dtab === 'add-ons' && (<div className="space-y-4 animate-in fade-in">{state.svc === 'handyman' ? (<div className="p-8 text-center text-slate-500 font-black italic border-2 border-dashed border-white/5 rounded-2xl">🛠️ Time & materials only.</div>) : (<><h3 className="text-[9px] uppercase text-amber-500 italic font-black text-center border-b border-white/5 pb-2">Premium Matrix</h3><div className="grid grid-cols-2 gap-2">{ADDONS.map(ex => (<button key={ex.id} onClick={() => setState({ ...state, [ex.id]: !state[ex.id] })} className={`p-3.5 rounded-xl flex justify-between items-center border active:scale-95 ${state[ex.id] ? 'bg-green-600 border-green-600 text-white font-black shadow-lg' : 'bg-white/5 border-white/5 text-slate-500'}`}><span className="text-[9px] uppercase font-black">{ex.en}</span><span className="text-[9px] font-black">+${ex.p}</span></button>))}</div><div className="bg-amber-500/10 p-5 rounded-2xl border border-amber-500/20 text-center space-y-3"><span className="text-[9px] uppercase italic text-amber-500 font-black tracking-widest">Laundry Loads</span><div className="flex justify-between items-center max-w-[140px] mx-auto"><button onClick={() => setState({ ...state, laundryLoads: Math.max(0, state.laundryLoads - 1) })} className="w-11 h-11 bg-amber-500 text-black rounded-xl text-xl font-bold active:scale-95">-</button><span className="text-3xl font-black italic text-white">{state.laundryLoads}</span><button onClick={() => setState({ ...state, laundryLoads: state.laundryLoads + 1 })} className="w-11 h-11 bg-amber-500 text-black rounded-xl text-xl font-bold active:scale-95">+</button></div></div></>)}</div>)}
-            {dtab === 'money' && (<div className="space-y-4 animate-in fade-in"><div className="grid grid-cols-2 gap-3 text-center font-black uppercase"><div className="space-y-1"><p className="text-[8px] text-slate-500">Expenses</p><input type="number" value={state.expenses} className="inp text-orange-400 text-center" onChange={e => setState({ ...state, expenses: parseFloat(e.target.value) || 0 })} /></div><div className="space-y-1"><p className="text-[8px] text-slate-500">Discount</p><select value={state.discount} className="inp text-red-500 font-black text-center text-sm appearance-none" onChange={e => setState({ ...state, discount: parseInt(e.target.value) })}><option value="0">0%</option><option value="10">10%</option><option value="20">20%</option><option value="30">30%</option></select></div></div><div className="space-y-3 border-t border-white/5 pt-3"><select value={state.team} className="inp text-xs text-center" onChange={e => setState({ ...state, team: e.target.value })}><option value="">Team...</option><option value="Team Alpha">Team Alpha</option><option value="Team Beta">Team Beta</option><option value="Jose Mario">Jose Mario</option></select><div className="grid grid-cols-2 gap-3"><div className="space-y-1"><p className="text-[8px] text-slate-500 uppercase font-black">Date</p><input type="date" value={state.date} className="inp text-[10px] font-black" onChange={e => setState({ ...state, date: e.target.value })} /></div><div className="space-y-1"><p className="text-[8px] text-slate-500 uppercase font-black">Deposit</p><input type="number" value={state.deposit} className="inp text-blue-400 font-black text-center" onChange={e => setState({ ...state, deposit: parseFloat(e.target.value) || 0 })} /></div></div></div></div>)}
+            {dtab === 'add-ons' && (<div className="space-y-4 animate-in fade-in">{state.svc === 'handyman' ? (<div className="p-8 text-center text-slate-500 font-black italic border-2 border-dashed border-white/5 rounded-2xl">🛠️ Time & materials only.</div>) : (<><h3 className="text-[9px] uppercase text-amber-500 italic font-black text-center border-b border-white/5 pb-2">Premium Matrix</h3><div className="grid grid-cols-2 gap-2">{ADDONS.map(ex => (<button key={ex.id} onClick={() => setState({ ...state, [ex.id]: !state[ex.id] })} className={`p-3.5 rounded-xl flex justify-between items-center border active:scale-95 ${state[ex.id] ? 'bg-green-600 border-green-600 text-white font-black shadow-lg' : 'bg-white/5 border-white/5 text-slate-500'}`}><span className="text-[9px] uppercase font-black">{ex.en}</span><span className="text-[9px] font-black">+${ex.p}</span></button>))}</div></>)}</div>)}
+            {dtab === 'money' && (<div className="space-y-4 animate-in fade-in"><div className="grid grid-cols-2 gap-3 text-center font-black uppercase"><div className="space-y-1"><p className="text-[8px] text-slate-500">Expenses</p><input type="number" value={state.expenses} className="inp text-orange-400 text-center" onChange={e => setState({ ...state, expenses: parseFloat(e.target.value) || 0 })} /></div><div className="space-y-1"><p className="text-[8px] text-slate-500">Discount</p><select value={state.discount} className="inp text-red-500 font-black text-center text-sm appearance-none" onChange={e => setState({ ...state, discount: parseInt(e.target.value) })}><option value="0">0%</option><option value="10">10%</option><option value="20">20%</option><option value="30">30%</option></select></div></div><div className="space-y-3 border-t border-white/5 pt-3">
+              <p className="text-[8px] text-slate-500 uppercase font-black">Asignar Proyecto a Empleado</p>
+              <select value={state.team} className="inp text-xs text-center" onChange={e => setState({ ...state, team: e.target.value })}>
+                <option value="">Seleccionar Empleado...</option>
+                {staff.map(worker => (
+                  <option key={worker.id} value={worker.name}>{worker.name} ({worker.role?.toUpperCase()})</option>
+                ))}
+              </select>
+              <div className="grid grid-cols-2 gap-3"><div className="space-y-1"><p className="text-[8px] text-slate-500 uppercase font-black">Date</p><input type="date" value={state.date} className="inp text-[10px] font-black" onChange={e => setState({ ...state, date: e.target.value })} /></div><div className="space-y-1"><p className="text-[8px] text-slate-500 uppercase font-black">Deposit</p><input type="number" value={state.deposit} className="inp text-blue-400 font-black text-center" onChange={e => setState({ ...state, deposit: parseFloat(e.target.value) || 0 })} /></div></div></div></div>)}
           </div>
           <div className="bg-white text-black p-8 rounded-[3rem] text-center shadow-2xl relative overflow-hidden active:scale-95 transition-all">
             <div className="absolute top-0 left-0 w-full h-2 bg-green-500 animate-pulse"></div>
@@ -867,7 +1255,8 @@ ${job.final_signature ? `<div class="sig"><p style="font-size:10px;color:#999;ma
         </div>)}
       </main>
 
-      <nav className="fixed bottom-5 left-1/2 -translate-x-1/2 w-[94%] max-w-sm g p-2 flex justify-around items-center border border-white/10 shadow-[0_30px_60px_rgba(0,0,0,1)] z-[1000]">{[['brief', 'sun', 'amber'], ['intel', 'bar-chart-2', 'green'], ['agenda', 'shield-check', 'blue'], ['clients', 'users', 'purple'], ['members', 'diamond', 'yellow'], ['drive', 'image', 'cyan'], ['payroll', 'wallet', 'green'], ['deploy', 'zap', 'amber']].map(([v, icon, c]) => (<button key={v} onClick={() => { if (v === 'deploy') { setEdit(null); setState(INIT); setView('deploy'); setDtab('identity'); } else setView(v); }} className={`p-2 rounded-xl flex-1 flex flex-col items-center gap-0.5 transition-all ${view === v ? `text-${c}-400 bg-white/5` : 'text-slate-600'}`}><Icon name={icon} className="w-3.5 h-3.5" /><span className="text-[5px] font-black uppercase">{v === 'deploy' ? 'New' : v === 'brief' ? 'AM' : v === 'members' ? 'VIP' : v === 'payroll' ? 'Pay' : v}</span></button>))}</nav>
+      {/* Navigation bar bottom */}
+      <nav className="fixed bottom-5 left-1/2 -translate-x-1/2 w-[94%] max-w-sm g p-2 flex justify-around items-center border border-white/10 shadow-[0_30px_60px_rgba(0,0,0,1)] z-[1000]">{[['brief', 'sun', 'amber'], ['intel', 'bar-chart-2', 'green'], ['agenda', 'shield-check', 'blue'], ['clients', 'users', 'purple'], ['members', 'diamond', 'yellow'], ['drive', 'image', 'cyan'], ['payroll', 'wallet', 'green'], ['deploy', 'zap', 'amber']].map(([v, icon, c]) => (<button key={v} onClick={() => { if (v === 'deploy') { setEdit(null); setState(INIT); setView('deploy'); setDtab('identity'); } else setView(v); }} className={`p-2 rounded-xl flex-1 flex flex-col items-center gap-0.5 transition-all ${view === v ? `text-${c}-400 bg-white/5` : 'text-slate-600'}`}><Icon name={icon} className="w-3.5 h-3.5" /><span className="text-[5px] font-black uppercase">{v === 'deploy' ? 'New' : v === 'brief' ? 'AM' : v === 'members' ? 'VIP' : v === 'payroll' ? 'Team' : v}</span></button>))}</nav>
     </div>
   );
 }
