@@ -939,6 +939,64 @@ Para optimizar al máximo tu SaaS, te sugiero:
   );
 }
 
+// ⚡ Quick Quote Component
+function QQ({ onClose }) {
+  const [qq, setQQ] = useState({ name: '', phone: '', address: '', svc: 'regular', beds: 2, baths: 2, sqft: 2000 });
+  const qp = qq.svc === 'postcon' 
+    ? (qq.sqft * 0.25) 
+    : ((qq.svc === 'moveout' || qq.svc === 'deep') ? (qq.beds * 75 + qq.baths * 45 + 120) : (qq.beds * 55 + qq.baths * 35 + 80));
+
+  const send = () => {
+    const msg = `*ELEVORE EMPIRE QUICK QUOTE*\nClient: ${qq.name}\nPhone: ${qq.phone}\nAddress: ${qq.address}\nService: ${qq.svc.toUpperCase()}\nBeds/Baths: ${qq.beds}/${qq.baths}\nSqFt: ${qq.sqft}\n*ESTIMATE: $${qp}*`;
+    window.open(`https://wa.me/${qq.phone ? qq.phone.replace(/\D/g, '') : ''}?text=${encodeURIComponent(msg)}`);
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/90 z-[2000] flex items-end p-4" onClick={e => e.target === e.currentTarget && onClose()}>
+      <div className="g p-6 w-full max-w-md space-y-4 border-t-4 border-amber-500 su mx-auto bg-slate-950 border border-white/5 shadow-2xl rounded-2xl">
+        <div className="flex justify-between items-center">
+          <p className="text-[10px] font-black text-amber-500 uppercase tracking-widest font-display">⚡ Quick Quote — 30 sec</p>
+          <button onClick={onClose} className="text-slate-500 hover:text-white transition-colors">
+            <Icon name="x" className="w-5 h-5" />
+          </button>
+        </div>
+        <input className="inp uppercase text-xs" placeholder="Client Name" value={qq.name} onChange={e => setQQ({ ...qq, name: e.target.value })} />
+        <input className="inp text-xs" placeholder="Phone" value={qq.phone} onChange={e => setQQ({ ...qq, phone: e.target.value })} />
+        <input className="inp text-xs uppercase" placeholder="Address" value={qq.address} onChange={e => setQQ({ ...qq, address: e.target.value })} />
+        <div className="grid grid-cols-4 gap-1">
+          {['regular', 'deep', 'moveout', 'postcon'].map(s => (
+            <button key={s} onClick={() => setQQ({ ...qq, svc: s })} className={`py-2 rounded-xl text-[8px] font-black uppercase border-2 active:scale-95 ${qq.svc === s ? 'bg-green-600 border-green-600 text-white' : 'bg-white/5 border-white/5 text-slate-500'}`}>{s}</button>
+          ))}
+        </div>
+        {qq.svc === 'postcon' ? (
+          <div className="bg-white/5 p-3 rounded-xl text-center border border-white/5">
+            <span className="text-[8px] uppercase block mb-1 text-slate-400 font-black">SqFt</span>
+            <input type="number" value={qq.sqft} onChange={e => setQQ({ ...qq, sqft: parseInt(e.target.value) || 0 })} className="inp text-center text-xl text-white" />
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 gap-3">
+            {[{ l: 'Beds', k: 'beds' }, { l: 'Baths', k: 'baths' }].map(i => (
+              <div key={i.k} className="bg-white/5 p-3 rounded-xl text-center border border-white/5">
+                <span className="text-[8px] uppercase block mb-1.5 text-slate-400 font-black">{i.l}</span>
+                <div className="flex justify-between items-center">
+                  <button onClick={() => setQQ({ ...qq, [i.k]: Math.max(0, qq[i.k] - 1) })} className="w-7 h-7 bg-white/10 rounded-lg text-white font-bold active:scale-95">-</button>
+                  <span className="text-lg font-black italic text-white">{qq[i.k]}</span>
+                  <button onClick={() => setQQ({ ...qq, [i.k]: qq[i.k] + 1 })} className="w-7 h-7 bg-white/10 rounded-lg text-white font-bold active:scale-95">+</button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+        <div className="bg-black/40 p-4 rounded-xl text-center border border-white/10">
+          <p className="text-[8px] text-slate-500 uppercase font-black">Estimated</p>
+          <p className="text-4xl font-black italic text-white">${qp}</p>
+        </div>
+        <button onClick={send} className="w-full gold py-4 rounded-xl font-black uppercase active:scale-95 shadow-xl">🚀 Send Quote via WhatsApp</button>
+      </div>
+    </div>
+  );
+}
+
 // App Component
 export default function App() {
   const urlP = new URLSearchParams(window.location.search);
@@ -1307,6 +1365,53 @@ ${job.final_signature ? `<div class="sig"><p style="font-size:10px;color:#999;ma
   const Toast = () => toast && <div className={`tst fixed top-5 left-1/2 -translate-x-1/2 z-[1600] px-6 py-3 rounded-2xl font-black uppercase text-sm shadow-2xl ${toast.c === 'red' ? 'bg-red-600' : 'bg-green-600'} text-white`}>{toast.m}</div>;
   const Loader = () => loading && <div className="fixed inset-0 bg-black/80 z-[300] flex items-center justify-center"><div className="w-14 h-14 border-4 border-amber-500 border-t-transparent rounded-full animate-spin"></div></div>;
 
+  // 💬 WhatsApp Chat Drawer for a specific job
+  const ChatModal = () => {
+    if (!chatJob) return null;
+    const send = () => {
+      if (!chatMsg.trim()) return;
+      const p = chatJob.client_phone?.replace(/\D/g, '') || '';
+      const ph = p.length === 10 ? '1' + p : p;
+      window.open(`https://wa.me/${ph}?text=${encodeURIComponent(chatMsg)}`, '_blank');
+      setChatLog(l => [...l, { from: 'admin', m: chatMsg, time: new Date().toLocaleTimeString() }]);
+      setChatMsg('');
+    };
+    const templates = {
+      confirm: `Hi ${chatJob.client_name}! ✨ Elevore confirming your service on ${fmtD(chatJob.scheduled_date)}.`,
+      reminder: `Hi ${chatJob.client_name}! 🔔 Reminder — Elevore ${fmtD(chatJob.scheduled_date)}.`,
+      review: `Hi ${chatJob.client_name}! 🌟 Quick review: ${DEFAULT_CFG.GOOGLE} ⭐⭐⭐⭐⭐`,
+      quote: `Hi ${chatJob.client_name}! 📋 Portal: ${location.origin}${location.pathname}?mision=${chatJob.id}`,
+    };
+    return (
+      <div className="fixed inset-0 bg-black/90 z-[2000] flex items-end p-4" onClick={e => e.target === e.currentTarget && setChatJob(null)}>
+        <div className="g p-6 w-full max-w-md space-y-4 border-t-4 border-green-500 mx-auto bg-slate-950 rounded-2xl shadow-2xl border border-white/5">
+          <div className="flex justify-between items-center">
+            <p className="text-[10px] font-black text-green-500 uppercase tracking-widest">💬 {chatJob.client_name}</p>
+            <button onClick={() => setChatJob(null)} className="text-slate-500 hover:text-white"><Icon name="x" className="w-5 h-5" /></button>
+          </div>
+          <div className="h-32 overflow-y-auto space-y-2 nsb bg-black/20 rounded-xl p-3">
+            {chatLog.length === 0 && <p className="text-[9px] text-slate-600 italic text-center py-4">No messages yet. Use a template below.</p>}
+            {chatLog.map((m, i) => (
+              <div key={i} className="p-2 rounded-xl text-[9px] font-black bg-green-900/30 text-green-400 ml-8">
+                <p>{m.m}</p>
+                <p className="text-[7px] text-slate-600 mt-0.5">{m.time}</p>
+              </div>
+            ))}
+          </div>
+          <div className="grid grid-cols-2 gap-1">
+            {[['✅ Confirm', 'confirm'], ['🔔 Remind', 'reminder'], ['⭐ Review', 'review'], ['📋 Quote', 'quote']].map(([l, type]) => (
+              <button key={type} onClick={() => setChatMsg(templates[type])} className="py-1.5 bg-white/5 text-slate-400 rounded-xl text-[7px] font-black uppercase active:scale-95 hover:bg-white/10">{l}</button>
+            ))}
+          </div>
+          <div className="flex gap-2">
+            <textarea value={chatMsg} onChange={e => setChatMsg(e.target.value)} placeholder="Type message..." className="inp text-sm resize-none h-16 flex-1" />
+            <button onClick={send} className="bg-green-600 text-white px-4 rounded-xl font-black active:scale-95"><Icon name="send" className="w-5 h-5" /></button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   if (view === 'auth') return (
     <div className="min-h-screen flex items-center justify-center p-6 bg-gradient-to-br from-slate-950 via-black to-zinc-900 animate-in fade-in duration-1000">
       <Toast />
@@ -1356,7 +1461,7 @@ ${job.final_signature ? `<div class="sig"><p style="font-size:10px;color:#999;ma
   return (
     <div className="min-h-screen flex bg-gradient-to-br from-slate-950 via-black to-zinc-950 text-slate-100 font-sans">
       <Toast />
-      {quickMode && <QQ />}
+      {quickMode && <QQ onClose={() => setQM(false)} />}
       {chatJob && <ChatModal />}
       {aiOpen && <AIAdvisor jobs={jobs} clients={clients} staff={staff} isStaff={role === 'staff'} activeUser={activeEmployee?.name || 'User'} onClose={() => setAIOpen(false)} tt={tt} onOpenReport={() => { setAIOpen(false); setAIReportOpen(true); }} />}
       {aiReportOpen && <AIReportModal jobs={jobs} clients={clients} staff={staff} onClose={() => setAIReportOpen(false)} tt={tt} />}
