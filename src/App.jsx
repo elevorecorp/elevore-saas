@@ -185,17 +185,85 @@ function PhotoDrive({ photos = [], label, onAdd }) {
   );
 }
 
+// Sleek Progress Ring Component for Dashboard Graphics
+function ProgressRing({ radius = 30, stroke = 5, progress = 75, color = '#fbbf24', text = '' }) {
+  const normalizedRadius = radius - stroke * 2;
+  const circumference = normalizedRadius * 2 * Math.PI;
+  const strokeDashoffset = circumference - (Math.min(100, Math.max(0, progress)) / 100) * circumference;
+
+  return (
+    <div className="relative flex items-center justify-center">
+      <svg height={radius * 2} width={radius * 2} className="transform -rotate-90">
+        <circle stroke="rgba(255,255,255,0.05)" fill="transparent" strokeWidth={stroke} r={normalizedRadius} cx={radius} cy={radius} />
+        <circle stroke={color} fill="transparent" strokeWidth={stroke} strokeDasharray={circumference + ' ' + circumference} style={{ strokeDashoffset, transition: 'stroke-dashoffset 1s ease-in-out' }} strokeLinecap="round" r={normalizedRadius} cx={radius} cy={radius} />
+      </svg>
+      <div className="absolute text-center">
+        <span className="text-[10px] font-black text-white leading-none">{text || `${Math.round(progress)}%`}</span>
+      </div>
+    </div>
+  );
+}
+
+// Sleek Line/Area Chart using SVG paths
+function SleekAreaChart({ data, color = '#fbbf24' }) {
+  if (!data || !data.length) return null;
+  const max = Math.max(...data.map(d => d.v), 1);
+  const width = 500;
+  const height = 100;
+  const step = width / (data.length - 1);
+  
+  const points = data.map((d, i) => ({
+    x: i * step,
+    y: height - (d.v / max) * 75 - 5
+  }));
+
+  const pathD = points.reduce((acc, p, i) => (
+    i === 0 ? `M ${p.x} ${p.y}` : `${acc} L ${p.x} ${p.y}`
+  ), '');
+
+  const areaD = `${pathD} L ${points[points.length - 1].x} ${height} L ${points[0].x} ${height} Z`;
+
+  return (
+    <div className="w-full relative">
+      <svg viewBox={`0 0 ${width} ${height}`} className="w-full overflow-visible">
+        <defs>
+          <linearGradient id="grad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor={color} stopOpacity="0.25" />
+            <stop offset="100%" stopColor={color} stopOpacity="0" />
+          </linearGradient>
+        </defs>
+        {/* Grid lines */}
+        <line x1="0" y1={height / 2} x2={width} y2={height / 2} stroke="rgba(255,255,255,0.03)" strokeDasharray="3" />
+        <line x1="0" y1={height} x2={width} y2={height} stroke="rgba(255,255,255,0.08)" />
+        {/* Area fill */}
+        <path d={areaD} fill="url(#grad)" />
+        {/* Path line */}
+        <path d={pathD} fill="none" stroke={color} strokeWidth="3" strokeLinecap="round" />
+        {/* Plot points */}
+        {points.map((p, i) => (
+          <circle key={i} cx={p.x} cy={p.y} r="4" fill="#000" stroke={color} strokeWidth="2.5" className="hover:scale-150 transition-all cursor-pointer" />
+        ))}
+      </svg>
+      <div className="flex justify-between mt-2 text-[7px] font-black text-slate-500 uppercase tracking-wider">
+        {data.map((d, i) => (
+          <span key={i}>{d.l}</span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // BarChart Component
 function BarChart({ data, color = '#22c55e', label = '' }) {
   const max = Math.max(...data.map(d => d.v), 1);
   return (
     <div>
       {label && <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-3">{label}</p>}
-      <div className="flex items-end gap-1 h-20 w-full">
+      <div className="flex items-end gap-1.5 h-20 w-full">
         {data.map((d, i) => (
           <div key={i} className="flex-1 flex flex-col items-center gap-1">
-            <div className="br w-full" style={{ height: `${(d.v / max) * 70}px`, background: color }}></div>
-            <span className="text-[7px] text-slate-600 font-black leading-none">{d.l}</span>
+            <div className="br w-full rounded-t-lg transition-all duration-700" style={{ height: `${(d.v / max) * 70}px`, background: color }}></div>
+            <span className="text-[7px] text-slate-600 font-black leading-none mt-1">{d.l}</span>
           </div>
         ))}
       </div>
@@ -218,22 +286,22 @@ function Stars({ value, onChange, size = 6 }) {
 
 // QR Code Component
 function QR({ url, size = 80 }) {
-  return <img src={`https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&data=${encodeURIComponent(url)}&color=ffffff&bgcolor=000000`} className="rounded-xl" style={{ width: size, height: size }} alt="QR" />;
+  return <img src={`https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&data=${encodeURIComponent(url)}&color=ffffff&bgcolor=000000`} className="rounded-xl border border-white/5 p-1" style={{ width: size, height: size }} alt="QR" />;
 }
 
 // Thermo Component
 function Thermo({ pct, goal, current }) {
   const h = Math.min(100, pct);
   return (
-    <div className="flex items-end justify-center gap-4">
-      <div className="relative w-10 h-40 bg-white/5 rounded-full border border-white/10 overflow-hidden">
-        <div className="absolute bottom-0 left-0 right-0 rounded-full" style={{ height: `${h}%`, background: pct >= 100 ? '#fbbf24' : 'linear-gradient(0deg,#22c55e,#fbbf24)', transition: 'height 1.5s cubic-bezier(.19,1,.22,1)' }}></div>
+    <div className="flex items-end justify-center gap-5">
+      <div className="relative w-9 h-36 bg-white/5 rounded-full border border-white/10 overflow-hidden flex items-end">
+        <div className="w-full rounded-full transition-all duration-1000" style={{ height: `${h}%`, background: pct >= 100 ? '#fbbf24' : 'linear-gradient(0deg,#22c55e,#fbbf24)', boxShadow: '0 0 15px rgba(251, 191, 36, 0.4)' }}></div>
       </div>
       <div>
-        <p className="text-[8px] text-slate-500 uppercase font-black">Goal</p>
-        <p className="text-2xl font-black italic text-white">{fmt$(goal)}</p>
-        <p className="text-[8px] text-green-400 font-black uppercase mt-1">Current: {fmt$(current)}</p>
-        <p className={`text-[8px] font-black uppercase mt-0.5 ${pct >= 100 ? 'text-amber-400' : 'text-slate-500'}`}>{pct >= 100 ? '🎯 GOAL HIT!' : fmt$(goal - current) + ' to go'}</p>
+        <p className="text-[8px] text-slate-500 uppercase font-black tracking-widest leading-none mb-1">Target MRR</p>
+        <p className="text-3xl font-black italic text-white tracking-tighter">{fmt$(goal)}</p>
+        <p className="text-[8px] text-green-400 font-black uppercase mt-2">Billed: {fmt$(current)}</p>
+        <p className={`text-[8px] font-black uppercase mt-0.5 ${pct >= 100 ? 'text-amber-400 animate-pulse' : 'text-slate-500'}`}>{pct >= 100 ? '🎯 Target Hit!' : fmt$(goal - current) + ' to go'}</p>
       </div>
     </div>
   );
@@ -245,7 +313,7 @@ function MapComponent({ address }) {
   const src = `https://maps.google.com/maps?q=${encodeURIComponent(address)}&t=&z=14&ie=UTF8&iwloc=&output=embed`;
   return (
     <div className="g overflow-hidden border border-white/10 h-64 w-full relative">
-      <iframe title="GPS Map" width="100%" height="100%" frameBorder="0" scrolling="no" marginHeight="0" marginWidth="0" src={src}></iframe>
+      <iframe title="GPS Map" width="100%" height="100%" frameBorder="0" scrolling="no" marginHeight="0" marginWidth="0" src={src} className="grayscale invert opacity-80 contrast-125"></iframe>
     </div>
   );
 }
@@ -282,7 +350,7 @@ function Portal({ cjid }) {
   const submitRating = async () => { await sb.from('elevore_missions').update({ client_rating: rating }).eq('id', cjid); setRDone(true); tt('⭐ Thank you!'); };
 
   return (
-    <div className="min-h-screen p-5 bg-black animate-in fade-in duration-700">
+    <div className="min-h-screen p-5 bg-gradient-to-b from-slate-950 via-black to-zinc-900 animate-in fade-in duration-700">
       {toast && <div className={`tst fixed top-5 left-1/2 -translate-x-1/2 z-[500] px-6 py-3 rounded-2xl font-black uppercase text-sm shadow-2xl ${toast.c === 'red' ? 'bg-red-600' : 'bg-green-600'} text-white`}>{toast.m}</div>}
       <div className="max-w-md mx-auto space-y-5 pb-20">
         <div className="flex justify-end gap-2">{['en', 'es'].map(lg => (<button key={lg} onClick={() => setLang(lg)} className={`text-[8px] font-black px-3 py-1.5 rounded-xl ${lang === lg ? 'bg-amber-500 text-black' : 'bg-white/5 text-slate-500'}`}>{lg.toUpperCase()}</button>))}</div>
@@ -325,7 +393,7 @@ function StaffJob({ job, onBack, onRefresh, tt, recTime, upsell, update, employe
   };
 
   return (
-    <div className="min-h-screen p-5 bg-black pb-24">
+    <div className="min-h-screen p-5 bg-gradient-to-b from-slate-950 via-black to-zinc-900 pb-24 animate-in fade-in">
       <button onClick={onBack} className="mb-5 flex items-center gap-2 text-slate-500 font-black uppercase text-[9px]"><Icon name="arrow-left" className="w-4 h-4" />Back</button>
       <div className="max-w-md mx-auto space-y-5">
         <div className="g p-6 border-t-4 border-green-500">
@@ -357,9 +425,15 @@ function StaffJob({ job, onBack, onRefresh, tt, recTime, upsell, update, employe
 }
 
 // AI Advisor Component
+// STRICT PRIVACY PROTECTION: When 'isStaff' is true, it strictly operates as an Operational Task Assistant.
+// It will NEVER mention financial goals, MRR, balances, or revenue!
 function AIAdvisor({ jobs, clients, staff, isStaff, activeUser, onClose, tt }) {
+  const initialText = isStaff 
+    ? `¡Hola ${activeUser}! Soy tu **Manual de Operaciones con IA**. Estoy aquí para ayudarte en tu trabajo de campo. 🛠️ Pregúntame cómo limpiar orificios, parchar drywall, remover manchas de alfombras, o cómo actuar frente a un cliente difícil.`
+    : `¡Hola ${activeUser}! Soy tu **Asesor de IA Elevore**. Estoy conectado a tu base de datos en tiempo real. 📊 ¿En qué puedo ayudarte hoy?`;
+
   const [messages, setMessages] = useState([
-    { from: 'ai', text: `¡Hola ${activeUser}! Soy tu **Asesor de IA Elevore**. Estoy conectado a tu base de datos en tiempo real. 📊 ¿En qué puedo ayudarte hoy?`, time: new Date().toLocaleTimeString() }
+    { from: 'ai', text: initialText, time: new Date().toLocaleTimeString() }
   ]);
   const [input, setInput] = useState('');
   const chatEndRef = useRef(null);
@@ -368,6 +442,7 @@ function AIAdvisor({ jobs, clients, staff, isStaff, activeUser, onClose, tt }) {
 
   // Deep context advisor formulas
   const stats = useMemo(() => {
+    if (isStaff) return {}; // Zero-out stats for security
     const totalRev = jobs.reduce((a, b) => a + (b.total_price || 0), 0);
     const completed = jobs.filter(j => j.status === 'paid').length;
     const mrr = clients.reduce((a, c) => { const m = MBS.find(x => x.id === c.membership); return a + (m?.price || 0); }, 0);
@@ -382,13 +457,26 @@ function AIAdvisor({ jobs, clients, staff, isStaff, activeUser, onClose, tt }) {
     const rent = jobs.filter(j => j.next_visit && new Date(j.next_visit) <= soon && j.status === 'paid');
     
     return { totalRev, completed, mrr, churn, unsigned, rent };
-  }, [jobs, clients]);
+  }, [jobs, clients, isStaff]);
 
   const generateAnswer = (promptText) => {
     const q = promptText.toLowerCase();
     let reply = "";
 
-    if (q.includes('financ') || q.includes('mrr') || q.includes('metas')) {
+    // 1. STRICT PRIVACY BLOCKER: If staff member tries to ask for finances/MRR
+    if (isStaff && (q.includes('financ') || q.includes('mrr') || q.includes('meta') || q.includes('ganan') || q.includes('diner') || q.includes('pag') || q.includes('ingres'))) {
+      reply = `### 🔒 Información Restringida
+
+Hola ${activeUser}. Por motivos de seguridad y políticas de la empresa, los reportes financieros, márgenes de ganancia y metas de MRR corporativo están restringidos únicamente a los Administradores de Elevore. 
+
+**¿Cómo te puedo asistir hoy en tus labores de campo?**
+* 🛠️ ¿Cómo reparar parches de yeso (drywall)?
+* 🧼 ¿Cómo hacer una limpieza profunda de hornos (inside oven)?
+* 🐾 ¿Cómo extraer pelos de mascota difíciles de tapicerías?
+* 📋 Lista de control de calidad para entrega de proyectos.`;
+    }
+    // 2. Standard Admin Financial Analysis
+    else if (!isStaff && (q.includes('financ') || q.includes('mrr') || q.includes('metas'))) {
       reply = `### 📊 Análisis de Inteligencia Financiera
 
 * **Ingresos Brutos Registrados**: **${fmt$(stats.totalRev)}** (con un total de ${jobs.length} trabajos).
@@ -398,7 +486,8 @@ function AIAdvisor({ jobs, clients, staff, isStaff, activeUser, onClose, tt }) {
 **💡 Recomendación de la IA:** 
 El mejor día de ventas histórico es el **Viernes**. Te sugiero lanzar un cupón de upsell de lavado de ventanas para el próximo fin de semana. Esto podría subir tus márgenes un **12%** adicional.`;
     } 
-    else if (q.includes('churn') || q.includes('riesgo') || q.includes('abandono')) {
+    // 3. Admin Churn Alerts
+    else if (!isStaff && (q.includes('churn') || q.includes('riesgo') || q.includes('abandono'))) {
       if (stats.churn.length === 0) {
         reply = `### 🚨 Análisis de Riesgo de Deserción (Churn)
         
@@ -414,7 +503,8 @@ Detecté **${stats.churn.length} cliente(s)** en riesgo de abandono (sin servici
 *"Hola ${target.name}! 😊 En Elevore te extrañamos mucho. Queremos consentirte con un 15% de descuento especial en tu próximo servicio para dejar tu hogar impecable. ¿Te reservamos un cupón? 🏠"*`;
       }
     } 
-    else if (q.includes('membres') || q.includes('vip') || q.includes('planes')) {
+    // 4. Admin VIP Target Identifications
+    else if (!isStaff && (q.includes('membres') || q.includes('vip') || q.includes('planes'))) {
       const candidates = clients.filter(c => {
         const cj = jobs.filter(j => j.client_name === c.name);
         return cj.length >= 3 && (!c.membership || c.membership === 'none');
@@ -435,22 +525,40 @@ Identifiqué a **${candidates.length} cliente(s) ideal(es)** para ser promovido(
 *"¡Hola ${cand.name}! ✨ Notamos que eres uno de nuestros clientes más leales. Para agradecer tu confianza, queremos darte prioridad en nuestra agenda y un 10% de descuento fijo en todos tus servicios uniéndote a nuestra membresía VIP Basic. ¿Te gustaría ver las tarifas fijas? 💎"*`;
       }
     } 
-    else if (q.includes('limp') || q.includes('repar') || q.includes('instruct') || q.includes('manual')) {
+    // 5. Operations Guidance (Accessible to BOTH Admin and Staff)
+    else if (q.includes('limp') || q.includes('repar') || q.includes('instruct') || q.includes('manual') || q.includes('yeso') || q.includes('drywall') || q.includes('horno') || q.includes('alfombra') || q.includes('pelo')) {
       reply = `### 🛠️ Guía Rápida de Operaciones & Control de Calidad
 
 * **Drywall Patch (Parche de yeso):**
-  1. Limpiar el orificio y lijar bordes.
-  2. Aplicar malla autoadhesiva.
+  1. Limpiar el orificio sacando yeso suelto y lijar bordes.
+  2. Aplicar malla de fibra autoadhesiva sobre el hueco.
   3. Colocar primera capa de masilla rápida (compuesto de 20 min).
-  4. Lijar suavemente una vez seco, pintar con rodillo de textura difuminada.
+  4. Lijar suavemente una vez seco, aplicar textura y pintar.
   
 * **Inside Oven (Horno profundo):**
-  1. Retirar parrillas. Aplicar limpiador biodegradable de grasa pesada.
-  2. Dejar actuar 15 minutos con calor residual de 150°F (apagado).
-  3. Fregar con esponja de cobre anti-rayones. Enjuagar tres veces para evitar vapores químicos.`;
+  1. Retirar parrillas. Aplicar desengrasante pesado biodegradable.
+  2. Dejar actuar 15 minutos (si es posible con calor residual de 150°F apagado).
+  3. Fregar con esponja de cobre anti-rayones. Enjuagar tres veces con paño húmedo.
+  
+* **Extracción de Pelos de Mascota:**
+  1. Utilizar un raspador de silicona para alfombras en pasadas rápidas unidireccionales.
+  2. Aplicar aspirado de alta potencia con cepillo motorizado.`;
     } 
+    // 6. Default AI Response
     else {
-      reply = `### 🧠 Elevore Inteligencia Artificial
+      if (isStaff) {
+        reply = `### 👷 Asistente Operativo Elevore
+
+Hola ${activeUser}. Analicé tu consulta técnica sobre *"**${promptText}**"*. 
+
+Como asistente de operaciones te sugiero:
+1. Seguir la **lista de verificación (Checklist)** completa en cada proyecto antes de enviar a control de calidad (QC).
+2. Tomar fotos claras de **Antes y Después** para evitar reclamos y justificar tus bonos.
+3. Asegurar de marcar tu **Check Out** puntualmente al finalizar para auditar el bono de velocidad de 3 horas.
+
+¿Deseas instrucciones específicas sobre algún servicio?`;
+      } else {
+        reply = `### 🧠 Elevore Inteligencia Artificial
 
 Entendido. Como tu asesor especializado de Elevore, analicé tu consulta sobre *"**${promptText}**"*. 
 
@@ -460,6 +568,7 @@ Para optimizar al máximo tu SaaS, te sugiero:
 3. Configurar tu billetera de cobro en el panel de Finanzas.
 
 ¿Deseas que analice algo más sobre tus clientes o finanzas?`;
+      }
     }
 
     setMessages(prev => [...prev, { from: 'ai', text: reply, time: new Date().toLocaleTimeString() }]);
@@ -474,16 +583,20 @@ Para optimizar al máximo tu SaaS, te sugiero:
   };
 
   return (
-    <div className="fixed inset-0 bg-black/90 z-[1500] flex items-end p-4" onClick={e => e.target === e.currentTarget && onClose()}>
-      <div className="g p-6 w-full max-w-md h-[90vh] flex flex-col justify-between border-t-4 border-amber-500 su mx-auto bg-[#0a0a0f]">
+    <div className="fixed inset-0 bg-black/95 z-[1500] flex items-end p-4" onClick={e => e.target === e.currentTarget && onClose()}>
+      <div className="g p-6 w-full max-w-md h-[90vh] flex flex-col justify-between border-t-4 border-amber-500 su mx-auto bg-[#060609] shadow-[0_0_50px_rgba(251,191,36,0.15)]">
         
         {/* Header */}
         <div className="flex justify-between items-center border-b border-white/5 pb-3">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 bg-amber-500 text-black rounded-lg flex items-center justify-center font-black italic">IA</div>
             <div>
-              <p className="text-[10px] font-black text-amber-500 uppercase tracking-widest leading-none">Elevore AI Command</p>
-              <p className="text-[7px] text-slate-500 uppercase mt-0.5">Context-aware CRM Intelligence</p>
+              <p className="text-[10px] font-black text-amber-500 uppercase tracking-widest leading-none">
+                {isStaff ? 'Elevore Field Operations Guide' : 'Elevore AI Command'}
+              </p>
+              <p className="text-[7px] text-slate-500 uppercase mt-0.5">
+                {isStaff ? 'Help Desk & Cleaning Standards' : 'Context-aware CRM Intelligence'}
+              </p>
             </div>
           </div>
           <button onClick={onClose} className="p-2 text-slate-500 hover:text-white"><Icon name="x" className="w-5 h-5" /></button>
@@ -493,8 +606,7 @@ Para optimizar al máximo tu SaaS, te sugiero:
         <div className="flex-1 overflow-y-auto my-4 space-y-4 pr-1 nsb">
           {messages.map((m, i) => (
             <div key={i} className={`flex flex-col ${m.from === 'user' ? 'items-end' : 'items-start'}`}>
-              <div className={`p-4 rounded-2xl text-xs max-w-[85%] leading-relaxed ${m.from === 'user' ? 'bg-amber-500 text-black font-semibold' : 'bg-white/5 text-slate-200 border border-white/5'}`}>
-                {/* Simulated rendering for markdown bold and headers */}
+              <div className={`p-4 rounded-2xl text-xs max-w-[85%] leading-relaxed ${m.from === 'user' ? 'bg-amber-500 text-black font-semibold' : 'bg-white/5 text-slate-200 border border-white/5 shadow-md'}`}>
                 {m.text.split('\n').map((line, idx) => {
                   if (line.startsWith('### ')) return <h4 key={idx} className="text-amber-400 font-bold uppercase text-[10px] tracking-widest mt-2 mb-1">{line.replace('### ', '')}</h4>;
                   if (line.startsWith('* ')) return <p key={idx} className="pl-2 mt-1">✨ {line.replace('* ', '')}</p>;
@@ -509,17 +621,26 @@ Para optimizar al máximo tu SaaS, te sugiero:
 
         {/* Quick Suggestion Chips */}
         <div className="flex gap-1.5 overflow-x-auto nsb pb-3">
-          {[['📊 Financiero', 'Analizar Finanzas y MRR'], ['🚨 Churn', 'Analizar Riesgos de Churn'], ['💎 VIP Promo', 'Clientes para membresia VIP'], ['🛠️ Manual', 'Instrucciones de limpieza o drywall patch']].map(([lbl, pmt]) => (
-            <button key={lbl} onClick={() => {
-              setMessages(prev => [...prev, { from: 'user', text: pmt, time: new Date().toLocaleTimeString() }]);
-              setTimeout(() => generateAnswer(pmt), 600);
-            }} className="px-2.5 py-1.5 bg-white/5 border border-white/5 text-slate-400 rounded-lg text-[8px] font-black uppercase whitespace-nowrap active:scale-95 hover:border-amber-500/30">{lbl}</button>
-          ))}
+          {isStaff ? (
+            [[ '🛠️ Drywall', 'Instrucciones de reparacion de drywall patch' ], [ '🧼 Horno', 'Instrucciones para lavar horno inside oven' ], [ '🐾 Mascotas', 'Manual de extraccion de pelos de mascotas' ], [ '📋 Checklist', 'Instrucciones de checklist y control de calidad' ]].map(([lbl, pmt]) => (
+              <button key={lbl} onClick={() => {
+                setMessages(prev => [...prev, { from: 'user', text: pmt, time: new Date().toLocaleTimeString() }]);
+                setTimeout(() => generateAnswer(pmt), 600);
+              }} className="px-2.5 py-1.5 bg-white/5 border border-white/5 text-slate-400 rounded-lg text-[8px] font-black uppercase whitespace-nowrap active:scale-95 hover:border-amber-500/30">{lbl}</button>
+            ))
+          ) : (
+            [[ '📊 Financiero', 'Analizar Finanzas y MRR' ], [ '🚨 Churn', 'Analizar Riesgos de Churn' ], [ '💎 VIP Promo', 'Clientes para membresia VIP' ], [ '🛠️ Manual', 'Instrucciones de limpieza o drywall patch' ]].map(([lbl, pmt]) => (
+              <button key={lbl} onClick={() => {
+                setMessages(prev => [...prev, { from: 'user', text: pmt, time: new Date().toLocaleTimeString() }]);
+                setTimeout(() => generateAnswer(pmt), 600);
+              }} className="px-2.5 py-1.5 bg-white/5 border border-white/5 text-slate-400 rounded-lg text-[8px] font-black uppercase whitespace-nowrap active:scale-95 hover:border-amber-500/30">{lbl}</button>
+            ))
+          )}
         </div>
 
         {/* Text Area Input */}
         <div className="flex gap-2 border-t border-white/5 pt-3">
-          <input value={input} onChange={e => setInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleSend()} placeholder="Pregúntame lo que quieras sobre tu negocio..." className="inp text-xs flex-1" />
+          <input value={input} onChange={e => setInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleSend()} placeholder="Pregúntame lo que quieras sobre tu trabajo..." className="inp text-xs flex-1" />
           <button onClick={handleSend} className="bg-amber-500 text-black px-4 rounded-xl font-black active:scale-95 flex items-center justify-center"><Icon name="send" className="w-4 h-4 text-black" /></button>
         </div>
 
@@ -715,7 +836,6 @@ export default function App() {
     
     // Push to Supabase if connection exists
     try {
-      const activeTenant = jobs[0]?.tenant_id || 'ceijlgurveaalvjmptns'; // Fallback
       await sb.from('staff_profiles').insert([{
         name: newStaffName,
         role: newStaffRole,
@@ -783,8 +903,11 @@ export default function App() {
     const reviewQ = jobs.filter(j => (j.status === 'paid' || j.specs?.quality_passed) && !j.specs?.review_requested_at);
     const lostJ = jobs.filter(j => j.status === 'lost');
     const lostReasons = lostJ.reduce((a, j) => { const r = j.specs?.lost_reason || 'unknown'; a[r] = (a[r] || 0) + 1; return a; }, {});
+    
+    // Sleek continuous data lines for active graphics
     const wb = Array.from({ length: 7 }, (_, i) => { const d = new Date(); d.setDate(d.getDate() - 6 + i); const ds = d.toISOString().split('T')[0]; const v = jobs.filter(j => j.scheduled_date === ds).reduce((a, b) => a + (b.total_price || 0), 0); return { l: dn[d.getDay()], v }; });
     const mb2 = Array.from({ length: 6 }, (_, i) => { const d = new Date(); d.setMonth(d.getMonth() - 5 + i); const yr = d.getFullYear(); const mo = d.getMonth(); const v = jobs.filter(j => { if (!j.scheduled_date) return false; const jd = new Date(j.scheduled_date); return jd.getFullYear() === yr && jd.getMonth() === mo; }).reduce((a, b) => a + (b.total_price || 0), 0); return { l: d.toLocaleDateString('en', { month: 'short' }), v }; });
+    
     const ratings = jobs.filter(j => j.client_rating > 0).map(j => j.client_rating);
     const avgRating = ratings.length ? Math.round((ratings.reduce((a, b) => a + b, 0) / ratings.length) * 10) / 10 : 0;
     const payroll = jobs.filter(j => j.status === 'paid').map(j => ({ name: j.team_assigned || 'Unassigned', amount: Math.round((j.deposit_paid || 0) * DEFAULT_CFG.STAFF_PAY + calcBonus(j)) })).reduce((acc, { name, amount }) => { acc[name] = (acc[name] || 0) + amount; return acc; }, {});
@@ -892,27 +1015,28 @@ ${job.final_signature ? `<div class="sig"><p style="font-size:10px;color:#999;ma
   const Loader = () => loading && <div className="fixed inset-0 bg-black/80 z-[300] flex items-center justify-center"><div className="w-14 h-14 border-4 border-amber-500 border-t-transparent rounded-full animate-spin"></div></div>;
 
   if (view === 'auth') return (
-    <div className="min-h-screen flex items-center justify-center p-6 bg-black">
+    <div className="min-h-screen flex items-center justify-center p-6 bg-gradient-to-br from-slate-950 via-black to-zinc-900 animate-in fade-in duration-1000">
       <Toast />
-      <div className="g p-10 w-full max-w-sm text-center space-y-7 border-t-4 border-amber-500 shadow-2xl">
-        <div className="w-16 h-16 bg-amber-500 rounded-2xl mx-auto flex items-center justify-center font-black italic text-3xl text-black">E</div>
+      <div className="g p-10 w-full max-w-sm text-center space-y-7 border-t-4 border-amber-500 shadow-[0_0_50px_rgba(251,191,36,0.15)] bg-black/60 backdrop-blur-2xl">
+        <div className="w-16 h-16 bg-gradient-to-br from-amber-400 to-amber-600 rounded-2xl mx-auto flex items-center justify-center font-black italic text-3xl text-black shadow-lg shadow-amber-500/20">E</div>
         <div>
           <h1 className="text-2xl font-black uppercase tracking-tighter text-white">ELEVORE <span className="text-amber-500 italic">EMPIRE</span></h1>
-          <p className="text-[7px] text-slate-500 uppercase tracking-widest mt-1">v97.0 — Dynamic SaaS Hub</p>
+          <p className="text-[7px] text-slate-500 uppercase tracking-widest mt-1">v97.0 — Premium SaaS Command</p>
         </div>
         
         {/* Personal PIN validation */}
-        <input type="password" placeholder="ENTER PERSONAL PIN" value={pass} className="inp text-center text-xl tracking-[0.5em]" onChange={e => setPass(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleAuth()} />
-        <button onClick={handleAuth} className="w-full gold py-4 rounded-xl font-black uppercase active:scale-95 shadow-xl">🔑 SECURE LOG IN</button>
+        <input type="password" placeholder="ENTER PERSONAL PIN" value={pass} className="inp text-center text-xl tracking-[0.5em] font-black" onChange={e => setPass(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleAuth()} />
+        <button onClick={handleAuth} className="w-full gold py-4 rounded-xl font-black uppercase active:scale-95 shadow-xl transition-all hover:shadow-amber-500/10">🔑 SECURE LOG IN</button>
       </div>
     </div>
   );
 
   // Staff View with Personal Wallet Dashboard
+  // SECURE OPERATION CHECK: Strictly blocks any financial summaries or MRR data!
   if (role === 'staff') {
     if (aStaff) return <StaffJob job={aStaff} onBack={() => setAStaff(null)} onRefresh={refresh} tt={tt} recTime={recTime} upsell={upsell} update={update} employee={activeEmployee} />;
     return (
-      <div className="min-h-screen p-5 bg-black pb-24">
+      <div className="min-h-screen p-5 bg-gradient-to-b from-slate-950 via-black to-zinc-900 pb-24 animate-in fade-in">
         <Toast /><Loader />
         {aiOpen && <AIAdvisor jobs={jobs} clients={clients} staff={staff} isStaff={true} activeUser={activeEmployee?.name || 'Worker'} onClose={() => setAIOpen(false)} tt={tt} />}
 
@@ -923,8 +1047,8 @@ ${job.final_signature ? `<div class="sig"><p style="font-size:10px;color:#999;ma
               <p className="text-[9px] text-slate-500 uppercase font-black">{activeEmployee?.name} • 👷 {activeEmployee?.role?.toUpperCase()}</p>
             </div>
             <div className="flex gap-2">
-              <button onClick={() => setAIOpen(true)} className="p-3 bg-amber-500 rounded-xl text-black font-black uppercase text-[10px] flex items-center gap-1 active:scale-95">🧠 AI</button>
-              <button onClick={() => { setRole('admin'); setView('auth'); setPass(''); }} className="p-3 bg-slate-900 rounded-xl text-slate-500"><Icon name="log-out" className="w-5 h-5" /></button>
+              <button onClick={() => setAIOpen(true)} className="px-4 py-2.5 bg-amber-500 rounded-xl text-black font-black uppercase text-[9px] flex items-center gap-1 active:scale-95 shadow-lg shadow-amber-500/25">🧠 Operaciones IA</button>
+              <button onClick={() => { setRole('admin'); setView('auth'); setPass(''); }} className="p-3 bg-slate-900 rounded-xl text-slate-500 hover:text-white transition-all"><Icon name="log-out" className="w-5 h-5" /></button>
             </div>
           </div>
 
@@ -975,7 +1099,7 @@ ${job.final_signature ? `<div class="sig"><p style="font-size:10px;color:#999;ma
     };
     return (
       <div className="fixed inset-0 bg-black/90 z-[400] flex items-end p-4" onClick={e => e.target === e.currentTarget && setQM(false)}>
-        <div className="g p-6 w-full max-w-md space-y-4 border-t-4 border-amber-500 su mx-auto">
+        <div className="g p-6 w-full max-w-md space-y-4 border-t-4 border-amber-500 su mx-auto bg-[#07070a]">
           <div className="flex justify-between items-center"><p className="text-[10px] font-black text-amber-500 uppercase tracking-widest">⚡ Quick Quote — 30 sec</p><button onClick={() => setQM(false)} className="text-slate-500"><Icon name="x" className="w-5 h-5" /></button></div>
           <input className="inp uppercase" placeholder="Client Name" value={qq.name} onChange={e => setQQLocal({ ...qq, name: e.target.value })} />
           <input className="inp" placeholder="Phone" value={qq.phone} onChange={e => setQQLocal({ ...qq, phone: e.target.value })} />
@@ -992,7 +1116,7 @@ ${job.final_signature ? `<div class="sig"><p style="font-size:10px;color:#999;ma
     const send = () => { if (!chatMsg.trim()) return; const p = chatJob.client_phone?.replace(/\D/g, '') || ''; const ph = p.length === 10 ? '1' + p : p; window.open(`https://wa.me/${ph}?text=${encodeURIComponent(chatMsg)}`, '_blank'); setChatLog(l => [...l, { from: 'admin', m: chatMsg, time: new Date().toLocaleTimeString() }]); setChatMsg(''); log(`Chat → ${chatJob.client_name}`); };
     return (
       <div className="fixed inset-0 bg-black/90 z-[400] flex items-end p-4" onClick={e => e.target === e.currentTarget && setChatJob(null)}>
-        <div className="g p-6 w-full max-w-md space-y-4 border-t-4 border-green-500 su mx-auto">
+        <div className="g p-6 w-full max-w-md space-y-4 border-t-4 border-green-500 su mx-auto bg-[#07070a]">
           <div className="flex justify-between items-center"><p className="text-[10px] font-black text-green-500 uppercase">💬 {chatJob?.client_name}</p><button onClick={() => setChatJob(null)}><Icon name="x" className="w-5 h-5 text-slate-500" /></button></div>
           <div className="h-32 overflow-y-auto space-y-2 nsb">{chatLog.length === 0 && <p className="text-[9px] text-slate-600 italic text-center py-4">No messages yet.</p>}{chatLog.map((m, i) => (<div key={i} className="p-2 rounded-xl text-[9px] font-black bg-green-900/30 text-green-400 ml-8"><p>{m.m}</p><p className="text-[7px] text-slate-600 mt-0.5">{m.time}</p></div>))}</div>
           <div className="grid grid-cols-2 gap-1">{[['✅ Confirm', 'confirm'], ['🔔 Remind', 'reminder'], ['⭐ Review', 'review'], ['📋 Quote', 'quote']].map(([l, type]) => (<button key={type} onClick={() => { const msgs = { confirm: `Hi ${chatJob.client_name}! ✨ Elevore confirming service.`, reminder: `Hi ${chatJob.client_name}! 🔔 Service reminder.`, review: `Hi ${chatJob.client_name}! 🌟 Review: ${DEFAULT_CFG.GOOGLE}`, quote: `Hi ${chatJob.client_name}! Portal: ${location.origin}${location.pathname}?mision=${chatJob.id}` }; setChatMsg(msgs[type]); }} className="py-1.5 bg-white/5 text-slate-400 rounded-xl text-[7px] font-black uppercase active:scale-95">{l}</button>))}</div>
@@ -1002,7 +1126,7 @@ ${job.final_signature ? `<div class="sig"><p style="font-size:10px;color:#999;ma
   };
 
   return (
-    <div className="min-h-screen flex flex-col pb-32">
+    <div className="min-h-screen flex flex-col pb-32 bg-gradient-to-br from-slate-950 via-black to-zinc-950 text-slate-100">
       <Toast />
       {quickMode && <QQ />}
       {chatJob && <ChatModal />}
@@ -1010,57 +1134,87 @@ ${job.final_signature ? `<div class="sig"><p style="font-size:10px;color:#999;ma
       <Loader />
       
       {/* Premium Navbar */}
-      <nav className="p-4 sticky top-0 z-[100] bg-black/90 backdrop-blur-3xl border-b border-white/5 flex justify-between items-center shadow-xl">
-        <div className="flex items-center gap-3"><div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center font-black text-black italic text-xl shadow-xl">E</div><div><h1 className="font-black text-lg tracking-tighter uppercase text-white leading-none">Elevore <span className="text-amber-500 italic font-light">Empire</span></h1><div className="flex items-center gap-2 mt-0.5"><div className={rtOn ? 'dg' : 'da'}></div><p className="text-[7px] font-black text-slate-500 uppercase tracking-widest">{rtOn ? 'Live Sync' : 'v97.0'}</p></div></div></div>
+      <nav className="p-4 sticky top-0 z-[100] bg-black/80 backdrop-blur-2xl border-b border-white/5 flex justify-between items-center shadow-2xl">
+        <div className="flex items-center gap-3"><div className="w-10 h-10 bg-gradient-to-br from-amber-400 to-amber-600 rounded-xl flex items-center justify-center font-black text-black italic text-xl shadow-lg shadow-amber-500/10">E</div><div><h1 className="font-black text-lg tracking-tighter uppercase text-white leading-none">Elevore <span className="text-amber-500 italic font-light">Empire</span></h1><div className="flex items-center gap-2 mt-0.5"><div className={rtOn ? 'dg' : 'da'}></div><p className="text-[7px] font-black text-slate-500 uppercase tracking-widest">{rtOn ? 'Live Sync' : 'v97.0'}</p></div></div></div>
         <div className="flex gap-1.5">
-          <button onClick={() => setAIOpen(true)} className="px-3 bg-amber-500 text-black py-2 rounded-xl font-black uppercase text-[7px] active:scale-95 flex items-center gap-1">🧠 AI Advisor</button>
-          <button onClick={() => setQM(true)} className="gold px-3 py-2 rounded-xl font-black uppercase text-[7px] active:scale-95">⚡ Quick</button>
+          <button onClick={() => setAIOpen(true)} className="px-3.5 bg-amber-500 text-black py-2.5 rounded-xl font-black uppercase text-[8px] active:scale-95 flex items-center gap-1.5 shadow-lg shadow-amber-500/25 transition-all">🧠 AI Advisor</button>
+          <button onClick={() => setQM(true)} className="gold px-3.5 py-2.5 rounded-xl font-black uppercase text-[8px] active:scale-95 transition-all">⚡ Quick</button>
           <button onClick={() => setPriv(p => !p)} className="p-2 bg-slate-900 rounded-xl text-slate-500 hover:text-amber-500 transition-all"><Icon name={isPrivate ? 'eye-off' : 'eye'} className="w-4 h-4" /></button>
           <button onClick={() => { setRole('admin'); setView('auth'); setPass(''); }} className="p-2 bg-slate-900 rounded-xl text-slate-500 hover:text-white transition-all"><Icon name="log-out" className="w-4 h-4" /></button>
         </div>
       </nav>
 
       <main className="max-w-xl mx-auto w-full p-4 space-y-5">
-        {seasons.length > 0 && <div className="g p-4 border border-amber-500/30 flex items-center justify-between"><div><p className="text-[8px] font-black text-amber-500 uppercase">🎯 {seasons[0].name}</p><p className="text-[8px] text-slate-400">{seasons[0].msg}</p></div>{seasons[0].discount > 0 && <span className="text-amber-500 font-black text-sm">-{seasons[0].discount}%</span>}</div>}
+        {seasons.length > 0 && <div className="g p-4 border border-amber-500/20 bg-amber-500/[0.02] flex items-center justify-between shadow-md"><div><p className="text-[8px] font-black text-amber-500 uppercase">🎯 {seasons[0].name}</p><p className="text-[8px] text-slate-400">{seasons[0].msg}</p></div>{seasons[0].discount > 0 && <span className="text-amber-500 font-black text-sm">-{seasons[0].discount}%</span>}</div>}
 
-        {finance.mbTargets.length > 0 && <div className="g p-4 border border-purple-500/30 flex items-center justify-between"><div><p className="text-[8px] font-black text-purple-400 uppercase">💎 {finance.mbTargets.length} Ready for Membership</p><p className="text-[8px] text-slate-500">{finance.mbTargets[0]?.name} + more</p></div><button onClick={() => { const j = jobs.find(jj => jj.client_name === finance.mbTargets[0]?.name); if (j) offerMembership(j); }} className="px-3 py-2 bg-purple-500/20 text-purple-400 rounded-xl text-[7px] font-black uppercase active:scale-95">Offer</button></div>}
+        {finance.mbTargets.length > 0 && <div className="g p-4 border border-purple-500/20 bg-purple-500/[0.02] flex items-center justify-between shadow-md"><div><p className="text-[8px] font-black text-purple-400 uppercase">💎 {finance.mbTargets.length} Ready for Membership</p><p className="text-[8px] text-slate-500">{finance.mbTargets[0]?.name} + more</p></div><button onClick={() => { const j = jobs.find(jj => jj.client_name === finance.mbTargets[0]?.name); if (j) offerMembership(j); }} className="px-3 py-2 bg-purple-500/20 text-purple-400 rounded-xl text-[7px] font-black uppercase active:scale-95">Offer</button></div>}
 
         {/* Global tab routing */}
-        <div className="flex gap-1 bg-black/40 p-1 rounded-2xl border border-white/5 shadow-xl overflow-x-auto nsb">{[['brief', '☀️', 'AM'], ['intel', '📊', 'Intel'], ['agenda', '📋', 'Logs'], ['clients', '🧬', 'DNA'], ['members', '💎', 'VIP'], ['drive', '📁', 'Drive'], ['payroll', '💰', 'Pay'], ['deploy', '⚡', 'New']].map(([v, e, l]) => (<button key={v} onClick={() => { if (v === 'deploy') { setEdit(null); setState(INIT); setDtab('identity'); } setView(v); }} className={`flex-shrink-0 flex-1 py-2 rounded-xl text-[7px] uppercase font-black whitespace-nowrap px-2 active:scale-95 ${view === v ? (v === 'deploy' ? 'bg-amber-500 text-black shadow-lg' : 'ton') : 'text-slate-500'}`}>{e} {l}</button>))}</div>
+        <div className="flex gap-1 bg-black/50 p-1.5 rounded-2xl border border-white/5 shadow-2xl overflow-x-auto nsb">{[['brief', '☀️', 'Dashboard'], ['intel', '📊', 'Finances'], ['agenda', '📋', 'Missions'], ['clients', '🧬', 'Clients DNA'], ['members', '💎', 'VIP'], ['drive', '📁', 'Drive'], ['payroll', '👥', 'Team'], ['deploy', '⚡', 'Estimate']].map(([v, e, l]) => (<button key={v} onClick={() => { if (v === 'deploy') { setEdit(null); setState(INIT); setDtab('identity'); } setView(v); }} className={`flex-shrink-0 flex-1 py-2.5 rounded-xl text-[7px] uppercase font-black whitespace-nowrap px-3 active:scale-95 transition-all ${view === v ? (v === 'deploy' ? 'bg-amber-500 text-black shadow-lg shadow-amber-500/10' : 'ton') : 'text-slate-500'}`}>{e} {l}</button>))}</div>
 
         {view === 'brief' && (<div className="space-y-5 animate-in fade-in">
           
           {/* Active Interactive Maps Section */}
-          <div className="g p-5 border border-white/10 space-y-3">
+          <div className="g p-5 border border-white/5 space-y-3 bg-black/20">
             <div className="flex justify-between items-center">
-              <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest">📍 Interactive Project Locations</p>
-              {activeMapAddress && <span className="text-[7px] bg-green-600/10 text-green-400 font-bold px-2 py-0.5 rounded-lg truncate w-32">{activeMapAddress}</span>}
+              <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest">📍 GPS Mission Locator</p>
+              {activeMapAddress && <span className="text-[7px] bg-green-600/10 text-green-400 font-bold px-2 py-0.5 rounded-lg truncate w-32 border border-green-500/10">{activeMapAddress}</span>}
             </div>
             <MapComponent address={activeMapAddress} />
             <div className="flex gap-1 overflow-x-auto nsb pt-1">
               {jobs.filter(j => j.status === 'scheduled' || j.status === 'in_progress').map(job => (
-                <button key={job.id} onClick={() => setMapAddress(job.address)} className={`px-2.5 py-1.5 rounded-lg text-[7px] font-bold uppercase flex-shrink-0 border transition-all ${activeMapAddress === job.address ? 'bg-green-600 border-green-600 text-white' : 'bg-white/5 border-white/5 text-slate-400'}`}>{job.client_name}</button>
+                <button key={job.id} onClick={() => setMapAddress(job.address)} className={`px-2.5 py-1.5 rounded-lg text-[7px] font-black uppercase flex-shrink-0 border transition-all ${activeMapAddress === job.address ? 'bg-green-600 border-green-600 text-white' : 'bg-white/5 border-white/5 text-slate-400'}`}>{job.client_name}</button>
               ))}
             </div>
           </div>
 
-          <div className="g p-6 border-t-4 border-amber-500"><p className="text-[9px] font-black text-slate-500 uppercase mb-1">Good morning, Jose Mario 👋</p><h2 className="text-2xl font-black italic text-white mb-4">Today's Command</h2><div className="grid grid-cols-2 gap-3"><div className="bg-green-600/10 border border-green-600/20 p-4 rounded-xl text-center"><p className="text-[7px] text-green-400 font-black uppercase mb-1">Jobs Today</p><p className="text-3xl font-black italic text-white">{finance.todayJobs.length}</p></div><div className="bg-amber-500/10 border border-amber-500/20 p-4 rounded-xl text-center"><p className="text-[7px] text-amber-400 font-black uppercase mb-1">Revenue Today</p><p className="text-3xl font-black italic text-white">{fmt$(finance.todayJobs.reduce((a, b) => a + (b.total_price || 0), 0))}</p></div><div className="bg-blue-600/10 border border-blue-600/20 p-4 rounded-xl text-center"><p className="text-[7px] text-blue-400 font-black uppercase mb-1">MRR</p><p className="text-3xl font-black italic text-white">{isPrivate ? '***' : fmt$(finance.mrr)}</p></div><div className="bg-purple-600/10 border border-purple-600/20 p-4 rounded-xl text-center"><p className="text-[7px] text-purple-400 font-black uppercase mb-1">Avg Rating</p><p className="text-3xl font-black italic text-white">{finance.avgRating || '—'}</p></div></div></div>
+          {/* Improved Aesthetic Dashboard stats grid */}
+          <div className="g p-6 border-t-4 border-amber-500 bg-black/20"><p className="text-[9px] font-black text-slate-500 uppercase mb-1">Good morning, Jose Mario 👋</p><h2 className="text-2xl font-black italic text-white mb-4">Command Deck</h2><div className="grid grid-cols-2 gap-3"><div className="bg-green-600/5 border border-green-600/10 p-4 rounded-xl text-center"><p className="text-[7px] text-green-400 font-black uppercase mb-1">Jobs Today</p><p className="text-3xl font-black italic text-white">{finance.todayJobs.length}</p></div><div className="bg-amber-500/5 border border-amber-500/10 p-4 rounded-xl text-center"><p className="text-[7px] text-amber-400 font-black uppercase mb-1">Revenue Today</p><p className="text-3xl font-black italic text-white">{fmt$(finance.todayJobs.reduce((a, b) => a + (b.total_price || 0), 0))}</p></div><div className="bg-blue-600/5 border border-blue-600/10 p-4 rounded-xl text-center"><p className="text-[7px] text-blue-400 font-black uppercase mb-1">MRR</p><p className="text-3xl font-black italic text-white">{isPrivate ? '***' : fmt$(finance.mrr)}</p></div><div className="bg-purple-600/5 border border-purple-600/10 p-4 rounded-xl text-center"><p className="text-[7px] text-purple-400 font-black uppercase mb-1">Avg Rating</p><p className="text-3xl font-black italic text-white">{finance.avgRating || '—'}</p></div></div></div>
           
-          <div className="g p-6 flex items-center justify-center gap-8"><Thermo pct={finance.pct} goal={DEFAULT_CFG.GOAL} current={finance.gross} /><div className="space-y-2">{finance.vel !== null && <p className="text-[8px] font-black text-slate-400 uppercase">⚡ Velocity: <span className="text-white">{finance.vel}d</span></p>}{finance.proj > 0 && <p className="text-[8px] font-black text-green-400 uppercase">📈 Projected: {fmt$(finance.proj)}</p>}{finance.bestDay && <p className="text-[8px] font-black text-amber-400 uppercase">💰 Money Day: {finance.bestDay}</p>}<p className="text-[8px] font-black text-slate-500 uppercase">Total: {finance.total}</p></div></div>
+          {/* Aesthetic progress indicators */}
+          <div className="g p-6 flex items-center justify-between shadow-xl bg-black/20">
+            <Thermo pct={finance.pct} goal={DEFAULT_CFG.GOAL} current={finance.gross} />
+            <div className="h-20 w-[1px] bg-white/5"></div>
+            <div className="space-y-3">
+              <div className="flex items-center gap-3">
+                <ProgressRing progress={finance.pct} radius={24} stroke={3} color="#22c55e" />
+                <div>
+                  <p className="text-[7px] text-slate-500 uppercase font-black">Meta de Ventas</p>
+                  <p className="text-sm font-black text-white">{Math.round(finance.pct)}% Logrado</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <ProgressRing progress={finance.avgRating * 20} radius={24} stroke={3} color="#fbbf24" text={String(finance.avgRating)} />
+                <div>
+                  <p className="text-[7px] text-slate-500 uppercase font-black">Calificación</p>
+                  <p className="text-sm font-black text-white">{finance.avgRating || 5.0} de 5⭐</p>
+                </div>
+              </div>
+            </div>
+          </div>
           
-          <div className="g p-5 border-t-4 border-green-500 space-y-4"><p className="text-[9px] font-black text-green-400 uppercase tracking-widest">War Room</p><div className="grid grid-cols-2 gap-2"><button onClick={() => { setFSt('lead'); setView('agenda'); }} className="bg-amber-500/10 border border-amber-500/20 p-3 rounded-xl text-left active:scale-95"><p className="text-[7px] text-amber-400 font-black uppercase">Money Waiting</p><p className="text-2xl font-black italic text-white">{isPrivate ? '***' : fmt$(finance.moneyTable)}</p><p className="text-[7px] text-slate-500">{finance.pendSig.length} unsigned</p></button><button onClick={() => { setFSt('lead'); setView('agenda'); }} className="bg-red-500/10 border border-red-500/20 p-3 rounded-xl text-left active:scale-95"><p className="text-[7px] text-red-400 font-black uppercase">Expiring</p><p className="text-2xl font-black italic text-white">{finance.expiring.length}</p><p className="text-[7px] text-slate-500">under 6h</p></button><button onClick={() => { setFSt('completed'); setView('agenda'); }} className="bg-purple-500/10 border border-purple-500/20 p-3 rounded-xl text-left active:scale-95"><p className="text-[7px] text-purple-400 font-black uppercase">QC Queue</p><p className="text-2xl font-black italic text-white">{finance.qcQ.length}</p></button><button onClick={() => { setFSt('paid'); setView('agenda'); }} className="bg-blue-500/10 border border-blue-500/20 p-3 rounded-xl text-left active:scale-95"><p className="text-[7px] text-blue-400 font-black uppercase">Review Queue</p><p className="text-2xl font-black italic text-white">{finance.reviewQ.length}</p></button></div></div>
+          <div className="g p-5 border-t-4 border-green-500 space-y-4 bg-black/20"><p className="text-[9px] font-black text-green-400 uppercase tracking-widest">War Room Tasks</p><div className="grid grid-cols-2 gap-2"><button onClick={() => { setFSt('lead'); setView('agenda'); }} className="bg-amber-500/5 border border-amber-500/10 p-3 rounded-xl text-left active:scale-95"><p className="text-[7px] text-amber-400 font-black uppercase">Money Waiting</p><p className="text-2xl font-black italic text-white">{isPrivate ? '***' : fmt$(finance.moneyTable)}</p><p className="text-[7px] text-slate-500">{finance.pendSig.length} unsigned</p></button><button onClick={() => { setFSt('lead'); setView('agenda'); }} className="bg-red-500/5 border border-red-500/10 p-3 rounded-xl text-left active:scale-95"><p className="text-[7px] text-red-400 font-black uppercase">Expiring</p><p className="text-2xl font-black italic text-white">{finance.expiring.length}</p><p className="text-[7px] text-slate-500">under 6h</p></button><button onClick={() => { setFSt('completed'); setView('agenda'); }} className="bg-purple-500/5 border border-purple-500/10 p-3 rounded-xl text-left active:scale-95"><p className="text-[7px] text-purple-400 font-black uppercase">QC Queue</p><p className="text-2xl font-black italic text-white">{finance.qcQ.length}</p></button><button onClick={() => { setFSt('paid'); setView('agenda'); }} className="bg-blue-500/5 border border-blue-500/10 p-3 rounded-xl text-left active:scale-95"><p className="text-[7px] text-blue-400 font-black uppercase">Review Queue</p><p className="text-2xl font-black italic text-white">{finance.reviewQ.length}</p></button></div></div>
         </div>)}
 
         {view === 'intel' && (<div className="space-y-5 animate-in fade-in">
-          <section className="g p-8 border-t-4 border-green-600 shadow-xl"><p className="text-[9px] font-black text-slate-500 mb-2 uppercase tracking-widest italic">Monthly Goal — {fmt$(DEFAULT_CFG.GOAL)}</p><h2 className="text-7xl italic tracking-tighter text-white font-black leading-none">{Math.round(finance.pct)}%</h2><div className="pb mt-4 mb-3"><div className="pf" style={{ width: `${finance.pct}%` }}></div></div><div className="flex justify-between text-[8px] text-slate-500 font-black uppercase"><span>Billed: {isPrivate ? '***' : fmt$(finance.gross)}</span><span>{finance.gross >= DEFAULT_CFG.GOAL ? '🎯 GOAL!' : 'Left: ' + fmt$(DEFAULT_CFG.GOAL - finance.gross)}</span></div><p className="text-[9px] text-green-500 mt-2 font-black uppercase italic text-center">Net: {isPrivate ? '****' : fmt$(finance.net)} | Projected: {isPrivate ? '****' : fmt$(finance.proj)}</p></section>
-          <div className="grid grid-cols-2 gap-3">{[{ l: 'Pending', v: isPrivate ? '***' : fmt$(finance.pending), c: 'border-orange-500', t: 'text-orange-400' }, { l: 'Avg Ticket', v: isPrivate ? '***' : fmt$(finance.avg), c: 'border-blue-500', t: 'text-blue-400' }, { l: 'MRR', v: isPrivate ? '***' : fmt$(finance.mrr), c: 'border-purple-500', t: 'text-purple-400' }, { l: 'Avg Rating', v: finance.avgRating || '—', c: 'border-amber-500', t: 'text-amber-400' }, { l: 'Avg LTV', v: isPrivate ? '***' : fmt$(finance.avgLTV), c: 'border-green-500', t: 'text-green-400' }, { l: 'Bonuses', v: fmt$(finance.bonuses), c: 'border-pink-500', t: 'text-pink-400' }].map(k => (<div key={k.l} className={`g p-5 border-b-4 ${k.c} text-center`}><p className="text-[8px] text-slate-500 mb-1 uppercase font-black">{k.l}</p><p className={`text-2xl font-black italic ${k.t}`}>{k.v}</p></div>))}</div>
-          <div className="g p-5"><BarChart data={finance.wb} color="#22c55e" label="📊 Weekly Revenue" /></div>
-          <div className="g p-5"><BarChart data={finance.mb2} color="#3b82f6" label="📈 6-Month Revenue" /></div>
+          <section className="g p-8 border-t-4 border-green-600 shadow-xl bg-black/20 text-center"><p className="text-[9px] font-black text-slate-500 mb-2 uppercase tracking-widest italic">MRR Goal — {fmt$(DEFAULT_CFG.GOAL)}</p><h2 className="text-7xl italic tracking-tighter text-white font-black leading-none">{Math.round(finance.pct)}%</h2><div className="pb mt-4 mb-3"><div className="pf" style={{ width: `${finance.pct}%` }}></div></div><div className="flex justify-between text-[8px] text-slate-500 font-black uppercase"><span>Billed: {isPrivate ? '***' : fmt$(finance.gross)}</span><span>{finance.gross >= DEFAULT_CFG.GOAL ? '🎯 GOAL!' : 'Left: ' + fmt$(DEFAULT_CFG.GOAL - finance.gross)}</span></div><p className="text-[9px] text-green-500 mt-2 font-black uppercase italic text-center font-bold">Net: {isPrivate ? '****' : fmt$(finance.net)} | Projected: {isPrivate ? '****' : fmt$(finance.proj)}</p></section>
+          
+          <div className="grid grid-cols-2 gap-3">{[{ l: 'Pending', v: isPrivate ? '***' : fmt$(finance.pending), c: 'border-orange-500', t: 'text-orange-400' }, { l: 'Avg Ticket', v: isPrivate ? '***' : fmt$(finance.avg), c: 'border-blue-500', t: 'text-blue-400' }, { l: 'MRR', v: isPrivate ? '***' : fmt$(finance.mrr), c: 'border-purple-500', t: 'text-purple-400' }, { l: 'Avg Rating', v: finance.avgRating || '—', c: 'border-amber-500', t: 'text-amber-400' }, { l: 'Avg LTV', v: isPrivate ? '***' : fmt$(finance.avgLTV), c: 'border-green-500', t: 'text-green-400' }, { l: 'Bonuses', v: fmt$(finance.bonuses), c: 'border-pink-500', t: 'text-pink-400' }].map(k => (<div key={k.l} className={`g p-5 border-b-4 ${k.c} text-center bg-black/20`}><p className="text-[8px] text-slate-500 mb-1 uppercase font-black">{k.l}</p><p className={`text-2xl font-black italic ${k.t}`}>{k.v}</p></div>))}</div>
+          
+          {/* Aesthetic Area Charts */}
+          <div className="g p-6 bg-black/20 space-y-2">
+            <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-4">📈 Gross Revenue Trends</p>
+            <SleekAreaChart data={finance.wb} color="#fbbf24" />
+          </div>
+          <div className="g p-6 bg-black/20 space-y-2">
+            <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-4">📊 Monthly Revenue projections</p>
+            <SleekAreaChart data={finance.mb2} color="#3b82f6" />
+          </div>
         </div>)}
 
         {view === 'agenda' && (<div className="space-y-4 animate-in slide-in-from-bottom-10 pb-24">
-          <input className="inp" placeholder="🔍 Search..." value={sq} onChange={e => setSQ(e.target.value)} />
-          <div className="flex gap-1.5 overflow-x-auto nsb pb-1">{['all', 'lead', 'scheduled', 'in_progress', 'completed', 'paid', 'lost'].map(s => (<button key={s} onClick={() => setFSt(s)} className={`px-3 py-1.5 rounded-xl text-[7px] font-black uppercase whitespace-nowrap active:scale-95 ${fSt === s ? 'bg-amber-500 text-black' : 'bg-white/5 text-slate-500'}`}>{s}</button>))}</div>
+          <input className="inp" placeholder="🔍 Search by name or address..." value={sq} onChange={e => setSQ(e.target.value)} />
+          <div className="flex gap-1.5 overflow-x-auto nsb pb-1">{['all', 'lead', 'scheduled', 'in_progress', 'completed', 'paid', 'lost'].map(s => (<button key={s} onClick={() => setFSt(s)} className={`px-3 py-2 rounded-xl text-[8px] font-black uppercase whitespace-nowrap active:scale-95 ${fSt === s ? 'bg-amber-500 text-black shadow-lg shadow-amber-500/10' : 'bg-white/5 text-slate-500'}`}>{s}</button>))}</div>
           {filtered.length === 0 && <div className="g p-10 text-center text-slate-500 font-black italic uppercase">No missions found.</div>}
           {filtered.map(job => {
             const isH = job.service_type === 'handyman';
@@ -1070,7 +1224,7 @@ ${job.final_signature ? `<div class="sig"><p style="font-size:10px;color:#999;ma
             const profit = realProfit(job);
             const bonus = calcBonus(job);
             return (
-              <div key={job.id} className={`g p-5 border-l-[7px] shadow-xl hover:bg-white/[0.02] transition-all ${isH ? 'border-green-500' : job.status === 'paid' ? 'border-blue-500' : job.status === 'in_progress' ? 'border-green-400' : job.status === 'lead' ? 'border-yellow-500' : job.status === 'completed' ? 'border-purple-500' : job.status === 'lost' ? 'border-red-800' : 'border-amber-500'}`}>
+              <div key={job.id} className={`g p-5 border-l-[7px] shadow-xl hover:bg-white/[0.01] transition-all bg-black/10 ${isH ? 'border-green-500' : job.status === 'paid' ? 'border-blue-500' : job.status === 'in_progress' ? 'border-green-400' : job.status === 'lead' ? 'border-yellow-500' : job.status === 'completed' ? 'border-purple-500' : job.status === 'lost' ? 'border-red-800' : 'border-amber-500'}`}>
                 <div className="flex justify-between items-start mb-2">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-1.5 flex-wrap mb-1">
@@ -1104,14 +1258,14 @@ ${job.final_signature ? `<div class="sig"><p style="font-size:10px;color:#999;ma
         </div>)}
 
         {view === 'clients' && (<div className="space-y-4 animate-in fade-in pb-24">
-          <div className="g p-5 border-t-4 border-purple-500"><p className="text-[9px] font-black text-slate-500 uppercase mb-1">🧬 Client DNA</p></div>
+          <div className="g p-5 border-t-4 border-purple-500 bg-black/20"><p className="text-[9px] font-black text-slate-500 uppercase mb-1">🧬 Client DNA Ledger</p></div>
           {clients.map(client => {
             const d = dna[client.name] || { score: 0, count: 0, spent: 0 };
             const lv = lvl(d.count);
             const daysSince = dAgo(d.last);
             const lastJob = jobs.filter(j => j.client_name === client.name)[0];
             return (
-              <div key={client.name} className="g p-5 hover:bg-white/[0.02] transition-all border-l-4" style={{ borderColor: lv.color }}>
+              <div key={client.name} className="g p-5 hover:bg-white/[0.02] transition-all border-l-4 bg-black/10" style={{ borderColor: lv.color }}>
                 <div className="flex justify-between items-start">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1 flex-wrap">
@@ -1133,12 +1287,12 @@ ${job.final_signature ? `<div class="sig"><p style="font-size:10px;color:#999;ma
         </div>)}
 
         {view === 'members' && (<div className="space-y-5 animate-in fade-in pb-24">
-          <div className="g p-5 border-t-4 border-yellow-500">
+          <div className="g p-5 border-t-4 border-yellow-500 bg-black/20">
             <p className="text-[9px] font-black text-slate-500 uppercase mb-1">💎 Memberships</p>
             <p className="text-2xl font-black italic text-white mt-2">{isPrivate ? '***' : fmt$(finance.mrr)}<span className="text-[9px] text-slate-500 font-black">/mo MRR</span></p>
           </div>
           {MBS.filter(m => m.id !== 'none').map(m => (
-            <div key={m.id} className="g p-5 border-l-4" style={{ borderColor: m.color }}>
+            <div key={m.id} className="g p-5 border-l-4 bg-black/10" style={{ borderColor: m.color }}>
               <div className="flex justify-between items-center mb-3">
                 <h3 className="text-lg font-black uppercase italic text-white">{m.name}</h3>
                 <p className="text-2xl font-black" style={{ color: m.color }}>{fmt$(m.price)}<span className="text-[9px] text-slate-500">/mo</span></p>
@@ -1153,7 +1307,7 @@ ${job.final_signature ? `<div class="sig"><p style="font-size:10px;color:#999;ma
           <div className="space-y-5 animate-in fade-in pb-24">
             
             {/* Create Staff Module */}
-            <div className="g p-6 border-t-4 border-amber-500 space-y-4">
+            <div className="g p-6 border-t-4 border-amber-500 space-y-4 bg-black/20">
               <p className="text-[10px] font-black text-amber-500 uppercase tracking-widest mb-1">👤 Add New Worker & PIN</p>
               <div className="space-y-3">
                 <input className="inp uppercase" placeholder="Worker Name" value={newStaffName} onChange={e => setNewName(e.target.value)} />
@@ -1168,11 +1322,11 @@ ${job.final_signature ? `<div class="sig"><p style="font-size:10px;color:#999;ma
             </div>
 
             {/* Team Wallet List Ledger */}
-            <div className="g p-5 border-t-4 border-green-500">
+            <div className="g p-5 border-t-4 border-green-500 bg-black/20">
               <p className="text-[9px] font-black text-green-500 uppercase tracking-widest mb-4">💰 Team Wallets & Balances</p>
               <div className="space-y-3">
                 {staff.map(worker => (
-                  <div key={worker.id} className="g p-4 border border-white/5 flex items-center justify-between">
+                  <div key={worker.id} className="g p-4 border border-white/5 flex items-center justify-between bg-black/10">
                     <div>
                       <h4 className="text-sm font-black text-white uppercase italic">{worker.name}</h4>
                       <p className="text-[8px] text-slate-500">PIN: <span className="text-amber-500 font-bold">{worker.passcode}</span> • Role: {worker.role?.toUpperCase()}</p>
@@ -1191,7 +1345,7 @@ ${job.final_signature ? `<div class="sig"><p style="font-size:10px;color:#999;ma
               </div>
             </div>
 
-            <div className="g p-5">
+            <div className="g p-5 bg-black/20">
               <div className="space-y-2">
                 <div className="flex justify-between"><span className="text-[9px] text-slate-400 font-black uppercase">Collected</span><span className="text-sm font-black text-white">{isPrivate ? '***' : fmt$(finance.col)}</span></div>
                 <div className="flex justify-between border-t border-white/10 pt-2"><span className="text-[9px] text-white font-black uppercase">Your Net</span><span className="text-lg font-black text-green-400">{isPrivate ? '****' : fmt$(finance.net)}</span></div>
@@ -1202,9 +1356,9 @@ ${job.final_signature ? `<div class="sig"><p style="font-size:10px;color:#999;ma
         )}
 
         {view === 'drive' && (<div className="space-y-4 animate-in fade-in pb-24">
-          <div className="g p-5 border-t-4 border-blue-500"><p className="text-[9px] font-black text-slate-500 uppercase mb-1">📁 Photo Drive</p></div>
+          <div className="g p-5 border-t-4 border-blue-500 bg-black/20"><p className="text-[9px] font-black text-slate-500 uppercase mb-1">📁 Photo Drive</p></div>
           {jobs.map(job => (
-            <div key={job.id} className="g p-5 space-y-4">
+            <div key={job.id} className="g p-5 space-y-4 bg-black/10">
               <div className="flex justify-between items-center">
                 <div>
                   <h3 className="text-base font-black uppercase italic text-white">{job.client_name}</h3>
@@ -1220,8 +1374,8 @@ ${job.final_signature ? `<div class="sig"><p style="font-size:10px;color:#999;ma
         </div>)}
 
         {view === 'deploy' && (<div className="space-y-5 animate-in zoom-in-95 pb-32">
-          <div className="flex gap-1 bg-black/40 p-1 rounded-xl border border-white/5">{['identity', 'specs', 'add-ons', 'money'].map(t => (<button key={t} onClick={() => setDtab(t)} className={`flex-1 py-2.5 rounded-xl text-[8px] uppercase font-black active:scale-95 ${dtab === t ? 'ton' : 'text-slate-500'}`}>{t}</button>))}</div>
-          <div className="g p-6 space-y-5 shadow-xl">
+          <div className="flex gap-1 bg-black/40 p-1.5 rounded-xl border border-white/5">{['identity', 'specs', 'add-ons', 'money'].map(t => (<button key={t} onClick={() => setDtab(t)} className={`flex-1 py-2.5 rounded-xl text-[8px] uppercase font-black active:scale-95 ${dtab === t ? 'ton' : 'text-slate-500'}`}>{t}</button>))}</div>
+          <div className="g p-6 space-y-5 shadow-xl bg-black/20">
             {dtab === 'identity' && (<div className="space-y-3 animate-in fade-in">
               <h3 className="text-[10px] uppercase text-amber-500 font-black italic tracking-widest border-b border-white/5 pb-2">Identity</h3>
               <input className="inp uppercase" placeholder="CLIENT FULL NAME" value={state.name} onChange={e => onName(e.target.value)} />
@@ -1246,7 +1400,7 @@ ${job.final_signature ? `<div class="sig"><p style="font-size:10px;color:#999;ma
               </select>
               <div className="grid grid-cols-2 gap-3"><div className="space-y-1"><p className="text-[8px] text-slate-500 uppercase font-black">Date</p><input type="date" value={state.date} className="inp text-[10px] font-black" onChange={e => setState({ ...state, date: e.target.value })} /></div><div className="space-y-1"><p className="text-[8px] text-slate-500 uppercase font-black">Deposit</p><input type="number" value={state.deposit} className="inp text-blue-400 font-black text-center" onChange={e => setState({ ...state, deposit: parseFloat(e.target.value) || 0 })} /></div></div></div></div>)}
           </div>
-          <div className="bg-white text-black p-8 rounded-[3rem] text-center shadow-2xl relative overflow-hidden active:scale-95 transition-all">
+          <div className="bg-white text-black p-8 rounded-[3.5rem] text-center shadow-2xl relative overflow-hidden active:scale-95 transition-all shadow-amber-500/5">
             <div className="absolute top-0 left-0 w-full h-2 bg-green-500 animate-pulse"></div>
             <div className="flex justify-between items-center mb-3"><p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Deployment Value</p><span className={`text-[8px] font-black px-3 py-1 rounded-lg border ${pricing.ac} border-current`}>{pricing.advice}</span></div>
             <h4 className="text-[6rem] font-black italic tracking-tighter leading-none mb-4 text-black"><span className="text-3xl align-top mr-1 font-light opacity-30">$</span>{state.totalPrice}</h4>
