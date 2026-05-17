@@ -1001,35 +1001,43 @@ function OnboardingFlow({ onBack, tt }) {
     setLoading(true);
     tt('Registering your business... 🏢', 'yellow');
     
-    // 1. Sign up user
-    const { data, error } = await sb.auth.signUp({
-      email: form.email,
-      password: form.password,
-    });
-    
-    if (error) {
-      setLoading(false);
-      return tt(error.message, 'red');
-    }
-
-    if (data.user) {
-      // 2. Create the tenant
-      const { data: tenantData, error: tErr } = await sb.from('tenants').insert([
-        { business_name: form.company, owner_id: data.user.id }
-      ]).select().single();
+    try {
+      // 1. Sign up user
+      const { data, error } = await sb.auth.signUp({
+        email: form.email,
+        password: form.password,
+      });
       
-      if (tErr) {
+      if (error) {
         setLoading(false);
-        return tt('Error creating workspace', 'red');
+        return tt(error.message, 'red');
       }
 
-      // 3. Create the admin staff profile so they can also use the PIN if needed
-      await sb.from('staff_profiles').insert([
-        { tenant_id: tenantData.id, user_id: data.user.id, name: form.company + ' Admin', role: 'admin', passcode: form.password }
-      ]);
+      if (data?.user) {
+        // 2. Create the tenant
+        const { data: tenantData, error: tErr } = await sb.from('tenants').insert([
+          { business_name: form.company, owner_id: data.user.id }
+        ]).select().maybeSingle();
+        
+        if (tErr || !tenantData) {
+          setLoading(false);
+          return tt('Error creating workspace: ' + (tErr?.message || 'Unknown'), 'red');
+        }
 
-      tt('Welcome to Elevore Empire! 🎉', 'green');
-      onBack(); // Redirect to login
+        // 3. Create the admin staff profile so they can also use the PIN if needed
+        await sb.from('staff_profiles').insert([
+          { tenant_id: tenantData.id, user_id: data.user.id, name: form.company + ' Admin', role: 'admin', passcode: form.password }
+        ]);
+
+        tt('Welcome to Elevore Empire! 🎉', 'green');
+        onBack(); // Redirect to login
+      } else {
+        setLoading(false);
+        tt('Unexpected error: User not returned', 'red');
+      }
+    } catch (err) {
+      setLoading(false);
+      tt('System Error: ' + err.message, 'red');
     }
   };
 
