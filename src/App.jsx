@@ -349,6 +349,12 @@ function TacticalRadarMap({ jobs, activeMapAddress, onSelectAddress }) {
   const activeJobs = jobs.filter(j => j.status === 'scheduled' || j.status === 'in_progress');
   const hq = { x: 150, y: 120, label: 'HQ' };
   
+  const isSimulation = activeJobs.length === 0;
+  const displayJobs = isSimulation ? [
+    { id: 'mock1', client_name: 'Sim Alpha', address: 'Route 1', status: 'scheduled' },
+    { id: 'mock2', client_name: 'Sim Beta', address: 'Route 2', status: 'scheduled' }
+  ] : activeJobs;
+
   const getCoords = (id, idx) => {
     const coords = [
       { x: 60, y: 55 },
@@ -359,15 +365,15 @@ function TacticalRadarMap({ jobs, activeMapAddress, onSelectAddress }) {
     return coords[idx % coords.length] || { x: 100 + (idx * 25), y: 100 + (idx * 12) };
   };
 
-  const pins = activeJobs.map((job, idx) => ({
+  const pins = displayJobs.map((job, idx) => ({
     ...job,
     ...getCoords(job.id, idx)
   }));
 
-  const totalDist = (activeJobs.length * 11.4 + 8.2).toFixed(1);
-  const totalTime = Math.round(activeJobs.length * 18 + 12);
+  const totalDist = (displayJobs.length * 11.4 + 8.2).toFixed(1);
+  const totalTime = Math.round(displayJobs.length * 18 + 12);
   const timeStr = `${Math.floor(totalTime / 60)}h ${totalTime % 60}m`;
-  const savedDist = (activeJobs.length * 2.8).toFixed(1);
+  const savedDist = (displayJobs.length * 2.8).toFixed(1);
 
   return (
     <div className="space-y-4">
@@ -431,9 +437,9 @@ function TacticalRadarMap({ jobs, activeMapAddress, onSelectAddress }) {
             <p className="text-[5px] text-green-400 font-bold uppercase">Optimized sequence ✓</p>
           </div>
           <div className="bg-black/90 backdrop-blur-md p-2 rounded-lg border border-[#F5C518]/15 text-right space-y-0.5">
-            <p className="text-[5px] text-[#F5C518] font-bold uppercase tracking-widest">DISPATCH SAVINGS</p>
+            <p className="text-[5px] text-[#F5C518] font-bold uppercase tracking-widest">{isSimulation ? 'SIMULATION MODE' : 'DISPATCH SAVINGS'}</p>
             <p className="text-[9px] font-black text-green-400">-{savedDist} mi (-22.5%)</p>
-            <p className="text-[5px] text-slate-400 font-bold uppercase">AI Fleet Optimizer Active</p>
+            <p className="text-[5px] text-slate-400 font-bold uppercase">{isSimulation ? 'Waiting for Active Missions' : 'AI Fleet Optimizer Active'}</p>
           </div>
         </div>
       </div>
@@ -1593,15 +1599,7 @@ ${job.final_signature ? `<div class="sig"><p style="font-size:10px;color:#999;ma
 
         {/* Workspace content wrapper */}
         <main className="max-w-5xl mx-auto w-full p-4 md:p-8 space-y-6">
-          {seasons.length > 0 && role === 'admin' && (
-            <div className="g p-4 border border-amber-500/20 bg-amber-500/[0.02] flex items-center justify-between shadow-md">
-              <div>
-                <p className="text-[8px] font-black text-amber-500 uppercase">🎯 {seasons[0].name}</p>
-                <p className="text-[8px] text-slate-400">{seasons[0].msg}</p>
-              </div>
-              {seasons[0].discount > 0 && <span className="text-amber-500 font-black text-sm">-{seasons[0].discount}%</span>}
-            </div>
-          )}
+          {/* Seasonal Banner Disabled */}
 
           {finance.mbTargets.length > 0 && role === 'admin' && (
             <div className="g p-4 border border-purple-500/20 bg-purple-500/[0.02] flex items-center justify-between shadow-md">
@@ -2401,9 +2399,7 @@ ${job.final_signature ? `<div class="sig"><p style="font-size:10px;color:#999;ma
                   <p className="text-[9px] font-black text-[#F5C518] uppercase tracking-widest">+ AÑADIR ITEM</p>
                   <div className="grid grid-cols-2 gap-2">
                     <input className="inp text-xs uppercase" placeholder="Nombre del producto" value={newItem.name} onChange={e => setNewItem({...newItem, name: e.target.value})} />
-                    <select className="inp text-xs" value={newItem.unit} onChange={e => setNewItem({...newItem, unit: e.target.value})}>
-                      {['units', 'bottles', 'bags', 'rolls', 'boxes', 'gallons'].map(u => <option key={u} value={u}>{u}</option>)}
-                    </select>
+                    <input type="text" className="inp text-xs" placeholder="Unit (ej. bottles, units)" value={newItem.unit} onChange={e => setNewItem({...newItem, unit: e.target.value})} />
                     <input type="number" className="inp text-xs" placeholder="Cantidad" value={newItem.qty} onChange={e => setNewItem({...newItem, qty: parseInt(e.target.value)||0})} />
                     <input type="number" className="inp text-xs" placeholder="Stock mínimo" value={newItem.minQty} onChange={e => setNewItem({...newItem, minQty: parseInt(e.target.value)||0})} />
                     <input type="number" className="inp text-xs" placeholder="Costo unitario $" value={newItem.cost} onChange={e => setNewItem({...newItem, cost: parseFloat(e.target.value)||0})} />
