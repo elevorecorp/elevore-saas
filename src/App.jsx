@@ -1054,7 +1054,7 @@ function LandingPage({ onLogin, onSignup }) {
         <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <img src="/elevore-logo.png" alt="Elevore Logo" className="w-10 h-10 object-contain drop-shadow-[0_0_15px_rgba(245,197,24,0.4)] hover:scale-105 transition-transform" />
-            <span className="font-black tracking-[0.25em] uppercase text-lg hidden sm:block">Elevore <span className="text-[#F5C518] italic">Empire</span></span>
+            <span className="font-black tracking-[0.25em] uppercase text-lg hidden sm:block">Elevore <span className="text-gradient italic">Empire</span></span>
           </div>
           <div className="flex items-center gap-6">
             <button onClick={onLogin} className="text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-white transition-colors">Login</button>
@@ -1695,7 +1695,7 @@ ${job.final_signature ? `<div class="sig"><p style="font-size:10px;color:#999;ma
             <div className="flex items-center gap-3">
               <img src="/elevore-logo.png" alt="Elevore Logo" className="w-10 h-10 object-contain drop-shadow-[0_0_15px_rgba(245,197,24,0.4)]" />
               <div>
-                <h1 className="font-black text-sm tracking-widest uppercase text-white leading-none">ELEVORE <span className="text-gradient italic font-light">EMPIRE</span></h1>
+                <h1 className="font-black text-sm tracking-widest uppercase text-white leading-none">ELEVORE <span className="text-gradient italic">EMPIRE</span></h1>
                 <div className="flex items-center gap-2 mt-1.5">
                   <div className={rtOn ? 'dg' : 'da'}></div>
                   <p className="text-[7px] font-black text-slate-500 uppercase tracking-widest">{rtOn ? 'Live Sync' : 'v97.0'}</p>
@@ -1790,7 +1790,7 @@ ${job.final_signature ? `<div class="sig"><p style="font-size:10px;color:#999;ma
               <Icon name="menu" className="w-5 h-5" />
             </button>
             <img src="/elevore-logo.png" alt="Elevore Logo" className="w-6 h-6 object-contain" />
-            <h2 className="font-black text-xs tracking-widest uppercase text-white leading-none">ELEVORE <span className="text-gradient italic font-light">EMPIRE</span></h2>
+            <h2 className="font-black text-xs tracking-widest uppercase text-white leading-none">ELEVORE <span className="text-gradient italic">EMPIRE</span></h2>
           </div>
           <div className="flex gap-1.5">
             <button onClick={() => setAIOpen(true)} className="p-2 bg-white/5 rounded-lg text-slate-400 hover:text-white"><Icon name="brain" className="w-4 h-4 text-amber-400" /></button>
