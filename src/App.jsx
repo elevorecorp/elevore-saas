@@ -313,7 +313,7 @@ function MapComponent({ address }) {
   const src = `https://maps.google.com/maps?q=${encodeURIComponent(address)}&t=&z=14&ie=UTF8&iwloc=&output=embed`;
   return (
     <div className="g overflow-hidden border border-white/10 h-64 w-full relative">
-      <iframe title="GPS Map" width="100%" height="100%" frameBorder="0" scrolling="no" marginHeight="0" marginWidth="0" src={src} className="grayscale invert opacity-80 contrast-125"></iframe>
+      <iframe title="GPS Map" width="100%" height="100%" frameBorder="0" scrolling="no" marginHeight="0" marginWidth="0" src={src} className="w-full h-full rounded-xl"></iframe>
     </div>
   );
 }
@@ -344,115 +344,7 @@ function VoiceButton({ onTranscript, className = '' }) {
   );
 }
 
-// TacticalRadarMap: Animated SVG radar map tracking fleet routes & sequences
-function TacticalRadarMap({ jobs, activeMapAddress, onSelectAddress }) {
-  const activeJobs = jobs.filter(j => j.status === 'scheduled' || j.status === 'in_progress');
-  const hq = { x: 150, y: 120, label: 'HQ' };
-  
-  const isSimulation = activeJobs.length === 0;
-  const displayJobs = isSimulation ? [
-    { id: 'mock1', client_name: 'Sim Alpha', address: 'Route 1', status: 'scheduled' },
-    { id: 'mock2', client_name: 'Sim Beta', address: 'Route 2', status: 'scheduled' }
-  ] : activeJobs;
-
-  const getCoords = (id, idx) => {
-    const coords = [
-      { x: 60, y: 55 },
-      { x: 250, y: 65 },
-      { x: 75, y: 175 },
-      { x: 230, y: 165 },
-    ];
-    return coords[idx % coords.length] || { x: 100 + (idx * 25), y: 100 + (idx * 12) };
-  };
-
-  const pins = displayJobs.map((job, idx) => ({
-    ...job,
-    ...getCoords(job.id, idx)
-  }));
-
-  const totalDist = (displayJobs.length * 11.4 + 8.2).toFixed(1);
-  const totalTime = Math.round(displayJobs.length * 18 + 12);
-  const timeStr = `${Math.floor(totalTime / 60)}h ${totalTime % 60}m`;
-  const savedDist = (displayJobs.length * 2.8).toFixed(1);
-
-  return (
-    <div className="space-y-4">
-      <div className="relative g h-72 border border-white/10 overflow-hidden bg-black/60 backdrop-blur-md flex flex-col justify-between p-4">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(245,197,24,0.02)_0%,transparent_70%)] pointer-events-none"></div>
-        <div className="absolute inset-0 border border-white/[0.015] grid grid-cols-6 grid-rows-6 pointer-events-none">
-          {Array.from({ length: 36 }).map((_, i) => (
-            <div key={i} className="border-[0.5px] border-white/[0.008]"></div>
-          ))}
-        </div>
-        
-        {/* Radar sweeping scan line */}
-        <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-[#F5C518]/5 to-transparent origin-center animate-[spin_8s_linear_infinite] pointer-events-none"></div>
-
-        {/* Tactical operations radar SVG overlay */}
-        <svg className="w-full h-full absolute inset-0 z-10 p-4" viewBox="0 0 300 240">
-          <circle cx="150" cy="120" r="100" fill="none" stroke="rgba(255,255,255,0.015)" strokeWidth="1" strokeDasharray="3 3" />
-          <circle cx="150" cy="120" r="60" fill="none" stroke="rgba(255,255,255,0.015)" strokeWidth="1" strokeDasharray="3 3" />
-          <circle cx="150" cy="120" r="20" fill="none" stroke="rgba(255,255,255,0.015)" strokeWidth="1" strokeDasharray="3 3" />
-
-          {/* Dotted path route lines linking HQ star to pins */}
-          {pins.map((pin) => {
-            const isActive = activeMapAddress === pin.address;
-            return (
-              <g key={`route-${pin.id}`}>
-                <line x1={hq.x} y1={hq.y} x2={pin.x} y2={pin.y} stroke={isActive ? '#F5C518' : 'rgba(255,255,255,0.08)'} strokeWidth={isActive ? '1.5' : '0.8'} strokeDasharray="4 4" />
-                <circle r="3.5" fill="#F5C518" className={isActive ? "animate-bounce" : ""}>
-                  <animateMotion dur="4s" repeatCount="indefinite" path={`M ${hq.x} ${hq.y} L ${pin.x} ${pin.y}`} />
-                </circle>
-              </g>
-            );
-          })}
-
-          {/* Glowing central Headquarters star */}
-          <g transform={`translate(${hq.x}, ${hq.y})`}>
-            <circle r="7" fill="rgba(245, 197, 24, 0.2)" className="animate-ping" />
-            <circle r="4" fill="#F5C518" />
-            <text y="-8" textAnchor="middle" fill="#F5C518" className="text-[6px] font-black uppercase tracking-widest font-sans">HQ</text>
-          </g>
-
-          {/* Pins representing client targets */}
-          {pins.map((pin) => {
-            const isActive = activeMapAddress === pin.address;
-            return (
-              <g key={pin.id} transform={`translate(${pin.x}, ${pin.y})`} className="cursor-pointer" onClick={() => onSelectAddress(pin.address)}>
-                <circle r="6" fill={isActive ? "rgba(245, 197, 24, 0.3)" : "rgba(34, 197, 94, 0.12)"} className={isActive ? "animate-pulse" : ""} />
-                <circle r="3.5" fill={isActive ? "#F5C518" : "#22c55e"} />
-                <text y="-6" textAnchor="middle" fill={isActive ? "#F5C518" : "#ffffff"} className="text-[5px] font-bold font-sans uppercase">
-                  {pin.client_name?.split(' ')[0]}
-                </text>
-              </g>
-            );
-          })}
-        </svg>
-        
-        {/* Radar metrics display */}
-        <div className="z-20 pointer-events-none flex justify-between items-end w-full">
-          <div className="bg-black/90 backdrop-blur-md p-2 rounded-lg border border-white/5 space-y-0.5">
-            <p className="text-[5px] text-slate-500 font-bold uppercase tracking-widest">DRIVING RADAR STATS</p>
-            <p className="text-[9px] font-black text-white">{totalDist} mi • {timeStr}</p>
-            <p className="text-[5px] text-green-400 font-bold uppercase">Optimized sequence ✓</p>
-          </div>
-          <div className="bg-black/90 backdrop-blur-md p-2 rounded-lg border border-[#F5C518]/15 text-right space-y-0.5">
-            <p className="text-[5px] text-[#F5C518] font-bold uppercase tracking-widest">{isSimulation ? 'SIMULATION MODE' : 'DISPATCH SAVINGS'}</p>
-            <p className="text-[9px] font-black text-green-400">-{savedDist} mi (-22.5%)</p>
-            <p className="text-[5px] text-slate-400 font-bold uppercase">{isSimulation ? 'Waiting for Active Missions' : 'AI Fleet Optimizer Active'}</p>
-          </div>
-        </div>
-      </div>
-
-      {/* Selector pills list */}
-      <div className="flex gap-2 overflow-x-auto nsb pt-1">
-        {activeJobs.map(job => (
-          <button key={job.id} onClick={() => onSelectAddress(job.address)} className={`px-3 py-2 rounded-xl text-[8px] font-black uppercase flex-shrink-0 border transition-all ${activeMapAddress === job.address ? 'bg-[#F5C518] border-[#F5C518] text-black shadow-lg shadow-[#F5C518]/10' : 'bg-white/5 border-white/5 text-slate-400 hover:text-white'}`}>{job.client_name}</button>
-        ))}
-      </div>
-    </div>
-  );
-}
+// TacticalRadarMap completely removed as requested
 
 // AIReportModal: Strategic analytical growth report overlay
 function AIReportModal({ jobs, clients, staff, onClose, tt }) {
@@ -1716,26 +1608,14 @@ ${job.final_signature ? `<div class="sig"><p style="font-size:10px;color:#999;ma
                     <h3 className="text-[10px] font-black text-slate-300 uppercase tracking-widest font-display">📍 SAAS FLEET OPERATION DECK</h3>
                     <span className="text-[6px] bg-green-500/10 text-green-400 font-bold px-1.5 py-0.5 rounded border border-green-500/15 animate-pulse">WAR ROOM</span>
                   </div>
-                  
-                  {/* Map Tab Selector */}
-                  <div className="flex bg-black/40 rounded-lg p-0.5 border border-white/5">
-                    <button onClick={() => setMapTab('radar')} className={`px-2.5 py-1 rounded text-[7px] font-black uppercase transition-all ${mapTab === 'radar' ? 'bg-[#F5C518] text-black' : 'text-slate-400 hover:text-white'}`}>⚡ Tactical Radar</button>
-                    <button onClick={() => setMapTab('google')} className={`px-2.5 py-1 rounded text-[7px] font-black uppercase transition-all ${mapTab === 'google' ? 'bg-[#F5C518] text-black' : 'text-slate-400 hover:text-white'}`}>🗺️ Google Map</button>
-                  </div>
                 </div>
 
-                {mapTab === 'radar' ? (
-                  <TacticalRadarMap jobs={jobs} activeMapAddress={activeMapAddress} onSelectAddress={setMapAddress} />
-                ) : (
-                  <>
-                    <MapComponent address={activeMapAddress} />
-                    <div className="flex gap-2 overflow-x-auto nsb pt-1">
-                      {jobs.filter(j => j.status === 'scheduled' || j.status === 'in_progress').map(job => (
-                        <button key={job.id} onClick={() => setMapAddress(job.address)} className={`px-3 py-2 rounded-xl text-[8px] font-black uppercase flex-shrink-0 border transition-all ${activeMapAddress === job.address ? 'bg-[#F5C518] border-[#F5C518] text-black shadow-lg shadow-[#F5C518]/10' : 'bg-white/5 border-white/5 text-slate-400 hover:text-white'}`}>{job.client_name}</button>
-                      ))}
-                    </div>
-                  </>
-                )}
+                <MapComponent address={activeMapAddress} />
+                <div className="flex gap-2 overflow-x-auto nsb pt-2">
+                  {jobs.filter(j => j.status === 'scheduled' || j.status === 'in_progress').map(job => (
+                    <button key={job.id} onClick={() => setMapAddress(job.address)} className={`px-3 py-2 rounded-xl text-[8px] font-black uppercase flex-shrink-0 border transition-all ${activeMapAddress === job.address ? 'bg-[#F5C518] border-[#F5C518] text-black shadow-lg shadow-[#F5C518]/10' : 'bg-white/5 border-white/5 text-slate-400 hover:text-white'}`}>{job.client_name}</button>
+                  ))}
+                </div>
               </div>
 
               {/* Progress and rings metrics */}
