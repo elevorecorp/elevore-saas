@@ -1080,6 +1080,7 @@ function LoginFlow({ onLoginSuccess, onBack, tt }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [pin, setPin] = useState('');
+  const [companyName, setCompanyName] = useState('');
   const [loading, setLoading] = useState(false);
 
   const handleEmailLogin = async (e) => {
@@ -1102,15 +1103,35 @@ function LoginFlow({ onLoginSuccess, onBack, tt }) {
   const handlePinLogin = async (e) => {
     e.preventDefault();
     setLoading(true);
-    tt('Authenticating PIN...', 'yellow');
-    // For legacy support: if a passcode matches multiple, we just take the first. In a real app we'd require tenant ID too.
-    const { data: matchedStaff } = await sb.from('staff_profiles').select('*').eq('passcode', pin).limit(1).single();
+    tt('Authenticating Field Access...', 'yellow');
+    
+    let targetTenantId = null;
+    
+    // Find tenant by company name to isolate the PIN search
+    if (companyName.trim() !== '') {
+      const { data: tenant } = await sb.from('tenants').select('id').ilike('business_name', companyName.trim()).maybeSingle();
+      if (!tenant) {
+        setLoading(false);
+        return tt('Company not found. Check the name.', 'red');
+      }
+      targetTenantId = tenant.id;
+    }
+
+    let query = sb.from('staff_profiles').select('*').eq('passcode', pin);
+    if (targetTenantId) {
+      query = query.eq('tenant_id', targetTenantId);
+    } else {
+      query = query.is('tenant_id', null); // Legacy MVP fallback
+    }
+
+    const { data: matchedStaff, error } = await query.limit(1).maybeSingle();
+    
     if (matchedStaff) {
       tt(`Welcome ${matchedStaff.name} ✓`, 'green');
       onLoginSuccess(matchedStaff.role, matchedStaff.tenant_id, null, matchedStaff);
     } else {
       setLoading(false);
-      tt('Access Denied: Invalid PIN', 'red');
+      tt('Access Denied: Invalid PIN or Company', 'red');
     }
   };
 
@@ -1143,9 +1164,16 @@ function LoginFlow({ onLoginSuccess, onBack, tt }) {
             </button>
           </form>
         ) : (
-          <form onSubmit={handlePinLogin} className="space-y-4">
-            <input required type="password" placeholder="ACCESS PIN" className="inp text-center text-xl tracking-[0.5em] text-[#F5C518] py-6" value={pin} onChange={e => setPin(e.target.value)} disabled={loading} />
-            <button type="submit" disabled={loading} className="w-full bg-white/10 hover:bg-white/20 border border-white/10 text-white py-4 rounded-xl font-black uppercase active:scale-95 transition-all text-xs tracking-wider flex items-center justify-center gap-2">
+          <form onSubmit={handlePinLogin} className="space-y-4 text-left">
+            <div className="space-y-1">
+              <label className="text-[9px] font-black uppercase text-slate-500 tracking-widest pl-1">Company Name</label>
+              <input type="text" placeholder="Leave blank for legacy login" className="inp w-full py-4 text-sm" value={companyName} onChange={e => setCompanyName(e.target.value)} disabled={loading} />
+            </div>
+            <div className="space-y-1">
+              <label className="text-[9px] font-black uppercase text-slate-500 tracking-widest pl-1">Access PIN</label>
+              <input required type="password" placeholder="••••" className="inp w-full py-4 text-center text-xl tracking-[0.5em] text-[#F5C518]" value={pin} onChange={e => setPin(e.target.value)} disabled={loading} />
+            </div>
+            <button type="submit" disabled={loading} className="w-full bg-white/10 hover:bg-white/20 border border-white/10 text-white py-4 rounded-xl font-black uppercase active:scale-95 transition-all text-xs tracking-wider flex items-center justify-center gap-2 mt-4">
               {loading ? <Icon name="loader-2" className="w-5 h-5 animate-spin" /> : 'Access Field App'}
             </button>
           </form>
