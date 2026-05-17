@@ -992,52 +992,164 @@ function PublicLeadForm({ refCode }) {
 // =====================================================================
 // 🚀 SAAS ONBOARDING FLOW (REGISTRATION)
 // =====================================================================
-function OnboardingFlow({ onBack }) {
-  const [step, setStep] = useState(1);
+function OnboardingFlow({ onBack, tt }) {
   const [form, setForm] = useState({ company: '', email: '', password: '' });
+  const [loading, setLoading] = useState(false);
 
   const handleRegister = async (e) => {
     e.preventDefault();
-    // Simulate auth registration and loading for MVP
-    setTimeout(() => {
-      onBack(); // Redirect to login/dashboard
-    }, 2000);
+    setLoading(true);
+    tt('Registering your business... 🏢', 'yellow');
+    
+    // 1. Sign up user
+    const { data, error } = await sb.auth.signUp({
+      email: form.email,
+      password: form.password,
+    });
+    
+    if (error) {
+      setLoading(false);
+      return tt(error.message, 'red');
+    }
+
+    if (data.user) {
+      // 2. Create the tenant
+      const { data: tenantData, error: tErr } = await sb.from('tenants').insert([
+        { business_name: form.company, owner_id: data.user.id }
+      ]).select().single();
+      
+      if (tErr) {
+        setLoading(false);
+        return tt('Error creating workspace', 'red');
+      }
+
+      // 3. Create the admin staff profile so they can also use the PIN if needed
+      await sb.from('staff_profiles').insert([
+        { tenant_id: tenantData.id, user_id: data.user.id, name: form.company + ' Admin', role: 'admin', passcode: form.password }
+      ]);
+
+      tt('Welcome to Elevore Empire! 🎉', 'green');
+      onBack(); // Redirect to login
+    }
   };
 
   return (
     <div className="min-h-screen bg-black flex items-center justify-center p-6 text-white bg-[radial-gradient(ellipse_at_top,rgba(245,197,24,0.1),transparent)]">
       <div className="max-w-md w-full space-y-8 animate-in fade-in slide-in-from-bottom-4">
-        <button onClick={onBack} className="text-[10px] text-slate-500 font-black uppercase flex items-center gap-2 hover:text-white transition-colors">
+        <button onClick={onBack} disabled={loading} className="text-[10px] text-slate-500 font-black uppercase flex items-center gap-2 hover:text-white transition-colors">
           <Icon name="arrow-left" className="w-3 h-3" /> Back
         </button>
 
         <div className="space-y-2">
-          <h2 className="text-3xl font-black uppercase tracking-tighter">Create Your <span className="text-[#F5C518] italic">Empire</span></h2>
+          <h2 className="text-3xl font-black uppercase tracking-tighter">Create Your <span className="text-gradient italic">Empire</span></h2>
           <p className="text-slate-400 text-sm">Start your 14-day free trial. No credit card required.</p>
         </div>
 
         <form onSubmit={handleRegister} className="space-y-4">
           <div className="space-y-1">
             <label className="text-[9px] font-black uppercase text-slate-500 tracking-widest pl-1">Business Name</label>
-            <input required type="text" placeholder="e.g. Sparkle Cleaning LLC" className="inp w-full py-4 text-sm" value={form.company} onChange={e => setForm({...form, company: e.target.value})} />
+            <input required type="text" placeholder="e.g. Sparkle Cleaning LLC" className="inp w-full py-4 text-sm" value={form.company} onChange={e => setForm({...form, company: e.target.value})} disabled={loading} />
           </div>
           
           <div className="space-y-1">
             <label className="text-[9px] font-black uppercase text-slate-500 tracking-widest pl-1">Work Email</label>
-            <input required type="email" placeholder="ceo@company.com" className="inp w-full py-4 text-sm" value={form.email} onChange={e => setForm({...form, email: e.target.value})} />
+            <input required type="email" placeholder="ceo@company.com" className="inp w-full py-4 text-sm" value={form.email} onChange={e => setForm({...form, email: e.target.value})} disabled={loading} />
           </div>
 
           <div className="space-y-1">
             <label className="text-[9px] font-black uppercase text-slate-500 tracking-widest pl-1">Master Password</label>
-            <input required type="password" placeholder="••••••••" className="inp w-full py-4 text-sm tracking-widest" value={form.password} onChange={e => setForm({...form, password: e.target.value})} />
+            <input required type="password" placeholder="••••••••" className="inp w-full py-4 text-sm tracking-widest" value={form.password} onChange={e => setForm({...form, password: e.target.value})} disabled={loading} />
           </div>
 
-          <button type="submit" onClick={() => tt('Welcome to Elevore! Redirecting... 🚀', 'green')} className="w-full gold py-5 rounded-2xl font-black uppercase text-sm shadow-[0_0_30px_rgba(245,197,24,0.2)] mt-4 active:scale-95 transition-all">
-            Launch Platform
+          <button type="submit" disabled={loading} className="w-full gold py-5 rounded-2xl font-black uppercase text-sm shadow-[0_0_30px_rgba(245,197,24,0.2)] mt-4 active:scale-95 transition-all flex justify-center items-center gap-2">
+            {loading ? <Icon name="loader-2" className="w-5 h-5 animate-spin" /> : 'Launch Platform'}
           </button>
         </form>
         
         <p className="text-[8px] text-slate-500 font-bold uppercase tracking-widest text-center">By continuing, you agree to our Terms of Service.</p>
+      </div>
+    </div>
+  );
+}
+
+// =====================================================================
+// 🔑 LOGIN FLOW (EMAIL OR PIN)
+// =====================================================================
+function LoginFlow({ onLoginSuccess, onBack, tt }) {
+  const [tab, setTab] = useState('email'); // 'email' | 'pin'
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [pin, setPin] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const handleEmailLogin = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    tt('Authenticating...', 'yellow');
+    const { data, error } = await sb.auth.signInWithPassword({ email, password });
+    if (error) { setLoading(false); return tt('Invalid credentials. Try again.', 'red'); }
+
+    const { data: tenant } = await sb.from('tenants').select('*').eq('owner_id', data.user.id).single();
+    if (tenant) {
+      tt(`Welcome back to ${tenant.business_name}!`, 'green');
+      onLoginSuccess('admin', tenant.id, data.user, null);
+    } else {
+      setLoading(false);
+      tt('Empire not found.', 'red');
+    }
+  };
+
+  const handlePinLogin = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    tt('Authenticating PIN...', 'yellow');
+    // For legacy support: if a passcode matches multiple, we just take the first. In a real app we'd require tenant ID too.
+    const { data: matchedStaff } = await sb.from('staff_profiles').select('*').eq('passcode', pin).limit(1).single();
+    if (matchedStaff) {
+      tt(`Welcome ${matchedStaff.name} ✓`, 'green');
+      onLoginSuccess(matchedStaff.role, matchedStaff.tenant_id, null, matchedStaff);
+    } else {
+      setLoading(false);
+      tt('Access Denied: Invalid PIN', 'red');
+    }
+  };
+
+  return (
+    <div className="min-h-screen flex items-center justify-center p-6 mesh-bg animate-in fade-in duration-1000 text-white">
+      <div className="g p-10 w-full max-w-sm text-center space-y-6 border-t-4 border-[#F5C518] shadow-[0_0_50px_rgba(245,197,24,0.15)] bg-black/60 backdrop-blur-2xl">
+        <button onClick={onBack} disabled={loading} className="text-[10px] text-slate-500 font-black uppercase flex items-center gap-2 hover:text-white transition-colors mb-2">
+          <Icon name="arrow-left" className="w-3 h-3" /> Back
+        </button>
+        
+        <img src="/elevore-logo.png" alt="Elevore Logo" className="w-16 h-16 object-contain mx-auto drop-shadow-[0_0_20px_rgba(245,197,24,0.4)] animate-pulse" />
+        
+        <div className="flex bg-white/5 rounded-xl p-1 mb-6">
+          <button onClick={() => setTab('email')} className={`flex-1 py-2 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all ${tab === 'email' ? 'bg-[#F5C518] text-black shadow-lg' : 'text-slate-400 hover:text-white'}`}>CEO Login</button>
+          <button onClick={() => setTab('pin')} className={`flex-1 py-2 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all ${tab === 'pin' ? 'bg-[#F5C518] text-black shadow-lg' : 'text-slate-400 hover:text-white'}`}>Staff PIN</button>
+        </div>
+
+        {tab === 'email' ? (
+          <form onSubmit={handleEmailLogin} className="space-y-4 text-left">
+            <div className="space-y-1">
+              <label className="text-[9px] font-black uppercase text-slate-500 tracking-widest pl-1">Work Email</label>
+              <input required type="email" placeholder="ceo@company.com" className="inp w-full py-4 text-sm" value={email} onChange={e => setEmail(e.target.value)} disabled={loading} />
+            </div>
+            <div className="space-y-1">
+              <label className="text-[9px] font-black uppercase text-slate-500 tracking-widest pl-1">Master Password</label>
+              <input required type="password" placeholder="••••••••" className="inp w-full py-4 text-sm tracking-widest" value={password} onChange={e => setPassword(e.target.value)} disabled={loading} />
+            </div>
+            <button type="submit" disabled={loading} className="w-full gold py-4 rounded-xl font-black uppercase text-sm shadow-[0_0_30px_rgba(245,197,24,0.2)] mt-4 active:scale-95 transition-all flex items-center justify-center gap-2">
+              {loading ? <Icon name="loader-2" className="w-5 h-5 animate-spin" /> : 'Enter Empire'}
+            </button>
+          </form>
+        ) : (
+          <form onSubmit={handlePinLogin} className="space-y-4">
+            <input required type="password" placeholder="ACCESS PIN" className="inp text-center text-xl tracking-[0.5em] text-[#F5C518] py-6" value={pin} onChange={e => setPin(e.target.value)} disabled={loading} />
+            <button type="submit" disabled={loading} className="w-full bg-white/10 hover:bg-white/20 border border-white/10 text-white py-4 rounded-xl font-black uppercase active:scale-95 transition-all text-xs tracking-wider flex items-center justify-center gap-2">
+              {loading ? <Icon name="loader-2" className="w-5 h-5 animate-spin" /> : 'Access Field App'}
+            </button>
+          </form>
+        )}
       </div>
     </div>
   );
@@ -1221,6 +1333,10 @@ export default function App() {
   ]);
   const [activeEmployee, setActiveEmp] = useState(null);
   
+  // Multi-tenant SaaS state
+  const [tenantId, setTenantId] = useState(null);
+  const [user, setUser] = useState(null);
+  
   // Custom states
   const [activeMapAddress, setMapAddress] = useState('');
   const [aiOpen, setAIOpen] = useState(false);
@@ -1270,18 +1386,38 @@ export default function App() {
 
   const refresh = useCallback(async () => {
     setLoad(true);
-    const { data: j } = await sb.from('elevore_missions').select('*').order('created_at', { ascending: false });
-    const { data: c } = await sb.from('clients').select('*');
-    const { data: s } = await sb.from('staff_profiles').select('*');
+    let qMissions = sb.from('elevore_missions').select('*').order('created_at', { ascending: false });
+    let qClients = sb.from('clients').select('*');
+    let qStaff = sb.from('staff_profiles').select('*');
+    
+    // SaaS Multi-tenant filter
+    if (tenantId) {
+      qMissions = qMissions.eq('tenant_id', tenantId);
+      qClients = qClients.eq('tenant_id', tenantId);
+      qStaff = qStaff.eq('tenant_id', tenantId);
+    } else {
+      qMissions = qMissions.is('tenant_id', null);
+      qClients = qClients.is('tenant_id', null);
+      qStaff = qStaff.is('tenant_id', null);
+    }
+
+    const { data: j } = await qMissions;
+    const { data: c } = await qClients;
+    const { data: s } = await qStaff;
+    
     if (j) setJobs(j);
     if (c) setClients(c);
-    
-    // Sync with database staff profiles if available
-    if (s && s.length > 0) {
-      setStaff(s);
-    }
+    if (s && s.length > 0) setStaff(s);
     setLoad(false);
-  }, []);
+  }, [tenantId]);
+
+  const handleLoginSuccess = (assignedRole, assignedTenantId, authUser, activeEmp) => {
+    setRole(assignedRole);
+    setTenantId(assignedTenantId);
+    if (authUser) setUser(authUser);
+    if (activeEmp) setActiveEmp(activeEmp);
+    setView(assignedRole === 'admin' ? 'brief' : 'staff');
+  };
 
   useEffect(() => { if (view !== 'auth') refresh(); }, [view, refresh]);
 
@@ -1333,11 +1469,11 @@ export default function App() {
     if (!state.name || !state.address) return tt('Fill Name and Address', 'red');
     setLoad(true);
     try {
-      const { data: c, error: cErr } = await sb.from('clients').upsert({ name: state.name, phone: state.phone, address: state.address, membership: state.membership, specs: { ...state } }, { onConflict: 'name' }).select().single();
+      const { data: c, error: cErr } = await sb.from('clients').upsert({ name: state.name, phone: state.phone, address: state.address, membership: state.membership, specs: { ...state }, tenant_id: tenantId }, { onConflict: 'name' }).select().single();
       if (cErr || !c) { tt('Clients Error: ' + (cErr?.message || 'Check RLS'), 'red'); setLoad(false); return; }
       const fd = { 'weekly': 7, 'bi-weekly': 14, 'monthly': 30, 'one-time': null }[state.frequency];
       let nv = null; if (fd && state.date) { const d = new Date(state.date); d.setDate(d.getDate() + fd); nv = d.toISOString().split('T')[0]; }
-      const payload = { client_name: state.name, client_phone: state.phone, address: state.address, service_type: state.svc, total_price: pricing.total, deposit_paid: state.deposit, team_assigned: state.team, status: state.status, specs: { ...state, referral: refCode || null }, scheduled_date: state.date || null, notes: state.notes || null, next_visit: nv, membership_plan: state.membership || null, urgency_expires: state.urgencyHours ? new Date(Date.now() + state.urgencyHours * 3600000).toISOString() : null };
+      const payload = { client_name: state.name, client_phone: state.phone, address: state.address, service_type: state.svc, total_price: pricing.total, deposit_paid: state.deposit, team_assigned: state.team, status: state.status, specs: { ...state, referral: refCode || null }, scheduled_date: state.date || null, notes: state.notes || null, next_visit: nv, membership_plan: state.membership || null, urgency_expires: state.urgencyHours ? new Date(Date.now() + state.urgencyHours * 3600000).toISOString() : null, tenant_id: tenantId };
       const { error: jErr } = editId ? await sb.from('elevore_missions').update(payload).eq('id', editId) : await sb.from('elevore_missions').insert([payload]);
       if (jErr) { tt('Mission Error: ' + jErr.message, 'red'); setLoad(false); return; }
       setState(INIT); setEdit(null);
@@ -1410,7 +1546,7 @@ export default function App() {
         passcode: newStaffPIN,
         wallet_balance: 0,
         total_earned: 0,
-        tenant_id: 'ceijlgurveaalvjmptns'
+        tenant_id: tenantId
       }]);
       tt('Staff added successfully! 👤');
     } catch {
@@ -1630,48 +1766,8 @@ ${job.final_signature ? `<div class="sig"><p style="font-size:10px;color:#999;ma
   };
 
   if (view === 'landing') return <LandingPage onLogin={() => setView('auth')} onSignup={() => setView('signup')} />;
-  if (view === 'signup') return <OnboardingFlow onBack={() => setView('landing')} />;
-
-  if (view === 'auth') return (
-    <div className="min-h-screen flex items-center justify-center p-6 mesh-bg animate-in fade-in duration-1000">
-      <Toast />
-      <div className="g p-10 w-full max-w-sm text-center space-y-7 border-t-4 border-[#F5C518] shadow-[0_0_50px_rgba(245,197,24,0.15)] bg-black/60 backdrop-blur-2xl">
-        <img src="/elevore-logo.png" alt="Elevore Logo" className="w-20 h-20 object-contain mx-auto drop-shadow-[0_0_20px_rgba(245,197,24,0.4)] animate-pulse" />
-        <div>
-          <h1 className="text-2xl font-black uppercase tracking-tighter text-white">ELEVORE <span className="text-gradient italic">EMPIRE</span></h1>
-          <p className="text-[7px] text-slate-500 uppercase tracking-widest mt-1">v97.0 — Premium SaaS Command</p>
-        </div>
-        
-        {/* ACCESS PIN INPUT */}
-        <input type="password" placeholder="ACCESS PIN" className="inp text-center text-xl tracking-[0.5em] text-[#F5C518]" onChange={e => setPass(e.target.value)} onKeyDown={e => {
-          if (e.key === 'Enter') {
-            const matchedStaff = staff.find(s => s.passcode === pass);
-            if (matchedStaff) {
-              setActiveEmp(matchedStaff);
-              setRole(matchedStaff.role);
-              setView(matchedStaff.role === 'admin' ? 'brief' : 'staff');
-              tt(`Bienvenido ${matchedStaff.name} ✓`);
-            } else {
-              tt('Access Denied', 'red');
-            }
-          }
-        }} />
-        <div className="flex gap-2">
-          <button onClick={() => {
-            const matchedStaff = staff.find(s => s.passcode === pass);
-            if (matchedStaff) {
-              setActiveEmp(matchedStaff);
-              setRole(matchedStaff.role);
-              setView(matchedStaff.role === 'admin' ? 'brief' : 'staff');
-              tt(`Bienvenido ${matchedStaff.name} ✓`);
-            } else {
-              tt('Access Denied', 'red');
-            }
-          }} className="w-full bg-[#F5C518] hover:bg-[#F5C518]/90 text-black py-4 rounded-xl font-black uppercase active:scale-95 shadow-xl shadow-[#F5C518]/15 transition-all text-xs tracking-wider">Ingresar</button>
-        </div>
-      </div>
-    </div>
-  );
+  if (view === 'signup') return <OnboardingFlow onBack={() => setView('landing')} tt={tt} />;
+  if (view === 'auth') return <LoginFlow onBack={() => setView('landing')} onLoginSuccess={handleLoginSuccess} tt={tt} />;
 
   // Staff View Mobile Operations Check-in Checklist
   if (role === 'staff' && aStaff) {
@@ -1769,7 +1865,7 @@ ${job.final_signature ? `<div class="sig"><p style="font-size:10px;color:#999;ma
                 <Icon name={isPrivate ? 'eye-off' : 'eye'} className="w-4 h-4" />
               </button>
             )}
-            <button onClick={() => { setRole('admin'); setView('auth'); setPass(''); setMobileMenuOpen(false); }} className="flex-1 py-3 bg-red-900/10 hover:bg-red-900/20 text-red-500 rounded-xl active:scale-95 flex items-center justify-center border border-red-500/10 transition-all font-black text-[10px] uppercase tracking-wider">
+            <button onClick={() => { setTenantId(null); setUser(null); setRole('admin'); setView('landing'); setPass(''); setMobileMenuOpen(false); }} className="flex-1 py-3 bg-red-900/10 hover:bg-red-900/20 text-red-500 rounded-xl active:scale-95 flex items-center justify-center border border-red-500/10 transition-all font-black text-[10px] uppercase tracking-wider">
               <Icon name="log-out" className="w-4 h-4" />
             </button>
           </div>
