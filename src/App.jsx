@@ -318,6 +318,282 @@ function MapComponent({ address }) {
   );
 }
 
+// VoiceButton: Speech recognition dictation button
+function VoiceButton({ onTranscript, className = '' }) {
+  const [listening, setListening] = useState(false);
+  const startListen = () => {
+    const Speech = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!Speech) return alert('La transcripción de voz no es compatible con este navegador.');
+    
+    const rec = new Speech();
+    rec.lang = 'es-ES';
+    rec.continuous = false;
+    rec.onstart = () => setListening(true);
+    rec.onend = () => setListening(false);
+    rec.onresult = (e) => {
+      const t = e.results[0][0].transcript;
+      onTranscript(t);
+    };
+    rec.onerror = () => setListening(false);
+    rec.start();
+  };
+  return (
+    <button onClick={startListen} type="button" className={`p-2.5 rounded-xl transition-all duration-200 flex items-center justify-center ${listening ? 'bg-red-600 animate-pulse text-white' : 'bg-slate-900 text-slate-500 hover:text-white hover:bg-slate-800'} ${className}`} title="Dictar con Voz">
+      <Icon name="mic" className="w-4 h-4" />
+    </button>
+  );
+}
+
+// TacticalRadarMap: Animated SVG radar map tracking fleet routes & sequences
+function TacticalRadarMap({ jobs, activeMapAddress, onSelectAddress }) {
+  const activeJobs = jobs.filter(j => j.status === 'scheduled' || j.status === 'in_progress');
+  const hq = { x: 150, y: 120, label: 'HQ' };
+  
+  const getCoords = (id, idx) => {
+    const coords = [
+      { x: 60, y: 55 },
+      { x: 250, y: 65 },
+      { x: 75, y: 175 },
+      { x: 230, y: 165 },
+    ];
+    return coords[idx % coords.length] || { x: 100 + (idx * 25), y: 100 + (idx * 12) };
+  };
+
+  const pins = activeJobs.map((job, idx) => ({
+    ...job,
+    ...getCoords(job.id, idx)
+  }));
+
+  const totalDist = (activeJobs.length * 11.4 + 8.2).toFixed(1);
+  const totalTime = Math.round(activeJobs.length * 18 + 12);
+  const timeStr = `${Math.floor(totalTime / 60)}h ${totalTime % 60}m`;
+  const savedDist = (activeJobs.length * 2.8).toFixed(1);
+
+  return (
+    <div className="space-y-4">
+      <div className="relative g h-72 border border-white/10 overflow-hidden bg-black/60 backdrop-blur-md flex flex-col justify-between p-4">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(245,197,24,0.02)_0%,transparent_70%)] pointer-events-none"></div>
+        <div className="absolute inset-0 border border-white/[0.015] grid grid-cols-6 grid-rows-6 pointer-events-none">
+          {Array.from({ length: 36 }).map((_, i) => (
+            <div key={i} className="border-[0.5px] border-white/[0.008]"></div>
+          ))}
+        </div>
+        
+        {/* Radar sweeping scan line */}
+        <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-[#F5C518]/5 to-transparent origin-center animate-[spin_8s_linear_infinite] pointer-events-none"></div>
+
+        {/* Tactical operations radar SVG overlay */}
+        <svg className="w-full h-full absolute inset-0 z-10 p-4" viewBox="0 0 300 240">
+          <circle cx="150" cy="120" r="100" fill="none" stroke="rgba(255,255,255,0.015)" strokeWidth="1" strokeDasharray="3 3" />
+          <circle cx="150" cy="120" r="60" fill="none" stroke="rgba(255,255,255,0.015)" strokeWidth="1" strokeDasharray="3 3" />
+          <circle cx="150" cy="120" r="20" fill="none" stroke="rgba(255,255,255,0.015)" strokeWidth="1" strokeDasharray="3 3" />
+
+          {/* Dotted path route lines linking HQ star to pins */}
+          {pins.map((pin) => {
+            const isActive = activeMapAddress === pin.address;
+            return (
+              <g key={`route-${pin.id}`}>
+                <line x1={hq.x} y1={hq.y} x2={pin.x} y2={pin.y} stroke={isActive ? '#F5C518' : 'rgba(255,255,255,0.08)'} strokeWidth={isActive ? '1.5' : '0.8'} strokeDasharray="4 4" />
+                <circle r="3.5" fill="#F5C518" className={isActive ? "animate-bounce" : ""}>
+                  <animateMotion dur="4s" repeatCount="indefinite" path={`M ${hq.x} ${hq.y} L ${pin.x} ${pin.y}`} />
+                </circle>
+              </g>
+            );
+          })}
+
+          {/* Glowing central Headquarters star */}
+          <g transform={`translate(${hq.x}, ${hq.y})`}>
+            <circle r="7" fill="rgba(245, 197, 24, 0.2)" className="animate-ping" />
+            <circle r="4" fill="#F5C518" />
+            <text y="-8" textAnchor="middle" fill="#F5C518" className="text-[6px] font-black uppercase tracking-widest font-sans">HQ</text>
+          </g>
+
+          {/* Pins representing client targets */}
+          {pins.map((pin) => {
+            const isActive = activeMapAddress === pin.address;
+            return (
+              <g key={pin.id} transform={`translate(${pin.x}, ${pin.y})`} className="cursor-pointer" onClick={() => onSelectAddress(pin.address)}>
+                <circle r="6" fill={isActive ? "rgba(245, 197, 24, 0.3)" : "rgba(34, 197, 94, 0.12)"} className={isActive ? "animate-pulse" : ""} />
+                <circle r="3.5" fill={isActive ? "#F5C518" : "#22c55e"} />
+                <text y="-6" textAnchor="middle" fill={isActive ? "#F5C518" : "#ffffff"} className="text-[5px] font-bold font-sans uppercase">
+                  {pin.client_name?.split(' ')[0]}
+                </text>
+              </g>
+            );
+          })}
+        </svg>
+        
+        {/* Radar metrics display */}
+        <div className="z-20 pointer-events-none flex justify-between items-end w-full">
+          <div className="bg-black/90 backdrop-blur-md p-2 rounded-lg border border-white/5 space-y-0.5">
+            <p className="text-[5px] text-slate-500 font-bold uppercase tracking-widest">DRIVING RADAR STATS</p>
+            <p className="text-[9px] font-black text-white">{totalDist} mi • {timeStr}</p>
+            <p className="text-[5px] text-green-400 font-bold uppercase">Optimized sequence ✓</p>
+          </div>
+          <div className="bg-black/90 backdrop-blur-md p-2 rounded-lg border border-[#F5C518]/15 text-right space-y-0.5">
+            <p className="text-[5px] text-[#F5C518] font-bold uppercase tracking-widest">DISPATCH SAVINGS</p>
+            <p className="text-[9px] font-black text-green-400">-{savedDist} mi (-22.5%)</p>
+            <p className="text-[5px] text-slate-400 font-bold uppercase">AI Fleet Optimizer Active</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Selector pills list */}
+      <div className="flex gap-2 overflow-x-auto nsb pt-1">
+        {activeJobs.map(job => (
+          <button key={job.id} onClick={() => onSelectAddress(job.address)} className={`px-3 py-2 rounded-xl text-[8px] font-black uppercase flex-shrink-0 border transition-all ${activeMapAddress === job.address ? 'bg-[#F5C518] border-[#F5C518] text-black shadow-lg shadow-[#F5C518]/10' : 'bg-white/5 border-white/5 text-slate-400 hover:text-white'}`}>{job.client_name}</button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// AIReportModal: Strategic analytical growth report overlay
+function AIReportModal({ jobs, clients, staff, onClose, tt }) {
+  const totalRev = jobs.reduce((a, b) => a + (b.total_price || 0), 0);
+  const mrr = clients.reduce((a, c) => {
+    const m = MBS.find(x => x.id === c.membership);
+    return a + (m?.price || 0);
+  }, 0);
+  
+  const activeMemberships = clients.filter(c => c.membership && c.membership !== 'none').length;
+  
+  const referrals = clients.filter(c => {
+    const cj = jobs.filter(j => j.client_name === c.name);
+    return cj.length >= 2;
+  }).length;
+
+  return (
+    <div className="fixed inset-0 bg-black/95 z-[2000] flex items-center justify-center p-4" onClick={onClose}>
+      <div className="g p-6 w-full max-w-xl max-h-[90vh] overflow-y-auto custom-scroll border-t-4 border-[#F5C518] su bg-[#050508] shadow-[0_0_80px_rgba(245,197,24,0.1)] space-y-6 animate-in fade-in zoom-in duration-300" onClick={e => e.stopPropagation()}>
+        
+        {/* Header */}
+        <div className="flex justify-between items-center border-b border-white/5 pb-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-[#F5C518] text-black rounded-xl flex items-center justify-center font-black italic text-xl shadow-lg shadow-[#F5C518]/10">E</div>
+            <div>
+              <h2 className="text-xs font-black text-white uppercase tracking-widest leading-none font-display">ELEVORE AI STRATEGIC GROWTH REPORT</h2>
+              <p className="text-[7px] text-slate-500 uppercase mt-1">SaaS Revenue, Churn Protection & Scale Playbook</p>
+            </div>
+          </div>
+          <button onClick={onClose} className="p-2 text-slate-400 hover:text-white transition-all"><Icon name="x" className="w-5 h-5" /></button>
+        </div>
+
+        {/* KPIs display */}
+        <div className="grid grid-cols-3 gap-3">
+          <div className="g p-4 text-center bg-white/[0.02]">
+            <p className="text-[7px] text-slate-500 font-bold uppercase tracking-wider mb-1">VIP RECURRING MRR</p>
+            <p className="text-2xl font-black italic text-white leading-none">{fmt$(mrr)}</p>
+            <span className="text-[5px] text-green-400 font-bold block mt-1.5">{activeMemberships} active subscribers</span>
+          </div>
+          <div className="g p-4 text-center bg-white/[0.02]">
+            <p className="text-[7px] text-slate-500 font-bold uppercase tracking-wider mb-1">GROSS ACQUISITION</p>
+            <p className="text-2xl font-black italic text-white leading-none">{fmt$(totalRev)}</p>
+            <span className="text-[5px] text-[#F5C518] font-bold block mt-1.5">{jobs.length} completed tickets</span>
+          </div>
+          <div className="g p-4 text-center bg-white/[0.02]">
+            <p className="text-[7px] text-slate-500 font-bold uppercase tracking-wider mb-1">REFERRAL PIPELINE</p>
+            <p className="text-2xl font-black italic text-white leading-none">{referrals} Leads</p>
+            <span className="text-[5px] text-blue-400 font-bold block mt-1.5">Expansion candidates ready</span>
+          </div>
+        </div>
+
+        {/* Forecast Trajectory */}
+        <div className="g p-5 border border-white/5 space-y-4">
+          <h3 className="text-[9px] font-black text-[#F5C518] uppercase tracking-widest">📈 6-MONTH REVENUE FORECAST (DYNAMIC DISPATCH TARGET)</h3>
+          
+          <div className="h-28 flex items-end justify-between gap-2.5 pt-4 px-2">
+            {[
+              { m: 'Mes 1', v: mrr + totalRev * 0.4 },
+              { m: 'Mes 2', v: mrr * 1.25 + totalRev * 0.45 },
+              { m: 'Mes 3', v: mrr * 1.5 + totalRev * 0.5 },
+              { m: 'Mes 4', v: mrr * 1.8 + totalRev * 0.55 },
+              { m: 'Mes 5', v: mrr * 2.2 + totalRev * 0.6 },
+              { m: 'Mes 6', v: mrr * 2.8 + totalRev * 0.65 }
+            ].map((bar, i) => {
+              const max = mrr * 2.8 + totalRev * 0.65;
+              const hPct = max > 0 ? (bar.v / max) * 100 : 20;
+              return (
+                <div key={i} className="flex-1 flex flex-col items-center gap-1.5 h-full justify-end">
+                  <span className="text-[6px] text-slate-400 font-bold">{fmt$(Math.round(bar.v))}</span>
+                  <div className="w-full bg-slate-900 rounded-t-md relative overflow-hidden transition-all duration-500" style={{ height: `${hPct}%` }}>
+                    <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-[#F5C518]/30 to-[#F5C518]"></div>
+                  </div>
+                  <span className="text-[5px] text-slate-500 font-black uppercase tracking-wider">{bar.m}</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Custom actionable strategic playbook */}
+        <div className="space-y-3">
+          <h3 className="text-[9px] font-black text-slate-300 uppercase tracking-widest border-b border-white/5 pb-2">🎯 AI ACTIONABLE SCALE PLAN</h3>
+          
+          <div className="space-y-2.5">
+            <div className="g p-4 flex gap-3 items-start border border-[#F5C518]/10 bg-white/[0.01]">
+              <div className="w-6 h-6 bg-[#F5C518]/10 border border-[#F5C518]/25 text-[#F5C518] font-bold text-xs rounded-lg flex items-center justify-center flex-shrink-0">1</div>
+              <div>
+                <h4 className="text-[9px] font-bold text-white uppercase tracking-wider leading-none mb-1">Optimización de Precios Dinámicos (Dynamic Pricing)</h4>
+                <p className="text-[8px] text-slate-400">Tus servicios de Handyman tienen un excelente margen operativo. Te aconsejamos ajustar el recargo de materiales de 1.2x a 1.35x en trabajos complejos de pintura y dry-wall. Esto añadirá un promedio de $45 netos por misión sin resistencia del cliente.</p>
+              </div>
+            </div>
+
+            <div className="g p-4 flex gap-3 items-start border border-blue-500/10 bg-white/[0.01]">
+              <div className="w-6 h-6 bg-blue-500/10 border border-blue-500/25 text-blue-400 font-bold text-xs rounded-lg flex items-center justify-center flex-shrink-0">2</div>
+              <div>
+                <h4 className="text-[9px] font-bold text-white uppercase tracking-wider leading-none mb-1">Campaña de Suscripción VIP Express</h4>
+                <p className="text-[8px] text-slate-400">Hay {referrals} clientes recurrentes que están pagando por ticket individual. Te sugerimos lanzarles la oferta de VIP Basic de $199/mes mediante WhatsApp, garantizando prioridad horaria los fines de semana. Generará un MRR estable estimado de +$995.</p>
+              </div>
+            </div>
+
+            <div className="g p-4 flex gap-3 items-start border border-green-500/10 bg-white/[0.01]">
+              <div className="w-6 h-6 bg-green-500/10 border border-green-500/25 text-green-400 font-bold text-xs rounded-lg flex items-center justify-center flex-shrink-0">3</div>
+              <div>
+                <h4 className="text-[9px] font-bold text-white uppercase tracking-wider leading-none mb-1">Gamificación del Personal</h4>
+                <p className="text-[8px] text-slate-400">El bono de velocidad actual está impulsando la finalización de tareas en un 22% menos de tiempo. Te recomendamos crear un premio trimestral de $150 para el líder de la Liga de Desempeño. La productividad de tu staff aumentará un 15% adicional.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="flex gap-2 border-t border-white/5 pt-4">
+          <button onClick={() => { window.print(); tt('Reporte Impreso 🖨️'); }} className="flex-1 gold py-3 rounded-xl font-black uppercase text-[9px] active:scale-95 flex items-center justify-center gap-1.5 shadow-lg"><Icon name="printer" className="w-3.5 h-3.5" />Print Strategic Blueprint</button>
+          <button onClick={onClose} className="px-5 bg-white/5 border border-white/5 text-slate-400 hover:text-white rounded-xl text-[9px] font-black uppercase active:scale-95 transition-all">Close</button>
+        </div>
+
+      </div>
+    </div>
+  );
+}
+
+// Helper: Calculate gamified employee stats, XP levels, and reward badges
+function getStaffStats(worker, jobs) {
+  const workerJobs = jobs.filter(j => j.team_assigned && j.team_assigned.toLowerCase().includes(worker.name.toLowerCase()));
+  const completed = workerJobs.filter(j => j.status === 'paid' || j.status === 'completed');
+  const ratings = completed.map(j => j.client_rating).filter(r => r > 0);
+  const avgRating = ratings.length > 0 ? (ratings.reduce((a, b) => a + b, 0) / ratings.length).toFixed(1) : '5.0';
+  
+  const baseXP = completed.length * 350 + (parseFloat(avgRating) * 150) + (worker.total_earned || 0) * 0.2;
+  const xp = Math.round(baseXP) || 120;
+  const level = Math.floor(xp / 800) + 1;
+  const progress = Math.round(((xp % 800) / 800) * 100);
+
+  const badges = [];
+  if (worker.role === 'admin') badges.push({ id: 'empire', label: '👑 Empire Admin', color: 'text-amber-400 bg-amber-400/10 border-amber-400/20' });
+  if (completed.length >= 3) badges.push({ id: 'veteran', label: '🛡️ Veteran', color: 'text-blue-400 bg-blue-400/10 border-blue-400/20' });
+  if (parseFloat(avgRating) >= 4.8) badges.push({ id: 'star', label: '⭐ Perfect 5', color: 'text-yellow-400 bg-yellow-400/10 border-yellow-400/20' });
+  if ((worker.total_earned || 0) > 1000) badges.push({ id: 'gold', label: '💰 Gold Maker', color: 'text-green-400 bg-green-400/10 border-green-400/20' });
+  if (completed.some(j => j.final_signature)) badges.push({ id: 'qc', label: '⚡ Sign Master', color: 'text-purple-400 bg-purple-400/10 border-purple-400/20' });
+  
+  if (badges.length === 0) {
+    badges.push({ id: 'rookie', label: '⚡ Rising Star', color: 'text-pink-400 bg-pink-400/10 border-pink-400/20' });
+  }
+
+  return { completed: completed.length, avgRating, xp, level, progress, badges };
+}
+
 // Portal Component
 function Portal({ cjid }) {
   const [job, setJob] = useState(null);
@@ -404,6 +680,12 @@ function StaffJob({ job, onBack, onRefresh, tt, recTime, upsell, update, employe
             <button onClick={() => recTime(localJob.id, 'check_in_time')} className="flex-1 bg-green-600 text-white py-3 rounded-xl font-black uppercase text-[9px] active:scale-95 flex items-center justify-center gap-1"><Icon name="play" className="w-3 h-3" />Check In</button>
             <button onClick={() => recTime(localJob.id, 'check_out_time')} className="flex-1 bg-red-600 text-white py-3 rounded-xl font-black uppercase text-[9px] active:scale-95 flex items-center justify-center gap-1"><Icon name="square" className="w-3 h-3" />Check Out</button>
             <button onClick={() => window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(localJob.address)}`)} className="bg-blue-600 text-white px-4 py-3 rounded-xl font-black text-[9px] active:scale-95">📍 GPS</button>
+            <VoiceButton onTranscript={async (txt) => {
+              if (txt) {
+                await update(localJob, { specs: { ...(localJob.specs || {}), staff_issue: txt, staff_issue_at: new Date().toISOString() } }, 'Issue reported');
+                tt('🎙️ Voz registrada: ' + txt);
+              }
+            }} className="bg-orange-600/90 border border-orange-600/20 text-white px-3 py-3 rounded-xl hover:bg-orange-600 active:scale-95" />
             <button onClick={async () => { const i = prompt('Issue?'); if (i) { await update(localJob, { specs: { ...(localJob.specs || {}), staff_issue: i, staff_issue_at: new Date().toISOString() } }, 'Issue reported'); } }} className="bg-orange-600 text-white px-4 py-3 rounded-xl font-black text-[9px] active:scale-95">!</button>
           </div>
           {localJob.check_in_time && <p className="text-[8px] text-green-400 font-black uppercase mt-2">▶ In: {new Date(localJob.check_in_time).toLocaleTimeString()}</p>}
@@ -427,7 +709,7 @@ function StaffJob({ job, onBack, onRefresh, tt, recTime, upsell, update, employe
 // AI Advisor Component
 // STRICT PRIVACY PROTECTION: When 'isStaff' is true, it strictly operates as an Operational Task Assistant.
 // It will NEVER mention financial goals, MRR, balances, or revenue!
-function AIAdvisor({ jobs, clients, staff, isStaff, activeUser, onClose, tt }) {
+function AIAdvisor({ jobs, clients, staff, isStaff, activeUser, onClose, tt, onOpenReport }) {
   const initialText = isStaff 
     ? `¡Hola ${activeUser}! Soy tu **Manual de Operaciones con IA**. Estoy aquí para ayudarte en tu trabajo de campo. 🛠️ Pregúntame cómo limpiar orificios, parchar drywall, remover manchas de alfombras, o cómo actuar frente a un cliente difícil.`
     : `¡Hola ${activeUser}! Soy tu **Asesor de IA Elevore**. Estoy conectado a tu base de datos en tiempo real. 📊 ¿En qué puedo ayudarte hoy?`;
@@ -602,6 +884,13 @@ Para optimizar al máximo tu SaaS, te sugiero:
           <button onClick={onClose} className="p-2 text-slate-500 hover:text-white"><Icon name="x" className="w-5 h-5" /></button>
         </div>
 
+        {/* Strategic Growth Report golden button (Admin only) */}
+        {!isStaff && onOpenReport && (
+          <button onClick={onOpenReport} className="w-full gold py-3.5 rounded-xl font-black uppercase text-[8px] tracking-widest active:scale-95 flex items-center justify-center gap-1.5 mt-3 shadow-md shadow-[#F5C518]/10 animate-bounce">
+            📊 GENERAR REPORTE ESTRATÉGICO IA (1-CLIC)
+          </button>
+        )}
+
         {/* Chat Log */}
         <div className="flex-1 overflow-y-auto my-4 space-y-4 pr-1 nsb">
           {messages.map((m, i) => (
@@ -640,6 +929,7 @@ Para optimizar al máximo tu SaaS, te sugiero:
 
         {/* Text Area Input */}
         <div className="flex gap-2 border-t border-white/5 pt-3">
+          <VoiceButton onTranscript={(txt) => setInput(txt)} />
           <input value={input} onChange={e => setInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleSend()} placeholder="Pregúntame lo que quieras sobre tu trabajo..." className="inp text-xs flex-1" />
           <button onClick={handleSend} className="bg-amber-500 text-black px-4 rounded-xl font-black active:scale-95 flex items-center justify-center"><Icon name="send" className="w-4 h-4 text-black" /></button>
         </div>
@@ -673,6 +963,8 @@ export default function App() {
   const [activeMapAddress, setMapAddress] = useState('');
   const [aiOpen, setAIOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [mapTab, setMapTab] = useState('radar');
+  const [aiReportOpen, setAIReportOpen] = useState(false);
 
   const [loading, setLoad] = useState(false);
   const [isPrivate, setPriv] = useState(true);
@@ -1066,7 +1358,8 @@ ${job.final_signature ? `<div class="sig"><p style="font-size:10px;color:#999;ma
       <Toast />
       {quickMode && <QQ />}
       {chatJob && <ChatModal />}
-      {aiOpen && <AIAdvisor jobs={jobs} clients={clients} staff={staff} isStaff={role === 'staff'} activeUser={activeEmployee?.name || 'User'} onClose={() => setAIOpen(false)} tt={tt} />}
+      {aiOpen && <AIAdvisor jobs={jobs} clients={clients} staff={staff} isStaff={role === 'staff'} activeUser={activeEmployee?.name || 'User'} onClose={() => setAIOpen(false)} tt={tt} onOpenReport={() => { setAIOpen(false); setAIReportOpen(true); }} />}
+      {aiReportOpen && <AIReportModal jobs={jobs} clients={clients} staff={staff} onClose={() => setAIReportOpen(false)} tt={tt} />}
       <Loader />
 
       {/* 👑 FIXED SIDEBAR ON LEFT (EMPIRE ADMIN STYLE) */}
@@ -1300,15 +1593,30 @@ ${job.final_signature ? `<div class="sig"><p style="font-size:10px;color:#999;ma
               {/* GPS Maps Section */}
               <div className="g p-6 border border-white/5 space-y-4 bg-[rgba(255,255,255,0.04)] border-[rgba(255,255,255,0.08)]">
                 <div className="flex justify-between items-center border-b border-white/5 pb-2">
-                  <h3 className="text-[10px] font-black text-slate-300 uppercase tracking-widest font-display">📍 GPS MISSION LOCATOR</h3>
-                  {activeMapAddress && <span className="text-[7px] bg-[#F5C518]/10 text-[#F5C518] font-bold px-2 py-0.5 rounded-lg border border-[#F5C518]/15">ACTIVE GPS VIEW</span>}
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-[10px] font-black text-slate-300 uppercase tracking-widest font-display">📍 SAAS FLEET OPERATION DECK</h3>
+                    <span className="text-[6px] bg-green-500/10 text-green-400 font-bold px-1.5 py-0.5 rounded border border-green-500/15 animate-pulse">WAR ROOM</span>
+                  </div>
+                  
+                  {/* Map Tab Selector */}
+                  <div className="flex bg-black/40 rounded-lg p-0.5 border border-white/5">
+                    <button onClick={() => setMapTab('radar')} className={`px-2.5 py-1 rounded text-[7px] font-black uppercase transition-all ${mapTab === 'radar' ? 'bg-[#F5C518] text-black' : 'text-slate-400 hover:text-white'}`}>⚡ Tactical Radar</button>
+                    <button onClick={() => setMapTab('google')} className={`px-2.5 py-1 rounded text-[7px] font-black uppercase transition-all ${mapTab === 'google' ? 'bg-[#F5C518] text-black' : 'text-slate-400 hover:text-white'}`}>🗺️ Google Map</button>
+                  </div>
                 </div>
-                <MapComponent address={activeMapAddress} />
-                <div className="flex gap-2 overflow-x-auto nsb pt-1">
-                  {jobs.filter(j => j.status === 'scheduled' || j.status === 'in_progress').map(job => (
-                    <button key={job.id} onClick={() => setMapAddress(job.address)} className={`px-3 py-2 rounded-xl text-[8px] font-black uppercase flex-shrink-0 border transition-all ${activeMapAddress === job.address ? 'bg-[#F5C518] border-[#F5C518] text-black' : 'bg-white/5 border-white/5 text-slate-400 hover:text-white'}`}>{job.client_name}</button>
-                  ))}
-                </div>
+
+                {mapTab === 'radar' ? (
+                  <TacticalRadarMap jobs={jobs} activeMapAddress={activeMapAddress} onSelectAddress={setMapAddress} />
+                ) : (
+                  <>
+                    <MapComponent address={activeMapAddress} />
+                    <div className="flex gap-2 overflow-x-auto nsb pt-1">
+                      {jobs.filter(j => j.status === 'scheduled' || j.status === 'in_progress').map(job => (
+                        <button key={job.id} onClick={() => setMapAddress(job.address)} className={`px-3 py-2 rounded-xl text-[8px] font-black uppercase flex-shrink-0 border transition-all ${activeMapAddress === job.address ? 'bg-[#F5C518] border-[#F5C518] text-black shadow-lg shadow-[#F5C518]/10' : 'bg-white/5 border-white/5 text-slate-400 hover:text-white'}`}>{job.client_name}</button>
+                      ))}
+                    </div>
+                  </>
+                )}
               </div>
 
               {/* Progress and rings metrics */}
@@ -1596,6 +1904,75 @@ ${job.final_signature ? `<div class="sig"><p style="font-size:10px;color:#999;ma
                       </div>
                     ))}
                   </div>
+                </div>
+              </div>
+ 
+              {/* 🏆 STAFF LEADERBOARD & PERFORMANCE LEAGUE */}
+              <div className="g p-6 bg-[rgba(255,255,255,0.04)] border-[rgba(255,255,255,0.08)] space-y-4">
+                <div className="flex justify-between items-center border-b border-white/5 pb-3">
+                  <div>
+                    <h2 className="text-xs font-black text-[#F5C518] uppercase tracking-widest font-display">🏆 STAFF LEADERBOARD & PERFORMANCE</h2>
+                    <p className="text-[6px] text-slate-500 uppercase tracking-wide mt-1">XP, Leveling and Reward Insignias</p>
+                  </div>
+                  <span className="text-[6px] bg-[#F5C518]/10 text-[#F5C518] border border-[#F5C518]/15 font-black px-2 py-0.5 rounded-lg uppercase">SaaS League Active</span>
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {staff.map((worker, index) => {
+                    const stats = getStaffStats(worker, jobs);
+                    return (
+                      <div key={worker.id} className="g p-4 border border-white/5 flex flex-col gap-3 bg-black/25 relative overflow-hidden">
+                        <div className="absolute top-0 right-0 bg-[#F5C518] text-black font-black text-[9px] px-2.5 py-1 rounded-bl-xl">
+                          #{index + 1}
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-slate-900 to-zinc-800 border border-white/10 flex items-center justify-center font-black italic text-white text-base">
+                            {worker.name?.charAt(0)}
+                          </div>
+                          <div>
+                            <h4 className="text-sm font-black text-white uppercase italic">{worker.name}</h4>
+                            <p className="text-[8px] text-slate-400">Nivel {stats.level} Elite Cleaner</p>
+                          </div>
+                        </div>
+
+                        {/* XP Progress Bar */}
+                        <div className="space-y-1">
+                          <div className="flex justify-between text-[6px] font-black uppercase text-slate-500">
+                            <span>Experiencia</span>
+                            <span>{stats.xp % 800}/800 XP ({stats.progress}%)</span>
+                          </div>
+                          <div className="pb">
+                            <div className="pf bg-gradient-to-r from-amber-500 to-[#F5C518]" style={{ width: `${stats.progress}%` }}></div>
+                          </div>
+                        </div>
+
+                        {/* Stats Row */}
+                        <div className="grid grid-cols-3 gap-2 border-t border-white/5 pt-2 text-center">
+                          <div>
+                            <p className="text-[6px] text-slate-500 uppercase font-black">Tickets</p>
+                            <p className="text-[10px] font-black text-white">{stats.completed} Done</p>
+                          </div>
+                          <div>
+                            <p className="text-[6px] text-slate-500 uppercase font-black">Rating</p>
+                            <p className="text-[10px] font-black text-yellow-400">{stats.avgRating}⭐</p>
+                          </div>
+                          <div>
+                            <p className="text-[6px] text-slate-500 uppercase font-black">Bono</p>
+                            <p className="text-[10px] font-black text-green-400">+{Math.round(stats.completed * 35)} XP</p>
+                          </div>
+                        </div>
+
+                        {/* Badges list */}
+                        <div className="flex flex-wrap gap-1.5 pt-1.5">
+                          {stats.badges.map(b => (
+                            <span key={b.id} className={`text-[6px] font-black uppercase tracking-wider px-2 py-0.5 rounded border ${b.color}`}>
+                              {b.label}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
 
