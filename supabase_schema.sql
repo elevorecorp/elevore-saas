@@ -87,52 +87,23 @@ ALTER TABLE public.staff_profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.clients ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.elevore_missions ENABLE ROW LEVEL SECURITY;
 
--- 6. Políticas de RLS
-CREATE POLICY "Users can view their own tenant" ON public.tenants
-    FOR SELECT USING (owner_id = auth.uid());
+-- 6. Políticas de RLS (Adaptadas para Autenticación por PIN del Frontend)
+DROP POLICY IF EXISTS "Users can view their own tenant" ON public.tenants;
+DROP POLICY IF EXISTS "Owners can update their own tenant" ON public.tenants;
+DROP POLICY IF EXISTS "Staff/Admins can read settings" ON public.tenant_settings;
+DROP POLICY IF EXISTS "Owners can edit settings" ON public.tenant_settings;
+DROP POLICY IF EXISTS "Users within same tenant can view profiles" ON public.staff_profiles;
+DROP POLICY IF EXISTS "Owners can manage profiles" ON public.staff_profiles;
+DROP POLICY IF EXISTS "Users can manage client database of their tenant" ON public.clients;
+DROP POLICY IF EXISTS "Users can manage missions of their tenant" ON public.elevore_missions;
+DROP POLICY IF EXISTS "Public anonymous clients can access their specific mission portal" ON public.elevore_missions;
+DROP POLICY IF EXISTS "Public anonymous clients can sign and rate their mission" ON public.elevore_missions;
 
-CREATE POLICY "Owners can update their own tenant" ON public.tenants
-    FOR UPDATE USING (owner_id = auth.uid());
-
-CREATE POLICY "Staff/Admins can read settings" ON public.tenant_settings
-    FOR SELECT USING (
-        tenant_id = (SELECT tenant_id FROM public.staff_profiles WHERE user_id = auth.uid())
-        OR tenant_id IN (SELECT id FROM public.tenants WHERE owner_id = auth.uid())
-    );
-
-CREATE POLICY "Owners can edit settings" ON public.tenant_settings
-    FOR UPDATE USING (
-        tenant_id IN (SELECT id FROM public.tenants WHERE owner_id = auth.uid())
-    );
-
-CREATE POLICY "Users within same tenant can view profiles" ON public.staff_profiles
-    FOR SELECT USING (
-        tenant_id = (SELECT tenant_id FROM public.staff_profiles WHERE user_id = auth.uid())
-        OR tenant_id IN (SELECT id FROM public.tenants WHERE owner_id = auth.uid())
-    );
-
-CREATE POLICY "Owners can manage profiles" ON public.staff_profiles
-    FOR ALL USING (
-        tenant_id IN (SELECT id FROM public.tenants WHERE owner_id = auth.uid())
-    );
-
-CREATE POLICY "Users can manage client database of their tenant" ON public.clients
-    FOR ALL USING (
-        tenant_id = (SELECT tenant_id FROM public.staff_profiles WHERE user_id = auth.uid())
-        OR tenant_id IN (SELECT id FROM public.tenants WHERE owner_id = auth.uid())
-    );
-
-CREATE POLICY "Users can manage missions of their tenant" ON public.elevore_missions
-    FOR ALL USING (
-        tenant_id = (SELECT tenant_id FROM public.staff_profiles WHERE user_id = auth.uid())
-        OR tenant_id IN (SELECT id FROM public.tenants WHERE owner_id = auth.uid())
-    );
-
-CREATE POLICY "Public anonymous clients can access their specific mission portal" ON public.elevore_missions
-    FOR SELECT USING (true);
-
-CREATE POLICY "Public anonymous clients can sign and rate their mission" ON public.elevore_missions
-    FOR UPDATE USING (true);
+CREATE POLICY "Enable ALL for tenants" ON public.tenants FOR ALL USING (true);
+CREATE POLICY "Enable ALL for settings" ON public.tenant_settings FOR ALL USING (true);
+CREATE POLICY "Enable ALL for profiles" ON public.staff_profiles FOR ALL USING (true);
+CREATE POLICY "Enable ALL for clients" ON public.clients FOR ALL USING (true);
+CREATE POLICY "Enable ALL for missions" ON public.elevore_missions FOR ALL USING (true);
 
 -- 7. Trigger Automático para Configuración
 CREATE OR REPLACE FUNCTION public.handle_new_tenant()
