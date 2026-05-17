@@ -1509,6 +1509,7 @@ ${job.final_signature ? `<div class="sig"><p style="font-size:10px;color:#999;ma
                 { id: 'reminders', label: 'Recordatorios', icon: 'bell' },
                 { id: 'drive', label: 'Photo Drive', icon: 'image' },
                 { id: 'payroll', label: 'Team & Payroll', icon: 'wallet' },
+                { id: 'billing', label: 'SaaS Billing', icon: 'crown' },
                 { id: 'deploy', label: 'New Estimate', icon: 'zap' }
               ].map(item => {
                 const isActive = view === item.id;
@@ -1977,12 +1978,109 @@ ${job.final_signature ? `<div class="sig"><p style="font-size:10px;color:#999;ma
                   </div>
                 ))}
               </div>
+              {dtab === 'billing' && (
+                <div className="space-y-5 animate-in fade-in">
+                  <div className="g p-8 border-t-4 border-[#F5C518] text-center relative overflow-hidden bg-black/40">
+                    <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(245,197,24,0.1),transparent)]"></div>
+                    <div className="relative z-10 space-y-4">
+                      <div className="w-16 h-16 bg-gradient-to-br from-amber-400 to-amber-600 rounded-2xl mx-auto flex items-center justify-center shadow-[0_0_30px_rgba(245,197,24,0.3)]">
+                        <Icon name="crown" className="w-8 h-8 text-black" />
+                      </div>
+                      <div>
+                        <h2 className="text-2xl font-black uppercase italic text-white tracking-widest">ELEVORE PRO</h2>
+                        <p className="text-[10px] text-amber-500 font-black uppercase tracking-[0.2em] mt-1">SaaS Subscription</p>
+                      </div>
+                      
+                      <div className="py-4">
+                        <span className="text-5xl font-black text-white">$149</span>
+                        <span className="text-slate-500 font-bold uppercase text-[10px] tracking-widest">/month</span>
+                      </div>
+                      
+                      <div className="text-left space-y-3 bg-white/5 p-5 rounded-2xl border border-white/10">
+                        <p className="flex items-center gap-3 text-sm text-slate-300"><Icon name="check-circle" className="w-4 h-4 text-green-500" /> Unlimited Missions & Dispatch</p>
+                        <p className="flex items-center gap-3 text-sm text-slate-300"><Icon name="check-circle" className="w-4 h-4 text-green-500" /> AI Predictive Revenue Engine</p>
+                        <p className="flex items-center gap-3 text-sm text-slate-300"><Icon name="check-circle" className="w-4 h-4 text-green-500" /> Automated Client Portals (E-Sign)</p>
+                        <p className="flex items-center gap-3 text-sm text-slate-300"><Icon name="check-circle" className="w-4 h-4 text-green-500" /> Real-time GPS Tracking</p>
+                        <p className="flex items-center gap-3 text-sm text-slate-300"><Icon name="check-circle" className="w-4 h-4 text-green-500" /> Automated Referral Engine</p>
+                      </div>
+
+                      <button onClick={() => { tt('Redirecting to Stripe Checkout... 💳', 'green'); setTimeout(() => window.open('https://stripe.com', '_blank'), 1500); }} className="w-full gold py-5 rounded-2xl font-black uppercase text-sm shadow-[0_0_30px_rgba(245,197,24,0.2)] active:scale-95 transition-all flex items-center justify-center gap-2">
+                        <Icon name="credit-card" className="w-5 h-5" />
+                        Upgrade to Pro (Stripe)
+                      </button>
+                      
+                      <p className="text-[8px] text-slate-500 font-bold uppercase tracking-widest pt-2">Powered by Stripe Billing</p>
+                    </div>
+                  </div>
+                  
+                  <div className="g p-6 border border-white/5 bg-[rgba(255,255,255,0.02)]">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Current Plan</p>
+                        <p className="text-white font-bold">Free Trial (MVP)</p>
+                      </div>
+                      <span className="px-3 py-1 bg-red-500/20 border border-red-500/30 text-red-400 text-[8px] font-black uppercase rounded-full animate-pulse">Expires Soon</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
             </div>
           )}
 
           {/* =====================================================================
               👑 ADMIN DASHBOARD TEAM PAYROLL TABS (payroll)
               ===================================================================== */}
+          {/* =====================================================================
+              👑 SAAS BILLING TIER
+              ===================================================================== */}
+          {role === 'admin' && view === 'billing' && (
+            <div className="space-y-5 animate-in zoom-in-95 pb-32">
+              <div className="g p-8 border-t-4 border-[#F5C518] text-center relative overflow-hidden bg-black/40 shadow-[0_0_50px_rgba(245,197,24,0.1)]">
+                <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(245,197,24,0.15),transparent)]"></div>
+                <div className="relative z-10 space-y-4">
+                  <div className="w-16 h-16 bg-gradient-to-br from-amber-400 to-amber-600 rounded-2xl mx-auto flex items-center justify-center shadow-[0_0_30px_rgba(245,197,24,0.3)]">
+                    <Icon name="crown" className="w-8 h-8 text-black" />
+                  </div>
+                  <div>
+                    <h2 className="text-2xl font-black uppercase italic text-white tracking-widest">ELEVORE PRO</h2>
+                    <p className="text-[10px] text-amber-500 font-black uppercase tracking-[0.2em] mt-1">SaaS Premium Subscription</p>
+                  </div>
+                  
+                  <div className="py-2">
+                    <span className="text-6xl font-black text-white italic tracking-tighter">$149</span>
+                    <span className="text-slate-500 font-bold uppercase text-[10px] tracking-widest">/month</span>
+                  </div>
+                  
+                  <div className="text-left space-y-3 bg-black/50 p-6 rounded-2xl border border-white/10 max-w-sm mx-auto shadow-inner">
+                    <p className="flex items-center gap-3 text-sm text-slate-300 font-medium"><Icon name="check-circle" className="w-4 h-4 text-[#F5C518]" /> Unlimited Missions & Dispatch</p>
+                    <p className="flex items-center gap-3 text-sm text-slate-300 font-medium"><Icon name="check-circle" className="w-4 h-4 text-[#F5C518]" /> AI Predictive Revenue Engine</p>
+                    <p className="flex items-center gap-3 text-sm text-slate-300 font-medium"><Icon name="check-circle" className="w-4 h-4 text-[#F5C518]" /> Automated Client Portals</p>
+                    <p className="flex items-center gap-3 text-sm text-slate-300 font-medium"><Icon name="check-circle" className="w-4 h-4 text-[#F5C518]" /> Real-time GPS Tracking</p>
+                    <p className="flex items-center gap-3 text-sm text-slate-300 font-medium"><Icon name="check-circle" className="w-4 h-4 text-[#F5C518]" /> WhatsApp Integration</p>
+                  </div>
+
+                  <button onClick={() => { tt('Redirecting to Stripe Checkout... 💳', 'green'); setTimeout(() => window.open('https://stripe.com', '_blank'), 1500); }} className="w-full max-w-sm mx-auto gold py-5 rounded-2xl font-black uppercase text-sm shadow-[0_0_30px_rgba(245,197,24,0.3)] active:scale-95 transition-all flex items-center justify-center gap-2 mt-4 animate-pulse">
+                    <Icon name="credit-card" className="w-5 h-5" />
+                    Upgrade to Pro (Stripe)
+                  </button>
+                  
+                  <p className="text-[8px] text-slate-500 font-bold uppercase tracking-widest pt-3">Secured by Stripe Billing</p>
+                </div>
+              </div>
+              
+              <div className="g p-6 border border-white/5 bg-black/20">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Current Plan</p>
+                    <p className="text-white font-bold text-sm">Free Trial (MVP)</p>
+                  </div>
+                  <span className="px-3 py-1.5 bg-red-500/20 border border-red-500/30 text-red-400 text-[9px] font-black uppercase tracking-wider rounded-full animate-pulse">Expires in 14 Days</span>
+                </div>
+              </div>
+            </div>
+          )}
+
           {role === 'admin' && view === 'payroll' && (
             <div className="space-y-6 animate-in fade-in pb-24">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
