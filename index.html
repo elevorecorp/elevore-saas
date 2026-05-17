@@ -2,16 +2,25 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    <meta name="theme-color" content="#000000" />
+    <meta name="theme-color" content="#F5C518" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black" />
-    <link rel="manifest" href="data:application/json;charset=utf-8,%7B%22name%22%3A%22Elevore%20Empire%22%2C%22short_name%22%3A%22Elevore%22%2C%22start_url%22%3A%22.%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%23000000%22%2C%22theme_color%22%3A%22%23fbbf24%22%7D" />
+    <meta name="apple-mobile-web-app-title" content="Elevore" />
+    <meta name="description" content="Elevore Empire — Premium Home Services SaaS Platform" />
+    <link rel="manifest" href="/manifest.json" />
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%23F5C518'/><text y='78' font-size='65' font-weight='900' text-anchor='middle' x='50' font-family='Georgia' font-style='italic' fill='black'>E</text></svg>" />
     <title>ELEVORE EMPIRE | SaaS Platform</title>
   </head>
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js').catch(() => {});
+        });
+      }
+    </script>
   </body>
 </html>

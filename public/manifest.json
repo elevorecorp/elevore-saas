@@ -1,0 +1,36 @@
+{
+  "name": "Elevore Empire | SaaS",
+  "short_name": "Elevore",
+  "description": "Premium Home Services SaaS Command Platform",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#000000",
+  "theme_color": "#F5C518",
+  "icons": [
+    {
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'><rect width='192' height='192' rx='32' fill='%23F5C518'/><text x='96' y='135' font-size='100' font-weight='900' text-anchor='middle' font-family='Georgia,serif' font-style='italic' fill='black'>E</text></svg>",
+      "sizes": "192x192",
+      "type": "image/svg+xml"
+    },
+    {
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect width='512' height='512' rx='80' fill='%23F5C518'/><text x='256' y='360' font-size='280' font-weight='900' text-anchor='middle' font-family='Georgia,serif' font-style='italic' fill='black'>E</text></svg>",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["business", "productivity"],
+  "shortcuts": [
+    {
+      "name": "New Estimate",
+      "url": "/?view=deploy",
+      "description": "Create a new estimate quickly"
+    },
+    {
+      "name": "Quick Quote",
+      "url": "/?quick=true",
+      "description": "Open Quick Quote calculator"
+    }
+  ]
+}

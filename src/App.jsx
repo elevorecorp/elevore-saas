@@ -1040,6 +1040,19 @@ export default function App() {
   const [rtOn, setRT] = useState(false);
   const [state, setState] = useState(INIT);
 
+  // Inventory module state
+  const [inventory, setInventory] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('elevore_inventory') || '[]'); } catch { return []; }
+  });
+  const [newItem, setNewItem] = useState({ name: '', qty: 0, unit: 'units', minQty: 2, cost: 0 });
+  const [invTab, setInvTab] = useState('stock');
+
+  // Reminders / Notifications state
+  const [reminders, setReminders] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('elevore_reminders') || '[]'); } catch { return []; }
+  });
+  const [newRem, setNewRem] = useState({ title: '', date: '', time: '', type: 'followup', jobId: '' });
+
   // Employee creation fields
   const [newStaffName, setNewName] = useState('');
   const [newStaffPIN, setNewPIN] = useState('');
@@ -1498,6 +1511,9 @@ ${job.final_signature ? `<div class="sig"><p style="font-size:10px;color:#999;ma
                 { id: 'agenda', label: 'Missions', icon: 'shield-check' },
                 { id: 'clients', label: 'Clients DNA', icon: 'users' },
                 { id: 'members', label: 'VIP Memberships', icon: 'diamond' },
+                { id: 'crm', label: 'CRM Retención', icon: 'target' },
+                { id: 'inventory', label: 'Inventario', icon: 'package' },
+                { id: 'reminders', label: 'Recordatorios', icon: 'bell' },
                 { id: 'drive', label: 'Photo Drive', icon: 'image' },
                 { id: 'payroll', label: 'Team & Payroll', icon: 'wallet' },
                 { id: 'deploy', label: 'New Estimate', icon: 'zap' }
@@ -2265,6 +2281,250 @@ ${job.final_signature ? `<div class="sig"><p style="font-size:10px;color:#999;ma
               </div>
             </div>
           )}
+
+          {/* =====================================================================
+              🎯 CRM RETENCIÓN — Churn Risk & Reactivation Engine
+              ===================================================================== */}
+          {role === 'admin' && view === 'crm' && (() => {
+            const now = new Date();
+            const crmClients = clients.map(c => {
+              const cJobs = jobs.filter(j => j.client_name === c.name && j.status === 'paid');
+              const lastJob = cJobs.sort((a,b) => new Date(b.scheduled_date) - new Date(a.scheduled_date))[0];
+              const daysSince = lastJob ? Math.floor((now - new Date(lastJob.scheduled_date)) / 86400000) : 999;
+              const totalSpent = cJobs.reduce((s,j) => s + (j.total_price||0), 0);
+              const churnRisk = daysSince > 90 ? 'high' : daysSince > 45 ? 'medium' : 'low';
+              return { ...c, lastJob, daysSince, totalSpent, churnRisk, jobCount: cJobs.length };
+            }).sort((a,b) => b.daysSince - a.daysSince);
+            const high = crmClients.filter(c => c.churnRisk === 'high');
+            const medium = crmClients.filter(c => c.churnRisk === 'medium');
+            const healthy = crmClients.filter(c => c.churnRisk === 'low');
+            return (
+              <div className="space-y-5 animate-in fade-in pb-24">
+                <div className="g p-5 border-t-4 border-red-500 bg-[rgba(255,255,255,0.04)]">
+                  <h2 className="text-xl font-black tracking-widest uppercase text-white font-display">🎯 CRM RETENCIÓN ENGINE</h2>
+                  <p className="text-[8px] text-slate-500 uppercase mt-1">Churn prediction • Re-engagement automation</p>
+                </div>
+                {/* KPI Row */}
+                <div className="grid grid-cols-3 gap-3">
+                  {[
+                    { label: 'Alto Riesgo', val: high.length, color: 'text-red-400', bg: 'bg-red-500/10 border-red-500/20' },
+                    { label: 'Riesgo Medio', val: medium.length, color: 'text-yellow-400', bg: 'bg-yellow-500/10 border-yellow-500/20' },
+                    { label: 'Saludables', val: healthy.length, color: 'text-green-400', bg: 'bg-green-500/10 border-green-500/20' },
+                  ].map(k => (
+                    <div key={k.label} className={`g p-4 border ${k.bg} text-center`}>
+                      <p className={`text-3xl font-black ${k.color}`}>{k.val}</p>
+                      <p className="text-[7px] text-slate-500 uppercase font-black mt-1">{k.label}</p>
+                    </div>
+                  ))}
+                </div>
+                {/* Client Cards */}
+                {[{ title: '🔴 ALTO RIESGO — +90 días sin servicio', list: high, border: 'border-red-500/40' },
+                  { title: '🟡 RIESGO MEDIO — 45-90 días', list: medium, border: 'border-yellow-500/40' },
+                  { title: '✅ CLIENTES ACTIVOS', list: healthy, border: 'border-green-500/40' }
+                ].map(section => section.list.length > 0 && (
+                  <div key={section.title} className="space-y-3">
+                    <p className="text-[8px] font-black uppercase text-slate-400 tracking-widest px-1">{section.title}</p>
+                    {section.list.map(c => (
+                      <div key={c.id || c.name} className={`g p-4 border ${section.border} bg-[rgba(255,255,255,0.03)] space-y-3`}>
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <h4 className="text-sm font-black text-white uppercase italic">{c.name}</h4>
+                            <p className="text-[8px] text-slate-400 mt-0.5">{c.phone} • {c.jobCount} servicios • Total: ${c.totalSpent.toLocaleString()}</p>
+                            <p className="text-[7px] text-slate-500 mt-0.5">
+                              {c.daysSince === 999 ? 'Nunca ha agendado' : `Último servicio: hace ${c.daysSince} días (${c.lastJob?.scheduled_date || '?'})`}
+                            </p>
+                          </div>
+                          <span className={`text-[6px] font-black px-2 py-1 rounded-lg border uppercase ${c.churnRisk === 'high' ? 'bg-red-500/10 border-red-500/20 text-red-400' : c.churnRisk === 'medium' ? 'bg-yellow-500/10 border-yellow-500/20 text-yellow-400' : 'bg-green-500/10 border-green-500/20 text-green-400'}`}>
+                            {c.daysSince === 999 ? 'nuevo' : `${c.daysSince}d`}
+                          </span>
+                        </div>
+                        <div className="grid grid-cols-4 gap-1.5">
+                          {[
+                            { label: '🔔 Recordar', type: 'retention' },
+                            { label: '🎁 Oferta', type: 'winback' },
+                            { label: '⭐ Reseña', type: 'review' },
+                            { label: '🏠 Bundle', type: 'bundle' },
+                          ].map(btn => (
+                            <button key={btn.type} onClick={() => { const ph = (c.phone||'').replace(/\D/g,''); const ph2 = ph.length===10?'1'+ph:ph; const msgs={retention:`Hi ${c.name}! 🏠 Han pasado un tiempo desde tu último servicio con Elevore. Esta semana tenemos disponibilidad — ¿te agendamos con 10% off? Reply YES!`,winback:`Hi ${c.name}! 😊 Te extrañamos en Elevore. Como cliente especial, hoy tienes 15% de descuento en tu próximo servicio. ¿Lo agendamos? 💫`,review:`Hi ${c.name}! 🌟 ¿Nos puedes dejar una reseña? Te tomará 1 minuto: ${DEFAULT_CFG.GOOGLE}`,bundle:`Hi ${c.name}! 🎯 Tenemos una oferta especial — Deep Clean + Ventanas por $50 adicionales (ahorras $70). ¿Lo añadimos a tu próximo servicio?`}; window.open(`https://wa.me/${ph2}?text=${encodeURIComponent(msgs[btn.type]||'')}`, '_blank'); tt(`WA → ${c.name} ✓`); }} className="py-2 bg-white/5 text-slate-400 rounded-xl text-[6px] font-black uppercase active:scale-95 hover:bg-white/10 hover:text-white transition-all">
+                              {btn.label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ))}
+              </div>
+            );
+          })()}
+
+          {/* =====================================================================
+              📦 INVENTARIO — Supply & Cost Tracker
+              ===================================================================== */}
+          {role === 'admin' && view === 'inventory' && (() => {
+            const saveInv = (updated) => { setInventory(updated); localStorage.setItem('elevore_inventory', JSON.stringify(updated)); };
+            const addItem = () => { if (!newItem.name.trim()) return; const updated = [...inventory, { ...newItem, id: Date.now() }]; saveInv(updated); setNewItem({ name: '', qty: 0, unit: 'units', minQty: 2, cost: 0 }); tt('Item added ✓'); };
+            const updateQty = (id, delta) => { const updated = inventory.map(i => i.id === id ? { ...i, qty: Math.max(0, i.qty + delta) } : i); saveInv(updated); };
+            const removeItem = (id) => { if (confirm('Remove item?')) { saveInv(inventory.filter(i => i.id !== id)); tt('Removed ✓'); } };
+            const lowStock = inventory.filter(i => i.qty <= i.minQty);
+            const totalValue = inventory.reduce((s, i) => s + (i.qty * i.cost), 0);
+            return (
+              <div className="space-y-5 animate-in fade-in pb-24">
+                <div className="g p-5 border-t-4 border-purple-500 bg-[rgba(255,255,255,0.04)]">
+                  <h2 className="text-xl font-black tracking-widest uppercase text-white font-display">📦 INVENTARIO DE SUMINISTROS</h2>
+                  <p className="text-[8px] text-slate-500 uppercase mt-1">Supply tracking • Cost control per service</p>
+                </div>
+                {/* KPIs */}
+                <div className="grid grid-cols-3 gap-3">
+                  {[
+                    { label: 'Total Items', val: inventory.length, color: 'text-white' },
+                    { label: 'Stock Bajo', val: lowStock.length, color: 'text-red-400' },
+                    { label: 'Valor Total', val: `$${totalValue.toFixed(0)}`, color: 'text-green-400' },
+                  ].map(k => (
+                    <div key={k.label} className="g p-4 text-center bg-[rgba(255,255,255,0.04)]">
+                      <p className={`text-2xl font-black ${k.color}`}>{k.val}</p>
+                      <p className="text-[7px] text-slate-500 uppercase font-black mt-1">{k.label}</p>
+                    </div>
+                  ))}
+                </div>
+                {/* Low Stock Alert */}
+                {lowStock.length > 0 && (
+                  <div className="g p-4 border border-red-500/30 bg-red-500/5">
+                    <p className="text-[8px] font-black text-red-400 uppercase tracking-widest mb-2">⚠️ STOCK BAJO — Reponer pronto</p>
+                    <div className="flex flex-wrap gap-2">
+                      {lowStock.map(i => <span key={i.id} className="text-[7px] bg-red-500/10 text-red-300 px-2 py-1 rounded-lg border border-red-500/20 font-black">{i.name}: {i.qty} {i.unit}</span>)}
+                    </div>
+                  </div>
+                )}
+                {/* Add Item */}
+                <div className="g p-5 space-y-3 bg-[rgba(255,255,255,0.04)]">
+                  <p className="text-[9px] font-black text-[#F5C518] uppercase tracking-widest">+ AÑADIR ITEM</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    <input className="inp text-xs uppercase" placeholder="Nombre del producto" value={newItem.name} onChange={e => setNewItem({...newItem, name: e.target.value})} />
+                    <select className="inp text-xs" value={newItem.unit} onChange={e => setNewItem({...newItem, unit: e.target.value})}>
+                      {['units', 'bottles', 'bags', 'rolls', 'boxes', 'gallons'].map(u => <option key={u} value={u}>{u}</option>)}
+                    </select>
+                    <input type="number" className="inp text-xs" placeholder="Cantidad" value={newItem.qty} onChange={e => setNewItem({...newItem, qty: parseInt(e.target.value)||0})} />
+                    <input type="number" className="inp text-xs" placeholder="Stock mínimo" value={newItem.minQty} onChange={e => setNewItem({...newItem, minQty: parseInt(e.target.value)||0})} />
+                    <input type="number" className="inp text-xs" placeholder="Costo unitario $" value={newItem.cost} onChange={e => setNewItem({...newItem, cost: parseFloat(e.target.value)||0})} />
+                  </div>
+                  <button onClick={addItem} className="w-full bg-[#F5C518] text-black py-3 rounded-xl font-black uppercase text-[9px] active:scale-95">Agregar al Inventario ✓</button>
+                </div>
+                {/* Stock List */}
+                <div className="space-y-2">
+                  {inventory.length === 0 && <div className="g p-8 text-center text-slate-500 text-[9px] font-black uppercase">No hay items. Añade tu primer suministro ↑</div>}
+                  {inventory.map(item => (
+                    <div key={item.id} className={`g p-4 flex items-center justify-between border ${item.qty <= item.minQty ? 'border-red-500/30 bg-red-500/5' : 'border-white/5 bg-[rgba(255,255,255,0.03)]'}`}>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <h4 className="text-sm font-black text-white uppercase">{item.name}</h4>
+                          {item.qty <= item.minQty && <span className="text-[5px] bg-red-500/20 text-red-400 border border-red-500/20 px-1.5 py-0.5 rounded font-black uppercase">LOW</span>}
+                        </div>
+                        <p className="text-[7px] text-slate-500 mt-0.5">Min: {item.minQty} {item.unit} • ${item.cost}/unit • Valor: ${(item.qty * item.cost).toFixed(2)}</p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button onClick={() => updateQty(item.id, -1)} className="w-8 h-8 bg-white/10 rounded-lg text-white font-bold active:scale-95 text-sm">−</button>
+                        <span className={`text-lg font-black w-8 text-center ${item.qty <= item.minQty ? 'text-red-400' : 'text-white'}`}>{item.qty}</span>
+                        <button onClick={() => updateQty(item.id, 1)} className="w-8 h-8 bg-white/10 rounded-lg text-white font-bold active:scale-95 text-sm">+</button>
+                        <button onClick={() => removeItem(item.id)} className="w-8 h-8 bg-red-900/30 text-red-400 rounded-lg active:scale-95 ml-1 text-xs font-black">✕</button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
+
+          {/* =====================================================================
+              🔔 RECORDATORIOS — Smart Reminder & Notification System
+              ===================================================================== */}
+          {role === 'admin' && view === 'reminders' && (() => {
+            const saveRem = (updated) => { setReminders(updated); localStorage.setItem('elevore_reminders', JSON.stringify(updated)); };
+            const addReminder = () => { if (!newRem.title.trim()) return; saveRem([...reminders, { ...newRem, id: Date.now(), done: false }]); setNewRem({ title: '', date: '', time: '', type: 'followup', jobId: '' }); tt('Reminder saved ✓'); };
+            const toggleDone = (id) => saveRem(reminders.map(r => r.id === id ? { ...r, done: !r.done } : r));
+            const deleteRem = (id) => saveRem(reminders.filter(r => r.id !== id));
+            const upcoming = reminders.filter(r => !r.done).sort((a,b) => new Date(a.date+'T'+(a.time||'00:00')) - new Date(b.date+'T'+(b.time||'00:00')));
+            const done = reminders.filter(r => r.done);
+            // Auto-generated reminders from jobs
+            const autoRem = jobs.filter(j => j.scheduled_date && j.status === 'scheduled').map(j => {
+              const d = new Date(j.scheduled_date); d.setDate(d.getDate() - 1);
+              return { id: 'auto_'+j.id, title: `📅 Recordar a ${j.client_name} — servicio mañana`, date: d.toISOString().split('T')[0], type: 'auto', phone: j.client_phone, job: j, auto: true };
+            });
+            const typeColors = { followup: 'text-blue-400 bg-blue-500/10 border-blue-500/20', payment: 'text-green-400 bg-green-500/10 border-green-500/20', review: 'text-yellow-400 bg-yellow-500/10 border-yellow-500/20', call: 'text-purple-400 bg-purple-500/10 border-purple-500/20', auto: 'text-amber-400 bg-amber-500/10 border-amber-500/20' };
+            return (
+              <div className="space-y-5 animate-in fade-in pb-24">
+                <div className="g p-5 border-t-4 border-amber-500 bg-[rgba(255,255,255,0.04)]">
+                  <h2 className="text-xl font-black tracking-widest uppercase text-white font-display">🔔 RECORDATORIOS & NOTIFICACIONES</h2>
+                  <p className="text-[8px] text-slate-500 uppercase mt-1">Smart alerts • Auto-generated from missions</p>
+                </div>
+                {/* Auto-generated from jobs */}
+                {autoRem.length > 0 && (
+                  <div className="space-y-2">
+                    <p className="text-[8px] font-black text-amber-400 uppercase tracking-widest px-1">⚡ AUTO-GENERADOS — Servicios de Mañana</p>
+                    {autoRem.map(r => (
+                      <div key={r.id} className="g p-4 border border-amber-500/20 bg-amber-500/5 flex items-center justify-between">
+                        <div>
+                          <p className="text-[10px] font-black text-white">{r.title}</p>
+                          <p className="text-[7px] text-slate-500 mt-0.5">Fecha: {r.date}</p>
+                        </div>
+                        <button onClick={() => { const ph = (r.phone||'').replace(/\D/g,''); const ph2 = ph.length===10?'1'+ph:ph; window.open(`https://wa.me/${ph2}?text=${encodeURIComponent(`Hi ${r.job.client_name}! 🔔 Recordatorio — mañana tenemos tu servicio de ${r.job.service_type?.toUpperCase()} con Elevore. ¿Tienes alguna pregunta?`)}`, '_blank'); tt('WA sent ✓'); }} className="px-3 py-2 bg-amber-500 text-black text-[7px] font-black uppercase rounded-xl active:scale-95">📱 WA</button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {/* Add Reminder */}
+                <div className="g p-5 space-y-3 bg-[rgba(255,255,255,0.04)]">
+                  <p className="text-[9px] font-black text-[#F5C518] uppercase tracking-widest">+ NUEVO RECORDATORIO</p>
+                  <input className="inp text-xs" placeholder="Título del recordatorio..." value={newRem.title} onChange={e => setNewRem({...newRem, title: e.target.value})} />
+                  <div className="grid grid-cols-2 gap-2">
+                    <input type="date" className="inp text-xs" value={newRem.date} onChange={e => setNewRem({...newRem, date: e.target.value})} />
+                    <input type="time" className="inp text-xs" value={newRem.time} onChange={e => setNewRem({...newRem, time: e.target.value})} />
+                  </div>
+                  <div className="grid grid-cols-4 gap-1">
+                    {['followup', 'payment', 'review', 'call'].map(t => (
+                      <button key={t} onClick={() => setNewRem({...newRem, type: t})} className={`py-2 rounded-xl text-[7px] font-black uppercase border transition-all active:scale-95 ${newRem.type === t ? 'bg-[#F5C518] text-black border-[#F5C518]' : 'bg-white/5 border-white/5 text-slate-400'}`}>{t}</button>
+                    ))}
+                  </div>
+                  <button onClick={addReminder} className="w-full bg-[#F5C518] text-black py-3 rounded-xl font-black uppercase text-[9px] active:scale-95">Guardar Recordatorio 🔔</button>
+                </div>
+                {/* Pending */}
+                {upcoming.length > 0 && (
+                  <div className="space-y-2">
+                    <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest px-1">⏰ PENDIENTES ({upcoming.length})</p>
+                    {upcoming.map(r => (
+                      <div key={r.id} className={`g p-4 border flex items-center gap-3 ${typeColors[r.type] || typeColors.followup}`}>
+                        <button onClick={() => toggleDone(r.id)} className="w-6 h-6 rounded-lg border-2 border-current flex items-center justify-center flex-shrink-0">
+                          <Icon name="check" className="w-3.5 h-3.5 opacity-0" />
+                        </button>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-[10px] font-black text-white truncate">{r.title}</p>
+                          <p className="text-[7px] text-slate-500 mt-0.5">{r.date} {r.time && `• ${r.time}`} • {r.type.toUpperCase()}</p>
+                        </div>
+                        <button onClick={() => deleteRem(r.id)} className="text-slate-600 hover:text-red-400 transition-colors flex-shrink-0"><Icon name="x" className="w-4 h-4" /></button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {/* Done */}
+                {done.length > 0 && (
+                  <div className="space-y-2">
+                    <p className="text-[8px] font-black text-slate-600 uppercase tracking-widest px-1">✅ COMPLETADOS ({done.length})</p>
+                    {done.map(r => (
+                      <div key={r.id} className="g p-3 border border-white/5 flex items-center gap-3 opacity-40">
+                        <button onClick={() => toggleDone(r.id)} className="w-6 h-6 rounded-lg bg-green-600 flex items-center justify-center flex-shrink-0"><Icon name="check" className="w-3.5 h-3.5 text-white" /></button>
+                        <p className="text-[9px] text-slate-500 line-through flex-1">{r.title}</p>
+                        <button onClick={() => deleteRem(r.id)} className="text-slate-700 hover:text-red-400"><Icon name="x" className="w-4 h-4" /></button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {reminders.length === 0 && autoRem.length === 0 && (
+                  <div className="g p-10 text-center text-slate-500 text-[9px] font-black uppercase">No hay recordatorios. Crea el primero ↑</div>
+                )}
+              </div>
+            );
+          })()}
+
         </main>
       </div>
     </div>
