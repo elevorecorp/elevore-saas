@@ -889,6 +889,106 @@ function QQ({ onClose }) {
   );
 }
 
+// Public Lead Capture Form (Referral)
+function PublicLeadForm({ refCode }) {
+  const [form, setForm] = useState({ name: '', phone: '', address: '', service_type: 'cleaning' });
+  const [submitted, setSubmitted] = useState(false);
+  const referrer = refCode.replace(/_/g, ' ');
+
+  const submit = async (e) => {
+    e.preventDefault();
+    if (!form.name || !form.phone) return alert('Name and phone required');
+    
+    try {
+      await sb.from('elevore_missions').insert([{
+        client_name: form.name,
+        client_phone: form.phone,
+        address: form.address,
+        service_type: form.service_type,
+        status: 'lead',
+        total_price: 0,
+        specs: { referred_by: referrer, referral_discount: 25 },
+        created_at: new Date().toISOString()
+      }]);
+      setSubmitted(true);
+    } catch (err) {
+      alert('Error submitting request. Please try again.');
+    }
+  };
+
+  if (submitted) {
+    return (
+      <div className="min-h-screen bg-black flex items-center justify-center p-5 text-center">
+        <div className="max-w-md w-full g p-8 border-t-4 border-amber-500 space-y-4 shadow-[0_0_50px_rgba(251,191,36,0.15)]">
+          <div className="w-16 h-16 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-4 text-3xl shadow-lg shadow-green-500/20 animate-bounce">✅</div>
+          <h2 className="text-2xl font-black italic text-white uppercase tracking-widest">¡Solicitud Recibida!</h2>
+          <p className="text-slate-400 text-xs leading-relaxed uppercase font-bold tracking-wider">Tu descuento de $25 ha sido asegurado gracias a {referrer}.</p>
+          <p className="text-slate-500 text-[9px] mt-4">Nuestro equipo te contactará por WhatsApp en breve con tu presupuesto oficial.</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gradient-to-b from-slate-950 via-black to-zinc-900 flex items-center justify-center p-5 animate-in fade-in">
+      <div className="max-w-md w-full space-y-6">
+        <div className="text-center space-y-2">
+          <div className="w-16 h-16 bg-white rounded-2xl mx-auto flex items-center justify-center font-black text-black text-2xl italic shadow-xl">E</div>
+          <h1 className="text-2xl font-black uppercase tracking-[0.2em] text-white">ELEVORE</h1>
+          <p className="text-[9px] text-green-500 font-bold uppercase tracking-[0.4em]">Premium Services</p>
+        </div>
+
+        <div className="g p-8 border-t-4 border-[#F5C518] space-y-5 relative overflow-hidden shadow-[0_0_50px_rgba(251,191,36,0.1)]">
+          <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-white to-transparent opacity-20"></div>
+          
+          <div className="text-center space-y-1 border-b border-white/10 pb-4">
+            <p className="text-[10px] text-amber-500 font-black uppercase tracking-widest">🌟 INVITACIÓN VIP</p>
+            <h2 className="text-white text-sm font-bold uppercase">Has sido referido por</h2>
+            <p className="italic font-black text-amber-400 text-3xl tracking-tighter">{referrer}</p>
+          </div>
+
+          <div className="bg-amber-500/10 border border-amber-500/20 p-4 rounded-xl text-center shadow-inner">
+            <p className="text-amber-400 text-[10px] font-black uppercase tracking-widest">🎁 Reclama $25 OFF en tu primer servicio</p>
+          </div>
+
+          <form onSubmit={submit} className="space-y-4 pt-2">
+            <div className="space-y-1">
+              <label className="text-[8px] font-black text-slate-500 uppercase ml-1">Nombre Completo</label>
+              <input required type="text" placeholder="Ej: Maria Lopez" className="inp w-full p-4 text-sm" value={form.name} onChange={e => setForm({...form, name: e.target.value})} />
+            </div>
+            
+            <div className="space-y-1">
+              <label className="text-[8px] font-black text-slate-500 uppercase ml-1">Número de WhatsApp</label>
+              <input required type="tel" placeholder="(123) 456-7890" className="inp w-full p-4 text-sm" value={form.phone} onChange={e => setForm({...form, phone: e.target.value})} />
+            </div>
+            
+            <div className="space-y-1">
+              <label className="text-[8px] font-black text-slate-500 uppercase ml-1">Dirección / Zip Code</label>
+              <input required type="text" placeholder="Tu dirección o área" className="inp w-full p-4 text-sm" value={form.address} onChange={e => setForm({...form, address: e.target.value})} />
+            </div>
+            
+            <div className="space-y-1">
+              <label className="text-[8px] font-black text-slate-500 uppercase ml-1">¿Qué necesitas?</label>
+              <select className="inp w-full p-4 text-sm" value={form.service_type} onChange={e => setForm({...form, service_type: e.target.value})}>
+                <option value="cleaning">Limpieza del Hogar (Deep Clean)</option>
+                <option value="handyman">Reparaciones (Handyman)</option>
+                <option value="maintenance">Mantenimiento General</option>
+              </select>
+            </div>
+            
+            <button type="submit" className="w-full gold py-5 rounded-2xl font-black uppercase text-sm active:scale-95 shadow-lg mt-4 flex items-center justify-center gap-2">
+              <Icon name="check-circle" className="w-5 h-5" />
+              Reclamar Descuento
+            </button>
+          </form>
+        </div>
+        
+        <p className="text-[8px] text-slate-600 text-center font-bold uppercase">🔒 Información Segura y Confidencial</p>
+      </div>
+    </div>
+  );
+}
+
 // App Component
 export default function App() {
   const urlP = new URLSearchParams(window.location.search);
@@ -896,6 +996,7 @@ export default function App() {
   const refCode = urlP.get('ref');
 
   if (cjid) return <Portal cjid={cjid} />;
+  if (refCode) return <PublicLeadForm refCode={refCode} />;
 
   const [view, setView] = useState('auth');
   const [role, setRole] = useState('admin');
