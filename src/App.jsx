@@ -989,6 +989,135 @@ function PublicLeadForm({ refCode }) {
   );
 }
 
+// =====================================================================
+// 🚀 SAAS ONBOARDING FLOW (REGISTRATION)
+// =====================================================================
+function OnboardingFlow({ onBack }) {
+  const [step, setStep] = useState(1);
+  const [form, setForm] = useState({ company: '', email: '', password: '' });
+
+  const handleRegister = async (e) => {
+    e.preventDefault();
+    // Simulate auth registration and loading for MVP
+    setTimeout(() => {
+      onBack(); // Redirect to login/dashboard
+    }, 2000);
+  };
+
+  return (
+    <div className="min-h-screen bg-black flex items-center justify-center p-6 text-white bg-[radial-gradient(ellipse_at_top,rgba(245,197,24,0.1),transparent)]">
+      <div className="max-w-md w-full space-y-8 animate-in fade-in slide-in-from-bottom-4">
+        <button onClick={onBack} className="text-[10px] text-slate-500 font-black uppercase flex items-center gap-2 hover:text-white transition-colors">
+          <Icon name="arrow-left" className="w-3 h-3" /> Back
+        </button>
+
+        <div className="space-y-2">
+          <h2 className="text-3xl font-black uppercase tracking-tighter">Create Your <span className="text-[#F5C518] italic">Empire</span></h2>
+          <p className="text-slate-400 text-sm">Start your 14-day free trial. No credit card required.</p>
+        </div>
+
+        <form onSubmit={handleRegister} className="space-y-4">
+          <div className="space-y-1">
+            <label className="text-[9px] font-black uppercase text-slate-500 tracking-widest pl-1">Business Name</label>
+            <input required type="text" placeholder="e.g. Sparkle Cleaning LLC" className="inp w-full py-4 text-sm" value={form.company} onChange={e => setForm({...form, company: e.target.value})} />
+          </div>
+          
+          <div className="space-y-1">
+            <label className="text-[9px] font-black uppercase text-slate-500 tracking-widest pl-1">Work Email</label>
+            <input required type="email" placeholder="ceo@company.com" className="inp w-full py-4 text-sm" value={form.email} onChange={e => setForm({...form, email: e.target.value})} />
+          </div>
+
+          <div className="space-y-1">
+            <label className="text-[9px] font-black uppercase text-slate-500 tracking-widest pl-1">Master Password</label>
+            <input required type="password" placeholder="••••••••" className="inp w-full py-4 text-sm tracking-widest" value={form.password} onChange={e => setForm({...form, password: e.target.value})} />
+          </div>
+
+          <button type="submit" onClick={() => tt('Welcome to Elevore! Redirecting... 🚀', 'green')} className="w-full gold py-5 rounded-2xl font-black uppercase text-sm shadow-[0_0_30px_rgba(245,197,24,0.2)] mt-4 active:scale-95 transition-all">
+            Launch Platform
+          </button>
+        </form>
+        
+        <p className="text-[8px] text-slate-500 font-bold uppercase tracking-widest text-center">By continuing, you agree to our Terms of Service.</p>
+      </div>
+    </div>
+  );
+}
+
+// =====================================================================
+// 🌍 PUBLIC SAAS LANDING PAGE (MARKETING)
+// =====================================================================
+function LandingPage({ onLogin, onSignup }) {
+  return (
+    <div className="min-h-screen bg-black text-white font-sans selection:bg-[#F5C518] selection:text-black">
+      {/* Navbar */}
+      <nav className="fixed top-0 left-0 w-full z-50 bg-black/50 backdrop-blur-xl border-b border-white/5">
+        <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-gradient-to-br from-amber-400 to-amber-600 rounded-xl flex items-center justify-center font-black text-black italic text-2xl shadow-[0_0_20px_rgba(245,197,24,0.3)]">E</div>
+            <span className="font-black tracking-[0.25em] uppercase text-lg hidden sm:block">Elevore <span className="text-[#F5C518] italic">Empire</span></span>
+          </div>
+          <div className="flex items-center gap-6">
+            <button onClick={onLogin} className="text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-white transition-colors">Login</button>
+            <button onClick={onSignup} className="px-6 py-3 bg-[#F5C518] text-black rounded-full font-black text-[10px] uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shadow-[0_0_20px_rgba(245,197,24,0.2)]">Start Free Trial</button>
+          </div>
+        </div>
+      </nav>
+
+      {/* Hero Section */}
+      <div className="relative pt-48 pb-24 px-6 overflow-hidden min-h-screen flex items-center justify-center">
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] sm:w-[800px] h-[600px] sm:h-[800px] bg-[#F5C518]/10 rounded-full blur-[150px] pointer-events-none"></div>
+        <div className="max-w-5xl mx-auto text-center relative z-10 space-y-8">
+          <div className="inline-block px-4 py-2 rounded-full border border-[#F5C518]/30 bg-[#F5C518]/10 text-[#F5C518] text-[9px] font-black uppercase tracking-[0.3em] mb-4 animate-pulse">
+            The #1 Operating System for Service Businesses
+          </div>
+          <h1 className="text-6xl sm:text-7xl md:text-8xl font-black uppercase tracking-tighter leading-[0.9]">
+            Run Your Company on <br/><span className="text-transparent bg-clip-text bg-gradient-to-r from-[#F5C518] to-amber-600 italic">Autopilot.</span>
+          </h1>
+          <p className="text-slate-400 text-lg md:text-2xl max-w-3xl mx-auto leading-relaxed pt-4">
+            AI-driven dispatch, automated client portals, GPS fleet tracking, and predictive revenue engines designed exclusively for high-end service empires.
+          </p>
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-10">
+            <button onClick={onSignup} className="w-full sm:w-auto px-10 py-5 bg-[#F5C518] text-black rounded-2xl font-black uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shadow-[0_0_40px_rgba(245,197,24,0.3)] flex items-center justify-center gap-2">
+              Start Building Your Empire <Icon name="arrow-right" className="w-5 h-5" />
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Bento Grid Features */}
+      <div className="max-w-7xl mx-auto px-6 py-24">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="md:col-span-2 bg-gradient-to-br from-zinc-900 to-black p-10 rounded-3xl border border-white/5 relative overflow-hidden group">
+            <div className="absolute top-0 right-0 p-10 opacity-20 group-hover:opacity-40 transition-opacity"><Icon name="brain" className="w-48 h-48 text-[#F5C518]" /></div>
+            <h3 className="text-3xl font-black uppercase tracking-widest text-white mb-4">Predictive AI Engine</h3>
+            <p className="text-slate-400 max-w-md text-lg">Automatically identifies high-value clients ready for VIP memberships and suggests surge pricing when demand is high.</p>
+          </div>
+          <div className="bg-gradient-to-br from-zinc-900 to-black p-10 rounded-3xl border border-white/5">
+            <Icon name="smartphone" className="w-12 h-12 text-blue-500 mb-6" />
+            <h3 className="text-xl font-black uppercase tracking-widest text-white mb-2">Client Portals</h3>
+            <p className="text-slate-400">Automated URLs for clients to e-sign estimates, view photos, and pay.</p>
+          </div>
+          <div className="bg-gradient-to-br from-zinc-900 to-black p-10 rounded-3xl border border-white/5">
+            <Icon name="map-pin" className="w-12 h-12 text-green-500 mb-6" />
+            <h3 className="text-xl font-black uppercase tracking-widest text-white mb-2">Live GPS Fleet</h3>
+            <p className="text-slate-400">Track your entire workforce in real-time on the map.</p>
+          </div>
+          <div className="md:col-span-2 bg-gradient-to-br from-zinc-900 to-black p-10 rounded-3xl border border-white/5 relative overflow-hidden">
+            <Icon name="message-circle" className="w-12 h-12 text-green-400 mb-6" />
+            <h3 className="text-3xl font-black uppercase tracking-widest text-white mb-4">WhatsApp Automation</h3>
+            <p className="text-slate-400 max-w-md text-lg">One-click AI generated scripts to revive dead leads, request 5-star reviews, and follow up on expiring quotes.</p>
+          </div>
+        </div>
+      </div>
+      
+      {/* Footer */}
+      <div className="border-t border-white/5 py-10 text-center text-slate-600 text-[10px] font-black uppercase tracking-widest">
+        © 2026 ELEVORE EMPIRE SAAS. ALL RIGHTS RESERVED.
+      </div>
+    </div>
+  );
+}
+
 // App Component
 export default function App() {
   const urlP = new URLSearchParams(window.location.search);
@@ -998,7 +1127,7 @@ export default function App() {
   if (cjid) return <Portal cjid={cjid} />;
   if (refCode) return <PublicLeadForm refCode={refCode} />;
 
-  const [view, setView] = useState('auth');
+  const [view, setView] = useState('landing');
   const [role, setRole] = useState('admin');
   const [pass, setPass] = useState('');
   const [jobs, setJobs] = useState([]);
@@ -1417,6 +1546,9 @@ ${job.final_signature ? `<div class="sig"><p style="font-size:10px;color:#999;ma
       </div>
     );
   };
+
+  if (view === 'landing') return <LandingPage onLogin={() => setView('auth')} onSignup={() => setView('signup')} />;
+  if (view === 'signup') return <OnboardingFlow onBack={() => setView('landing')} />;
 
   if (view === 'auth') return (
     <div className="min-h-screen flex items-center justify-center p-6 bg-gradient-to-br from-slate-950 via-black to-zinc-900 animate-in fade-in duration-1000">
