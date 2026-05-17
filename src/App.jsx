@@ -643,111 +643,105 @@ function AIAdvisor({ jobs, clients, staff, isStaff, activeUser, onClose, tt, onO
     const q = promptText.toLowerCase();
     let reply = "";
 
-    // 1. STRICT PRIVACY BLOCKER: If staff member tries to ask for finances/MRR
-    if (isStaff && (q.includes('financ') || q.includes('mrr') || q.includes('meta') || q.includes('ganan') || q.includes('diner') || q.includes('pag') || q.includes('ingres'))) {
-      reply = `### 🔒 Información Restringida
-
-Hola ${activeUser}. Por motivos de seguridad y políticas de la empresa, los reportes financieros, márgenes de ganancia y metas de MRR corporativo están restringidos únicamente a los Administradores de Elevore. 
-
-**¿Cómo te puedo asistir hoy en tus labores de campo?**
-* 🛠️ ¿Cómo reparar parches de yeso (drywall)?
-* 🧼 ¿Cómo hacer una limpieza profunda de hornos (inside oven)?
-* 🐾 ¿Cómo extraer pelos de mascota difíciles de tapicerías?
-* 📋 Lista de control de calidad para entrega de proyectos.`;
-    }
-    // 2. Standard Admin Financial Analysis
-    else if (!isStaff && (q.includes('financ') || q.includes('mrr') || q.includes('metas'))) {
-      reply = `### 📊 Análisis de Inteligencia Financiera
-
-* **Ingresos Brutos Registrados**: **${fmt$(stats.totalRev)}** (con un total de ${jobs.length} trabajos).
-* **MRR (Ingresos Recurrentes Mensuales)**: **${fmt$(stats.mrr)}** (gracias a los clientes en planes VIP/Premium).
-* **Proyección de Meta**: Actualmente estás al **${Math.round((stats.totalRev / DEFAULT_CFG.GOAL) * 100)}%** de tu meta de **${fmt$(DEFAULT_CFG.GOAL)}**.
-
-**💡 Recomendación de la IA:** 
-El mejor día de ventas histórico es el **Viernes**. Te sugiero lanzar un cupón de upsell de lavado de ventanas para el próximo fin de semana. Esto podría subir tus márgenes un **12%** adicional.`;
-    } 
-    // 3. Admin Churn Alerts
-    else if (!isStaff && (q.includes('churn') || q.includes('riesgo') || q.includes('abandono'))) {
-      if (stats.churn.length === 0) {
-        reply = `### 🚨 Análisis de Riesgo de Deserción (Churn)
-        
-¡Increíble! **No se detectan clientes en riesgo de abandono** en este momento (todos han tenido servicios en los últimos 45 días). Tu retención de clientes es impecable. ¡Sigue así!`;
-      } else {
-        const target = stats.churn[0];
-        reply = `### 🚨 Análisis de Riesgo de Deserción (Churn)
-
-Detecté **${stats.churn.length} cliente(s)** en riesgo de abandono (sin servicios en los últimos 45 días):
-👉 **${target.name}**
-
-**✍️ Mensaje de recuperación de WhatsApp sugerido (Haz clic para copiar):**
-*"Hola ${target.name}! 😊 En Elevore te extrañamos mucho. Queremos consentirte con un 15% de descuento especial en tu próximo servicio para dejar tu hogar impecable. ¿Te reservamos un cupón? 🏠"*`;
+    // -- STAFF AI (Field Ops, Technical SOPs, Conflict Resolution) --
+    if (isStaff) {
+      if (q.includes('financ') || q.includes('mrr') || q.includes('ganan') || q.includes('pag')) {
+        reply = `### 🔒 Nivel de Acceso: Administrador
+Hola ${activeUser}. Los reportes financieros y metas de facturación están bloqueados para roles de campo.
+*💡 ¿Necesitas ayuda técnica o protocolos de limpieza?*`;
+      } 
+      else if (q.includes('enoj') || q.includes('molest') || q.includes('difícil') || q.includes('queja') || q.includes('reclamo')) {
+        reply = `### 🛡️ Protocolo de Resolución de Conflictos (De-escalation)
+1. **Escucha Activa:** No interrumpas. Deja que el cliente explique su frustración completamente.
+2. **Empatía Táctica:** "Entiendo perfectamente su molestia, señor/a. Si yo estuviera en su posición me sentiría igual."
+3. **Asume Responsabilidad (Sin culpar a otros):** "Vamos a solucionar esto inmediatamente."
+4. **Acción de Mitigación:** Ofrece rehacer el área afectada en el momento. Si el cliente exige reembolso, indícale amablemente: *"Voy a escalar este caso con nuestro equipo de gerencia para que le brinden una solución oficial hoy mismo."*
+*Nota: Toma fotos del área en disputa inmediatamente.*`;
       }
-    } 
-    // 4. Admin VIP Target Identifications
-    else if (!isStaff && (q.includes('membres') || q.includes('vip') || q.includes('planes'))) {
-      const candidates = clients.filter(c => {
-        const cj = jobs.filter(j => j.client_name === c.name);
-        return cj.length >= 3 && (!c.membership || c.membership === 'none');
-      });
-
-      if (!candidates.length) {
-        reply = `### 💎 Oportunidades de Membresía VIP
-
-Actualmente todos tus clientes frecuentes ya están en un plan de suscripción, o aún no cumplen con el criterio de >=3 servicios contratados. ¡Analizaré de nuevo en tu próxima venta!`;
-      } else {
-        const cand = candidates[0];
-        reply = `### 💎 Oportunidades de Membresía VIP
-
-Identifiqué a **${candidates.length} cliente(s) ideal(es)** para ser promovido(s) a una membresía mensual (tienen 3 o más servicios pagados y aún pagan tarifa única):
-👉 **${cand.name}** (${jobs.filter(j => j.client_name === cand.name).length} trabajos contratados)
-
-**✍️ WhatsApp para ofrecerle VIP:**
-*"¡Hola ${cand.name}! ✨ Notamos que eres uno de nuestros clientes más leales. Para agradecer tu confianza, queremos darte prioridad en nuestra agenda y un 10% de descuento fijo en todos tus servicios uniéndote a nuestra membresía VIP Basic. ¿Te gustaría ver las tarifas fijas? 💎"*`;
+      else if (q.includes('romp') || q.includes('dañ') || q.includes('quebr') || q.includes('accidente')) {
+        reply = `### 🚨 Protocolo de Daños a Propiedad (Damage Control)
+Mantén la calma. Los accidentes ocurren.
+1. **Seguridad:** Asegura la zona (recoge vidrios, limpia líquidos) para evitar lesiones.
+2. **Documentación INMEDIATA:** Toma 3 fotos del objeto dañado (lejos, medio, cerca).
+3. **Reporte Interno:** Avisa al Administrador de inmediato.
+4. **Comunicación al Cliente:** *"Señor/a, tuvimos un pequeño incidente con [objeto]. Lo hemos documentado y nuestra empresa cuenta con póliza; nos haremos 100% responsables. Nuestro gerente se comunicará en breve para el reemplazo."*`;
       }
-    } 
-    // 5. Operations Guidance (Accessible to BOTH Admin and Staff)
-    else if (q.includes('limp') || q.includes('repar') || q.includes('instruct') || q.includes('manual') || q.includes('yeso') || q.includes('drywall') || q.includes('horno') || q.includes('alfombra') || q.includes('pelo')) {
-      reply = `### 🛠️ Guía Rápida de Operaciones & Control de Calidad
-
-* **Drywall Patch (Parche de yeso):**
-  1. Limpiar el orificio sacando yeso suelto y lijar bordes.
-  2. Aplicar malla de fibra autoadhesiva sobre el hueco.
-  3. Colocar primera capa de masilla rápida (compuesto de 20 min).
-  4. Lijar suavemente una vez seco, aplicar textura y pintar.
-  
-* **Inside Oven (Horno profundo):**
-  1. Retirar parrillas. Aplicar desengrasante pesado biodegradable.
-  2. Dejar actuar 15 minutos (si es posible con calor residual de 150°F apagado).
-  3. Fregar con esponja de cobre anti-rayones. Enjuagar tres veces con paño húmedo.
-  
-* **Extracción de Pelos de Mascota:**
-  1. Utilizar un raspador de silicona para alfombras en pasadas rápidas unidireccionales.
-  2. Aplicar aspirado de alta potencia con cepillo motorizado.`;
-    } 
-    // 6. Default AI Response
-    else {
-      if (isStaff) {
+      else if (q.includes('vender') || q.includes('upsell') || q.includes('extra') || q.includes('ofrecer')) {
+        reply = `### 💰 Script de Expansión (Upselling en Campo)
+Cuando notes un área que requiere mantenimiento que no está cotizado, usa este guion:
+*"Hola [Nombre], mientras realizaba el servicio noté que [área] requiere limpieza profunda. Normalmente esto cuesta $X, pero como ya estoy aquí con el equipo preparado, puedo hacerlo por solo $Y y dejarlo impecable. ¿Le gustaría que lo añada?"*
+Si acepta, envíale confirmación al Administrador.`;
+      }
+      else if (q.includes('alfombra') || q.includes('mancha') || q.includes('vino') || q.includes('sangre') || q.includes('yeso') || q.includes('horno')) {
+        reply = `### 🧪 Base de Conocimientos: Técnicas Avanzadas
+* **Manchas Biológicas (Sangre, orina):** Usa limpiadores enzimáticos fríos. **NUNCA usar agua caliente** porque fija la proteína.
+* **Manchas de Vino/Café (Taninos):** Aplica peróxido de hidrógeno al 3% y limpia con paño de microfibra blanco.
+* **Hornos / Grasa Pesada:** Aplica desengrasante alcalino. Usa calor residual del horno apagado (150°F) para aflojar el carbón en 10 min.
+* **Drywall (Yeso):** Lija el hueco, aplica malla autoadhesiva, pon masilla de 20 min, seca, lija y texturiza.`;
+      }
+      else {
         reply = `### 👷 Asistente Operativo Elevore
+Hola ${activeUser}. Analicé tu consulta: *"**${promptText}**"*. 
 
-Hola ${activeUser}. Analicé tu consulta técnica sobre *"**${promptText}**"*. 
+**💡 Menú de Capacitación Avanzada:**
+* Pregúntame sobre **"cómo sacar una mancha"** o **"cómo limpiar yeso/hornos"**.
+* **"¿Qué hago si el cliente está molesto?"** (Resolución de quejas).
+* **"¿Qué pasa si rompo algo?"** (Protocolos de seguro).
+* **"¿Cómo ofrezco extras?"** (Guiones de ventas para ganar más bonos).`;
+      }
+    } 
+    
+    // -- ADMIN AI (SaaS Metrics, Predictability, Strategy, Copywriting) --
+    else {
+      if (q.includes('proyecci') || q.includes('futuro') || q.includes('mes que viene') || q.includes('crecimiento')) {
+        const vel = jobs.filter(j => j.status === 'paid').length;
+        const projected = Math.round(stats.totalRev * 1.15); // Simple 15% growth model
+        reply = `### 🚀 Proyección Analítica de IA (Forecasting)
+Basado en tu tracción actual de ${vel} trabajos completados, mi algoritmo predictivo sugiere:
+* **Ingreso Bruto Proyectado (Próx. 30 días):** ${fmt$(projected)}
+* **Tendencia Vectorial:** Crecimiento acelerado (+15%).
+* **Acción sugerida:** Tienes margen operativo sólido. Es el momento perfecto para probar subir tus precios base un 10% a nuevos prospectos para mejorar el margen neto.`;
+      }
+      else if (q.includes('staff') || q.includes('empleado') || q.includes('equipo') || q.includes('rendimiento')) {
+        const top = staff.sort((a,b) => (b.total_earned||0) - (a.total_earned||0))[0];
+        reply = `### 👥 Auditoría de Rendimiento Organizacional
+Tu equipo cuenta con ${staff.length} operadores activos en el sistema.
+🏆 **Top Performer del Mes:** **${top ? top.name : 'N/A'}** (Líder en comisiones/retención).
+* **Sugerencia Ejecutiva:** Implementa un bono de calidad (Quality Bonus) del 5% para técnicos que logren 3 reseñas de 5 estrellas semanales. Incentivarás perfección sin costo fijo.`;
+      }
+      else if (q.includes('mensaje') || q.includes('email') || q.includes('campaña') || q.includes('texto') || q.includes('vender')) {
+        reply = `### ✍️ AI Copywriter: Campaña de Reactivación VIP
+Copia y pega este script neuro-optimizado para generar respuestas rápidas en clientes fríos:
 
-Como asistente de operaciones te sugiero:
-1. Seguir la **lista de verificación (Checklist)** completa en cada proyecto antes de enviar a control de calidad (QC).
-2. Tomar fotos claras de **Antes y Después** para evitar reclamos y justificar tus bonos.
-3. Asegurar de marcar tu **Check Out** puntualmente al finalizar para auditar el bono de velocidad de 3 horas.
+*"¡Hola [Nombre]! ✨ El equipo de gerencia revisó el expediente de su hogar y notamos que ya toca su mantenimiento de temporada. Para mantener su estatus VIP, nuestro sistema le ha liberado un cupón confidencial del 15% OFF válido solo por 48 horas. ¿Le reservamos una fecha premium? 📅💎"*`;
+      }
+      else if (q.includes('financ') || q.includes('mrr') || q.includes('metas') || q.includes('dinero') || q.includes('ingres')) {
+        reply = `### 📊 Inteligencia de Negocios (BI)
+* **Facturación Bruta:** ${fmt$(stats.totalRev)}
+* **Ingresos Recurrentes Mensuales (MRR):** ${fmt$(stats.mrr)}
+* **Velocidad de Meta:** Estás al ${Math.round((stats.totalRev / DEFAULT_CFG.GOAL) * 100)}% de tu meta corporativa de ${fmt$(DEFAULT_CFG.GOAL)}.
+**💡 Recomendación:** Tienes ${stats.unsigned.length} presupuestos congelados. Activa secuencias de seguimiento (Follow-up) hoy mismo para inyectar liquidez a tu caja.`;
+      }
+      else if (q.includes('churn') || q.includes('riesgo') || q.includes('abandono') || q.includes('fuga')) {
+        if (stats.churn.length === 0) {
+          reply = `### 🚨 Radar de Retención (Churn Risk)
+✅ Excelente salud de cohorte. **0% de fuga de clientes** detectada en los últimos 45 días. Tus clientes son altamente leales.`;
+        } else {
+          reply = `### 🚨 Alerta de Fuga de Clientes (Churn Detection)
+⚠️ Peligro Operativo: He detectado **${stats.churn.length} clientes** de alto valor que no han reservado en más de 45 días (Ej: ${stats.churn[0].name}).
+*Ejecuta la campaña de reactivación VIP inmediatamente antes de que el ciclo de vida del cliente termine.*`;
+        }
+      }
+      else {
+        reply = `### 🧠 Comando Central Elevore (AI)
+Hola ${activeUser}. Analicé tu consulta: *"**${promptText}**"*.
 
-¿Deseas instrucciones específicas sobre algún servicio?`;
-      } else {
-        reply = `### 🧠 Elevore Inteligencia Artificial
-
-Entendido. Como tu asesor especializado de Elevore, analicé tu consulta sobre *"**${promptText}**"*. 
-
-Para optimizar al máximo tu SaaS, te sugiero:
-1. Revisar los **${stats.unsigned.length} presupuestos pendientes de firma** para asegurar el cierre de caja.
-2. Comprobar que los empleados asignados usen sus **códigos PIN individuales** al iniciar jornada para auditar los tiempos en ruta.
-3. Configurar tu billetera de cobro en el panel de Finanzas.
-
-¿Deseas que analice algo más sobre tus clientes o finanzas?`;
+Como tu Motor de Inteligencia Estratégica, tengo comandos de alto nivel. Pregúntame sobre:
+1. 🚀 **"Proyecciones"**: Genero pronósticos de ventas y crecimiento futuro.
+2. 👥 **"Auditoría de staff"**: Analizo el rendimiento de tus empleados y retención de talento.
+3. ✍️ **"Crea una campaña"**: Te escribo textos de marketing persuasivos listos para enviar.
+4. 🚨 **"Riesgo de clientes"**: Detecto clientes a punto de irse con la competencia.
+5. 📊 **"Análisis financiero"**: Desglose de MRR y métricas de salud SaaS.`;
       }
     }
 
