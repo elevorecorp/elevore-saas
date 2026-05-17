@@ -1601,20 +1601,28 @@ ${job.final_signature ? `<div class="sig"><p style="font-size:10px;color:#999;ma
                 </div>
               </div>
 
-              {/* GPS Maps Section */}
-              <div className="g p-6 border border-white/5 space-y-4 bg-[rgba(255,255,255,0.04)] border-[rgba(255,255,255,0.08)]">
-                <div className="flex justify-between items-center border-b border-white/5 pb-2">
-                  <div className="flex items-center gap-2">
-                    <h3 className="text-[10px] font-black text-slate-300 uppercase tracking-widest font-display">📍 SAAS FLEET OPERATION DECK</h3>
-                    <span className="text-[6px] bg-green-500/10 text-green-400 font-bold px-1.5 py-0.5 rounded border border-green-500/15 animate-pulse">WAR ROOM</span>
+              {/* Ecosystem Expansion AI */}
+              <div className="g p-6 border border-blue-500/20 bg-blue-500/[0.02] flex items-center justify-between shadow-md rounded-2xl relative overflow-hidden mt-4">
+                <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(59,130,246,0.05),transparent)] pointer-events-none"></div>
+                <div>
+                  <div className="flex items-center gap-2 mb-2">
+                    <p className="text-[10px] font-black text-blue-400 uppercase tracking-widest font-display">🧠 AI PREDICTIVE REVENUE</p>
+                    <span className="text-[6px] bg-blue-500/10 text-blue-300 font-bold px-1.5 py-0.5 rounded border border-blue-500/15">SMART ENGINE</span>
                   </div>
+                  {finance.mbTargets.length > 0 ? (
+                    <>
+                      <p className="text-xl font-black italic text-white leading-none mb-1">Target Identified: {finance.mbTargets[0].name}</p>
+                      <p className="text-[9px] text-slate-400 w-3/4">Client has completed multiple services. High probability (89%) of converting to VIP Monthly Retainer. Send priority invitation to lock in LTV.</p>
+                    </>
+                  ) : (
+                    <>
+                      <p className="text-xl font-black italic text-white leading-none mb-1">Surge Pricing Optimal</p>
+                      <p className="text-[9px] text-slate-400 w-3/4">Demand capacity is reaching 80%. AI suggests enabling a 1.2x surge multiplier on all new estimates for the next 48 hours to maximize margin on affluent clients.</p>
+                    </>
+                  )}
                 </div>
-
-                <MapComponent address={activeMapAddress} />
-                <div className="flex gap-2 overflow-x-auto nsb pt-2">
-                  {jobs.filter(j => j.status === 'scheduled' || j.status === 'in_progress').map(job => (
-                    <button key={job.id} onClick={() => setMapAddress(job.address)} className={`px-3 py-2 rounded-xl text-[8px] font-black uppercase flex-shrink-0 border transition-all ${activeMapAddress === job.address ? 'bg-[#F5C518] border-[#F5C518] text-black shadow-lg shadow-[#F5C518]/10' : 'bg-white/5 border-white/5 text-slate-400 hover:text-white'}`}>{job.client_name}</button>
-                  ))}
+                <div>
+                  <button onClick={() => tt('Deploying Smart Campaign... 🚀')} className="px-5 py-3 bg-blue-600 text-white rounded-xl font-black text-[9px] uppercase active:scale-95 shadow-lg shadow-blue-600/20 whitespace-nowrap">Deploy Campaign</button>
                 </div>
               </div>
 
@@ -1644,9 +1652,26 @@ ${job.final_signature ? `<div class="sig"><p style="font-size:10px;color:#999;ma
                 </div>
               </div>
               
-              {/* War Room Actions */}
-              <div className="g p-6 space-y-4 bg-[rgba(255,255,255,0.04)] border border-[rgba(255,255,255,0.08)]">
-                <p className="text-[10px] font-black text-[#F5C518] uppercase tracking-widest font-display">WAR ROOM TASKS</p>
+              {/* GPS Maps Section Moved Down */}
+              <div className="g p-6 border border-white/5 space-y-4 bg-[rgba(255,255,255,0.04)] border-[rgba(255,255,255,0.08)] mt-4">
+                <div className="flex justify-between items-center border-b border-white/5 pb-2">
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-[10px] font-black text-slate-300 uppercase tracking-widest font-display">📍 LIVE LOGISTICS & DISPATCH</h3>
+                    <span className="text-[6px] bg-amber-500/10 text-amber-400 font-bold px-1.5 py-0.5 rounded border border-amber-500/15">SYNC ACTIVE</span>
+                  </div>
+                </div>
+
+                <MapComponent address={activeMapAddress} />
+                <div className="flex gap-2 overflow-x-auto nsb pt-2">
+                  {jobs.filter(j => j.status === 'scheduled' || j.status === 'in_progress').map(job => (
+                    <button key={job.id} onClick={() => setMapAddress(job.address)} className={`px-3 py-2 rounded-xl text-[8px] font-black uppercase flex-shrink-0 border transition-all ${activeMapAddress === job.address ? 'bg-[#F5C518] border-[#F5C518] text-black shadow-lg shadow-[#F5C518]/10' : 'bg-white/5 border-white/5 text-slate-400 hover:text-white'}`}>{job.client_name}</button>
+                  ))}
+                </div>
+              </div>
+
+              {/* AI Dispatch Actions */}
+              <div className="g p-6 space-y-4 bg-[rgba(255,255,255,0.04)] border border-[rgba(255,255,255,0.08)] mt-4">
+                <p className="text-[10px] font-black text-[#F5C518] uppercase tracking-widest font-display">⚡ AI OPERATIONS & DISPATCH</p>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                   <button onClick={() => { setFSt('lead'); setView('agenda'); }} className="bg-white/5 border border-white/5 hover:border-[#F5C518]/30 hover:bg-white/10 p-4 rounded-2xl text-left active:scale-95 transition-all">
                     <p className="text-[8px] text-[#F5C518] font-black uppercase tracking-wider">Money Waiting</p>
