@@ -362,15 +362,15 @@ function AIReportModal({ jobs, clients, staff, onClose, tt }) {
   }).length;
 
   return (
-    <div className="fixed inset-0 bg-black/95 z-[2000] flex items-center justify-center p-4" onClick={onClose}>
+<div className="fixed inset-0 bg-black/95 z-[2000] flex items-center justify-center p-4 mesh-bg" onClick={onClose}>
       <div className="g p-6 w-full max-w-xl max-h-[90vh] overflow-y-auto custom-scroll border-t-4 border-[#F5C518] su bg-[#050508] shadow-[0_0_80px_rgba(245,197,24,0.1)] space-y-6 animate-in fade-in zoom-in duration-300" onClick={e => e.stopPropagation()}>
         
         {/* Header */}
         <div className="flex justify-between items-center border-b border-white/5 pb-4">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-[#F5C518] text-black rounded-xl flex items-center justify-center font-black italic text-xl shadow-lg shadow-[#F5C518]/10">E</div>
+          <div className="flex items-center gap-4">
+            <img src="/elevore-logo.png" alt="Elevore Logo" className="w-10 h-10 object-contain drop-shadow-[0_0_15px_rgba(245,197,24,0.4)]" />
             <div>
-              <h2 className="text-xs font-black text-white uppercase tracking-widest leading-none font-display">ELEVORE AI STRATEGIC GROWTH REPORT</h2>
+              <h2 className="text-xs font-black text-white uppercase tracking-widest leading-none font-display">ELEVORE <span className="text-gradient italic">AI STRATEGIC GROWTH REPORT</span></h2>
               <p className="text-[7px] text-slate-500 uppercase mt-1">SaaS Revenue, Churn Protection & Scale Playbook</p>
             </div>
           </div>
@@ -1048,12 +1048,12 @@ function OnboardingFlow({ onBack }) {
 // =====================================================================
 function LandingPage({ onLogin, onSignup }) {
   return (
-    <div className="min-h-screen bg-black text-white font-sans selection:bg-[#F5C518] selection:text-black">
+    <div className="min-h-screen mesh-bg text-white font-sans selection:bg-[#F5C518] selection:text-black">
       {/* Navbar */}
-      <nav className="fixed top-0 left-0 w-full z-50 bg-black/60 backdrop-blur-xl border-b border-white/5">
+      <nav className="fixed top-0 left-0 w-full z-50 bg-black/40 backdrop-blur-xl border-b border-white/5">
         <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-gradient-to-br from-amber-400 to-amber-600 rounded-xl flex items-center justify-center font-black text-black italic text-2xl shadow-[0_0_20px_rgba(245,197,24,0.3)]">E</div>
+            <img src="/elevore-logo.png" alt="Elevore Logo" className="w-10 h-10 object-contain drop-shadow-[0_0_15px_rgba(245,197,24,0.4)] hover:scale-105 transition-transform" />
             <span className="font-black tracking-[0.25em] uppercase text-lg hidden sm:block">Elevore <span className="text-[#F5C518] italic">Empire</span></span>
           </div>
           <div className="flex items-center gap-6">
@@ -1071,7 +1071,7 @@ function LandingPage({ onLogin, onSignup }) {
             The #1 Operating System for Service Businesses
           </div>
           <h1 className="text-6xl sm:text-7xl md:text-8xl font-black uppercase tracking-tighter leading-[0.9]">
-            Run Your Company on <br className="hidden sm:block"/><span className="text-transparent bg-clip-text bg-gradient-to-r from-[#F5C518] to-amber-600 italic">Autopilot.</span>
+            Run Your Company on <br className="hidden sm:block"/><span className="text-gradient italic drop-shadow-2xl">Autopilot.</span>
           </h1>
           <p className="text-slate-400 text-lg md:text-2xl max-w-3xl mx-auto leading-relaxed pt-4">
             AI-driven dispatch, automated client portals, GPS fleet tracking, and predictive revenue engines designed exclusively for high-end service empires.
@@ -1185,8 +1185,8 @@ function LandingPage({ onLogin, onSignup }) {
       </div>
       
       {/* Footer */}
-      <div className="border-t border-white/5 py-12 bg-black text-center">
-        <div className="w-10 h-10 bg-[#F5C518]/10 rounded-xl flex items-center justify-center font-black text-[#F5C518] italic text-2xl mx-auto mb-6">E</div>
+      <div className="border-t border-white/5 py-12 bg-black/40 backdrop-blur-md text-center relative z-20">
+        <img src="/elevore-logo.png" alt="Elevore Logo" className="w-12 h-12 object-contain mx-auto mb-6 opacity-80" />
         <div className="flex justify-center gap-6 mb-8 text-[10px] font-black uppercase tracking-widest text-slate-500">
           <a href="#" className="hover:text-[#F5C518] transition-colors">Terms</a>
           <a href="#" className="hover:text-[#F5C518] transition-colors">Privacy</a>
@@ -1633,12 +1633,12 @@ ${job.final_signature ? `<div class="sig"><p style="font-size:10px;color:#999;ma
   if (view === 'signup') return <OnboardingFlow onBack={() => setView('landing')} />;
 
   if (view === 'auth') return (
-    <div className="min-h-screen flex items-center justify-center p-6 bg-gradient-to-br from-slate-950 via-black to-zinc-900 animate-in fade-in duration-1000">
+    <div className="min-h-screen flex items-center justify-center p-6 mesh-bg animate-in fade-in duration-1000">
       <Toast />
-      <div className="g p-10 w-full max-w-sm text-center space-y-7 border-t-4 border-amber-500 shadow-[0_0_50px_rgba(251,191,36,0.15)] bg-black/60 backdrop-blur-2xl">
-        <div className="w-16 h-16 bg-gradient-to-br from-amber-400 to-amber-600 rounded-2xl mx-auto flex items-center justify-center font-black italic text-3xl text-black shadow-lg shadow-amber-500/20">E</div>
+      <div className="g p-10 w-full max-w-sm text-center space-y-7 border-t-4 border-[#F5C518] shadow-[0_0_50px_rgba(245,197,24,0.15)] bg-black/60 backdrop-blur-2xl">
+        <img src="/elevore-logo.png" alt="Elevore Logo" className="w-20 h-20 object-contain mx-auto drop-shadow-[0_0_20px_rgba(245,197,24,0.4)] animate-pulse" />
         <div>
-          <h1 className="text-2xl font-black uppercase tracking-tighter text-white">ELEVORE <span className="text-amber-500 italic">EMPIRE</span></h1>
+          <h1 className="text-2xl font-black uppercase tracking-tighter text-white">ELEVORE <span className="text-gradient italic">EMPIRE</span></h1>
           <p className="text-[7px] text-slate-500 uppercase tracking-widest mt-1">v97.0 — Premium SaaS Command</p>
         </div>
         
@@ -1693,9 +1693,9 @@ ${job.final_signature ? `<div class="sig"><p style="font-size:10px;color:#999;ma
           {/* Brand header */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-gradient-to-br from-amber-400 to-[#F5C518] rounded-xl flex items-center justify-center font-black text-black italic text-xl shadow-lg shadow-[#F5C518]/15">E</div>
+              <img src="/elevore-logo.png" alt="Elevore Logo" className="w-10 h-10 object-contain drop-shadow-[0_0_15px_rgba(245,197,24,0.4)]" />
               <div>
-                <h1 className="font-black text-sm tracking-widest uppercase text-white leading-none">ELEVORE <span className="text-[#F5C518] italic font-light">EMPIRE</span></h1>
+                <h1 className="font-black text-sm tracking-widest uppercase text-white leading-none">ELEVORE <span className="text-gradient italic font-light">EMPIRE</span></h1>
                 <div className="flex items-center gap-2 mt-1.5">
                   <div className={rtOn ? 'dg' : 'da'}></div>
                   <p className="text-[7px] font-black text-slate-500 uppercase tracking-widest">{rtOn ? 'Live Sync' : 'v97.0'}</p>
@@ -1789,7 +1789,8 @@ ${job.final_signature ? `<div class="sig"><p style="font-size:10px;color:#999;ma
             <button onClick={() => setMobileMenuOpen(true)} className="p-2 -ml-2 text-slate-400 hover:text-white">
               <Icon name="menu" className="w-5 h-5" />
             </button>
-            <h2 className="font-black text-xs tracking-widest uppercase text-white leading-none">ELEVORE <span className="text-[#F5C518] italic font-light">EMPIRE</span></h2>
+            <img src="/elevore-logo.png" alt="Elevore Logo" className="w-6 h-6 object-contain" />
+            <h2 className="font-black text-xs tracking-widest uppercase text-white leading-none">ELEVORE <span className="text-gradient italic font-light">EMPIRE</span></h2>
           </div>
           <div className="flex gap-1.5">
             <button onClick={() => setAIOpen(true)} className="p-2 bg-white/5 rounded-lg text-slate-400 hover:text-white"><Icon name="brain" className="w-4 h-4 text-amber-400" /></button>
