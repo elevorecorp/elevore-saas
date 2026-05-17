@@ -1,6 +1,6 @@
 @import "tailwindcss";
 
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;600;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;900&display=swap');
 
 * {
   -webkit-tap-highlight-color: transparent;
@@ -9,24 +9,31 @@
 
 body {
   font-family: 'Outfit', sans-serif;
-  background: #000000;
+  background: #020204;
   color: #f8fafc;
   min-height: 100vh;
   overflow-x: hidden;
 }
 
-/* Custom premium design system classes from your original project */
+/* Glassmorphism system: rgba(255,255,255,0.04) background, rgba(255,255,255,0.08) border */
 .g {
-  background: rgba(10, 10, 15, 0.98);
-  backdrop-filter: blur(50px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 2rem;
-  transition: 0.3s;
+  background: rgba(255, 255, 255, 0.04) !important;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-radius: 1.25rem;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.g:hover {
+  border-color: rgba(255, 255, 255, 0.15) !important;
+  background: rgba(255, 255, 255, 0.06) !important;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
 }
 
 .inp {
-  background: #0d1117 !important;
-  border: 1px solid #30363d;
+  background: rgba(255, 255, 255, 0.02) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 1rem;
   padding: 1rem;
   color: #ffffff !important;
@@ -34,18 +41,21 @@ body {
   width: 100%;
   outline: none;
   font-size: .95rem;
-  transition: 0.3s;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .inp:focus {
-  border-color: #fbbf24;
-  box-shadow: 0 0 20px rgba(251, 191, 36, 0.15);
+  border-color: #F5C518;
+  background: rgba(255, 255, 255, 0.04) !important;
+  box-shadow: 0 0 20px rgba(245, 197, 24, 0.15);
 }
 
+/* Yellow/Gold Accent color #F5C518 for active items */
 .ton {
-  background: #fbbf24 !important;
+  background: #F5C518 !important;
   color: #000000 !important;
   font-weight: 900;
+  box-shadow: 0 4px 14px rgba(245, 197, 24, 0.25);
 }
 
 .nsb::-webkit-scrollbar {
@@ -69,22 +79,22 @@ body {
 .da {
   width: 8px;
   height: 8px;
-  background: #fbbf24;
+  background: #F5C518;
   border-radius: 50%;
   animation: pg 2s infinite;
-  box-shadow: 0 0 10px #fbbf24;
+  box-shadow: 0 0 10px #F5C518;
 }
 
 .pb {
-  height: 7px;
-  background: #1a1a1a;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.05);
   border-radius: 10px;
   overflow: hidden;
 }
 
 .pf {
   height: 100%;
-  background: linear-gradient(90deg, #22c55e, #fbbf24);
+  background: linear-gradient(90deg, #22c55e, #F5C518);
   box-shadow: 0 0 10px rgba(34, 197, 94, 0.4);
   transition: width 1.2s cubic-bezier(.19, 1, .22, 1);
 }
@@ -103,17 +113,18 @@ body {
 }
 
 .gold {
-  background: linear-gradient(90deg, #fbbf24, #f59e0b, #fbbf24);
+  background: linear-gradient(90deg, #F5C518, #d4a310, #F5C518);
   background-size: 200%;
   animation: sh 3s infinite;
   color: #000000;
   font-weight: 900;
+  box-shadow: 0 4px 14px rgba(245, 197, 24, 0.2);
 }
 
 .sp {
-  border: 2px dashed #30363d;
+  border: 2px dashed rgba(255, 255, 255, 0.1);
   border-radius: 1.5rem;
-  background: #050505;
+  background: rgba(0, 0, 0, 0.4);
   touch-action: none;
   display: block;
   width: 100%;
@@ -150,4 +161,19 @@ body {
 }
 .su {
   animation: slu 0.35s cubic-bezier(.19, 1, .22, 1);
+}
+
+/* Custom premium scrollbar for sidebar/lists if needed */
+.custom-scroll::-webkit-scrollbar {
+  width: 4px;
+}
+.custom-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scroll::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+}
+.custom-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.2);
 }

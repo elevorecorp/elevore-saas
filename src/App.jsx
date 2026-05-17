@@ -672,6 +672,7 @@ export default function App() {
   // Custom states
   const [activeMapAddress, setMapAddress] = useState('');
   const [aiOpen, setAIOpen] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const [loading, setLoad] = useState(false);
   const [isPrivate, setPriv] = useState(true);
@@ -724,13 +725,13 @@ export default function App() {
     return () => { sb.removeChannel(ch); setRT(false); };
   }, [view, refresh]);
 
-  // Set selected map default to first active job
+  // Set selected map default to first active job (only if no active map address is selected yet)
   useEffect(() => {
-    if (jobs.length > 0) {
+    if (jobs.length > 0 && !activeMapAddress) {
       const activeJob = jobs.find(j => j.status === 'scheduled' || j.status === 'in_progress');
       if (activeJob) setMapAddress(activeJob.address);
     }
-  }, [jobs]);
+  }, [jobs, activeMapAddress]);
 
   const onName = v => { setState(s => ({ ...s, name: v })); const m = clients.find(c => c.name.toLowerCase().includes(v.toLowerCase())); if (m && v.length > 3) setState(s => ({ ...s, ...m.specs, name: m.name, phone: m.phone, address: m.address })); };
 
@@ -1024,393 +1025,766 @@ ${job.final_signature ? `<div class="sig"><p style="font-size:10px;color:#999;ma
           <p className="text-[7px] text-slate-500 uppercase tracking-widest mt-1">v97.0 — Premium SaaS Command</p>
         </div>
         
-        {/* Personal PIN validation */}
-        <input type="password" placeholder="ENTER PERSONAL PIN" value={pass} className="inp text-center text-xl tracking-[0.5em] font-black" onChange={e => setPass(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleAuth()} />
-        <button onClick={handleAuth} className="w-full gold py-4 rounded-xl font-black uppercase active:scale-95 shadow-xl transition-all hover:shadow-amber-500/10">🔑 SECURE LOG IN</button>
+        {/* ACCESS PIN INPUT */}
+        <input type="password" placeholder="ACCESS PIN" className="inp text-center text-xl tracking-[0.5em] text-[#F5C518]" onChange={e => setPass(e.target.value)} onKeyDown={e => {
+          if (e.key === 'Enter') {
+            const matchedStaff = staff.find(s => s.passcode === pass);
+            if (matchedStaff) {
+              setActiveEmp(matchedStaff);
+              setRole(matchedStaff.role);
+              setView(matchedStaff.role === 'admin' ? 'brief' : 'staff');
+              tt(`Bienvenido ${matchedStaff.name} ✓`);
+            } else {
+              tt('Access Denied', 'red');
+            }
+          }
+        }} />
+        <div className="flex gap-2">
+          <button onClick={() => {
+            const matchedStaff = staff.find(s => s.passcode === pass);
+            if (matchedStaff) {
+              setActiveEmp(matchedStaff);
+              setRole(matchedStaff.role);
+              setView(matchedStaff.role === 'admin' ? 'brief' : 'staff');
+              tt(`Bienvenido ${matchedStaff.name} ✓`);
+            } else {
+              tt('Access Denied', 'red');
+            }
+          }} className="w-full bg-[#F5C518] hover:bg-[#F5C518]/90 text-black py-4 rounded-xl font-black uppercase active:scale-95 shadow-xl shadow-[#F5C518]/15 transition-all text-xs tracking-wider">Ingresar</button>
+        </div>
       </div>
     </div>
   );
 
-  // Staff View with Personal Wallet Dashboard
-  // SECURE OPERATION CHECK: Strictly blocks any financial summaries or MRR data!
-  if (role === 'staff') {
-    if (aStaff) return <StaffJob job={aStaff} onBack={() => setAStaff(null)} onRefresh={refresh} tt={tt} recTime={recTime} upsell={upsell} update={update} employee={activeEmployee} />;
-    return (
-      <div className="min-h-screen p-5 bg-gradient-to-b from-slate-950 via-black to-zinc-900 pb-24 animate-in fade-in">
-        <Toast /><Loader />
-        {aiOpen && <AIAdvisor jobs={jobs} clients={clients} staff={staff} isStaff={true} activeUser={activeEmployee?.name || 'Worker'} onClose={() => setAIOpen(false)} tt={tt} />}
-
-        <div className="max-w-md mx-auto space-y-5">
-          <div className="flex justify-between items-center pt-2">
-            <div>
-              <h1 className="text-xl font-black uppercase italic text-white">Misiones Asignadas</h1>
-              <p className="text-[9px] text-slate-500 uppercase font-black">{activeEmployee?.name} • 👷 {activeEmployee?.role?.toUpperCase()}</p>
-            </div>
-            <div className="flex gap-2">
-              <button onClick={() => setAIOpen(true)} className="px-4 py-2.5 bg-amber-500 rounded-xl text-black font-black uppercase text-[9px] flex items-center gap-1 active:scale-95 shadow-lg shadow-amber-500/25">🧠 Operaciones IA</button>
-              <button onClick={() => { setRole('admin'); setView('auth'); setPass(''); }} className="p-3 bg-slate-900 rounded-xl text-slate-500 hover:text-white transition-all"><Icon name="log-out" className="w-5 h-5" /></button>
-            </div>
-          </div>
-
-          {/* Dynamic Wallet Dashboard for Active Employee */}
-          <div className="g p-6 border-b-4 border-green-500 flex items-center justify-between shadow-xl">
-            <div>
-              <p className="text-[8px] font-black text-slate-500 uppercase mb-1">Mi Billetera Elevore</p>
-              <h3 className="text-4xl font-black text-white italic">{fmt$(activeEmployee?.wallet_balance || 0)}</h3>
-              <p className="text-[7px] text-slate-500 font-bold uppercase mt-1">Total ganado histórico: {fmt$(activeEmployee?.total_earned || 0)}</p>
-            </div>
-            {(activeEmployee?.wallet_balance || 0) > 0 ? (
-              <button onClick={() => handleCashout(activeEmployee)} className="gold px-4 py-3 rounded-xl font-black text-[9px] uppercase active:scale-95 flex items-center gap-1">💸 Zelle Cashout</button>
-            ) : (
-              <span className="text-[8px] bg-white/5 border border-white/5 text-slate-500 px-3 py-2 rounded-xl uppercase font-black">Paid ✓</span>
-            )}
-          </div>
-
-          {staffJobs.length === 0 && <div className="g p-10 text-center text-slate-500 font-black italic uppercase">No tienes misiones asignadas hoy.</div>}
-          
-          {staffJobs.map(job => (
-            <button key={job.id} onClick={() => setAStaff(job)} className="w-full g p-5 border-l-[7px] border-amber-500 text-left active:scale-95 transition-all">
-              <div className="flex justify-between items-start">
-                <div>
-                  <h3 className="text-lg font-black uppercase italic text-white">{job.client_name}</h3>
-                  <p className="text-[9px] text-slate-500 uppercase mt-1">{job.service_type} • {fmtD(job.scheduled_date)}</p>
-                  <p className="text-[9px] text-slate-400 mt-1 italic truncate w-48">{job.address}</p>
-                </div>
-                <span className={`text-[7px] font-black px-2 py-1 rounded-full uppercase ml-2 flex-shrink-0 ${job.status === 'in_progress' ? 'bg-green-600 text-white' : job.status === 'completed' ? 'bg-purple-600 text-white' : 'bg-amber-500 text-black'}`}>{job.status}</span>
-              </div>
-              <p className="text-[8px] font-black text-amber-500 uppercase mt-3 text-right">Iniciar misión →</p>
-            </button>
-          ))}
-        </div>
-      </div>
-    );
+  // Staff View Mobile Operations Check-in Checklist
+  if (role === 'staff' && aStaff) {
+    return <StaffJob job={aStaff} onBack={() => setAStaff(null)} onRefresh={refresh} tt={tt} recTime={recTime} upsell={upsell} update={update} employee={activeEmployee} />;
   }
 
-  const QQ = () => {
-    const [qq, setQQLocal] = useState({ name: '', phone: '', address: '', svc: 'regular', beds: 2, baths: 2, sqft: 2000 });
-    const qp = (() => { if (qq.svc === 'postcon') return Math.round((qq.sqft || 0) * 0.35); const b = { regular: 95, deep: 165, moveout: 195 }; return Math.round((b[qq.svc] || 95) + (qq.beds * 40) + (qq.baths * 35)); })();
-    const send = async () => {
-      if (!qq.name || !qq.phone) return tt('Name + Phone required', 'red');
-      setLoad(true);
-      await sb.from('clients').upsert({ name: qq.name, phone: qq.phone, address: qq.address, specs: {} }, { onConflict: 'name' });
-      const { data: j } = await sb.from('elevore_missions').insert([{ client_name: qq.name, client_phone: qq.phone, address: qq.address, service_type: qq.svc, total_price: qp, deposit_paid: 0, status: 'lead', specs: {}, urgency_expires: new Date(Date.now() + 24 * 3600000).toISOString() }]).select().single();
-      if (j) { const link = `${location.origin}${location.pathname}?mision=${j.id}`; const p = qq.phone.replace(/\D/g, ''); const ph = p.length === 10 ? '1' + p : p; const msg = `Hi ${qq.name}! 📋 Elevore quote: ${fmt$(qp)} for ${qq.svc.toUpperCase()}.\n\n👉 Sign: ${link}\n\n⏰ 24h. Zelle: ${DEFAULT_CFG.ZELLE}`; window.open(`https://wa.me/${ph}?text=${encodeURIComponent(msg)}`, '_blank'); tt('Sent! 🚀'); log(`Quick: ${qq.name}`); }
-      setQM(false); refresh(); setLoad(false);
-    };
-    return (
-      <div className="fixed inset-0 bg-black/90 z-[400] flex items-end p-4" onClick={e => e.target === e.currentTarget && setQM(false)}>
-        <div className="g p-6 w-full max-w-md space-y-4 border-t-4 border-amber-500 su mx-auto bg-[#07070a]">
-          <div className="flex justify-between items-center"><p className="text-[10px] font-black text-amber-500 uppercase tracking-widest">⚡ Quick Quote — 30 sec</p><button onClick={() => setQM(false)} className="text-slate-500"><Icon name="x" className="w-5 h-5" /></button></div>
-          <input className="inp uppercase" placeholder="Client Name" value={qq.name} onChange={e => setQQLocal({ ...qq, name: e.target.value })} />
-          <input className="inp" placeholder="Phone" value={qq.phone} onChange={e => setQQLocal({ ...qq, phone: e.target.value })} />
-          <input className="inp text-xs uppercase" placeholder="Address" value={qq.address} onChange={e => setQQLocal({ ...qq, address: e.target.value })} />
-          <div className="grid grid-cols-4 gap-1">{['regular', 'deep', 'moveout', 'postcon'].map(s => (<button key={s} onClick={() => setQQLocal({ ...qq, svc: s })} className={`py-2 rounded-xl text-[8px] font-black uppercase border-2 active:scale-95 ${qq.svc === s ? 'bg-green-600 border-green-600 text-white' : 'bg-white/5 border-white/5 text-slate-500'}`}>{s}</button>))}</div>
-          {qq.svc === 'postcon' ? (<div className="bg-white/5 p-3 rounded-xl text-center border border-white/5"><span className="text-[8px] uppercase block mb-1 text-slate-400 font-black">SqFt</span><input type="number" value={qq.sqft} onChange={e => setQQLocal({ ...qq, sqft: parseInt(e.target.value) || 0 })} className="inp text-center text-xl text-white" /></div>) : (<div className="grid grid-cols-2 gap-3">{[{ l: 'Beds', k: 'beds' }, { l: 'Baths', k: 'baths' }].map(i => (<div key={i.k} className="bg-white/5 p-3 rounded-xl text-center border border-white/5"><span className="text-[8px] uppercase block mb-1.5 text-slate-400 font-black">{i.l}</span><div className="flex justify-between items-center"><button onClick={() => setQQLocal({ ...qq, [i.k]: Math.max(0, qq[i.k] - 1) })} className="w-7 h-7 bg-white/10 rounded-lg text-white font-bold active:scale-95">-</button><span className="text-lg font-black italic text-white">{qq[i.k]}</span><button onClick={() => setQQLocal({ ...qq, [i.k]: qq[i.k] + 1 })} className="w-7 h-7 bg-white/10 rounded-lg text-white font-bold active:scale-95">+</button></div></div>))}</div>)}
-          <div className="bg-black/40 p-4 rounded-xl text-center border border-white/10"><p className="text-[8px] text-slate-500 uppercase font-black">Estimated</p><p className="text-4xl font-black italic text-white">{fmt$(qp)}</p></div>
-          <button onClick={send} className="w-full gold py-4 rounded-xl font-black uppercase active:scale-95 shadow-xl">🚀 Send Quote via WhatsApp</button>
-        </div></div>
-    );
-  };
-
-  const ChatModal = () => {
-    const send = () => { if (!chatMsg.trim()) return; const p = chatJob.client_phone?.replace(/\D/g, '') || ''; const ph = p.length === 10 ? '1' + p : p; window.open(`https://wa.me/${ph}?text=${encodeURIComponent(chatMsg)}`, '_blank'); setChatLog(l => [...l, { from: 'admin', m: chatMsg, time: new Date().toLocaleTimeString() }]); setChatMsg(''); log(`Chat → ${chatJob.client_name}`); };
-    return (
-      <div className="fixed inset-0 bg-black/90 z-[400] flex items-end p-4" onClick={e => e.target === e.currentTarget && setChatJob(null)}>
-        <div className="g p-6 w-full max-w-md space-y-4 border-t-4 border-green-500 su mx-auto bg-[#07070a]">
-          <div className="flex justify-between items-center"><p className="text-[10px] font-black text-green-500 uppercase">💬 {chatJob?.client_name}</p><button onClick={() => setChatJob(null)}><Icon name="x" className="w-5 h-5 text-slate-500" /></button></div>
-          <div className="h-32 overflow-y-auto space-y-2 nsb">{chatLog.length === 0 && <p className="text-[9px] text-slate-600 italic text-center py-4">No messages yet.</p>}{chatLog.map((m, i) => (<div key={i} className="p-2 rounded-xl text-[9px] font-black bg-green-900/30 text-green-400 ml-8"><p>{m.m}</p><p className="text-[7px] text-slate-600 mt-0.5">{m.time}</p></div>))}</div>
-          <div className="grid grid-cols-2 gap-1">{[['✅ Confirm', 'confirm'], ['🔔 Remind', 'reminder'], ['⭐ Review', 'review'], ['📋 Quote', 'quote']].map(([l, type]) => (<button key={type} onClick={() => { const msgs = { confirm: `Hi ${chatJob.client_name}! ✨ Elevore confirming service.`, reminder: `Hi ${chatJob.client_name}! 🔔 Service reminder.`, review: `Hi ${chatJob.client_name}! 🌟 Review: ${DEFAULT_CFG.GOOGLE}`, quote: `Hi ${chatJob.client_name}! Portal: ${location.origin}${location.pathname}?mision=${chatJob.id}` }; setChatMsg(msgs[type]); }} className="py-1.5 bg-white/5 text-slate-400 rounded-xl text-[7px] font-black uppercase active:scale-95">{l}</button>))}</div>
-          <div className="flex gap-2"><textarea value={chatMsg} onChange={e => setChatMsg(e.target.value)} placeholder="Type message..." className="inp text-sm resize-none h-16 flex-1" /><button onClick={send} className="bg-green-600 text-white px-4 rounded-xl font-black active:scale-95"><Icon name="send" className="w-5 h-5" /></button></div>
-        </div></div>
-    );
-  };
-
   return (
-    <div className="min-h-screen flex flex-col pb-32 bg-gradient-to-br from-slate-950 via-black to-zinc-950 text-slate-100">
+    <div className="min-h-screen flex bg-gradient-to-br from-slate-950 via-black to-zinc-950 text-slate-100 font-sans">
       <Toast />
       {quickMode && <QQ />}
       {chatJob && <ChatModal />}
-      {aiOpen && <AIAdvisor jobs={jobs} clients={clients} staff={staff} isStaff={false} activeUser="Jose Mario (Admin)" onClose={() => setAIOpen(false)} tt={tt} />}
+      {aiOpen && <AIAdvisor jobs={jobs} clients={clients} staff={staff} isStaff={role === 'staff'} activeUser={activeEmployee?.name || 'User'} onClose={() => setAIOpen(false)} tt={tt} />}
       <Loader />
-      
-      {/* Premium Navbar */}
-      <nav className="p-4 sticky top-0 z-[100] bg-black/80 backdrop-blur-2xl border-b border-white/5 flex justify-between items-center shadow-2xl">
-        <div className="flex items-center gap-3"><div className="w-10 h-10 bg-gradient-to-br from-amber-400 to-amber-600 rounded-xl flex items-center justify-center font-black text-black italic text-xl shadow-lg shadow-amber-500/10">E</div><div><h1 className="font-black text-lg tracking-tighter uppercase text-white leading-none">Elevore <span className="text-amber-500 italic font-light">Empire</span></h1><div className="flex items-center gap-2 mt-0.5"><div className={rtOn ? 'dg' : 'da'}></div><p className="text-[7px] font-black text-slate-500 uppercase tracking-widest">{rtOn ? 'Live Sync' : 'v97.0'}</p></div></div></div>
-        <div className="flex gap-1.5">
-          <button onClick={() => setAIOpen(true)} className="px-3.5 bg-amber-500 text-black py-2.5 rounded-xl font-black uppercase text-[8px] active:scale-95 flex items-center gap-1.5 shadow-lg shadow-amber-500/25 transition-all">🧠 AI Advisor</button>
-          <button onClick={() => setQM(true)} className="gold px-3.5 py-2.5 rounded-xl font-black uppercase text-[8px] active:scale-95 transition-all">⚡ Quick</button>
-          <button onClick={() => setPriv(p => !p)} className="p-2 bg-slate-900 rounded-xl text-slate-500 hover:text-amber-500 transition-all"><Icon name={isPrivate ? 'eye-off' : 'eye'} className="w-4 h-4" /></button>
-          <button onClick={() => { setRole('admin'); setView('auth'); setPass(''); }} className="p-2 bg-slate-900 rounded-xl text-slate-500 hover:text-white transition-all"><Icon name="log-out" className="w-4 h-4" /></button>
+
+      {/* 👑 FIXED SIDEBAR ON LEFT (EMPIRE ADMIN STYLE) */}
+      <aside className={`fixed inset-y-0 left-0 z-[1100] w-64 bg-[#050508]/95 border-r border-white/5 p-6 flex flex-col justify-between transform transition-transform duration-300 ease-in-out md:translate-x-0 md:static md:flex md:h-screen md:bg-black/50 md:backdrop-blur-3xl ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+        <div className="space-y-6 flex-1 flex flex-col overflow-y-auto nsb">
+          {/* Brand header */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-gradient-to-br from-amber-400 to-[#F5C518] rounded-xl flex items-center justify-center font-black text-black italic text-xl shadow-lg shadow-[#F5C518]/15">E</div>
+              <div>
+                <h1 className="font-black text-sm tracking-widest uppercase text-white leading-none">ELEVORE <span className="text-[#F5C518] italic font-light">EMPIRE</span></h1>
+                <div className="flex items-center gap-2 mt-1.5">
+                  <div className={rtOn ? 'dg' : 'da'}></div>
+                  <p className="text-[7px] font-black text-slate-500 uppercase tracking-widest">{rtOn ? 'Live Sync' : 'v97.0'}</p>
+                </div>
+              </div>
+            </div>
+            <button onClick={() => setMobileMenuOpen(false)} className="md:hidden p-1.5 text-slate-500 hover:text-white">
+              <Icon name="x" className="w-5 h-5" />
+            </button>
+          </div>
+
+          <div className="h-[1px] bg-white/5"></div>
+
+          {/* Navigation Links */}
+          <nav className="space-y-1.5 flex-1">
+            {role === 'admin' ? (
+              [
+                { id: 'brief', label: 'Dashboard', icon: 'sun' },
+                { id: 'intel', label: 'Finances', icon: 'bar-chart-2' },
+                { id: 'agenda', label: 'Missions', icon: 'shield-check' },
+                { id: 'clients', label: 'Clients DNA', icon: 'users' },
+                { id: 'members', label: 'VIP Memberships', icon: 'diamond' },
+                { id: 'drive', label: 'Photo Drive', icon: 'image' },
+                { id: 'payroll', label: 'Team & Payroll', icon: 'wallet' },
+                { id: 'deploy', label: 'New Estimate', icon: 'zap' }
+              ].map(item => {
+                const isActive = view === item.id;
+                return (
+                  <button key={item.id} onClick={() => { if (item.id === 'deploy') { setEdit(null); setState(INIT); setDtab('identity'); } setView(item.id); setMobileMenuOpen(false); }} className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all duration-200 active:scale-95 ${isActive ? 'bg-[#F5C518] text-black shadow-lg shadow-[#F5C518]/15' : 'text-slate-400 hover:bg-white/5 hover:text-white'}`}>
+                    <Icon name={item.icon} className={`w-4 h-4 ${isActive ? 'text-black' : 'text-slate-400'}`} />
+                    <span>{item.label}</span>
+                  </button>
+                );
+              })
+            ) : (
+              <>
+                <button onClick={() => { setAStaff(null); setView('staff'); setMobileMenuOpen(false); }} className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all duration-200 active:scale-95 ${view === 'staff' ? 'bg-[#F5C518] text-black shadow-lg shadow-[#F5C518]/15' : 'text-slate-400 hover:bg-white/5 hover:text-white'}`}>
+                  <Icon name="shield-check" className="w-4 h-4" />
+                  <span>Misiones</span>
+                </button>
+                <button onClick={() => { setAIOpen(true); setMobileMenuOpen(false); }} className="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl text-[9px] font-black uppercase tracking-widest text-slate-400 hover:bg-white/5 hover:text-white transition-all active:scale-95">
+                  <Icon name="brain" className="w-4 h-4 text-amber-400" />
+                  <span>Operaciones IA</span>
+                </button>
+              </>
+            )}
+          </nav>
         </div>
-      </nav>
 
-      <main className="max-w-xl mx-auto w-full p-4 space-y-5">
-        {seasons.length > 0 && <div className="g p-4 border border-amber-500/20 bg-amber-500/[0.02] flex items-center justify-between shadow-md"><div><p className="text-[8px] font-black text-amber-500 uppercase">🎯 {seasons[0].name}</p><p className="text-[8px] text-slate-400">{seasons[0].msg}</p></div>{seasons[0].discount > 0 && <span className="text-amber-500 font-black text-sm">-{seasons[0].discount}%</span>}</div>}
-
-        {finance.mbTargets.length > 0 && <div className="g p-4 border border-purple-500/20 bg-purple-500/[0.02] flex items-center justify-between shadow-md"><div><p className="text-[8px] font-black text-purple-400 uppercase">💎 {finance.mbTargets.length} Ready for Membership</p><p className="text-[8px] text-slate-500">{finance.mbTargets[0]?.name} + more</p></div><button onClick={() => { const j = jobs.find(jj => jj.client_name === finance.mbTargets[0]?.name); if (j) offerMembership(j); }} className="px-3 py-2 bg-purple-500/20 text-purple-400 rounded-xl text-[7px] font-black uppercase active:scale-95">Offer</button></div>}
-
-        {/* Global tab routing */}
-        <div className="flex gap-1 bg-black/50 p-1.5 rounded-2xl border border-white/5 shadow-2xl overflow-x-auto nsb">{[['brief', '☀️', 'Dashboard'], ['intel', '📊', 'Finances'], ['agenda', '📋', 'Missions'], ['clients', '🧬', 'Clients DNA'], ['members', '💎', 'VIP'], ['drive', '📁', 'Drive'], ['payroll', '👥', 'Team'], ['deploy', '⚡', 'Estimate']].map(([v, e, l]) => (<button key={v} onClick={() => { if (v === 'deploy') { setEdit(null); setState(INIT); setDtab('identity'); } setView(v); }} className={`flex-shrink-0 flex-1 py-2.5 rounded-xl text-[7px] uppercase font-black whitespace-nowrap px-3 active:scale-95 transition-all ${view === v ? (v === 'deploy' ? 'bg-amber-500 text-black shadow-lg shadow-amber-500/10' : 'ton') : 'text-slate-500'}`}>{e} {l}</button>))}</div>
-
-        {view === 'brief' && (<div className="space-y-5 animate-in fade-in">
-          
-          {/* Active Interactive Maps Section */}
-          <div className="g p-5 border border-white/5 space-y-3 bg-black/20">
-            <div className="flex justify-between items-center">
-              <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest">📍 GPS Mission Locator</p>
-              {activeMapAddress && <span className="text-[7px] bg-green-600/10 text-green-400 font-bold px-2 py-0.5 rounded-lg truncate w-32 border border-green-500/10">{activeMapAddress}</span>}
+        {/* Sidebar Footer Actions */}
+        <div className="pt-4 border-t border-white/5 space-y-3">
+          {role === 'admin' && (
+            <div className="grid grid-cols-2 gap-2">
+              <button onClick={() => { setAIOpen(true); setMobileMenuOpen(false); }} className="py-3 bg-white/5 hover:bg-white/10 text-white rounded-xl text-[8px] font-black uppercase flex items-center justify-center gap-1 active:scale-95 border border-white/5 transition-all">
+                <Icon name="brain" className="w-3.5 h-3.5 text-amber-400" />
+                <span>AI Advisor</span>
+              </button>
+              <button onClick={() => { setQM(true); setMobileMenuOpen(false); }} className="py-3 bg-[#F5C518] hover:bg-[#F5C518]/90 text-black rounded-xl text-[8px] font-black uppercase flex items-center justify-center gap-1 active:scale-95 transition-all shadow-md">
+                <Icon name="zap" className="w-3.5 h-3.5" />
+                <span>Quick</span>
+              </button>
             </div>
-            <MapComponent address={activeMapAddress} />
-            <div className="flex gap-1 overflow-x-auto nsb pt-1">
-              {jobs.filter(j => j.status === 'scheduled' || j.status === 'in_progress').map(job => (
-                <button key={job.id} onClick={() => setMapAddress(job.address)} className={`px-2.5 py-1.5 rounded-lg text-[7px] font-black uppercase flex-shrink-0 border transition-all ${activeMapAddress === job.address ? 'bg-green-600 border-green-600 text-white' : 'bg-white/5 border-white/5 text-slate-400'}`}>{job.client_name}</button>
-              ))}
-            </div>
+          )}
+          <div className="flex gap-2 justify-between items-center">
+            {role === 'admin' && (
+              <button onClick={() => setPriv(p => !p)} className="flex-1 py-3 bg-white/5 hover:bg-white/10 rounded-xl text-slate-400 hover:text-white active:scale-95 flex items-center justify-center border border-white/5 transition-all">
+                <Icon name={isPrivate ? 'eye-off' : 'eye'} className="w-4 h-4" />
+              </button>
+            )}
+            <button onClick={() => { setRole('admin'); setView('auth'); setPass(''); setMobileMenuOpen(false); }} className="flex-1 py-3 bg-red-900/10 hover:bg-red-900/20 text-red-500 rounded-xl active:scale-95 flex items-center justify-center border border-red-500/10 transition-all font-black text-[10px] uppercase tracking-wider">
+              <Icon name="log-out" className="w-4 h-4" />
+            </button>
           </div>
+        </div>
+      </aside>
 
-          {/* Improved Aesthetic Dashboard stats grid */}
-          <div className="g p-6 border-t-4 border-amber-500 bg-black/20"><p className="text-[9px] font-black text-slate-500 uppercase mb-1">Good morning, Jose Mario 👋</p><h2 className="text-2xl font-black italic text-white mb-4">Command Deck</h2><div className="grid grid-cols-2 gap-3"><div className="bg-green-600/5 border border-green-600/10 p-4 rounded-xl text-center"><p className="text-[7px] text-green-400 font-black uppercase mb-1">Jobs Today</p><p className="text-3xl font-black italic text-white">{finance.todayJobs.length}</p></div><div className="bg-amber-500/5 border border-amber-500/10 p-4 rounded-xl text-center"><p className="text-[7px] text-amber-400 font-black uppercase mb-1">Revenue Today</p><p className="text-3xl font-black italic text-white">{fmt$(finance.todayJobs.reduce((a, b) => a + (b.total_price || 0), 0))}</p></div><div className="bg-blue-600/5 border border-blue-600/10 p-4 rounded-xl text-center"><p className="text-[7px] text-blue-400 font-black uppercase mb-1">MRR</p><p className="text-3xl font-black italic text-white">{isPrivate ? '***' : fmt$(finance.mrr)}</p></div><div className="bg-purple-600/5 border border-purple-600/10 p-4 rounded-xl text-center"><p className="text-[7px] text-purple-400 font-black uppercase mb-1">Avg Rating</p><p className="text-3xl font-black italic text-white">{finance.avgRating || '—'}</p></div></div></div>
-          
-          {/* Aesthetic progress indicators */}
-          <div className="g p-6 flex items-center justify-between shadow-xl bg-black/20">
-            <Thermo pct={finance.pct} goal={DEFAULT_CFG.GOAL} current={finance.gross} />
-            <div className="h-20 w-[1px] bg-white/5"></div>
-            <div className="space-y-3">
-              <div className="flex items-center gap-3">
-                <ProgressRing progress={finance.pct} radius={24} stroke={3} color="#22c55e" />
+      {/* Mobile Menu Backdrop */}
+      {mobileMenuOpen && (
+        <div onClick={() => setMobileMenuOpen(false)} className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[1050] md:hidden"></div>
+      )}
+
+      {/* 💻 MAIN WORKSPACE AREA */}
+      <div className="flex-1 flex flex-col min-w-0 h-screen overflow-y-auto">
+        {/* Mobile Header Navbar */}
+        <header className="md:hidden p-4 sticky top-0 z-[100] bg-[#050508]/90 backdrop-blur-2xl border-b border-white/5 flex justify-between items-center shadow-xl">
+          <div className="flex items-center gap-2.5">
+            <button onClick={() => setMobileMenuOpen(true)} className="p-2 -ml-2 text-slate-400 hover:text-white">
+              <Icon name="menu" className="w-5 h-5" />
+            </button>
+            <h2 className="font-black text-xs tracking-widest uppercase text-white leading-none">ELEVORE <span className="text-[#F5C518] italic font-light">EMPIRE</span></h2>
+          </div>
+          <div className="flex gap-1.5">
+            <button onClick={() => setAIOpen(true)} className="p-2 bg-white/5 rounded-lg text-slate-400 hover:text-white"><Icon name="brain" className="w-4 h-4 text-amber-400" /></button>
+            {role === 'admin' && (
+              <button onClick={() => setQM(true)} className="p-2 bg-[#F5C518] text-black rounded-lg"><Icon name="zap" className="w-4 h-4" /></button>
+            )}
+          </div>
+        </header>
+
+        {/* Workspace content wrapper */}
+        <main className="max-w-5xl mx-auto w-full p-4 md:p-8 space-y-6">
+          {seasons.length > 0 && role === 'admin' && (
+            <div className="g p-4 border border-amber-500/20 bg-amber-500/[0.02] flex items-center justify-between shadow-md">
+              <div>
+                <p className="text-[8px] font-black text-amber-500 uppercase">🎯 {seasons[0].name}</p>
+                <p className="text-[8px] text-slate-400">{seasons[0].msg}</p>
+              </div>
+              {seasons[0].discount > 0 && <span className="text-amber-500 font-black text-sm">-{seasons[0].discount}%</span>}
+            </div>
+          )}
+
+          {finance.mbTargets.length > 0 && role === 'admin' && (
+            <div className="g p-4 border border-purple-500/20 bg-purple-500/[0.02] flex items-center justify-between shadow-md">
+              <div>
+                <p className="text-[8px] font-black text-purple-400 uppercase">💎 {finance.mbTargets.length} Ready for Membership</p>
+                <p className="text-[8px] text-slate-500">{finance.mbTargets[0]?.name} + more</p>
+              </div>
+              <button onClick={() => { const j = jobs.find(jj => jj.client_name === finance.mbTargets[0]?.name); if (j) offerMembership(j); }} className="px-3 py-2 bg-purple-500/20 text-purple-400 rounded-xl text-[7px] font-black uppercase active:scale-95">Offer</button>
+            </div>
+          )}
+
+          {/* =====================================================================
+              👷 STAFF OPERATIONS WORKSPACE
+              ===================================================================== */}
+          {role === 'staff' && (
+            <div className="space-y-6 animate-in fade-in">
+              <div className="flex justify-between items-center pt-2">
                 <div>
-                  <p className="text-[7px] text-slate-500 uppercase font-black">Meta de Ventas</p>
-                  <p className="text-sm font-black text-white">{Math.round(finance.pct)}% Logrado</p>
+                  <h2 className="text-xl font-black uppercase tracking-widest text-white font-display">MISIONES ASIGNADAS</h2>
+                  <p className="text-[9px] text-slate-500 uppercase font-black">{activeEmployee?.name} • 👷 {activeEmployee?.role?.toUpperCase()}</p>
                 </div>
+                <button onClick={() => setAIOpen(true)} className="px-4 py-2.5 bg-[#F5C518] hover:bg-[#F5C518]/90 text-black font-black uppercase text-[9px] flex items-center gap-1 active:scale-95 shadow-lg shadow-[#F5C518]/15 rounded-xl transition-all">🧠 Operaciones IA</button>
               </div>
-              <div className="flex items-center gap-3">
-                <ProgressRing progress={finance.avgRating * 20} radius={24} stroke={3} color="#fbbf24" text={String(finance.avgRating)} />
+
+              {/* Dynamic Wallet Dashboard for Active Employee */}
+              <div className="g p-6 flex items-center justify-between shadow-xl bg-[rgba(255,255,255,0.04)] border border-[rgba(255,255,255,0.08)] rounded-2xl relative overflow-hidden">
+                <span className="absolute top-4 right-4 bg-green-500/10 text-green-400 border border-green-500/20 text-[8px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">BALANCE</span>
                 <div>
-                  <p className="text-[7px] text-slate-500 uppercase font-black">Calificación</p>
-                  <p className="text-sm font-black text-white">{finance.avgRating || 5.0} de 5⭐</p>
+                  <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Mi Billetera Elevore</p>
+                  <h3 className="text-4xl font-black text-white italic mt-1">{fmt$(activeEmployee?.wallet_balance || 0)}</h3>
+                  <p className="text-[8px] text-slate-500 font-bold uppercase mt-1">Total ganado histórico: {fmt$(activeEmployee?.total_earned || 0)}</p>
                 </div>
+                {(activeEmployee?.wallet_balance || 0) > 0 ? (
+                  <button onClick={() => handleCashout(activeEmployee)} className="gold px-4 py-3 rounded-xl font-black text-[9px] uppercase active:scale-95 flex items-center gap-1">💸 Zelle Cashout</button>
+                ) : (
+                  <span className="text-[8px] bg-white/5 border border-white/5 text-slate-500 px-3 py-2 rounded-xl uppercase font-black">Paid ✓</span>
+                )}
+              </div>
+
+              {staffJobs.length === 0 && <div className="g p-10 text-center text-slate-500 font-black italic uppercase bg-[rgba(255,255,255,0.04)] border border-[rgba(255,255,255,0.08)]">No tienes misiones asignadas hoy.</div>}
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {staffJobs.map(job => (
+                  <button key={job.id} onClick={() => setAStaff(job)} className="w-full g p-5 text-left active:scale-95 transition-all bg-[rgba(255,255,255,0.04)] border border-[rgba(255,255,255,0.08)] flex flex-col justify-between min-h-[140px] hover:border-[#F5C518]/30">
+                    <div className="flex justify-between items-start w-full">
+                      <div>
+                        <h3 className="text-lg font-black uppercase italic text-white leading-tight">{job.client_name}</h3>
+                        <p className="text-[9px] text-slate-400 uppercase mt-1">{job.service_type} • {fmtD(job.scheduled_date)}</p>
+                        <p className="text-[8px] text-slate-500 mt-1 italic truncate w-48">{job.address}</p>
+                      </div>
+                      <span className={`text-[7px] font-black px-2 py-1 rounded-full uppercase ml-2 flex-shrink-0 ${job.status === 'in_progress' ? 'bg-green-600 text-white' : job.status === 'completed' ? 'bg-purple-600 text-white' : 'bg-[#F5C518] text-black'}`}>{job.status}</span>
+                    </div>
+                    <p className="text-[8px] font-black text-[#F5C518] uppercase mt-3 self-end flex items-center gap-1">Iniciar misión <Icon name="arrow-right" className="w-3 h-3" /></p>
+                  </button>
+                ))}
               </div>
             </div>
-          </div>
-          
-          <div className="g p-5 border-t-4 border-green-500 space-y-4 bg-black/20"><p className="text-[9px] font-black text-green-400 uppercase tracking-widest">War Room Tasks</p><div className="grid grid-cols-2 gap-2"><button onClick={() => { setFSt('lead'); setView('agenda'); }} className="bg-amber-500/5 border border-amber-500/10 p-3 rounded-xl text-left active:scale-95"><p className="text-[7px] text-amber-400 font-black uppercase">Money Waiting</p><p className="text-2xl font-black italic text-white">{isPrivate ? '***' : fmt$(finance.moneyTable)}</p><p className="text-[7px] text-slate-500">{finance.pendSig.length} unsigned</p></button><button onClick={() => { setFSt('lead'); setView('agenda'); }} className="bg-red-500/5 border border-red-500/10 p-3 rounded-xl text-left active:scale-95"><p className="text-[7px] text-red-400 font-black uppercase">Expiring</p><p className="text-2xl font-black italic text-white">{finance.expiring.length}</p><p className="text-[7px] text-slate-500">under 6h</p></button><button onClick={() => { setFSt('completed'); setView('agenda'); }} className="bg-purple-500/5 border border-purple-500/10 p-3 rounded-xl text-left active:scale-95"><p className="text-[7px] text-purple-400 font-black uppercase">QC Queue</p><p className="text-2xl font-black italic text-white">{finance.qcQ.length}</p></button><button onClick={() => { setFSt('paid'); setView('agenda'); }} className="bg-blue-500/5 border border-blue-500/10 p-3 rounded-xl text-left active:scale-95"><p className="text-[7px] text-blue-400 font-black uppercase">Review Queue</p><p className="text-2xl font-black italic text-white">{finance.reviewQ.length}</p></button></div></div>
-        </div>)}
+          )}
 
-        {view === 'intel' && (<div className="space-y-5 animate-in fade-in">
-          <section className="g p-8 border-t-4 border-green-600 shadow-xl bg-black/20 text-center"><p className="text-[9px] font-black text-slate-500 mb-2 uppercase tracking-widest italic">MRR Goal — {fmt$(DEFAULT_CFG.GOAL)}</p><h2 className="text-7xl italic tracking-tighter text-white font-black leading-none">{Math.round(finance.pct)}%</h2><div className="pb mt-4 mb-3"><div className="pf" style={{ width: `${finance.pct}%` }}></div></div><div className="flex justify-between text-[8px] text-slate-500 font-black uppercase"><span>Billed: {isPrivate ? '***' : fmt$(finance.gross)}</span><span>{finance.gross >= DEFAULT_CFG.GOAL ? '🎯 GOAL!' : 'Left: ' + fmt$(DEFAULT_CFG.GOAL - finance.gross)}</span></div><p className="text-[9px] text-green-500 mt-2 font-black uppercase italic text-center font-bold">Net: {isPrivate ? '****' : fmt$(finance.net)} | Projected: {isPrivate ? '****' : fmt$(finance.proj)}</p></section>
-          
-          <div className="grid grid-cols-2 gap-3">{[{ l: 'Pending', v: isPrivate ? '***' : fmt$(finance.pending), c: 'border-orange-500', t: 'text-orange-400' }, { l: 'Avg Ticket', v: isPrivate ? '***' : fmt$(finance.avg), c: 'border-blue-500', t: 'text-blue-400' }, { l: 'MRR', v: isPrivate ? '***' : fmt$(finance.mrr), c: 'border-purple-500', t: 'text-purple-400' }, { l: 'Avg Rating', v: finance.avgRating || '—', c: 'border-amber-500', t: 'text-amber-400' }, { l: 'Avg LTV', v: isPrivate ? '***' : fmt$(finance.avgLTV), c: 'border-green-500', t: 'text-green-400' }, { l: 'Bonuses', v: fmt$(finance.bonuses), c: 'border-pink-500', t: 'text-pink-400' }].map(k => (<div key={k.l} className={`g p-5 border-b-4 ${k.c} text-center bg-black/20`}><p className="text-[8px] text-slate-500 mb-1 uppercase font-black">{k.l}</p><p className={`text-2xl font-black italic ${k.t}`}>{k.v}</p></div>))}</div>
-          
-          {/* Aesthetic Area Charts */}
-          <div className="g p-6 bg-black/20 space-y-2">
-            <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-4">📈 Gross Revenue Trends</p>
-            <SleekAreaChart data={finance.wb} color="#fbbf24" />
-          </div>
-          <div className="g p-6 bg-black/20 space-y-2">
-            <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-4">📊 Monthly Revenue projections</p>
-            <SleekAreaChart data={finance.mb2} color="#3b82f6" />
-          </div>
-        </div>)}
-
-        {view === 'agenda' && (<div className="space-y-4 animate-in slide-in-from-bottom-10 pb-24">
-          <input className="inp" placeholder="🔍 Search by name or address..." value={sq} onChange={e => setSQ(e.target.value)} />
-          <div className="flex gap-1.5 overflow-x-auto nsb pb-1">{['all', 'lead', 'scheduled', 'in_progress', 'completed', 'paid', 'lost'].map(s => (<button key={s} onClick={() => setFSt(s)} className={`px-3 py-2 rounded-xl text-[8px] font-black uppercase whitespace-nowrap active:scale-95 ${fSt === s ? 'bg-amber-500 text-black shadow-lg shadow-amber-500/10' : 'bg-white/5 text-slate-500'}`}>{s}</button>))}</div>
-          {filtered.length === 0 && <div className="g p-10 text-center text-slate-500 font-black italic uppercase">No missions found.</div>}
-          {filtered.map(job => {
-            const isH = job.service_type === 'handyman';
-            const bal = job.total_price - job.deposit_paid;
-            const d = dna[job.client_name];
-            const lv = lvl(d?.count || 0);
-            const profit = realProfit(job);
-            const bonus = calcBonus(job);
-            return (
-              <div key={job.id} className={`g p-5 border-l-[7px] shadow-xl hover:bg-white/[0.01] transition-all bg-black/10 ${isH ? 'border-green-500' : job.status === 'paid' ? 'border-blue-500' : job.status === 'in_progress' ? 'border-green-400' : job.status === 'lead' ? 'border-yellow-500' : job.status === 'completed' ? 'border-purple-500' : job.status === 'lost' ? 'border-red-800' : 'border-amber-500'}`}>
-                <div className="flex justify-between items-start mb-2">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-1.5 flex-wrap mb-1">
-                      <h3 className="text-base font-black uppercase italic text-white leading-none">{job.client_name}</h3>
-                      <span className={`text-[6px] font-black px-1.5 py-0.5 rounded-full uppercase ${job.status === 'paid' ? 'bg-blue-600 text-white' : job.status === 'in_progress' ? 'bg-green-600 text-white' : job.status === 'lead' ? 'bg-yellow-500 text-black' : job.status === 'completed' ? 'bg-purple-600 text-white' : job.status === 'lost' ? 'bg-red-900 text-red-300' : 'bg-slate-700 text-slate-300'}`}>{job.status}</span>
-                      {isH && <span className="text-[6px] bg-green-600 text-black font-black px-1.5 py-0.5 rounded-full">🛠️</span>}
-                    </div>
-                    <p className="text-[8px] text-slate-500 uppercase">{job.service_type} • {fmtD(job.scheduled_date)} • Assigned: {job.team_assigned || 'No worker'}</p>
-                  </div>
-                  <button onClick={() => { setMapAddress(job.address); setView('brief'); tt('🗺️ Mostrando mapa en Dashboard...'); }} className="p-2.5 bg-blue-900/30 text-blue-400 rounded-xl hover:bg-blue-600 transition-all flex items-center justify-center gap-1 text-[8px] font-black uppercase"><Icon name="navigation" className="w-3.5 h-3.5" />Map</button>
+          {/* =====================================================================
+              👑 ADMIN DASHBOARD BRIEF TABS
+              ===================================================================== */}
+          {role === 'admin' && view === 'brief' && (
+            <div className="space-y-6 animate-in fade-in">
+              {/* Headings */}
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div>
+                  <p className="text-[9px] font-black text-[#F5C518] uppercase tracking-widest">Good morning, Jose Mario 👋</p>
+                  <h2 className="text-2xl md:text-3xl font-black tracking-widest uppercase text-white font-display">COMMAND DECK</h2>
                 </div>
-                <p className="text-[8px] text-slate-400 italic mb-2">{job.address}</p>
-                <div className="grid grid-cols-3 gap-1 mb-2">{[['confirm', '✅'], ['reminder', '🔔'], ['review', '⭐'], ['quote', '📋'], ['referral', '🎁'], ['bundle', '🎯']].map(([tp, em]) => (<button key={tp} onClick={() => wa(job, tp)} className="py-1.5 bg-white/5 border border-white/5 rounded-xl text-[7px] font-black uppercase active:scale-95 text-slate-400">{em} {tp}</button>))}</div>
-                {job.status === 'lead' && <div className="grid grid-cols-4 gap-1 mb-2"><button onClick={() => recordFollow(job, 'follow1')} className="py-1.5 bg-amber-500/10 text-amber-400 rounded-xl text-[7px] font-black uppercase active:scale-95">F1</button><button onClick={() => recordFollow(job, 'follow2')} className="py-1.5 bg-orange-500/10 text-orange-400 rounded-xl text-[7px] font-black uppercase active:scale-95">F2</button><button onClick={() => recordFollow(job, 'final')} className="py-1.5 bg-red-500/10 text-red-400 rounded-xl text-[7px] font-black uppercase active:scale-95">Final</button><button onClick={() => markLost(job)} className="py-1.5 bg-slate-800 text-slate-400 rounded-xl text-[7px] font-black uppercase active:scale-95">Lost</button></div>}
-                <div className="flex justify-between items-end border-t border-white/5 pt-3">
-                  <div>
-                    <p className="text-[8px] text-slate-500 italic font-black uppercase">Balance</p>
-                    <p className="text-4xl font-black italic tracking-tighter text-white leading-none">{fmt$(bal)}</p>
+                {activeMapAddress && (
+                  <div className="flex items-center gap-2 bg-white/5 border border-white/10 px-3.5 py-2 rounded-xl">
+                    <span className="dg"></span>
+                    <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest truncate max-w-[200px]">Active GPS: {activeMapAddress}</span>
                   </div>
-                  <div className="flex gap-1.5">
-                    <button onClick={() => setChatJob(job)} className="p-2.5 bg-blue-900/30 text-blue-400 rounded-xl hover:bg-blue-600 transition-all"><Icon name="message-square" className="w-4 h-4" /></button>
-                    <button onClick={() => printInvoice(job)} className="p-2.5 bg-slate-800 text-amber-500 rounded-xl hover:scale-110 transition-all"><Icon name="file-text" className="w-4 h-4" /></button>
-                    <button onClick={() => { setEdit(job.id); setState({ ...job.specs, totalPrice: job.total_price }); setView('deploy'); setDtab('identity'); }} className="p-2.5 bg-slate-800 text-white rounded-xl hover:bg-blue-600 transition-all"><Icon name="edit-3" className="w-4 h-4" /></button>
-                    <button onClick={() => { if (confirm('Archive?')) sb.from('elevore_missions').delete().eq('id', job.id).then(() => { tt('Archived ✓'); refresh(); }); }} className="p-2.5 bg-red-900/30 text-red-500 rounded-xl hover:bg-red-600 transition-all"><Icon name="trash-2" className="w-4 h-4" /></button>
-                    <button onClick={() => window.open(`https://wa.me/${job.client_phone?.replace(/\D/g, '') || ''}`)} className="p-2.5 bg-green-600 text-white rounded-xl active:scale-90 transition-all"><Icon name="message-circle" className="w-4 h-4" /></button>
-                  </div>
+                )}
+              </div>
+
+              {/* 👑 Empire Admin KPI Stats Grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="g p-6 relative overflow-hidden bg-[rgba(255,255,255,0.04)] border border-[rgba(255,255,255,0.08)] rounded-2xl flex flex-col justify-between min-h-[140px] hover:border-slate-500/20 transition-all">
+                  <span className="absolute top-4 right-4 bg-green-500/10 text-green-400 border border-green-500/20 text-[8px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">LIVE</span>
+                  <p className="text-5xl font-black tracking-tight text-white leading-none mt-4">{finance.todayJobs.length}</p>
+                  <p className="text-[9px] text-slate-400 uppercase font-black tracking-widest mt-2">JOBS TODAY</p>
+                </div>
+
+                <div className="g p-6 relative overflow-hidden bg-[rgba(255,255,255,0.04)] border border-[rgba(255,255,255,0.08)] rounded-2xl flex flex-col justify-between min-h-[140px] hover:border-slate-500/20 transition-all">
+                  <span className="absolute top-4 right-4 bg-amber-500/10 text-[#F5C518] border border-amber-500/20 text-[8px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">TODAY</span>
+                  <p className="text-5xl font-black tracking-tight text-white leading-none mt-4">
+                    {fmt$(finance.todayJobs.reduce((a, b) => a + (b.total_price || 0), 0))}
+                  </p>
+                  <p className="text-[9px] text-slate-400 uppercase font-black tracking-widest mt-2">REVENUE TODAY</p>
+                </div>
+
+                <div className="g p-6 relative overflow-hidden bg-[rgba(255,255,255,0.04)] border border-[rgba(255,255,255,0.08)] rounded-2xl flex flex-col justify-between min-h-[140px] hover:border-slate-500/20 transition-all">
+                  <span className="absolute top-4 right-4 bg-blue-500/10 text-blue-400 border border-blue-500/20 text-[8px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">MONTHLY</span>
+                  <p className="text-5xl font-black tracking-tight text-white leading-none mt-4">
+                    {isPrivate ? '***' : fmt$(finance.mrr)}
+                  </p>
+                  <p className="text-[9px] text-slate-400 uppercase font-black tracking-widest mt-2">MRR ACCUMULATED</p>
+                </div>
+
+                <div className="g p-6 relative overflow-hidden bg-[rgba(255,255,255,0.04)] border border-[rgba(255,255,255,0.08)] rounded-2xl flex flex-col justify-between min-h-[140px] hover:border-slate-500/20 transition-all">
+                  <span className="absolute top-4 right-4 bg-purple-500/10 text-purple-400 border border-purple-500/20 text-[8px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">RATING</span>
+                  <p className="text-5xl font-black tracking-tight text-white leading-none mt-4">{finance.avgRating || '5.0'}</p>
+                  <p className="text-[9px] text-slate-400 uppercase font-black tracking-widest mt-2">AVERAGE STARS</p>
                 </div>
               </div>
-            );
-          })}
-        </div>)}
 
-        {view === 'clients' && (<div className="space-y-4 animate-in fade-in pb-24">
-          <div className="g p-5 border-t-4 border-purple-500 bg-black/20"><p className="text-[9px] font-black text-slate-500 uppercase mb-1">🧬 Client DNA Ledger</p></div>
-          {clients.map(client => {
-            const d = dna[client.name] || { score: 0, count: 0, spent: 0 };
-            const lv = lvl(d.count);
-            const daysSince = dAgo(d.last);
-            const lastJob = jobs.filter(j => j.client_name === client.name)[0];
-            return (
-              <div key={client.name} className="g p-5 hover:bg-white/[0.02] transition-all border-l-4 bg-black/10" style={{ borderColor: lv.color }}>
-                <div className="flex justify-between items-start">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1 flex-wrap">
-                      <h3 className="text-base font-black uppercase italic text-white">{client.name}</h3>
-                      <span className="text-[7px] font-black px-2 py-0.5 rounded-full" style={{ background: lv.color, color: '#000' }}>{lv.name}</span>
-                      {daysSince >= 45 && <span className="text-[7px] bg-red-900/50 text-red-400 font-black px-2 py-0.5 rounded-full">⚠️ Churn Risk</span>}
-                    </div>
-                    <p className="text-[8px] text-slate-500 uppercase">{client.phone}</p>
-                  </div>
+              {/* GPS Maps Section */}
+              <div className="g p-6 border border-white/5 space-y-4 bg-[rgba(255,255,255,0.04)] border-[rgba(255,255,255,0.08)]">
+                <div className="flex justify-between items-center border-b border-white/5 pb-2">
+                  <h3 className="text-[10px] font-black text-slate-300 uppercase tracking-widest font-display">📍 GPS MISSION LOCATOR</h3>
+                  {activeMapAddress && <span className="text-[7px] bg-[#F5C518]/10 text-[#F5C518] font-bold px-2 py-0.5 rounded-lg border border-[#F5C518]/15">ACTIVE GPS VIEW</span>}
                 </div>
-                <div className="flex gap-1.5 mt-3 flex-wrap">
-                  <button onClick={() => lastJob ? wa(lastJob, 'referral') : tt('No previous job', 'red')} className="flex-1 py-2 bg-pink-600/20 text-pink-400 rounded-xl text-[7px] font-black uppercase active:scale-95">🎁 Ref</button>
-                  <button onClick={() => lastJob ? wa(lastJob, 'bundle') : tt('No previous job', 'red')} className="flex-1 py-2 bg-blue-600/20 text-blue-400 rounded-xl text-[7px] font-black uppercase active:scale-95">🎯 Bundle</button>
-                  <button onClick={() => { setState({ ...INIT, ...client.specs, name: client.name, phone: client.phone, address: client.address }); setView('deploy'); setDtab('specs'); }} className="flex-1 py-2 bg-white/5 text-slate-400 rounded-xl text-[7px] font-black uppercase active:scale-95">+ Job</button>
-                </div>
-              </div>
-            );
-          })}
-        </div>)}
-
-        {view === 'members' && (<div className="space-y-5 animate-in fade-in pb-24">
-          <div className="g p-5 border-t-4 border-yellow-500 bg-black/20">
-            <p className="text-[9px] font-black text-slate-500 uppercase mb-1">💎 Memberships</p>
-            <p className="text-2xl font-black italic text-white mt-2">{isPrivate ? '***' : fmt$(finance.mrr)}<span className="text-[9px] text-slate-500 font-black">/mo MRR</span></p>
-          </div>
-          {MBS.filter(m => m.id !== 'none').map(m => (
-            <div key={m.id} className="g p-5 border-l-4 bg-black/10" style={{ borderColor: m.color }}>
-              <div className="flex justify-between items-center mb-3">
-                <h3 className="text-lg font-black uppercase italic text-white">{m.name}</h3>
-                <p className="text-2xl font-black" style={{ color: m.color }}>{fmt$(m.price)}<span className="text-[9px] text-slate-500">/mo</span></p>
-              </div>
-              <ul className="space-y-1 mb-3">{m.perks?.map((p, i) => (<li key={i} className="text-[9px] text-slate-400 font-black">✓ {p}</li>))}</ul>
-            </div>
-          ))}
-        </div>)}
-
-        {/* Dynamic Employee and Wallet Management Suite */}
-        {view === 'payroll' && (
-          <div className="space-y-5 animate-in fade-in pb-24">
-            
-            {/* Create Staff Module */}
-            <div className="g p-6 border-t-4 border-amber-500 space-y-4 bg-black/20">
-              <p className="text-[10px] font-black text-amber-500 uppercase tracking-widest mb-1">👤 Add New Worker & PIN</p>
-              <div className="space-y-3">
-                <input className="inp uppercase" placeholder="Worker Name" value={newStaffName} onChange={e => setNewName(e.target.value)} />
-                <input className="inp" placeholder="Set Passcode PIN (e.g. 5566)" value={newStaffPIN} onChange={e => setNewPIN(e.target.value)} />
-                <div className="grid grid-cols-3 gap-2">
-                  {['staff', 'supervisor', 'admin'].map(r => (
-                    <button key={r} onClick={() => setNewRole(r)} className={`py-2 rounded-xl text-[8px] uppercase font-black border transition-all ${newStaffRole === r ? 'bg-amber-500 text-black border-amber-500' : 'bg-white/5 border-white/5 text-slate-400'}`}>{r}</button>
+                <MapComponent address={activeMapAddress} />
+                <div className="flex gap-2 overflow-x-auto nsb pt-1">
+                  {jobs.filter(j => j.status === 'scheduled' || j.status === 'in_progress').map(job => (
+                    <button key={job.id} onClick={() => setMapAddress(job.address)} className={`px-3 py-2 rounded-xl text-[8px] font-black uppercase flex-shrink-0 border transition-all ${activeMapAddress === job.address ? 'bg-[#F5C518] border-[#F5C518] text-black' : 'bg-white/5 border-white/5 text-slate-400 hover:text-white'}`}>{job.client_name}</button>
                   ))}
                 </div>
-                <button onClick={handleAddEmployee} className="w-full gold py-3 rounded-xl font-black uppercase text-[10px] active:scale-95 shadow-md">Add Employee to SaaS ✓</button>
+              </div>
+
+              {/* Progress and rings metrics */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Thermometer */}
+                <div className="g p-6 bg-[rgba(255,255,255,0.04)] border-[rgba(255,255,255,0.08)]">
+                  <Thermo pct={finance.pct} goal={DEFAULT_CFG.GOAL} current={finance.gross} />
+                </div>
+                {/* Progress Rings */}
+                <div className="g p-6 flex justify-around items-center bg-[rgba(255,255,255,0.04)] border-[rgba(255,255,255,0.08)]">
+                  <div className="flex items-center gap-3.5">
+                    <ProgressRing progress={finance.pct} radius={28} stroke={4} color="#22c55e" />
+                    <div>
+                      <p className="text-[8px] text-slate-500 uppercase font-black">Meta de Ventas</p>
+                      <p className="text-sm font-black text-white">{Math.round(finance.pct)}% Logrado</p>
+                    </div>
+                  </div>
+                  <div className="h-16 w-[1px] bg-white/5"></div>
+                  <div className="flex items-center gap-3.5">
+                    <ProgressRing progress={finance.avgRating * 20} radius={28} stroke={4} color="#F5C518" text={String(finance.avgRating)} />
+                    <div>
+                      <p className="text-[8px] text-slate-500 uppercase font-black">Calificación</p>
+                      <p className="text-sm font-black text-white">{finance.avgRating || 5.0} de 5⭐</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              {/* War Room Actions */}
+              <div className="g p-6 space-y-4 bg-[rgba(255,255,255,0.04)] border border-[rgba(255,255,255,0.08)]">
+                <p className="text-[10px] font-black text-[#F5C518] uppercase tracking-widest font-display">WAR ROOM TASKS</p>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  <button onClick={() => { setFSt('lead'); setView('agenda'); }} className="bg-white/5 border border-white/5 hover:border-[#F5C518]/30 hover:bg-white/10 p-4 rounded-2xl text-left active:scale-95 transition-all">
+                    <p className="text-[8px] text-[#F5C518] font-black uppercase tracking-wider">Money Waiting</p>
+                    <p className="text-2xl font-black italic text-white mt-1">{isPrivate ? '***' : fmt$(finance.moneyTable)}</p>
+                    <p className="text-[8px] text-slate-500">{finance.pendSig.length} unsigned</p>
+                  </button>
+                  <button onClick={() => { setFSt('lead'); setView('agenda'); }} className="bg-white/5 border border-white/5 hover:border-red-500/30 hover:bg-white/10 p-4 rounded-2xl text-left active:scale-95 transition-all">
+                    <p className="text-[8px] text-red-400 font-black uppercase tracking-wider">Expiring</p>
+                    <p className="text-2xl font-black italic text-white mt-1">{finance.expiring.length}</p>
+                    <p className="text-[8px] text-slate-500">under 6h</p>
+                  </button>
+                  <button onClick={() => { setFSt('completed'); setView('agenda'); }} className="bg-white/5 border border-white/5 hover:border-purple-500/30 hover:bg-white/10 p-4 rounded-2xl text-left active:scale-95 transition-all">
+                    <p className="text-[8px] text-purple-400 font-black uppercase tracking-wider">QC Queue</p>
+                    <p className="text-2xl font-black italic text-white mt-1">{finance.qcQ.length}</p>
+                    <p className="text-[8px] text-slate-500">needs review</p>
+                  </button>
+                  <button onClick={() => { setFSt('paid'); setView('agenda'); }} className="bg-white/5 border border-white/5 hover:border-blue-500/30 hover:bg-white/10 p-4 rounded-2xl text-left active:scale-95 transition-all">
+                    <p className="text-[8px] text-blue-400 font-black uppercase tracking-wider">Review Queue</p>
+                    <p className="text-2xl font-black italic text-white mt-1">{finance.reviewQ.length}</p>
+                    <p className="text-[8px] text-slate-500">collect stars</p>
+                  </button>
+                </div>
               </div>
             </div>
+          )}
 
-            {/* Team Wallet List Ledger */}
-            <div className="g p-5 border-t-4 border-green-500 bg-black/20">
-              <p className="text-[9px] font-black text-green-500 uppercase tracking-widest mb-4">💰 Team Wallets & Balances</p>
-              <div className="space-y-3">
-                {staff.map(worker => (
-                  <div key={worker.id} className="g p-4 border border-white/5 flex items-center justify-between bg-black/10">
-                    <div>
-                      <h4 className="text-sm font-black text-white uppercase italic">{worker.name}</h4>
-                      <p className="text-[8px] text-slate-500">PIN: <span className="text-amber-500 font-bold">{worker.passcode}</span> • Role: {worker.role?.toUpperCase()}</p>
-                      <p className="text-[7px] text-slate-600 mt-0.5">Historial acumulado: {fmt$(worker.total_earned || 0)}</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-xl font-black text-green-400">{fmt$(worker.wallet_balance || 0)}</p>
-                      {(worker.wallet_balance || 0) > 0 ? (
-                        <button onClick={() => handleCashout(worker)} className="mt-1 px-2.5 py-1 bg-green-600 text-white rounded-lg text-[7px] font-black uppercase active:scale-95">Pay via Zelle</button>
-                      ) : (
-                        <span className="text-[6px] text-slate-600 font-black uppercase block mt-1">Paid ✓</span>
+          {/* =====================================================================
+              👑 ADMIN DASHBOARD FINANCES TABS (intel)
+              ===================================================================== */}
+          {role === 'admin' && view === 'intel' && (
+            <div className="space-y-6 animate-in fade-in">
+              <section className="g p-8 shadow-xl bg-[rgba(255,255,255,0.04)] border-[rgba(255,255,255,0.08)] text-center relative overflow-hidden">
+                <p className="text-[9px] font-black text-slate-500 mb-2 uppercase tracking-widest italic font-display">MRR GOAL — {fmt$(DEFAULT_CFG.GOAL)}</p>
+                <h2 className="text-7xl italic tracking-tighter text-white font-black leading-none">{Math.round(finance.pct)}%</h2>
+                <div className="pb mt-4 mb-3"><div className="pf" style={{ width: `${finance.pct}%` }}></div></div>
+                <div className="flex justify-between text-[8px] text-slate-500 font-black uppercase">
+                  <span>Billed: {isPrivate ? '***' : fmt$(finance.gross)}</span>
+                  <span>{finance.gross >= DEFAULT_CFG.GOAL ? '🎯 GOAL!' : 'Left: ' + fmt$(DEFAULT_CFG.GOAL - finance.gross)}</span>
+                </div>
+                <p className="text-[9px] text-[#F5C518] mt-2 font-black uppercase italic text-center font-bold">Net: {isPrivate ? '****' : fmt$(finance.net)} | Projected: {isPrivate ? '****' : fmt$(finance.proj)}</p>
+              </section>
+
+              {/* Finances KPI Grid */}
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+                {[
+                  { l: 'PENDING', v: isPrivate ? '***' : fmt$(finance.pending), color: 'text-orange-400', badge: 'bg-orange-500/10 text-orange-400 border-orange-500/20' },
+                  { l: 'AVG TICKET', v: isPrivate ? '***' : fmt$(finance.avg), color: 'text-blue-400', badge: 'bg-blue-500/10 text-blue-400 border-blue-500/20' },
+                  { l: 'MRR', v: isPrivate ? '***' : fmt$(finance.mrr), color: 'text-purple-400', badge: 'bg-purple-500/10 text-purple-400 border-purple-500/20' },
+                  { l: 'AVG RATING', v: finance.avgRating || '—', color: 'text-[#F5C518]', badge: 'bg-amber-500/10 text-[#F5C518] border-amber-500/20' },
+                  { l: 'AVG LTV', v: isPrivate ? '***' : fmt$(finance.avgLTV), color: 'text-green-400', badge: 'bg-green-500/10 text-green-400 border-green-500/20' },
+                  { l: 'BONUSES', v: fmt$(finance.bonuses), color: 'text-pink-400', badge: 'bg-pink-500/10 text-pink-400 border-pink-500/20' }
+                ].map(k => (
+                  <div key={k.l} className="g p-5 relative overflow-hidden bg-[rgba(255,255,255,0.04)] border border-[rgba(255,255,255,0.08)] rounded-2xl flex flex-col justify-between min-h-[120px] hover:border-slate-500/20 transition-all">
+                    <span className={`absolute top-3 right-3 ${k.badge} text-[7px] px-1.5 py-0.5 rounded-full font-bold uppercase tracking-wider`}>METRIC</span>
+                    <p className={`text-3xl font-black mt-4 ${k.color}`}>{k.v}</p>
+                    <p className="text-[8px] text-slate-400 uppercase font-black tracking-widest mt-2">{k.l}</p>
+                  </div>
+                ))}
+              </div>
+
+              {/* Area charts */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="g p-6 bg-[rgba(255,255,255,0.04)] border-[rgba(255,255,255,0.08)] space-y-2">
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4 font-display">📈 GROSS REVENUE TRENDS</p>
+                  <SleekAreaChart data={finance.wb} color="#F5C518" />
+                </div>
+                <div className="g p-6 bg-[rgba(255,255,255,0.04)] border-[rgba(255,255,255,0.08)] space-y-2">
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4 font-display">📊 MONTHLY REVENUE PROJECTIONS</p>
+                  <SleekAreaChart data={finance.mb2} color="#3b82f6" />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* =====================================================================
+              👑 ADMIN DASHBOARD MISSIONS TABS (agenda)
+              ===================================================================== */}
+          {role === 'admin' && view === 'agenda' && (
+            <div className="space-y-4 animate-in fade-in pb-24">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <h2 className="text-xl md:text-2xl font-black tracking-widest uppercase text-white font-display">MISSIONS DIRECTORY</h2>
+                <input className="inp md:max-w-xs text-xs" placeholder="🔍 Search by name or address..." value={sq} onChange={e => setSQ(e.target.value)} />
+              </div>
+              <div className="flex gap-1.5 overflow-x-auto nsb pb-1">
+                {['all', 'lead', 'scheduled', 'in_progress', 'completed', 'paid', 'lost'].map(s => (
+                  <button key={s} onClick={() => setFSt(s)} className={`px-4 py-2 rounded-xl text-[8px] font-black uppercase whitespace-nowrap active:scale-95 transition-all ${fSt === s ? 'bg-[#F5C518] text-black shadow-lg shadow-[#F5C518]/15' : 'bg-white/5 text-slate-500'}`}>{s}</button>
+                ))}
+              </div>
+
+              {filtered.length === 0 && <div className="g p-10 text-center text-slate-500 font-black italic uppercase bg-[rgba(255,255,255,0.04)] border-[rgba(255,255,255,0.08)]">No missions found.</div>}
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {filtered.map(job => {
+                  const isH = job.service_type === 'handyman';
+                  const bal = job.total_price - job.deposit_paid;
+                  const d = dna[job.client_name];
+                  const lv = lvl(d?.count || 0);
+                  const profit = realProfit(job);
+                  const bonus = calcBonus(job);
+                  return (
+                    <div key={job.id} className={`g p-5 border-l-[7px] shadow-xl hover:bg-white/[0.01] transition-all bg-[rgba(255,255,255,0.04)] border-[rgba(255,255,255,0.08)] ${isH ? 'border-green-500' : job.status === 'paid' ? 'border-blue-500' : job.status === 'in_progress' ? 'border-green-400' : job.status === 'lead' ? 'border-[#F5C518]' : job.status === 'completed' ? 'border-purple-500' : job.status === 'lost' ? 'border-red-800' : 'border-amber-500'}`}>
+                      <div className="flex justify-between items-start mb-2">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-1.5 flex-wrap mb-1">
+                            <h3 className="text-base font-black uppercase italic text-white leading-none">{job.client_name}</h3>
+                            <span className={`text-[6px] font-black px-1.5 py-0.5 rounded-full uppercase ${job.status === 'paid' ? 'bg-blue-600 text-white' : job.status === 'in_progress' ? 'bg-green-600 text-white' : job.status === 'lead' ? 'bg-[#F5C518] text-black' : job.status === 'completed' ? 'bg-purple-600 text-white' : job.status === 'lost' ? 'bg-red-900 text-red-300' : 'bg-slate-700 text-slate-300'}`}>{job.status}</span>
+                            {isH && <span className="text-[6px] bg-green-600 text-black font-black px-1.5 py-0.5 rounded-full">🛠️</span>}
+                          </div>
+                          <p className="text-[8px] text-slate-400 uppercase">{job.service_type} • {fmtD(job.scheduled_date)} • Assigned: {job.team_assigned || 'No worker'}</p>
+                        </div>
+                        <button onClick={() => { setMapAddress(job.address); setView('brief'); tt('🗺️ Mostrando mapa en Dashboard...'); }} className="p-2.5 bg-blue-900/30 text-blue-400 rounded-xl hover:bg-blue-600 transition-all flex items-center justify-center gap-1 text-[8px] font-black uppercase"><Icon name="navigation" className="w-3.5 h-3.5" />Map</button>
+                      </div>
+                      <p className="text-[8px] text-slate-500 italic mb-2">{job.address}</p>
+                      
+                      <div className="grid grid-cols-3 gap-1 mb-2">
+                        {[['confirm', '✅'], ['reminder', '🔔'], ['review', '⭐'], ['quote', '📋'], ['referral', '🎁'], ['bundle', '🎯']].map(([tp, em]) => (
+                          <button key={tp} onClick={() => wa(job, tp)} className="py-1.5 bg-white/5 border border-white/5 rounded-xl text-[7px] font-black uppercase active:scale-95 text-slate-400 hover:text-white transition-all">{em} {tp}</button>
+                        ))}
+                      </div>
+
+                      {job.status === 'lead' && (
+                        <div className="grid grid-cols-4 gap-1 mb-2">
+                          <button onClick={() => recordFollow(job, 'follow1')} className="py-1.5 bg-[#F5C518]/10 text-[#F5C518] rounded-xl text-[7px] font-black uppercase active:scale-95">F1</button>
+                          <button onClick={() => recordFollow(job, 'follow2')} className="py-1.5 bg-orange-500/10 text-orange-400 rounded-xl text-[7px] font-black uppercase active:scale-95">F2</button>
+                          <button onClick={() => recordFollow(job, 'final')} className="py-1.5 bg-red-500/10 text-red-400 rounded-xl text-[7px] font-black uppercase active:scale-95">Final</button>
+                          <button onClick={() => markLost(job)} className="py-1.5 bg-slate-800 text-slate-400 rounded-xl text-[7px] font-black uppercase active:scale-95">Lost</button>
+                        </div>
                       )}
+
+                      <div className="flex justify-between items-end border-t border-white/5 pt-3">
+                        <div>
+                          <p className="text-[8px] text-slate-500 italic font-black uppercase">Balance</p>
+                          <p className="text-3xl font-black italic tracking-tighter text-white leading-none">{fmt$(bal)}</p>
+                        </div>
+                        <div className="flex gap-1.5">
+                          <button onClick={() => setChatJob(job)} className="p-2.5 bg-blue-900/30 text-blue-400 rounded-xl hover:bg-blue-600 transition-all"><Icon name="message-square" className="w-4 h-4" /></button>
+                          <button onClick={() => printInvoice(job)} className="p-2.5 bg-slate-800 text-[#F5C518] rounded-xl hover:scale-110 transition-all"><Icon name="file-text" className="w-4 h-4" /></button>
+                          <button onClick={() => { setEdit(job.id); setState({ ...job.specs, totalPrice: job.total_price }); setView('deploy'); setDtab('identity'); }} className="p-2.5 bg-slate-800 text-white rounded-xl hover:bg-blue-600 transition-all"><Icon name="edit-3" className="w-4 h-4" /></button>
+                          <button onClick={() => { if (confirm('Archive?')) sb.from('elevore_missions').delete().eq('id', job.id).then(() => { tt('Archived ✓'); refresh(); }); }} className="p-2.5 bg-red-900/30 text-red-500 rounded-xl hover:bg-red-600 transition-all"><Icon name="trash-2" className="w-4 h-4" /></button>
+                          <button onClick={() => window.open(`https://wa.me/${job.client_phone?.replace(/\D/g, '') || ''}`)} className="p-2.5 bg-green-600 text-white rounded-xl active:scale-90 transition-all"><Icon name="message-circle" className="w-4 h-4" /></button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* =====================================================================
+              👑 ADMIN DASHBOARD CLIENTS TABS (clients)
+              ===================================================================== */}
+          {role === 'admin' && view === 'clients' && (
+            <div className="space-y-4 animate-in fade-in pb-24">
+              <div className="g p-5 border-t-4 border-purple-500 bg-[rgba(255,255,255,0.04)] border-[rgba(255,255,255,0.08)]">
+                <h2 className="text-xl font-black tracking-widest uppercase text-white font-display">🧬 CLIENT DNA LEDGER</h2>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {clients.map(client => {
+                  const d = dna[client.name] || { score: 0, count: 0, spent: 0 };
+                  const lv = lvl(d.count);
+                  const daysSince = dAgo(d.last);
+                  const lastJob = jobs.filter(j => j.client_name === client.name)[0];
+                  return (
+                    <div key={client.name} className="g p-5 hover:bg-white/[0.02] transition-all border-l-4 bg-[rgba(255,255,255,0.04)] border-[rgba(255,255,255,0.08)] flex flex-col justify-between min-h-[140px]" style={{ borderColor: lv.color }}>
+                      <div className="flex justify-between items-start">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1 flex-wrap">
+                            <h3 className="text-base font-black uppercase italic text-white">{client.name}</h3>
+                            <span className="text-[7px] font-black px-2 py-0.5 rounded-full" style={{ background: lv.color, color: '#000' }}>{lv.name}</span>
+                            {daysSince >= 45 && <span className="text-[7px] bg-red-900/50 text-red-400 font-black px-2 py-0.5 rounded-full">⚠️ Churn Risk</span>}
+                          </div>
+                          <p className="text-[8px] text-slate-400 uppercase">{client.phone}</p>
+                        </div>
+                      </div>
+                      <div className="flex gap-1.5 mt-3 flex-wrap">
+                        <button onClick={() => lastJob ? wa(lastJob, 'referral') : tt('No previous job', 'red')} className="flex-1 py-2 bg-pink-600/20 text-pink-400 rounded-xl text-[7px] font-black uppercase active:scale-95">🎁 Ref</button>
+                        <button onClick={() => lastJob ? wa(lastJob, 'bundle') : tt('No previous job', 'red')} className="flex-1 py-2 bg-blue-600/20 text-blue-400 rounded-xl text-[7px] font-black uppercase active:scale-95">🎯 Bundle</button>
+                        <button onClick={() => { setState({ ...INIT, ...client.specs, name: client.name, phone: client.phone, address: client.address }); setView('deploy'); setDtab('specs'); }} className="flex-1 py-2 bg-white/5 text-slate-400 rounded-xl text-[7px] font-black uppercase active:scale-95 hover:text-white transition-all">+ Job</button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* =====================================================================
+              👑 ADMIN DASHBOARD MEMBERSHIPS TABS (members)
+              ===================================================================== */}
+          {role === 'admin' && view === 'members' && (
+            <div className="space-y-6 animate-in fade-in pb-24">
+              <div className="g p-6 border-t-4 border-yellow-500 bg-[rgba(255,255,255,0.04)] border-[rgba(255,255,255,0.08)] flex justify-between items-center relative overflow-hidden">
+                <div>
+                  <h2 className="text-xl font-black tracking-widest uppercase text-white font-display">💎 VIP MEMBERSHIP PLANS</h2>
+                  <p className="text-[9px] text-slate-400 uppercase tracking-widest mt-1">Tenant Subscribed Recurring Stream</p>
+                </div>
+                <p className="text-3xl font-black italic text-[#F5C518]">{isPrivate ? '***' : fmt$(finance.mrr)}<span className="text-[9px] text-slate-500 font-black">/mo MRR</span></p>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {MBS.filter(m => m.id !== 'none').map(m => (
+                  <div key={m.id} className="g p-6 border-l-4 bg-[rgba(255,255,255,0.04)] border-[rgba(255,255,255,0.08)] flex flex-col justify-between min-h-[220px] hover:border-slate-500/20 transition-all" style={{ borderColor: m.color }}>
+                    <div className="flex justify-between items-center mb-4">
+                      <h3 className="text-lg font-black uppercase italic text-white font-display">{m.name}</h3>
+                      <p className="text-2xl font-black" style={{ color: m.color }}>{fmt$(m.price)}<span className="text-[9px] text-slate-500">/mo</span></p>
+                    </div>
+                    <ul className="space-y-2 mb-4 flex-1">{m.perks?.map((p, i) => (<li key={i} className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">✓ {p}</li>))}</ul>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* =====================================================================
+              👑 ADMIN DASHBOARD TEAM PAYROLL TABS (payroll)
+              ===================================================================== */}
+          {role === 'admin' && view === 'payroll' && (
+            <div className="space-y-6 animate-in fade-in pb-24">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Create Staff Module */}
+                <div className="g p-6 space-y-4 bg-[rgba(255,255,255,0.04)] border-[rgba(255,255,255,0.08)]">
+                  <h2 className="text-xs font-black text-[#F5C518] uppercase tracking-widest font-display">👤 ADD NEW WORKER & PIN</h2>
+                  <div className="space-y-3 pt-2">
+                    <input className="inp uppercase text-xs" placeholder="Worker Name" value={newStaffName} onChange={e => setNewName(e.target.value)} />
+                    <input className="inp text-xs" placeholder="Set Passcode PIN (e.g. 5566)" value={newStaffPIN} onChange={e => setNewPIN(e.target.value)} />
+                    <div className="grid grid-cols-3 gap-2">
+                      {['staff', 'supervisor', 'admin'].map(r => (
+                        <button key={r} onClick={() => setNewRole(r)} className={`py-2.5 rounded-xl text-[8px] uppercase font-black border transition-all ${newStaffRole === r ? 'bg-[#F5C518] text-black border-[#F5C518]' : 'bg-white/5 border-white/5 text-slate-400'}`}>{r}</button>
+                      ))}
+                    </div>
+                    <button onClick={handleAddEmployee} className="w-full bg-[#F5C518] text-black hover:bg-[#F5C518]/90 py-3.5 rounded-xl font-black uppercase text-[10px] active:scale-95 shadow-md transition-all">Add Employee to SaaS ✓</button>
+                  </div>
+                </div>
+
+                {/* Team Wallet List Ledger */}
+                <div className="g p-6 space-y-4 bg-[rgba(255,255,255,0.04)] border-[rgba(255,255,255,0.08)]">
+                  <h2 className="text-xs font-black text-green-500 uppercase tracking-widest font-display">💰 TEAM WALLETS & PAYROLL</h2>
+                  <div className="space-y-3 pt-2 max-h-[300px] overflow-y-auto custom-scroll pr-1">
+                    {staff.map(worker => (
+                      <div key={worker.id} className="g p-4 border border-white/5 flex items-center justify-between bg-black/20">
+                        <div>
+                          <h4 className="text-sm font-black text-white uppercase italic leading-none mb-1">{worker.name}</h4>
+                          <p className="text-[8px] text-slate-400">PIN: <span className="text-[#F5C518] font-bold">{worker.passcode}</span> • Role: {worker.role?.toUpperCase()}</p>
+                          <p className="text-[7px] text-slate-500 mt-0.5">Historial acumulado: {fmt$(worker.total_earned || 0)}</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-xl font-black text-green-400">{fmt$(worker.wallet_balance || 0)}</p>
+                          {(worker.wallet_balance || 0) > 0 ? (
+                            <button onClick={() => handleCashout(worker)} className="mt-1 px-2.5 py-1.5 bg-green-600 text-white rounded-lg text-[7px] font-black uppercase active:scale-95 hover:bg-green-500 transition-all">Pay via Zelle</button>
+                          ) : (
+                            <span className="text-[6px] text-slate-500 font-black uppercase block mt-1">Paid ✓</span>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Total Summary */}
+              <div className="g p-6 bg-[rgba(255,255,255,0.04)] border-[rgba(255,255,255,0.08)]">
+                <div className="space-y-2.5">
+                  <div className="flex justify-between items-center"><span className="text-[9px] text-slate-400 font-black uppercase tracking-wider">Collected</span><span className="text-sm font-black text-white">{isPrivate ? '***' : fmt$(finance.col)}</span></div>
+                  <div className="flex justify-between items-center border-t border-white/10 pt-3"><span className="text-[10px] text-white font-black uppercase tracking-widest font-display">YOUR NET SHARE</span><span className="text-2xl font-black text-green-400">{isPrivate ? '****' : fmt$(finance.net)}</span></div>
+                </div>
+              </div>
+              <button onClick={exportCSV} className="w-full g py-4 rounded-xl font-black uppercase text-[10px] tracking-widest text-slate-400 border border-white/5 active:scale-95 hover:text-white transition-all">📊 Export Ledger CSV</button>
+            </div>
+          )}
+
+          {/* =====================================================================
+              👑 ADMIN DASHBOARD PHOTO DRIVE TABS (drive)
+              ===================================================================== */}
+          {role === 'admin' && view === 'drive' && (
+            <div className="space-y-4 animate-in fade-in pb-24">
+              <div className="g p-5 border-t-4 border-blue-500 bg-[rgba(255,255,255,0.04)] border-[rgba(255,255,255,0.08)]">
+                <h2 className="text-xl font-black tracking-widest uppercase text-white font-display">📁 MEDIA STORAGE DRIVE</h2>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {jobs.map(job => (
+                  <div key={job.id} className="g p-5 space-y-4 bg-[rgba(255,255,255,0.04)] border-[rgba(255,255,255,0.08)] rounded-2xl flex flex-col justify-between min-h-[220px]">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <h3 className="text-base font-black uppercase italic text-white leading-none mb-1">{job.client_name}</h3>
+                        <p className="text-[8px] text-slate-400 uppercase">{job.service_type} • {fmtD(job.scheduled_date)}</p>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="g p-3.5 bg-black/20"><PhotoDrive photos={job.before_photos || []} label="📸 Before" onAdd={async u => { const c = job.before_photos || []; await sb.from('elevore_missions').update({ before_photos: [...c, u] }).eq('id', job.id); tt('Added ✓'); refresh(); }} /></div>
+                      <div className="g p-3.5 bg-black/20"><PhotoDrive photos={job.after_photos || []} label="✨ After" onAdd={async u => { const c = job.after_photos || []; await sb.from('elevore_missions').update({ after_photos: [...c, u] }).eq('id', job.id); tt('Added ✓'); refresh(); }} /></div>
                     </div>
                   </div>
                 ))}
               </div>
             </div>
+          )}
 
-            <div className="g p-5 bg-black/20">
-              <div className="space-y-2">
-                <div className="flex justify-between"><span className="text-[9px] text-slate-400 font-black uppercase">Collected</span><span className="text-sm font-black text-white">{isPrivate ? '***' : fmt$(finance.col)}</span></div>
-                <div className="flex justify-between border-t border-white/10 pt-2"><span className="text-[9px] text-white font-black uppercase">Your Net</span><span className="text-lg font-black text-green-400">{isPrivate ? '****' : fmt$(finance.net)}</span></div>
-              </div>
-            </div>
-            <button onClick={exportCSV} className="w-full g py-4 rounded-xl font-black uppercase text-[9px] text-slate-400 border border-white/5 active:scale-95">📊 Export Ledger CSV</button>
-          </div>
-        )}
-
-        {view === 'drive' && (<div className="space-y-4 animate-in fade-in pb-24">
-          <div className="g p-5 border-t-4 border-blue-500 bg-black/20"><p className="text-[9px] font-black text-slate-500 uppercase mb-1">📁 Photo Drive</p></div>
-          {jobs.map(job => (
-            <div key={job.id} className="g p-5 space-y-4 bg-black/10">
-              <div className="flex justify-between items-center">
-                <div>
-                  <h3 className="text-base font-black uppercase italic text-white">{job.client_name}</h3>
-                  <p className="text-[8px] text-slate-500 uppercase">{job.service_type} • {fmtD(job.scheduled_date)}</p>
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="g p-3"><PhotoDrive photos={job.before_photos || []} label="📸 Before" onAdd={async u => { const c = job.before_photos || []; await sb.from('elevore_missions').update({ before_photos: [...c, u] }).eq('id', job.id); tt('Added ✓'); refresh(); }} /></div>
-                <div className="g p-3"><PhotoDrive photos={job.after_photos || []} label="✨ After" onAdd={async u => { const c = job.after_photos || []; await sb.from('elevore_missions').update({ after_photos: [...c, u] }).eq('id', job.id); tt('Added ✓'); refresh(); }} /></div>
-              </div>
-            </div>
-          ))}
-        </div>)}
-
-        {view === 'deploy' && (<div className="space-y-5 animate-in zoom-in-95 pb-32">
-          <div className="flex gap-1 bg-black/40 p-1.5 rounded-xl border border-white/5">{['identity', 'specs', 'add-ons', 'money'].map(t => (<button key={t} onClick={() => setDtab(t)} className={`flex-1 py-2.5 rounded-xl text-[8px] uppercase font-black active:scale-95 ${dtab === t ? 'ton' : 'text-slate-500'}`}>{t}</button>))}</div>
-          <div className="g p-6 space-y-5 shadow-xl bg-black/20">
-            {dtab === 'identity' && (<div className="space-y-3 animate-in fade-in">
-              <h3 className="text-[10px] uppercase text-amber-500 font-black italic tracking-widest border-b border-white/5 pb-2">Identity</h3>
-              <input className="inp uppercase" placeholder="CLIENT FULL NAME" value={state.name} onChange={e => onName(e.target.value)} />
-              <input className="inp" placeholder="PHONE" value={state.phone} onChange={e => setState({ ...state, phone: e.target.value })} />
-              <input className="inp uppercase text-xs" placeholder="ADDRESS" value={state.address} onChange={e => setState({ ...state, address: e.target.value })} />
-              <textarea className="inp text-sm resize-none h-16" placeholder="Notes..." value={state.notes} onChange={e => setState({ ...state, notes: e.target.value })} />
-              <div className="grid grid-cols-3 gap-2">{['lead', 'scheduled', 'paid'].map(s => (<button key={s} onClick={() => setState({ ...state, status: s })} className={`py-3 rounded-xl text-[8px] uppercase font-black border-2 active:scale-95 ${state.status === s ? 'bg-amber-500 text-black border-amber-500' : 'bg-white/5 border-white/5 text-slate-500'}`}>{s}</button>))}</div>
-              <div><p className="text-[8px] text-slate-500 uppercase font-black mb-2">Frequency</p><div className="grid grid-cols-4 gap-1">{[{ l: '1x', v: 'one-time' }, { l: 'Weekly', v: 'weekly' }, { l: 'Bi-W', v: 'bi-weekly' }, { l: 'Monthly', v: 'monthly' }].map(f => (<button key={f.v} onClick={() => setState({ ...state, frequency: f.v })} className={`py-2 rounded-xl text-[7px] font-black border-2 active:scale-95 ${state.frequency === f.v ? 'bg-blue-600 border-blue-600 text-white' : 'bg-white/5 border-white/5 text-slate-500'}`}>{f.l}</button>))}</div></div>
-            </div>)}
-            {dtab === 'specs' && (<div className="space-y-4 animate-in fade-in text-center font-black uppercase">
-              <div className="grid grid-cols-5 gap-1">{['regular', 'deep', 'moveout', 'postcon', 'handyman'].map(s => (<button key={s} onClick={() => setState({ ...state, svc: s, selectedQuickJobs: [] })} className={`py-3 rounded-xl font-black text-[7px] border-2 active:scale-95 ${state.svc === s ? 'bg-green-600 border-green-600 text-white shadow-lg' : 'bg-white/5 border-white/5 text-slate-500'}`}>{s === 'handyman' ? '🛠️' : s}</button>))}</div>
-              {state.svc === 'handyman' ? (<div className="space-y-4 text-left"><div className="bg-white/5 p-4 rounded-2xl border border-white/5"><p className="text-[9px] text-amber-500 uppercase font-black mb-2 text-center">Labor × $85/hr</p><div className="flex justify-between items-center max-w-[180px] mx-auto"><button onClick={() => setState({ ...state, laborHours: Math.max(1, state.laborHours - 1) })} className="w-10 h-10 bg-white/10 rounded-xl text-xl font-bold text-white active:scale-95">-</button><span className="text-3xl font-black italic text-white">{state.laborHours}h</span><button onClick={() => setState({ ...state, laborHours: state.laborHours + 1 })} className="w-10 h-10 bg-white/10 rounded-xl text-xl font-bold text-white active:scale-95">+</button></div></div></div>) : state.svc === 'postcon' ? (<div className="p-5 bg-white/5 rounded-2xl border border-white/5"><p className="text-[9px] text-amber-500 uppercase font-black mb-2">SqFt</p><input type="number" value={state.sqft} className="bg-transparent text-6xl font-black text-center w-full text-white outline-none italic leading-none" onChange={e => setState({ ...state, sqft: parseInt(e.target.value) || 0 })} /></div>) : (<div className="space-y-3"><div className="grid grid-cols-2 gap-2">{[{ l: 'Beds', k: 'beds' }, { l: 'Baths', k: 'baths' }, { l: 'Living', k: 'living' }, { l: 'Laundry', k: 'laundryRoom' }].map(i => (<div key={i.k} className="bg-white/5 p-3 rounded-xl text-center border border-white/5"><span className="text-[8px] uppercase block mb-1.5 text-slate-400 font-black">{i.l}</span><div className="flex justify-between items-center"><button onClick={() => setState({ ...state, [i.k]: Math.max(0, state[i.k] - 1) })} className="w-8 h-8 bg-white/10 rounded-lg text-white font-bold active:scale-95">-</button><span className="text-xl font-black italic text-white">{state[i.k]}</span><button onClick={() => setState({ ...state, [i.k]: state[i.k] + 1 })} className="w-8 h-8 bg-white/10 rounded-lg text-white font-bold active:scale-95">+</button></div></div>))}</div></div>)}
-            </div>)}
-            {dtab === 'add-ons' && (<div className="space-y-4 animate-in fade-in">{state.svc === 'handyman' ? (<div className="p-8 text-center text-slate-500 font-black italic border-2 border-dashed border-white/5 rounded-2xl">🛠️ Time & materials only.</div>) : (<><h3 className="text-[9px] uppercase text-amber-500 italic font-black text-center border-b border-white/5 pb-2">Premium Matrix</h3><div className="grid grid-cols-2 gap-2">{ADDONS.map(ex => (<button key={ex.id} onClick={() => setState({ ...state, [ex.id]: !state[ex.id] })} className={`p-3.5 rounded-xl flex justify-between items-center border active:scale-95 ${state[ex.id] ? 'bg-green-600 border-green-600 text-white font-black shadow-lg' : 'bg-white/5 border-white/5 text-slate-500'}`}><span className="text-[9px] uppercase font-black">{ex.en}</span><span className="text-[9px] font-black">+${ex.p}</span></button>))}</div></>)}</div>)}
-            {dtab === 'money' && (<div className="space-y-4 animate-in fade-in"><div className="grid grid-cols-2 gap-3 text-center font-black uppercase"><div className="space-y-1"><p className="text-[8px] text-slate-500">Expenses</p><input type="number" value={state.expenses} className="inp text-orange-400 text-center" onChange={e => setState({ ...state, expenses: parseFloat(e.target.value) || 0 })} /></div><div className="space-y-1"><p className="text-[8px] text-slate-500">Discount</p><select value={state.discount} className="inp text-red-500 font-black text-center text-sm appearance-none" onChange={e => setState({ ...state, discount: parseInt(e.target.value) })}><option value="0">0%</option><option value="10">10%</option><option value="20">20%</option><option value="30">30%</option></select></div></div><div className="space-y-3 border-t border-white/5 pt-3">
-              <p className="text-[8px] text-slate-500 uppercase font-black">Asignar Proyecto a Empleado</p>
-              <select value={state.team} className="inp text-xs text-center" onChange={e => setState({ ...state, team: e.target.value })}>
-                <option value="">Seleccionar Empleado...</option>
-                {staff.map(worker => (
-                  <option key={worker.id} value={worker.name}>{worker.name} ({worker.role?.toUpperCase()})</option>
+          {/* =====================================================================
+              👑 ADMIN DASHBOARD NEW ESTIMATE DEPLOY TABS (deploy)
+              ===================================================================== */}
+          {role === 'admin' && view === 'deploy' && (
+            <div className="space-y-6 animate-in zoom-in-95 pb-32">
+              <div className="flex gap-1 bg-black/40 p-1.5 rounded-xl border border-white/5">
+                {['identity', 'specs', 'add-ons', 'money'].map(t => (
+                  <button key={t} onClick={() => setDtab(t)} className={`flex-1 py-3 rounded-xl text-[9px] uppercase font-black active:scale-95 transition-all ${dtab === t ? 'ton' : 'text-slate-500 hover:text-slate-300'}`}>{t}</button>
                 ))}
-              </select>
-              <div className="grid grid-cols-2 gap-3"><div className="space-y-1"><p className="text-[8px] text-slate-500 uppercase font-black">Date</p><input type="date" value={state.date} className="inp text-[10px] font-black" onChange={e => setState({ ...state, date: e.target.value })} /></div><div className="space-y-1"><p className="text-[8px] text-slate-500 uppercase font-black">Deposit</p><input type="number" value={state.deposit} className="inp text-blue-400 font-black text-center" onChange={e => setState({ ...state, deposit: parseFloat(e.target.value) || 0 })} /></div></div></div></div>)}
-          </div>
-          <div className="bg-white text-black p-8 rounded-[3.5rem] text-center shadow-2xl relative overflow-hidden active:scale-95 transition-all shadow-amber-500/5">
-            <div className="absolute top-0 left-0 w-full h-2 bg-green-500 animate-pulse"></div>
-            <div className="flex justify-between items-center mb-3"><p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Deployment Value</p><span className={`text-[8px] font-black px-3 py-1 rounded-lg border ${pricing.ac} border-current`}>{pricing.advice}</span></div>
-            <h4 className="text-[6rem] font-black italic tracking-tighter leading-none mb-4 text-black"><span className="text-3xl align-top mr-1 font-light opacity-30">$</span>{state.totalPrice}</h4>
-            <button onClick={deploy} className="w-full bg-slate-900 text-white py-6 rounded-[2.5rem] font-black text-lg uppercase italic active:scale-90 transition-all shadow-xl shadow-green-500/20">{editId ? 'Update ⚡' : 'Execute Deploy 🚀'}</button>
-          </div>
-        </div>)}
-      </main>
+              </div>
 
-      {/* Navigation bar bottom */}
-      <nav className="fixed bottom-5 left-1/2 -translate-x-1/2 w-[94%] max-w-sm g p-2 flex justify-around items-center border border-white/10 shadow-[0_30px_60px_rgba(0,0,0,1)] z-[1000]">{[['brief', 'sun', 'amber'], ['intel', 'bar-chart-2', 'green'], ['agenda', 'shield-check', 'blue'], ['clients', 'users', 'purple'], ['members', 'diamond', 'yellow'], ['drive', 'image', 'cyan'], ['payroll', 'wallet', 'green'], ['deploy', 'zap', 'amber']].map(([v, icon, c]) => (<button key={v} onClick={() => { if (v === 'deploy') { setEdit(null); setState(INIT); setView('deploy'); setDtab('identity'); } else setView(v); }} className={`p-2 rounded-xl flex-1 flex flex-col items-center gap-0.5 transition-all ${view === v ? `text-${c}-400 bg-white/5` : 'text-slate-600'}`}><Icon name={icon} className="w-3.5 h-3.5" /><span className="text-[5px] font-black uppercase">{v === 'deploy' ? 'New' : v === 'brief' ? 'AM' : v === 'members' ? 'VIP' : v === 'payroll' ? 'Team' : v}</span></button>))}</nav>
+              <div className="g p-6 space-y-5 shadow-xl bg-[rgba(255,255,255,0.04)] border-[rgba(255,255,255,0.08)] rounded-2xl">
+                {dtab === 'identity' && (
+                  <div className="space-y-3.5 animate-in fade-in">
+                    <h3 className="text-[10px] uppercase text-[#F5C518] font-black italic tracking-widest border-b border-white/5 pb-2 font-display">Identity</h3>
+                    <input className="inp uppercase text-xs" placeholder="CLIENT FULL NAME" value={state.name} onChange={e => onName(e.target.value)} />
+                    <input className="inp text-xs" placeholder="PHONE" value={state.phone} onChange={e => setState({ ...state, phone: e.target.value })} />
+                    <input className="inp uppercase text-xs" placeholder="ADDRESS" value={state.address} onChange={e => setState({ ...state, address: e.target.value })} />
+                    <textarea className="inp text-xs resize-none h-16" placeholder="Notes..." value={state.notes} onChange={e => setState({ ...state, notes: e.target.value })} />
+                    <div className="grid grid-cols-3 gap-2">
+                      {['lead', 'scheduled', 'paid'].map(s => (
+                        <button key={s} onClick={() => setState({ ...state, status: s })} className={`py-3 rounded-xl text-[8px] uppercase font-black border-2 active:scale-95 transition-all ${state.status === s ? 'bg-[#F5C518] text-black border-[#F5C518]' : 'bg-white/5 border-white/5 text-slate-500'}`}>{s}</button>
+                      ))}
+                    </div>
+                    <div>
+                      <p className="text-[8px] text-slate-400 uppercase font-black mb-2 tracking-wider">Frequency</p>
+                      <div className="grid grid-cols-4 gap-1.5">
+                        {[{ l: '1x', v: 'one-time' }, { l: 'Weekly', v: 'weekly' }, { l: 'Bi-W', v: 'bi-weekly' }, { l: 'Monthly', v: 'monthly' }].map(f => (
+                          <button key={f.v} onClick={() => setState({ ...state, frequency: f.v })} className={`py-2 rounded-xl text-[8px] font-black uppercase border-2 active:scale-95 transition-all ${state.frequency === f.v ? 'bg-blue-600 border-blue-600 text-white' : 'bg-white/5 border-white/5 text-slate-500'}`}>{f.l}</button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {dtab === 'specs' && (
+                  <div className="space-y-4 animate-in fade-in text-center font-black uppercase">
+                    <h3 className="text-[10px] uppercase text-[#F5C518] font-black italic tracking-widest border-b border-white/5 pb-2 font-display text-left">Specs & Core Service</h3>
+                    <div className="grid grid-cols-5 gap-1.5 mt-2">
+                      {['regular', 'deep', 'moveout', 'postcon', 'handyman'].map(s => (
+                        <button key={s} onClick={() => setState({ ...state, svc: s, selectedQuickJobs: [] })} className={`py-3.5 rounded-xl font-black text-[8px] border-2 active:scale-95 transition-all ${state.svc === s ? 'bg-green-600 border-green-600 text-white shadow-lg' : 'bg-white/5 border-white/5 text-slate-500'}`}>{s === 'handyman' ? '🛠️' : s}</button>
+                      ))}
+                    </div>
+                    {state.svc === 'handyman' ? (
+                      <div className="space-y-4 text-left pt-2">
+                        <div className="bg-white/5 p-4 rounded-2xl border border-white/5">
+                          <p className="text-[9px] text-[#F5C518] uppercase font-black mb-2 text-center">Labor × $85/hr</p>
+                          <div className="flex justify-between items-center max-w-[180px] mx-auto">
+                            <button onClick={() => setState({ ...state, laborHours: Math.max(1, state.laborHours - 1) })} className="w-10 h-10 bg-white/10 rounded-xl text-xl font-bold text-white active:scale-95">-</button>
+                            <span className="text-3xl font-black italic text-white font-display">{state.laborHours}h</span>
+                            <button onClick={() => setState({ ...state, laborHours: state.laborHours + 1 })} className="w-10 h-10 bg-white/10 rounded-xl text-xl font-bold text-white active:scale-95">+</button>
+                          </div>
+                        </div>
+                      </div>
+                    ) : state.svc === 'postcon' ? (
+                      <div className="p-5 bg-white/5 rounded-2xl border border-white/5 pt-2">
+                        <p className="text-[9px] text-[#F5C518] uppercase font-black mb-2">SqFt</p>
+                        <input type="number" value={state.sqft} className="bg-transparent text-6xl font-black text-center w-full text-white outline-none italic leading-none font-display" onChange={e => setState({ ...state, sqft: parseInt(e.target.value) || 0 })} />
+                      </div>
+                    ) : (
+                      <div className="space-y-3 pt-2">
+                        <div className="grid grid-cols-2 gap-2">
+                          {[{ l: 'Beds', k: 'beds' }, { l: 'Baths', k: 'baths' }, { l: 'Living', k: 'living' }, { l: 'Laundry', k: 'laundryRoom' }].map(i => (
+                            <div key={i.k} className="bg-white/5 p-3.5 rounded-xl text-center border border-white/5">
+                              <span className="text-[8px] uppercase block mb-1.5 text-slate-400 font-black">{i.l}</span>
+                              <div className="flex justify-between items-center">
+                                <button onClick={() => setState({ ...state, [i.k]: Math.max(0, state[i.k] - 1) })} className="w-8 h-8 bg-white/10 rounded-lg text-white font-bold active:scale-95">-</button>
+                                <span className="text-xl font-black italic text-white font-display">{state[i.k]}</span>
+                                <button onClick={() => setState({ ...state, [i.k]: state[i.k] + 1 })} className="w-8 h-8 bg-white/10 rounded-lg text-white font-bold active:scale-95">+</button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {dtab === 'add-ons' && (
+                  <div className="space-y-4 animate-in fade-in">
+                    {state.svc === 'handyman' ? (
+                      <div className="p-8 text-center text-slate-500 font-black italic border-2 border-dashed border-white/5 rounded-2xl">🛠️ Time & materials only.</div>
+                    ) : (
+                      <>
+                        <h3 className="text-[10px] uppercase text-[#F5C518] italic font-black text-center border-b border-white/5 pb-2 font-display">Premium Matrix</h3>
+                        <div className="grid grid-cols-2 gap-2.5">
+                          {ADDONS.map(ex => (
+                            <button key={ex.id} onClick={() => setState({ ...state, [ex.id]: !state[ex.id] })} className={`p-3.5 rounded-xl flex justify-between items-center border active:scale-95 transition-all ${state[ex.id] ? 'bg-green-600 border-green-600 text-white font-black shadow-lg' : 'bg-white/5 border-white/5 text-slate-400 hover:text-white'}`}>
+                              <span className="text-[9px] uppercase font-black">{ex.en}</span>
+                              <span className="text-[9px] font-black">+${ex.p}</span>
+                            </button>
+                          ))}
+                        </div>
+                      </>
+                    )}
+                  </div>
+                )}
+
+                {dtab === 'money' && (
+                  <div className="space-y-4 animate-in fade-in">
+                    <h3 className="text-[10px] uppercase text-[#F5C518] font-black italic tracking-widest border-b border-white/5 pb-2 font-display">Financials & Assignment</h3>
+                    <div className="grid grid-cols-2 gap-3 text-center font-black uppercase">
+                      <div className="space-y-1">
+                        <p className="text-[8px] text-slate-400">Expenses</p>
+                        <input type="number" value={state.expenses} className="inp text-orange-400 text-center text-xs" onChange={e => setState({ ...state, expenses: parseFloat(e.target.value) || 0 })} />
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-[8px] text-slate-400">Discount</p>
+                        <select value={state.discount} className="inp text-red-500 font-black text-center text-xs appearance-none" onChange={e => setState({ ...state, discount: parseInt(e.target.value) })}><option value="0">0%</option><option value="10">10%</option><option value="20">20%</option><option value="30">30%</option></select>
+                      </div>
+                    </div>
+                    <div className="space-y-3 pt-2">
+                      <p className="text-[8px] text-slate-400 uppercase font-black tracking-wider">Asignar Proyecto a Empleado</p>
+                      <select value={state.team} className="inp text-xs text-center" onChange={e => setState({ ...state, team: e.target.value })}>
+                        <option value="">Seleccionar Empleado...</option>
+                        {staff.map(worker => (
+                          <option key={worker.id} value={worker.name}>{worker.name} ({worker.role?.toUpperCase()})</option>
+                        ))}
+                      </select>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="space-y-1">
+                          <p className="text-[8px] text-slate-400 uppercase font-black tracking-wider">Date</p>
+                          <input type="date" value={state.date} className="inp text-[10px] font-black" onChange={e => setState({ ...state, date: e.target.value })} />
+                        </div>
+                        <div className="space-y-1">
+                          <p className="text-[8px] text-slate-400 uppercase font-black tracking-wider">Deposit</p>
+                          <input type="number" value={state.deposit} className="inp text-blue-400 font-black text-center text-xs" onChange={e => setState({ ...state, deposit: parseFloat(e.target.value) || 0 })} />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Estimate Deployer Call to Action */}
+              <div className="bg-white text-black p-8 rounded-[2rem] text-center shadow-2xl relative overflow-hidden active:scale-95 transition-all shadow-[#F5C518]/5 border border-white/10">
+                <div className="absolute top-0 left-0 w-full h-1.5 bg-[#F5C518]"></div>
+                <div className="flex justify-between items-center mb-3">
+                  <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest font-display">Deployment Value</p>
+                  <span className={`text-[8px] font-black px-3 py-1 rounded-lg border ${pricing.ac} border-current`}>{pricing.advice}</span>
+                </div>
+                <h4 className="text-[5.5rem] font-black italic tracking-tighter leading-none mb-4 text-black font-display"><span className="text-3xl align-top mr-1 font-light opacity-30">$</span>{state.totalPrice}</h4>
+                <button onClick={deploy} className="w-full bg-slate-900 text-white py-5 rounded-2xl font-black text-sm uppercase italic active:scale-90 transition-all shadow-xl shadow-slate-900/10 tracking-widest font-display">{editId ? 'Update Estimate ⚡' : 'Execute Deploy 🚀'}</button>
+              </div>
+            </div>
+          )}
+        </main>
+      </div>
     </div>
   );
 }
