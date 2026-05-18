@@ -1790,35 +1790,56 @@ export default function App() {
     
     // Add locally for robust fallback
     const newWorker = {
-      id: String(staff.length + 1),
+      id: String(Date.now()), // use timestamp to avoid ID collision
       name: newStaffName,
       staff_email: newStaffEmail,
       role: newStaffRole,
       passcode: newStaffPIN,
+      payout_pct: 40,
       wallet_balance: 0,
       total_earned: 0
     };
-    setStaff([...staff, newWorker]);
+    setStaff(prev => [...prev, newWorker]);
     
-    // Push to Supabase si hay conexion
+    // Push to Supabase
     try {
-      await sb.from('staff_profiles').insert([{
+      const { data: inserted } = await sb.from('staff_profiles').insert([{
         name: newStaffName,
         staff_email: newStaffEmail,
         role: newStaffRole,
         passcode: newStaffPIN,
+        payout_pct: 40,
         wallet_balance: 0,
         total_earned: 0,
         tenant_id: tenantId
-      }]);
+      }]).select().single();
+      // Replace temp local entry with real DB entry (gets real UUID)
+      if (inserted) setStaff(prev => prev.map(s => s.id === newWorker.id ? inserted : s));
       tt('Staff added successfully! 👤');
     } catch {
       tt('Local employee created ✓');
     }
 
+    // Always clear ALL form fields after adding
     setNewName('');
     setNewPIN('');
     setNewStaffEmail('');
+    setNewRole('staff');
+  };
+
+  const handleDeleteEmployee = async (worker) => {
+    const confirmed = window.confirm(`¿Eliminar a ${worker.name}? Esta accion no se puede deshacer.`);
+    if (!confirmed) return;
+    // Remove locally immediately
+    setStaff(prev => prev.filter(s => s.id !== worker.id));
+    if (editingStaff?.id === worker.id) setEditingStaff(null);
+    // Delete from Supabase
+    try {
+      await sb.from('staff_profiles').delete().eq('id', worker.id);
+      tt(`${worker.name} eliminado del sistema`, 'red');
+    } catch {
+      tt('Eliminado localmente ✓');
+    }
   };
 
   const handleCashout = async (worker) => {
@@ -2792,9 +2813,23 @@ ${job.final_signature ? `<div class="sig"><p style="font-size:10px;color:#999;ma
                   <div className="space-y-3 pt-2 max-h-[300px] overflow-y-auto custom-scroll pr-1">
                     {staff.map(worker => (
                       <div key={worker.id} className="g p-4 border border-white/5 bg-black/20 flex flex-col gap-2 relative">
-                        <button onClick={() => setEditingStaff(worker)} className="absolute top-3 right-3 text-slate-500 hover:text-[#F5C518] transition-colors p-1 active:scale-90" title="Edit Employee Profile">
-                          <Icon name="edit-3" className="w-3.5 h-3.5" />
-                        </button>
+                        {/* Edit + Delete action buttons */}
+                        <div className="absolute top-3 right-3 flex gap-1.5">
+                          <button
+                            onClick={() => setEditingStaff(worker)}
+                            className="text-slate-500 hover:text-[#F5C518] transition-colors p-1 active:scale-90 rounded-lg hover:bg-white/5"
+                            title="Edit Employee Profile"
+                          >
+                            <Icon name="edit-3" className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteEmployee(worker)}
+                            className="text-slate-500 hover:text-red-500 transition-colors p-1 active:scale-90 rounded-lg hover:bg-red-500/10"
+                            title="Delete Employee"
+                          >
+                            <Icon name="trash-2" className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
                         <div className="flex justify-between items-start pr-6">
                           <div>
                             <h4 className="text-sm font-black text-white uppercase italic leading-none mb-1.5 flex items-center gap-1.5">
