@@ -1607,6 +1607,7 @@ export default function App() {
   const [sq, setSQ] = useState('');
   const [toast, setToast] = useState(null);
   const [aStaff, setAStaff] = useState(null);
+  const [editingStaff, setEditingStaff] = useState(null);
   const [quickMode, setQM] = useState(false);
   const [chatJob, setChatJob] = useState(null);
   const [chatMsg, setChatMsg] = useState('');
@@ -1758,7 +1759,9 @@ export default function App() {
     
     // If checking out, calculate and add earnings dynamically to employee wallet
     if (type === 'check_out_time' && activeEmployee) {
-      const share = Math.round(jobData.total_price * DEFAULT_CFG.STAFF_PAY);
+      const currentWorker = staff.find(s => s.id === activeEmployee.id) || activeEmployee;
+      const pct = currentWorker?.payout_pct !== undefined ? (Number(currentWorker.payout_pct) / 100) : DEFAULT_CFG.STAFF_PAY;
+      const share = Math.round(jobData.total_price * pct);
       const isFast = Math.round((new Date(time) - new Date(jobData.check_in_time)) / 60000) <= 180;
       const netEarned = share + (isFast ? 5 : 0);
       
@@ -1775,7 +1778,11 @@ export default function App() {
 
   const upsell = async (job, aid) => { const a = ADDONS.find(x => x.id === aid); if (!a) return; const p = job.client_phone?.replace(/\D/g, '') || ''; const ph = p.length === 10 ? '1' + p : p; const msg = `Hi ${job.client_name}! ✨ Our team noticed your ${a.en.toLowerCase()} could use attention. Add it for $${a.p}? Reply YES! 🏠`; window.open(`https://wa.me/${ph}?text=${encodeURIComponent(msg)}`, '_blank'); const sent = [...(job.upsell_sent || []), aid]; await sb.from('elevore_missions').update({ upsell_sent: sent }).eq('id', job.id); tt(`Upsell: ${a.en} sent! 💰`); log(`Upsell: ${a.en} → ${job.client_name}`); refresh(); };
   const calcBonus = job => { if (job.status !== 'paid') return 0; const mins = job.check_in_time && job.check_out_time ? Math.round((new Date(job.check_out_time) - new Date(job.check_in_time)) / 60000) : null; return (job.final_signature && mins && mins <= 180 && (job.client_rating || 0) >= 4) ? 5 : 0; };
-  const realProfit = job => Math.round((job.deposit_paid || 0) - ((job.deposit_paid || 0) * DEFAULT_CFG.STAFF_PAY) - (job.specs?.expenses || 0) - calcBonus(job));
+  const realProfit = job => {
+    const w = staff.find(s => s.name === job.team_assigned);
+    const pct = w && w.payout_pct !== undefined ? (Number(w.payout_pct) / 100) : DEFAULT_CFG.STAFF_PAY;
+    return Math.round((job.deposit_paid || 0) - ((job.deposit_paid || 0) * pct) - (job.specs?.expenses || 0) - calcBonus(job));
+  };
   const passQC = job => update(job, { status: 'paid', specs: { ...(job.specs || {}), quality_passed: true, quality_passed_at: new Date().toISOString() } }, 'QC Passed ✓');
   const markLost = async job => { const r = prompt('Lost reason (price/no-answer/competitor/timing):') || 'unknown'; await update(job, { status: 'lost', specs: { ...(job.specs || {}), lost_reason: r, lost_at: new Date().toISOString() } }, 'Marked lost'); };
   const rebook = job => { setState({ ...INIT, ...(job.specs || {}), name: job.client_name, phone: job.client_phone, address: job.address, status: 'scheduled', deposit: 0, date: job.next_visit || '' }); setEdit(null); setView('deploy'); setDtab('money'); };
@@ -1841,7 +1848,12 @@ export default function App() {
     const col = jobs.reduce((a, b) => a + (b.deposit_paid || 0), 0);
     const exp = jobs.reduce((a, b) => a + (b.specs?.expenses || 0), 0);
     const bonuses = jobs.reduce((a, b) => a + calcBonus(b), 0);
-    const net = Math.max(0, Math.round(col - (col * DEFAULT_CFG.STAFF_PAY) - exp - bonuses));
+    const netPayAllocated = jobs.filter(j => j.status === 'paid').reduce((acc, job) => {
+      const w = staff.find(s => s.name === job.team_assigned);
+      const pct = w && w.payout_pct !== undefined ? (Number(w.payout_pct) / 100) : DEFAULT_CFG.STAFF_PAY;
+      return acc + Math.round((job.deposit_paid || 0) * pct);
+    }, 0);
+    const net = Math.max(0, Math.round(col - netPayAllocated - exp - bonuses));
     const pending = gross - col;
     const pct = Math.min(100, (gross / DEFAULT_CFG.GOAL) * 100);
     const avg = jobs.length ? Math.round(gross / jobs.length) : 0;
@@ -1874,7 +1886,11 @@ export default function App() {
     
     const ratings = jobs.filter(j => j.client_rating > 0).map(j => j.client_rating);
     const avgRating = ratings.length ? Math.round((ratings.reduce((a, b) => a + b, 0) / ratings.length) * 10) / 10 : 0;
-    const payroll = jobs.filter(j => j.status === 'paid').map(j => ({ name: j.team_assigned || 'Unassigned', amount: Math.round((j.deposit_paid || 0) * DEFAULT_CFG.STAFF_PAY + calcBonus(j)) })).reduce((acc, { name, amount }) => { acc[name] = (acc[name] || 0) + amount; return acc; }, {});
+    const payroll = jobs.filter(j => j.status === 'paid').map(j => {
+      const w = staff.find(s => s.name === j.team_assigned);
+      const pct = w && w.payout_pct !== undefined ? (Number(w.payout_pct) / 100) : DEFAULT_CFG.STAFF_PAY;
+      return { name: j.team_assigned || 'Unassigned', amount: Math.round((j.deposit_paid || 0) * pct + calcBonus(j)) };
+    }).reduce((acc, { name, amount }) => { acc[name] = (acc[name] || 0) + amount; return acc; }, {});
     const todayJobs = jobs.filter(j => j.scheduled_date === new Date().toISOString().split('T')[0]);
     const conv = jobs.filter(j => j.status === 'paid' && j.created_at && j.scheduled_date);
     const vel = conv.length ? Math.abs(Math.round(conv.reduce((a, j) => a + dAgo(j.created_at) - dAgo(j.scheduled_date), 0) / conv.length)) : null;
@@ -2693,40 +2709,119 @@ ${job.final_signature ? `<div class="sig"><p style="font-size:10px;color:#999;ma
           {role === 'admin' && view === 'payroll' && (
             <div className="space-y-6 animate-in fade-in pb-24">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* Create Staff Module */}
-                <div className="g p-6 space-y-4 bg-[rgba(255,255,255,0.04)] border-[rgba(255,255,255,0.08)]">
-                  <h2 className="text-xs font-black text-[#F5C518] uppercase tracking-widest font-display">👤 ADD NEW WORKER & PIN</h2>
-                  <div className="space-y-3 pt-2">
-                    <input className="inp uppercase text-xs" placeholder="Worker Name" value={newStaffName} onChange={e => setNewName(e.target.value)} />
-                    <input type="email" className="inp text-xs" placeholder="Worker Email (Login ID)" value={newStaffEmail} onChange={e => setNewStaffEmail(e.target.value)} />
-                    <input className="inp text-xs" placeholder="Set Passcode PIN (e.g. 5566)" value={newStaffPIN} onChange={e => setNewPIN(e.target.value)} />
-                    <div className="grid grid-cols-3 gap-2">
-                      {['staff', 'supervisor', 'admin'].map(r => (
-                        <button key={r} onClick={() => setNewRole(r)} className={`py-2.5 rounded-xl text-[8px] uppercase font-black border transition-all ${newStaffRole === r ? 'bg-[#F5C518] text-black border-[#F5C518]' : 'bg-white/5 border-white/5 text-slate-400'}`}>{r}</button>
-                      ))}
+                {/* Create or Edit Staff Module */}
+                {editingStaff ? (
+                  <div className="g p-6 space-y-4 bg-gradient-to-br from-[#F5C518]/10 to-transparent border-[#F5C518]/30 shadow-lg relative animate-in zoom-in-95">
+                    <button onClick={() => setEditingStaff(null)} className="absolute top-4 right-4 text-slate-500 hover:text-white transition-colors uppercase text-[8px] font-black tracking-widest">Cancel</button>
+                    <h2 className="text-xs font-black text-[#F5C518] uppercase tracking-widest font-display flex items-center gap-1.5">
+                      <Icon name="edit-3" className="w-3.5 h-3.5 animate-pulse" /> EDIT PROFILE: {editingStaff.name}
+                    </h2>
+                    <div className="space-y-3 pt-2">
+                      <div>
+                        <label className="text-[8px] text-slate-400 uppercase font-black tracking-widest block mb-1">Worker Name</label>
+                        <input className="inp uppercase text-xs w-full" value={editingStaff.name} onChange={e => setEditingStaff({ ...editingStaff, name: e.target.value })} />
+                      </div>
+                      <div>
+                        <label className="text-[8px] text-slate-400 uppercase font-black tracking-widest block mb-1">Worker Email (Login ID)</label>
+                        <input type="email" className="inp text-xs w-full" value={editingStaff.staff_email || ''} onChange={e => setEditingStaff({ ...editingStaff, staff_email: e.target.value })} />
+                      </div>
+                      <div>
+                        <label className="text-[8px] text-slate-400 uppercase font-black tracking-widest block mb-1">Phone Number</label>
+                        <input type="tel" className="inp text-xs w-full" placeholder="+1 (555) 000-0000" value={editingStaff.phone || ''} onChange={e => setEditingStaff({ ...editingStaff, phone: e.target.value })} />
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label className="text-[8px] text-slate-400 uppercase font-black tracking-widest block mb-1">Passcode PIN</label>
+                          <input className="inp text-xs w-full font-mono text-center tracking-widest" value={editingStaff.passcode} onChange={e => setEditingStaff({ ...editingStaff, passcode: e.target.value })} />
+                        </div>
+                        <div>
+                          <label className="text-[8px] text-slate-400 uppercase font-black tracking-widest block mb-1">Payout Share %</label>
+                          <input type="number" className="inp text-xs w-full text-amber-500 font-bold" min={0} max={100} value={editingStaff.payout_pct !== undefined ? editingStaff.payout_pct : 40} onChange={e => setEditingStaff({ ...editingStaff, payout_pct: Number(e.target.value) || 0 })} />
+                          <span className="text-[7px] text-slate-500 uppercase font-bold tracking-wider block mt-1">Default is {DEFAULT_CFG.STAFF_PAY * 100}%</span>
+                        </div>
+                      </div>
+                      <div>
+                        <label className="text-[8px] text-slate-400 uppercase font-black tracking-widest block mb-1">System Role</label>
+                        <div className="grid grid-cols-3 gap-2">
+                          {['staff', 'supervisor', 'admin'].map(r => (
+                            <button key={r} onClick={() => setEditingStaff({ ...editingStaff, role: r })} className={`py-2 rounded-xl text-[8px] uppercase font-black border transition-all ${editingStaff.role === r ? 'bg-[#F5C518] text-black border-[#F5C518]' : 'bg-white/5 border-white/5 text-slate-400'}`}>{r}</button>
+                          ))}
+                        </div>
+                      </div>
+                      <button onClick={async () => {
+                        if (!editingStaff.name || !editingStaff.passcode || !editingStaff.staff_email) {
+                          return tt('Name, Email and PIN are required', 'red');
+                        }
+                        // Save locally
+                        setStaff(staff.map(s => s.id === editingStaff.id ? editingStaff : s));
+                        // Save to Supabase
+                        try {
+                          await sb.from('staff_profiles').update({
+                            name: editingStaff.name,
+                            staff_email: editingStaff.staff_email,
+                            phone: editingStaff.phone,
+                            passcode: editingStaff.passcode,
+                            role: editingStaff.role,
+                            payout_pct: editingStaff.payout_pct
+                          }).eq('id', editingStaff.id);
+                          tt('Worker profile updated! 👤', 'green');
+                        } catch (err) {
+                          tt('Updated locally ✓');
+                        }
+                        setEditingStaff(null);
+                      }} className="w-full bg-[#F5C518] text-black hover:bg-[#F5C518]/90 py-3 rounded-xl font-black uppercase text-[10px] active:scale-95 shadow-md transition-all">Save Profile Changes ✓</button>
                     </div>
-                    <button onClick={handleAddEmployee} className="w-full bg-[#F5C518] text-black hover:bg-[#F5C518]/90 py-3.5 rounded-xl font-black uppercase text-[10px] active:scale-95 shadow-md transition-all">Add Employee to SaaS ✓</button>
                   </div>
-                </div>
+                ) : (
+                  <div className="g p-6 space-y-4 bg-[rgba(255,255,255,0.04)] border-[rgba(255,255,255,0.08)]">
+                    <h2 className="text-xs font-black text-[#F5C518] uppercase tracking-widest font-display">👤 ADD NEW WORKER & PIN</h2>
+                    <div className="space-y-3 pt-2">
+                      <input className="inp uppercase text-xs" placeholder="Worker Name" value={newStaffName} onChange={e => setNewName(e.target.value)} />
+                      <input type="email" className="inp text-xs" placeholder="Worker Email (Login ID)" value={newStaffEmail} onChange={e => setNewStaffEmail(e.target.value)} />
+                      <input className="inp text-xs" placeholder="Set Passcode PIN (e.g. 5566)" value={newStaffPIN} onChange={e => setNewPIN(e.target.value)} />
+                      <div className="grid grid-cols-3 gap-2">
+                        {['staff', 'supervisor', 'admin'].map(r => (
+                          <button key={r} onClick={() => setNewRole(r)} className={`py-2.5 rounded-xl text-[8px] uppercase font-black border transition-all ${newStaffRole === r ? 'bg-[#F5C518] text-black border-[#F5C518]' : 'bg-white/5 border-white/5 text-slate-400'}`}>{r}</button>
+                        ))}
+                      </div>
+                      <button onClick={handleAddEmployee} className="w-full bg-[#F5C518] text-black hover:bg-[#F5C518]/90 py-3.5 rounded-xl font-black uppercase text-[10px] active:scale-95 shadow-md transition-all">Add Employee to SaaS ✓</button>
+                    </div>
+                  </div>
+                )}
 
                 {/* Team Wallet List Ledger */}
                 <div className="g p-6 space-y-4 bg-[rgba(255,255,255,0.04)] border-[rgba(255,255,255,0.08)]">
                   <h2 className="text-xs font-black text-green-500 uppercase tracking-widest font-display">💰 TEAM WALLETS & PAYROLL</h2>
                   <div className="space-y-3 pt-2 max-h-[300px] overflow-y-auto custom-scroll pr-1">
                     {staff.map(worker => (
-                      <div key={worker.id} className="g p-4 border border-white/5 flex items-center justify-between bg-black/20">
-                        <div>
-                          <h4 className="text-sm font-black text-white uppercase italic leading-none mb-1">{worker.name}</h4>
-                          <p className="text-[8px] text-slate-400">PIN: <span className="text-[#F5C518] font-bold">{worker.passcode}</span> • Role: {worker.role?.toUpperCase()}</p>
-                          <p className="text-[7px] text-slate-500 mt-0.5">Historial acumulado: {fmt$(worker.total_earned || 0)}</p>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-xl font-black text-green-400">{fmt$(worker.wallet_balance || 0)}</p>
-                          {(worker.wallet_balance || 0) > 0 ? (
-                            <button onClick={() => handleCashout(worker)} className="mt-1 px-2.5 py-1.5 bg-green-600 text-white rounded-lg text-[7px] font-black uppercase active:scale-95 hover:bg-green-500 transition-all">Pay via Zelle</button>
-                          ) : (
-                            <span className="text-[6px] text-slate-500 font-black uppercase block mt-1">Paid ✓</span>
-                          )}
+                      <div key={worker.id} className="g p-4 border border-white/5 bg-black/20 flex flex-col gap-2 relative">
+                        <button onClick={() => setEditingStaff(worker)} className="absolute top-3 right-3 text-slate-500 hover:text-[#F5C518] transition-colors p-1 active:scale-90" title="Edit Employee Profile">
+                          <Icon name="edit-3" className="w-3.5 h-3.5" />
+                        </button>
+                        <div className="flex justify-between items-start pr-6">
+                          <div>
+                            <h4 className="text-sm font-black text-white uppercase italic leading-none mb-1.5 flex items-center gap-1.5">
+                              {worker.name}
+                              <span className="text-[6px] font-bold uppercase tracking-widest px-1.5 py-0.5 rounded bg-white/5 text-slate-400 border border-white/5">{worker.role}</span>
+                            </h4>
+                            <p className="text-[8px] text-slate-400">
+                              PIN: <span className="text-[#F5C518] font-bold">{worker.passcode}</span> 
+                              {worker.staff_email && ` • Email: ${worker.staff_email}`}
+                              {worker.phone && ` • Tel: ${worker.phone}`}
+                            </p>
+                            <p className="text-[8px] text-amber-500 font-bold uppercase tracking-wider mt-0.5">
+                              Ganancia: {worker.payout_pct !== undefined ? worker.payout_pct : 40}%
+                            </p>
+                            <p className="text-[7px] text-slate-500 mt-1">Historial acumulado: {fmt$(worker.total_earned || 0)}</p>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-xl font-black text-green-400 leading-none">{fmt$(worker.wallet_balance || 0)}</p>
+                            {(worker.wallet_balance || 0) > 0 ? (
+                              <button onClick={() => handleCashout(worker)} className="mt-1 px-2.5 py-1.5 bg-green-600 text-white rounded-lg text-[7px] font-black uppercase active:scale-95 hover:bg-green-500 transition-all">Pay via Zelle</button>
+                            ) : (
+                              <span className="text-[6px] text-slate-500 font-black uppercase block mt-2">Paid ✓</span>
+                            )}
+                          </div>
                         </div>
                       </div>
                     ))}
