@@ -1642,26 +1642,20 @@ export default function App() {
   useEffect(() => { try { const d = JSON.parse(localStorage.getItem('ev97') || '{}'); if (d.name) setState(s => ({ ...s, ...d })); } catch { }; }, []);
 
   const refresh = useCallback(async () => {
-    setLoad(true);
-    let qMissions = sb.from('elevore_missions').select('*').order('created_at', { ascending: false });
-    let qClients = sb.from('clients').select('*');
-    let qStaff = sb.from('staff_profiles').select('*');
-    
-    // SaaS Multi-tenant filter
-    if (tenantId) {
-      qMissions = qMissions.eq('tenant_id', tenantId);
-      qClients = qClients.eq('tenant_id', tenantId);
-      qStaff = qStaff.eq('tenant_id', tenantId);
-    } else {
-      qMissions = qMissions.is('tenant_id', null);
-      qClients = qClients.is('tenant_id', null);
-      qStaff = qStaff.is('tenant_id', null);
+    // ⚠️ SECURITY: Never fetch data without a confirmed tenantId.
+    // This prevents cross-tenant data leaks.
+    if (!tenantId) {
+      setLoad(false);
+      return;
     }
+    setLoad(true);
 
-    const { data: j } = await qMissions;
-    const { data: c } = await qClients;
-    const { data: s } = await qStaff;
-    
+    const [{ data: j }, { data: c }, { data: s }] = await Promise.all([
+      sb.from('elevore_missions').select('*').eq('tenant_id', tenantId).order('created_at', { ascending: false }),
+      sb.from('clients').select('*').eq('tenant_id', tenantId),
+      sb.from('staff_profiles').select('*').eq('tenant_id', tenantId)
+    ]);
+
     if (j) setJobs(j);
     if (c) setClients(c);
     if (s && s.length > 0) setStaff(s);
@@ -1677,7 +1671,10 @@ export default function App() {
     setView(assignedRole === 'admin' ? 'brief' : 'staff');
   };
 
-  useEffect(() => { if (view !== 'auth') refresh(); }, [view, refresh]);
+  // Only refresh data once we're past auth AND have a valid tenantId.
+  useEffect(() => {
+    if (view !== 'auth' && view !== 'landing' && tenantId) refresh();
+  }, [view, tenantId, refresh]);
 
   useEffect(() => {
     if (view === 'auth') return;
