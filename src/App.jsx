@@ -3066,38 +3066,152 @@ ${job.final_signature ? `<div class="sig"><p style="font-size:10px;color:#999;ma
                   </div>
                 )}
 
-                {dtab === 'quote' && (
+                {dtab === 'quote' && (() => {
+                  const [aiPriceLoading, setAiPriceLoading] = React.useState(false);
+                  const [aiPrices, setAiPrices] = React.useState(null);
+                  const [aiInsight, setAiInsight] = React.useState('');
+
+                  const getMarketPrice = async () => {
+                    setAiPriceLoading(true);
+                    setAiInsight('');
+                    const svcLabel = {
+                      regular: 'Residential Regular Cleaning',
+                      deep: 'Residential Deep Cleaning',
+                      moveout: 'Move-Out / Move-In Cleaning',
+                      postcon: 'Post-Construction Cleaning',
+                      handyman: 'Handyman / Home Repair Service'
+                    }[state.svc] || state.svc;
+
+                    const jobDetails = state.svc === 'handyman'
+                      ? `Handyman service, approximately ${state.handymanHours || 2} hours of work.`
+                      : state.svc === 'postcon'
+                      ? `Post-construction cleaning for ${state.sqft || 1500} sq ft.`
+                      : `${svcLabel} for a home with ${state.beds || 2} bedrooms and ${state.baths || 2} bathrooms.`;
+
+                    const prompt = `You are a professional home services pricing analyst specializing in the Orlando and Central Florida market.
+
+A company is pricing a job:
+- Service: ${svcLabel}
+- Details: ${jobDetails}
+- Market: Orlando, Florida, USA (2025)
+
+Based on current market rates from platforms like Angi, Thumbtack, and HomeAdvisor in Orlando FL, provide a competitive 3-tier pricing recommendation.
+
+Respond ONLY in this exact JSON format (no explanation, no markdown, just raw JSON):
+{"good":{"price":120,"label":"Standard Service","description":"Basic clean, meets expectations"},"better":{"price":160,"label":"Premium Service","description":"Deep attention to detail, priority scheduling"},"best":{"price":210,"label":"VIP Elite","description":"Full white-glove treatment, same-day, satisfaction guarantee"},"insight":"One sentence about Orlando market conditions for this service."}`;
+
+                    try {
+                      const GEMINI_KEY = import.meta.env.VITE_GEMINI_KEY;
+                      const res = await fetch(
+                        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_KEY}`,
+                        {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({
+                            contents: [{ parts: [{ text: prompt }] }],
+                            generationConfig: { temperature: 0.3, maxOutputTokens: 500 }
+                          })
+                        }
+                      );
+                      const data = await res.json();
+                      const raw = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+                      // Strip markdown code fences if present
+                      const cleaned = raw.replace(/```json|```/g, '').trim();
+                      const parsed = JSON.parse(cleaned);
+                      setAiPrices(parsed);
+                      setAiInsight(parsed.insight || '');
+                      // Auto-fill the base price with Better tier as anchor
+                      setState(s => ({ ...s, price: parsed.better.price }));
+                      tt('🧠 Precios de mercado Orlando cargados ✓', 'green');
+                    } catch (err) {
+                      tt('Error conectando con IA. Intenta de nuevo.', 'red');
+                    } finally {
+                      setAiPriceLoading(false);
+                    }
+                  };
+
+                  const goodPrice  = aiPrices ? aiPrices.good.price  : (state.price || 0);
+                  const betterPrice = aiPrices ? aiPrices.better.price : Math.round((state.price || 0) * 1.35);
+                  const bestPrice  = aiPrices ? aiPrices.best.price  : Math.round((state.price || 0) * 1.70);
+
+                  return (
                   <div className="space-y-4 animate-in fade-in">
                     <h3 className="text-[10px] uppercase text-[#F5C518] font-black italic tracking-widest border-b border-white/5 pb-2 font-display text-center">Good - Better - Best (Quote Matrix)</h3>
-                    
+
+                    {/* 🧠 AI Market Price Button */}
+                    <button
+                      onClick={getMarketPrice}
+                      disabled={aiPriceLoading}
+                      className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl border border-[#F5C518]/40 bg-gradient-to-r from-[#F5C518]/10 to-amber-900/10 text-[#F5C518] font-black uppercase text-[9px] tracking-widest hover:from-[#F5C518]/20 hover:border-[#F5C518]/70 active:scale-95 transition-all shadow-[0_0_20px_rgba(245,197,24,0.08)] disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {aiPriceLoading ? (
+                        <>
+                          <div className="w-3.5 h-3.5 border-2 border-[#F5C518] border-t-transparent rounded-full animate-spin" />
+                          Analizando mercado Orlando, FL...
+                        </>
+                      ) : (
+                        <>
+                          <Icon name="zap" className="w-3.5 h-3.5 animate-pulse" />
+                          {aiPrices ? '🔄 Actualizar Precio de Mercado (IA)' : '🧠 Obtener Precio de Mercado — Orlando, FL'}
+                        </>
+                      )}
+                    </button>
+
+                    {/* AI Insight Badge */}
+                    {aiInsight && (
+                      <div className="flex items-start gap-2 px-4 py-2.5 rounded-xl bg-blue-500/10 border border-blue-500/20">
+                        <Icon name="info" className="w-3 h-3 text-blue-400 mt-0.5 flex-shrink-0" />
+                        <p className="text-[8px] text-blue-300 leading-relaxed">{aiInsight}</p>
+                      </div>
+                    )}
+
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                       {/* GOOD */}
-                      <div className="bg-white/5 border border-white/10 p-4 rounded-2xl flex flex-col items-center text-center">
+                      <div className={`border p-4 rounded-2xl flex flex-col items-center text-center transition-all ${aiPrices ? 'bg-slate-900/60 border-slate-600/60' : 'bg-white/5 border-white/10'}`}>
                         <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Good</p>
-                        <p className="text-xl font-black italic text-white my-2">${(state.price || 0)}</p>
-                        <p className="text-[7px] text-slate-500 uppercase font-bold mb-3">Basic Clean / Standard Svc</p>
-                        <button onClick={() => { tt('Good Quote selected & ready to send via WhatsApp! 🚀'); window.open(`https://wa.me/${state.phone?.replace(/\D/g, '') || ''}?text=Here%20is%20your%20Standard%20Quote:%20$${state.price}`); }} className="w-full mt-auto py-2 rounded-xl text-[8px] uppercase font-black bg-white/10 hover:bg-white/20 active:scale-95">Select Good</button>
+                        <p className="text-xl font-black italic text-white my-2">${goodPrice}</p>
+                        <p className="text-[7px] text-slate-500 uppercase font-bold mb-3">
+                          {aiPrices ? aiPrices.good.description : 'Basic Clean / Standard Svc'}
+                        </p>
+                        {aiPrices && <span className="text-[7px] text-slate-400 font-bold mb-2">{aiPrices.good.label}</span>}
+                        <button onClick={() => { tt('Good Quote → WhatsApp! 🚀'); window.open(`https://wa.me/${state.phone?.replace(/\D/g, '') || ''}?text=Hola! Aqui está tu cotización Estándar: $${goodPrice}. ¿Te funciona? 😊`); }} className="w-full mt-auto py-2 rounded-xl text-[8px] uppercase font-black bg-white/10 hover:bg-white/20 active:scale-95">Select Good</button>
                       </div>
 
                       {/* BETTER */}
-                      <div className="bg-[#F5C518]/10 border-2 border-[#F5C518] p-4 rounded-2xl flex flex-col items-center text-center shadow-[0_0_30px_rgba(245,197,24,0.1)] transform scale-105">
-                        <span className="bg-[#F5C518] text-black text-[6px] uppercase font-black px-2 py-0.5 rounded-full absolute -top-2">Most Popular</span>
+                      <div className={`relative border-2 p-4 rounded-2xl flex flex-col items-center text-center shadow-[0_0_30px_rgba(245,197,24,0.1)] transform scale-105 transition-all ${aiPrices ? 'bg-[#F5C518]/15 border-[#F5C518]' : 'bg-[#F5C518]/10 border-[#F5C518]'}`}>
+                        <span className="bg-[#F5C518] text-black text-[6px] uppercase font-black px-2 py-0.5 rounded-full absolute -top-2">
+                          {aiPrices ? '⭐ Market Sweet Spot' : 'Most Popular'}
+                        </span>
                         <p className="text-[10px] font-black text-[#F5C518] uppercase tracking-widest mt-2">Better</p>
-                        <p className="text-2xl font-black italic text-white my-2">${Math.round((state.price || 0) * 1.35)}</p>
-                        <p className="text-[7px] text-[#F5C518]/70 uppercase font-bold mb-3">+ Premium Add-ons & Deep Clean</p>
-                        <button onClick={() => { tt('Better Quote selected & ready to send via WhatsApp! 🚀'); window.open(`https://wa.me/${state.phone?.replace(/\D/g, '') || ''}?text=Here%20is%20your%20Premium%20Quote:%20$${Math.round((state.price || 0) * 1.35)}`); }} className="w-full mt-auto py-2.5 rounded-xl text-[8px] uppercase font-black bg-[#F5C518] text-black active:scale-95 shadow-md">Select Better</button>
+                        <p className="text-2xl font-black italic text-white my-2">${betterPrice}</p>
+                        <p className="text-[7px] text-[#F5C518]/70 uppercase font-bold mb-3">
+                          {aiPrices ? aiPrices.better.description : '+ Premium Add-ons & Deep Clean'}
+                        </p>
+                        {aiPrices && <span className="text-[7px] text-[#F5C518]/80 font-bold mb-2">{aiPrices.better.label}</span>}
+                        <button onClick={() => { tt('Better Quote → WhatsApp! 🚀'); window.open(`https://wa.me/${state.phone?.replace(/\D/g, '') || ''}?text=Hola! Aqui está tu cotización Premium: $${betterPrice}. Incluye ${aiPrices?.better?.description || 'atención premium'}. ¿Lo reservamos? 🏆`); }} className="w-full mt-auto py-2.5 rounded-xl text-[8px] uppercase font-black bg-[#F5C518] text-black active:scale-95 shadow-md">Select Better</button>
                       </div>
 
                       {/* BEST */}
-                      <div className="bg-purple-900/20 border border-purple-500/50 p-4 rounded-2xl flex flex-col items-center text-center">
+                      <div className={`border p-4 rounded-2xl flex flex-col items-center text-center transition-all ${aiPrices ? 'bg-purple-900/30 border-purple-400/60' : 'bg-purple-900/20 border-purple-500/50'}`}>
                         <p className="text-[10px] font-black text-purple-400 uppercase tracking-widest">Best</p>
-                        <p className="text-xl font-black italic text-white my-2">${Math.round((state.price || 0) * 1.70)}</p>
-                        <p className="text-[7px] text-purple-400/70 uppercase font-bold mb-3">+ The Ultimate VIP Experience</p>
-                        <button onClick={() => { tt('Best Quote selected & ready to send via WhatsApp! 🚀'); window.open(`https://wa.me/${state.phone?.replace(/\D/g, '') || ''}?text=Here%20is%20your%20Ultimate%20VIP%20Quote:%20$${Math.round((state.price || 0) * 1.70)}`); }} className="w-full mt-auto py-2 rounded-xl text-[8px] uppercase font-black bg-purple-600/30 text-purple-200 active:scale-95 hover:bg-purple-600/50">Select Best</button>
+                        <p className="text-xl font-black italic text-white my-2">${bestPrice}</p>
+                        <p className="text-[7px] text-purple-400/70 uppercase font-bold mb-3">
+                          {aiPrices ? aiPrices.best.description : '+ The Ultimate VIP Experience'}
+                        </p>
+                        {aiPrices && <span className="text-[7px] text-purple-300/80 font-bold mb-2">{aiPrices.best.label}</span>}
+                        <button onClick={() => { tt('Best VIP Quote → WhatsApp! 🚀'); window.open(`https://wa.me/${state.phone?.replace(/\D/g, '') || ''}?text=Hola! Aqui está tu cotización VIP Elite: $${bestPrice}. ${aiPrices?.best?.description || 'La experiencia definitiva'}. ¿Lo agendamos? 👑`); }} className="w-full mt-auto py-2 rounded-xl text-[8px] uppercase font-black bg-purple-600/30 text-purple-200 active:scale-95 hover:bg-purple-600/50">Select Best</button>
                       </div>
                     </div>
+
+                    {aiPrices && (
+                      <button onClick={() => { setAiPrices(null); setAiInsight(''); }} className="w-full py-2 text-[8px] text-slate-500 hover:text-slate-300 uppercase font-black tracking-widest transition-colors">
+                        ↩ Reset to Manual Pricing
+                      </button>
+                    )}
                   </div>
-                )}
+                  );
+                })()}
+
 
                 {dtab === 'money' && (
                   <div className="space-y-4 animate-in fade-in">
