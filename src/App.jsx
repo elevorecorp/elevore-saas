@@ -765,122 +765,102 @@ function AIAdvisor({ jobs, clients, staff, isStaff, activeUser, onClose, tt, onO
     return { totalRev, completed, mrr, churn, unsigned, rent };
   }, [jobs, clients, isStaff]);
 
-  const generateAnswer = (promptText) => {
-    const q = promptText.toLowerCase();
-    let reply = "";
+  const [isTyping, setIsTyping] = useState(false);
 
-    // -- STAFF AI (Field Ops, Technical SOPs, Conflict Resolution) --
-    if (isStaff) {
-      if (q.includes('financ') || q.includes('mrr') || q.includes('ganan') || q.includes('pag')) {
-        reply = `### 🔒 Nivel de Acceso: Administrador
-Hola ${activeUser}. Los reportes financieros y metas de facturación están bloqueados para roles de campo.
-*💡 ¿Necesitas ayuda técnica o protocolos de limpieza?*`;
-      } 
-      else if (q.includes('enoj') || q.includes('molest') || q.includes('difícil') || q.includes('queja') || q.includes('reclamo')) {
-        reply = `### 🛡️ Protocolo de Resolución de Conflictos (De-escalation)
-1. **Escucha Activa:** No interrumpas. Deja que el cliente explique su frustración completamente.
-2. **Empatía Táctica:** "Entiendo perfectamente su molestia, señor/a. Si yo estuviera en su posición me sentiría igual."
-3. **Asume Responsabilidad (Sin culpar a otros):** "Vamos a solucionar esto inmediatamente."
-4. **Acción de Mitigación:** Ofrece rehacer el área afectada en el momento. Si el cliente exige reembolso, indícale amablemente: *"Voy a escalar este caso con nuestro equipo de gerencia para que le brinden una solución oficial hoy mismo."*
-*Nota: Toma fotos del área en disputa inmediatamente.*`;
-      }
-      else if (q.includes('romp') || q.includes('dañ') || q.includes('quebr') || q.includes('accidente')) {
-        reply = `### 🚨 Protocolo de Daños a Propiedad (Damage Control)
-Mantén la calma. Los accidentes ocurren.
-1. **Seguridad:** Asegura la zona (recoge vidrios, limpia líquidos) para evitar lesiones.
-2. **Documentación INMEDIATA:** Toma 3 fotos del objeto dañado (lejos, medio, cerca).
-3. **Reporte Interno:** Avisa al Administrador de inmediato.
-4. **Comunicación al Cliente:** *"Señor/a, tuvimos un pequeño incidente con [objeto]. Lo hemos documentado y nuestra empresa cuenta con póliza; nos haremos 100% responsables. Nuestro gerente se comunicará en breve para el reemplazo."*`;
-      }
-      else if (q.includes('vender') || q.includes('upsell') || q.includes('extra') || q.includes('ofrecer')) {
-        reply = `### 💰 Script de Expansión (Upselling en Campo)
-Cuando notes un área que requiere mantenimiento que no está cotizado, usa este guion:
-*"Hola [Nombre], mientras realizaba el servicio noté que [área] requiere limpieza profunda. Normalmente esto cuesta $X, pero como ya estoy aquí con el equipo preparado, puedo hacerlo por solo $Y y dejarlo impecable. ¿Le gustaría que lo añada?"*
-Si acepta, envíale confirmación al Administrador.`;
-      }
-      else if (q.includes('alfombra') || q.includes('mancha') || q.includes('vino') || q.includes('sangre') || q.includes('yeso') || q.includes('horno')) {
-        reply = `### 🧪 Base de Conocimientos: Técnicas Avanzadas
-* **Manchas Biológicas (Sangre, orina):** Usa limpiadores enzimáticos fríos. **NUNCA usar agua caliente** porque fija la proteína.
-* **Manchas de Vino/Café (Taninos):** Aplica peróxido de hidrógeno al 3% y limpia con paño de microfibra blanco.
-* **Hornos / Grasa Pesada:** Aplica desengrasante alcalino. Usa calor residual del horno apagado (150°F) para aflojar el carbón en 10 min.
-* **Drywall (Yeso):** Lija el hueco, aplica malla autoadhesiva, pon masilla de 20 min, seca, lija y texturiza.`;
-      }
-      else {
-        reply = `### 👷 Asistente Operativo Elevore
-Hola ${activeUser}. Analicé tu consulta: *"**${promptText}**"*. 
+  const callGemini = async (userMessage) => {
+    const GEMINI_KEY = import.meta.env.VITE_GEMINI_KEY;
 
-**💡 Menú de Capacitación Avanzada:**
-* Pregúntame sobre **"cómo sacar una mancha"** o **"cómo limpiar yeso/hornos"**.
-* **"¿Qué hago si el cliente está molesto?"** (Resolución de quejas).
-* **"¿Qué pasa si rompo algo?"** (Protocolos de seguro).
-* **"¿Cómo ofrezco extras?"** (Guiones de ventas para ganar más bonos).`;
-      }
-    } 
-    
-    // -- ADMIN AI (SaaS Metrics, Predictability, Strategy, Copywriting) --
-    else {
-      if (q.includes('proyecci') || q.includes('futuro') || q.includes('mes que viene') || q.includes('crecimiento')) {
-        const vel = jobs.filter(j => j.status === 'paid').length;
-        const projected = Math.round(stats.totalRev * 1.15); // Simple 15% growth model
-        reply = `### 🚀 Proyección Analítica de IA (Forecasting)
-Basado en tu tracción actual de ${vel} trabajos completados, mi algoritmo predictivo sugiere:
-* **Ingreso Bruto Proyectado (Próx. 30 días):** ${fmt$(projected)}
-* **Tendencia Vectorial:** Crecimiento acelerado (+15%).
-* **Acción sugerida:** Tienes margen operativo sólido. Es el momento perfecto para probar subir tus precios base un 10% a nuevos prospectos para mejorar el margen neto.`;
-      }
-      else if (q.includes('staff') || q.includes('empleado') || q.includes('equipo') || q.includes('rendimiento')) {
-        const top = staff.sort((a,b) => (b.total_earned||0) - (a.total_earned||0))[0];
-        reply = `### 👥 Auditoría de Rendimiento Organizacional
-Tu equipo cuenta con ${staff.length} operadores activos en el sistema.
-🏆 **Top Performer del Mes:** **${top ? top.name : 'N/A'}** (Líder en comisiones/retención).
-* **Sugerencia Ejecutiva:** Implementa un bono de calidad (Quality Bonus) del 5% para técnicos que logren 3 reseñas de 5 estrellas semanales. Incentivarás perfección sin costo fijo.`;
-      }
-      else if (q.includes('mensaje') || q.includes('email') || q.includes('campaña') || q.includes('texto') || q.includes('vender')) {
-        reply = `### ✍️ AI Copywriter: Campaña de Reactivación VIP
-Copia y pega este script neuro-optimizado para generar respuestas rápidas en clientes fríos:
+    // --- BUILD SYSTEM PROMPT WITH REAL CONTEXT ---
+    const systemPrompt = isStaff
+      ? `Eres el Asistente de Operaciones de Campo de Elevore, una empresa de servicios de limpieza y mantenimiento de hogar en Orlando, Florida.
+Tu trabajo es ayudar al empleado de campo llamado "${activeUser}" con:
+- Técnicas profesionales de limpieza y procedimientos de campo
+- Protocolos de seguridad y manejo de situaciones difíciles
+- Scripts de ventas / upsell para ofrecer servicios adicionales en campo
+- Manejo de quejas de clientes y resolución de conflictos
+- SOPs (procedimientos estándar) de la empresa
 
-*"¡Hola [Nombre]! ✨ El equipo de gerencia revisó el expediente de su hogar y notamos que ya toca su mantenimiento de temporada. Para mantener su estatus VIP, nuestro sistema le ha liberado un cupón confidencial del 15% OFF válido solo por 48 horas. ¿Le reservamos una fecha premium? 📅💎"*`;
-      }
-      else if (q.includes('financ') || q.includes('mrr') || q.includes('metas') || q.includes('dinero') || q.includes('ingres')) {
-        reply = `### 📊 Inteligencia de Negocios (BI)
-* **Facturación Bruta:** ${fmt$(stats.totalRev)}
-* **Ingresos Recurrentes Mensuales (MRR):** ${fmt$(stats.mrr)}
-* **Velocidad de Meta:** Estás al ${Math.round((stats.totalRev / DEFAULT_CFG.GOAL) * 100)}% de tu meta corporativa de ${fmt$(DEFAULT_CFG.GOAL)}.
-**💡 Recomendación:** Tienes ${stats.unsigned.length} presupuestos congelados. Activa secuencias de seguimiento (Follow-up) hoy mismo para inyectar liquidez a tu caja.`;
-      }
-      else if (q.includes('churn') || q.includes('riesgo') || q.includes('abandono') || q.includes('fuga')) {
-        if (stats.churn.length === 0) {
-          reply = `### 🚨 Radar de Retención (Churn Risk)
-✅ Excelente salud de cohorte. **0% de fuga de clientes** detectada en los últimos 45 días. Tus clientes son altamente leales.`;
-        } else {
-          reply = `### 🚨 Alerta de Fuga de Clientes (Churn Detection)
-⚠️ Peligro Operativo: He detectado **${stats.churn.length} clientes** de alto valor que no han reservado en más de 45 días (Ej: ${stats.churn[0].name}).
-*Ejecuta la campaña de reactivación VIP inmediatamente antes de que el ciclo de vida del cliente termine.*`;
-        }
-      }
-      else {
-        reply = `### 🧠 Comando Central Elevore (AI)
-Hola ${activeUser}. Analicé tu consulta: *"**${promptText}**"*.
+Reglas CRÍTICAS de seguridad:
+- NUNCA reveles datos financieros, ingresos, MRR, ganancias, salarios de otros empleados ni información estratégica
+- Si el empleado pregunta sobre dinero de la empresa, finanzas, o datos de otros: responde que esa información es confidencial para administradores
+- Habla siempre en español, de forma directa y práctica
+- Tus respuestas deben ser concisas y accionables para alguien que está en campo con las manos ocupadas`
 
-Como tu Motor de Inteligencia Estratégica, tengo comandos de alto nivel. Pregúntame sobre:
-1. 🚀 **"Proyecciones"**: Genero pronósticos de ventas y crecimiento futuro.
-2. 👥 **"Auditoría de staff"**: Analizo el rendimiento de tus empleados y retención de talento.
-3. ✍️ **"Crea una campaña"**: Te escribo textos de marketing persuasivos listos para enviar.
-4. 🚨 **"Riesgo de clientes"**: Detecto clientes a punto de irse con la competencia.
-5. 📊 **"Análisis financiero"**: Desglose de MRR y métricas de salud SaaS.`;
-      }
-    }
+      : `Eres el Asesor Estratégico de IA de Elevore, el motor de inteligencia de negocios del CEO "${activeUser}".
+Tienes acceso completo a los datos en tiempo real de su empresa de servicios en Orlando, Florida.
 
-    setMessages(prev => [...prev, { from: 'ai', text: reply, time: new Date().toLocaleTimeString() }]);
+=== DATOS EN TIEMPO REAL DE LA EMPRESA ===
+- Facturación Bruta Total: ${fmt$(stats.totalRev || 0)}
+- Trabajos Completados y Pagados: ${stats.completed || 0}
+- MRR (Ingresos Recurrentes Mensuales por membresías): ${fmt$(stats.mrr || 0)}
+- Clientes en Riesgo de Abandono (>45 días sin reservar): ${stats.churn?.length || 0} clientes (${stats.churn?.map(c => c.name).slice(0, 3).join(', ') || 'ninguno'})
+- Presupuestos sin firmar (leads pendientes): ${stats.unsigned?.length || 0}
+- Total de empleados en el sistema: ${staff.length}
+- Visitas de retención pendientes esta semana: ${stats.rent?.length || 0}
+- Meta de facturación: ${fmt$(DEFAULT_CFG.GOAL || 10000)}
+- Progreso hacia la meta: ${Math.round(((stats.totalRev || 0) / (DEFAULT_CFG.GOAL || 10000)) * 100)}%
+==========================================
+
+Eres un asesor de negocios de élite con experiencia en:
+- Análisis financiero y proyecciones de crecimiento para home services
+- Estrategias de retención de clientes y reducción de churn
+- Copywriting persuasivo y scripts de WhatsApp marketing
+- Gestión de equipos y payroll para field service companies
+- Pricing strategy para el mercado de Orlando, FL
+- Automatización y escala de operaciones SaaS
+
+Habla en español. Sé directo, estratégico y orientado a resultados. Si el CEO pide algo que requiere datos que no tienes, trabaja con lo que hay y ofrece una solución accionable.`;
+
+    const payload = {
+      contents: [
+        { role: 'user', parts: [{ text: systemPrompt + '\n\n--- INICIO DEL CHAT ---' }] },
+        { role: 'model', parts: [{ text: isStaff
+          ? `Hola ${activeUser}! Soy tu guía de operaciones de campo. Estoy aquí para ayudarte en tiempo real. ¿Qué necesitas?`
+          : `Hola ${activeUser}! Sistema de IA Elevore activo. Tengo acceso completo a tus métricas en tiempo real. ¿Qué analizamos?`
+        }]},
+        // Inject conversation history (last 8 messages for context window)
+        ...messages.slice(-8).map(m => ({
+          role: m.from === 'user' ? 'user' : 'model',
+          parts: [{ text: m.text }]
+        })),
+        { role: 'user', parts: [{ text: userMessage }] }
+      ],
+      generationConfig: {
+        temperature: 0.7,
+        maxOutputTokens: 600,
+        topK: 40,
+        topP: 0.95
+      },
+      safetySettings: [
+        { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
+        { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_NONE' }
+      ]
+    };
+
+    const res = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_KEY}`,
+      { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }
+    );
+    const data = await res.json();
+    return data?.candidates?.[0]?.content?.parts?.[0]?.text || 'Lo siento, no pude procesar tu consulta. Intenta de nuevo.';
   };
 
-  const handleSend = () => {
-    if (!input.trim()) return;
-    const txt = input.trim();
+  const handleSend = async (overrideText) => {
+    const txt = (overrideText || input).trim();
+    if (!txt) return;
     setMessages(prev => [...prev, { from: 'user', text: txt, time: new Date().toLocaleTimeString() }]);
     setInput('');
-    setTimeout(() => generateAnswer(txt), 800);
+    setIsTyping(true);
+    try {
+      const reply = await callGemini(txt);
+      setMessages(prev => [...prev, { from: 'ai', text: reply, time: new Date().toLocaleTimeString() }]);
+    } catch (err) {
+      setMessages(prev => [...prev, { from: 'ai', text: '⚠️ Error de conexión con la IA. Verifica tu conexión a internet e intenta de nuevo.', time: new Date().toLocaleTimeString() }]);
+    } finally {
+      setIsTyping(false);
+    }
   };
+
 
   return (
     <div className="fixed inset-0 bg-black/95 z-[1500] flex items-end p-4" onClick={e => e.target === e.currentTarget && onClose()}>
@@ -916,31 +896,37 @@ Como tu Motor de Inteligencia Estratégica, tengo comandos de alto nivel. Pregú
               <div className={`p-4 rounded-2xl text-xs max-w-[85%] leading-relaxed ${m.from === 'user' ? 'bg-amber-500 text-black font-semibold' : 'bg-white/5 text-slate-200 border border-white/5 shadow-md'}`}>
                 {m.text.split('\n').map((line, idx) => {
                   if (line.startsWith('### ')) return <h4 key={idx} className="text-amber-400 font-bold uppercase text-[10px] tracking-widest mt-2 mb-1">{line.replace('### ', '')}</h4>;
-                  if (line.startsWith('* ')) return <p key={idx} className="pl-2 mt-1">✨ {line.replace('* ', '')}</p>;
+                  if (line.startsWith('* ') || line.startsWith('- ')) return <p key={idx} className="pl-2 mt-1">✨ {line.replace(/^[*-] /, '')}</p>;
+                  if (line.match(/^\d+\./)) return <p key={idx} className="pl-2 mt-1">{line}</p>;
+                  if (line.startsWith('**') && line.endsWith('**')) return <p key={idx} className="font-bold text-white mt-1">{line.replace(/\*\*/g, '')}</p>;
                   return <p key={idx} className="mt-1">{line}</p>;
                 })}
               </div>
               <span className="text-[6px] text-slate-600 mt-1 font-bold">{m.time}</span>
             </div>
           ))}
+          {/* Typing indicator */}
+          {isTyping && (
+            <div className="flex items-start">
+              <div className="bg-white/5 border border-white/10 px-4 py-3 rounded-2xl flex items-center gap-1.5">
+                <div className="w-1.5 h-1.5 bg-amber-500 rounded-full animate-bounce" style={{animationDelay:'0ms'}} />
+                <div className="w-1.5 h-1.5 bg-amber-500 rounded-full animate-bounce" style={{animationDelay:'150ms'}} />
+                <div className="w-1.5 h-1.5 bg-amber-500 rounded-full animate-bounce" style={{animationDelay:'300ms'}} />
+              </div>
+            </div>
+          )}
           <div ref={chatEndRef} />
         </div>
 
         {/* Quick Suggestion Chips */}
         <div className="flex gap-1.5 overflow-x-auto nsb pb-3">
           {isStaff ? (
-            [[ '🛠️ Drywall', 'Instrucciones de reparacion de drywall patch' ], [ '🧼 Horno', 'Instrucciones para lavar horno inside oven' ], [ '🐾 Mascotas', 'Manual de extraccion de pelos de mascotas' ], [ '📋 Checklist', 'Instrucciones de checklist y control de calidad' ]].map(([lbl, pmt]) => (
-              <button key={lbl} onClick={() => {
-                setMessages(prev => [...prev, { from: 'user', text: pmt, time: new Date().toLocaleTimeString() }]);
-                setTimeout(() => generateAnswer(pmt), 600);
-              }} className="px-2.5 py-1.5 bg-white/5 border border-white/5 text-slate-400 rounded-lg text-[8px] font-black uppercase whitespace-nowrap active:scale-95 hover:border-amber-500/30">{lbl}</button>
+            [['🛠️ Drywall', 'Explícame paso a paso cómo reparar drywall con patch'], ['🧼 Horno', '¿Cómo limpio un horno con mucha grasa acumulada?'], ['🐾 Mascotas', '¿Cómo elimino pelos de mascotas y olores de las alfombras?'], ['📋 Checklist', '¿Cuál es el checklist de control de calidad antes de irme de una casa?']].map(([lbl, pmt]) => (
+              <button key={lbl} onClick={() => { if (!isTyping) handleSend(pmt); }} disabled={isTyping} className="px-2.5 py-1.5 bg-white/5 border border-white/5 text-slate-400 rounded-lg text-[8px] font-black uppercase whitespace-nowrap active:scale-95 hover:border-amber-500/30 disabled:opacity-40">{lbl}</button>
             ))
           ) : (
-            [[ '📊 Financiero', 'Analizar Finanzas y MRR' ], [ '🚨 Churn', 'Analizar Riesgos de Churn' ], [ '💎 VIP Promo', 'Clientes para membresia VIP' ], [ '🛠️ Manual', 'Instrucciones de limpieza o drywall patch' ]].map(([lbl, pmt]) => (
-              <button key={lbl} onClick={() => {
-                setMessages(prev => [...prev, { from: 'user', text: pmt, time: new Date().toLocaleTimeString() }]);
-                setTimeout(() => generateAnswer(pmt), 600);
-              }} className="px-2.5 py-1.5 bg-white/5 border border-white/5 text-slate-400 rounded-lg text-[8px] font-black uppercase whitespace-nowrap active:scale-95 hover:border-amber-500/30">{lbl}</button>
+            [['📊 Finanzas', '¿Cómo van mis finanzas y qué me recomiendas hacer hoy?'], ['🚨 Churn', '¿Cuáles son mis clientes con más riesgo de abandono y qué hago?'], ['✍️ Campaña WA', 'Escríbeme una campaña de WhatsApp para reactivar clientes fríos'], ['🚀 Proyección', '¿Cuál es mi proyección de ingresos para el próximo mes?']].map(([lbl, pmt]) => (
+              <button key={lbl} onClick={() => { if (!isTyping) handleSend(pmt); }} disabled={isTyping} className="px-2.5 py-1.5 bg-white/5 border border-white/5 text-slate-400 rounded-lg text-[8px] font-black uppercase whitespace-nowrap active:scale-95 hover:border-amber-500/30 disabled:opacity-40">{lbl}</button>
             ))
           )}
         </div>
@@ -948,8 +934,23 @@ Como tu Motor de Inteligencia Estratégica, tengo comandos de alto nivel. Pregú
         {/* Text Area Input */}
         <div className="flex gap-2 border-t border-white/5 pt-3">
           <VoiceButton onTranscript={(txt) => setInput(txt)} />
-          <input value={input} onChange={e => setInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleSend()} placeholder="Pregúntame lo que quieras sobre tu trabajo..." className="inp text-xs flex-1" />
-          <button onClick={handleSend} className="bg-amber-500 text-black px-4 rounded-xl font-black active:scale-95 flex items-center justify-center"><Icon name="send" className="w-4 h-4 text-black" /></button>
+          <input
+            value={input}
+            onChange={e => setInput(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && !isTyping && handleSend()}
+            placeholder={isTyping ? 'La IA está respondiendo...' : 'Pregúntame lo que quieras...'}
+            className="inp text-xs flex-1"
+            disabled={isTyping}
+          />
+          <button
+            onClick={() => handleSend()}
+            disabled={isTyping || !input.trim()}
+            className="bg-amber-500 text-black px-4 rounded-xl font-black active:scale-95 flex items-center justify-center disabled:opacity-40 disabled:cursor-not-allowed transition-opacity"
+          >
+            {isTyping
+              ? <div className="w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin" />
+              : <Icon name="send" className="w-4 h-4 text-black" />}
+          </button>
         </div>
 
       </div>
