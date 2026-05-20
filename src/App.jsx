@@ -1275,12 +1275,13 @@ function OnboardingFlow({ onBack, tt }) {
 // 🔑 LOGIN FLOW (EMAIL OR PIN)
 // =====================================================================
 function LoginFlow({ onLoginSuccess, onBack, tt }) {
-  const [tab, setTab] = useState('email'); // 'email' | 'pin'
+  const [tab, setTab] = useState('email'); // 'email' | 'pin' | 'client'
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [pin, setPin] = useState('');
   const [companyName, setCompanyName] = useState('');
   const [loading, setLoading] = useState(false);
+  const [phone, setPhone] = useState('');
 
   const handleEmailLogin = async (e) => {
     e.preventDefault();
@@ -1337,6 +1338,33 @@ function LoginFlow({ onLoginSuccess, onBack, tt }) {
     }
   };
 
+  const handleClientLogin = async (e) => {
+    e.preventDefault();
+    if (!phone) return tt('Phone number is required', 'red');
+    setLoading(true);
+    tt('Searching portals...', 'yellow');
+    try {
+      const cleanPhone = phone.replace(/\D/g, '');
+      const { data, error } = await sb
+        .from('elevore_missions')
+        .select('id')
+        .ilike('client_phone', `%${cleanPhone}%`)
+        .order('created_at', { ascending: false })
+        .limit(1);
+        
+      if (error || !data || data.length === 0) {
+        setLoading(false);
+        return tt('No portal found for this phone number', 'red');
+      }
+      
+      tt('Access Granted! Redirecting...', 'green');
+      window.location.search = `?mision=${data[0].id}`;
+    } catch (err) {
+      setLoading(false);
+      tt('Connection error. Try again.', 'red');
+    }
+  };
+
   return (
     <div className="min-h-screen flex items-center justify-center p-6 mesh-bg animate-in fade-in duration-1000 text-white">
       <div className="g p-10 w-full max-w-sm text-center space-y-6 border-t-4 border-[#F5C518] shadow-[0_0_50px_rgba(245,197,24,0.15)] bg-black/60 backdrop-blur-2xl">
@@ -1347,11 +1375,12 @@ function LoginFlow({ onLoginSuccess, onBack, tt }) {
         <img src="/elevore-logo.png" alt="Elevore Logo" className="w-16 h-16 object-contain mx-auto drop-shadow-[0_0_20px_rgba(245,197,24,0.4)] animate-pulse" />
         
         <div className="flex bg-white/5 rounded-xl p-1 mb-6">
-          <button onClick={() => setTab('email')} className={`flex-1 py-2 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all ${tab === 'email' ? 'bg-[#F5C518] text-black shadow-lg' : 'text-slate-400 hover:text-white'}`}>CEO Login</button>
-          <button onClick={() => setTab('pin')} className={`flex-1 py-2 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all ${tab === 'pin' ? 'bg-[#F5C518] text-black shadow-lg' : 'text-slate-400 hover:text-white'}`}>Staff Login</button>
+          <button onClick={() => setTab('email')} className={`flex-1 py-2 text-[8px] font-black uppercase tracking-wider rounded-lg transition-all ${tab === 'email' ? 'bg-[#F5C518] text-black shadow-lg' : 'text-slate-400 hover:text-white'}`}>CEO</button>
+          <button onClick={() => setTab('pin')} className={`flex-1 py-2 text-[8px] font-black uppercase tracking-wider rounded-lg transition-all ${tab === 'pin' ? 'bg-[#F5C518] text-black shadow-lg' : 'text-slate-400 hover:text-white'}`}>Staff</button>
+          <button onClick={() => setTab('client')} className={`flex-1 py-2 text-[8px] font-black uppercase tracking-wider rounded-lg transition-all ${tab === 'client' ? 'bg-[#F5C518] text-black shadow-lg' : 'text-slate-400 hover:text-white'}`}>Client Portal</button>
         </div>
 
-        {tab === 'email' ? (
+        {tab === 'email' && (
           <form onSubmit={handleEmailLogin} className="space-y-4 text-left">
             <div className="space-y-1">
               <label className="text-[9px] font-black uppercase text-slate-500 tracking-widest pl-1">Work Email</label>
@@ -1365,7 +1394,9 @@ function LoginFlow({ onLoginSuccess, onBack, tt }) {
               {loading ? <Icon name="loader-2" className="w-5 h-5 animate-spin" /> : 'Enter Empire'}
             </button>
           </form>
-        ) : (
+        )}
+
+        {tab === 'pin' && (
           <form onSubmit={handlePinLogin} className="space-y-4 text-left">
             <div className="space-y-1">
               <label className="text-[9px] font-black uppercase text-slate-500 tracking-widest pl-1">Staff Email</label>
@@ -1377,6 +1408,21 @@ function LoginFlow({ onLoginSuccess, onBack, tt }) {
             </div>
             <button type="submit" disabled={loading} className="w-full bg-white/10 hover:bg-white/20 border border-white/10 text-white py-4 rounded-xl font-black uppercase active:scale-95 transition-all text-xs tracking-wider flex items-center justify-center gap-2 mt-4">
               {loading ? <Icon name="loader-2" className="w-5 h-5 animate-spin" /> : 'Access Field App'}
+            </button>
+          </form>
+        )}
+
+        {tab === 'client' && (
+          <form onSubmit={handleClientLogin} className="space-y-4 text-left">
+            <div className="space-y-1">
+              <label className="text-[9px] font-black uppercase text-slate-500 tracking-widest pl-1">Registered Phone</label>
+              <input required type="tel" placeholder="Ej: (407) 952-4228" className="inp w-full py-4 text-sm" value={phone} onChange={e => setPhone(e.target.value)} disabled={loading} />
+            </div>
+            <p className="text-[7.5px] text-slate-500 leading-normal uppercase font-bold tracking-wider pt-1">
+              * Enter the phone number you used for your booking. We'll automatically find your active mission portal and referral link.
+            </p>
+            <button type="submit" disabled={loading} className="w-full gold py-4 rounded-xl font-black uppercase text-sm shadow-[0_0_30px_rgba(245,197,24,0.2)] mt-4 active:scale-95 transition-all flex items-center justify-center gap-2">
+              {loading ? <Icon name="loader-2" className="w-5 h-5 animate-spin" /> : 'Find My Portal →'}
             </button>
           </form>
         )}
@@ -1555,6 +1601,46 @@ function LandingPage({ onLogin, onSignup }) {
                 </div>
               </div>
             ))}
+          </div>
+        </div>
+      </section>
+
+      {/* CLIENT REFERRAL LINK UTILITY */}
+      <section className="land border-t border-white/5 py-24 bg-gradient-to-b from-black to-[#050505] relative overflow-hidden">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(245,197,24,0.03),transparent)]" />
+        <div className="max-w-xl mx-auto px-6 relative z-10 text-center space-y-6">
+          <div className="inline-block text-[10px] font-black uppercase tracking-[0.3em] text-[#F5C518] border border-[#F5C518]/30 px-4 py-2 rounded-full bg-[#F5C518]/5">
+            🎁 Share & Earn
+          </div>
+          <h2 className="text-3xl md:text-4xl font-black tracking-tighter">Existing Client?<br /><span className="glow-text italic">Get Your Referral Link</span></h2>
+          <p className="text-slate-400 text-sm">Enter your name below to instantly generate your unique referral link. Share it with friends and you both get a $25 discount on your next service!</p>
+          
+          <div className="g p-6 bg-white/[0.02] border border-white/5 rounded-3xl space-y-4 text-left">
+            <div className="flex flex-col sm:flex-row gap-3">
+              <input 
+                type="text" 
+                id="landingRefName"
+                placeholder="Enter your full name" 
+                className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-500 outline-none focus:border-[#F5C518] transition-all"
+              />
+              <button 
+                onClick={() => {
+                  const val = document.getElementById('landingRefName')?.value?.trim();
+                  if (!val) return alert('Please enter your name first');
+                  const urlP = new URLSearchParams(window.location.search);
+                  const tenantParam = urlP.get('t') || '';
+                  const link = `${location.origin}${location.pathname}?ref=${val.replace(/\s/g, '_')}${tenantParam ? '&t=' + tenantParam : ''}`;
+                  navigator.clipboard.writeText(link);
+                  alert(`Success! Your referral link has been copied:\n\n${link}`);
+                }}
+                className="px-6 py-3 bg-[#F5C518] hover:bg-amber-400 text-black font-black uppercase text-xs tracking-wider rounded-xl active:scale-95 transition-all shadow-lg shadow-[#F5C518]/10 text-center"
+              >
+                Copy Link
+              </button>
+            </div>
+            <p className="text-[7.5px] text-slate-500 leading-normal uppercase font-bold tracking-wider">
+              * Note: No login required. The link automatically embeds your name and associates any referrals to you.
+            </p>
           </div>
         </div>
       </section>
@@ -1992,6 +2078,34 @@ export default function App() {
   }, [jobs, clients]);
 
   const dna = useMemo(() => { const m = {}; clients.forEach(c => { const cj = jobs.filter(j => j.client_name === c.name); m[c.name] = { score: calcDNA(cj), count: cj.length, spent: cj.reduce((a, b) => a + (b.total_price || 0), 0), last: cj[0]?.scheduled_date }; }); return m; }, [clients, jobs]);
+
+  const referralStats = useMemo(() => {
+    const referredJobs = jobs.filter(j => j.specs?.referred_by);
+    const totalReferred = referredJobs.length;
+    const pendingReferrals = referredJobs.filter(j => j.status === 'lead').length;
+    const paidReferrals = referredJobs.filter(j => j.status === 'paid').length;
+    const totalDiscountAmount = referredJobs.reduce((acc, j) => acc + (j.specs?.referral_discount || 25), 0);
+    const conversions = totalReferred > 0 ? Math.round((paidReferrals / totalReferred) * 100) : 0;
+    
+    const counts = {};
+    referredJobs.forEach(j => {
+      const referrer = j.specs?.referred_by || 'Unknown';
+      counts[referrer] = (counts[referrer] || 0) + 1;
+    });
+    
+    const ambassadors = Object.entries(counts)
+      .map(([name, count]) => ({ name, count }))
+      .sort((a, b) => b.count - a.count);
+      
+    return {
+      totalReferred,
+      pendingReferrals,
+      paidReferrals,
+      totalDiscountAmount,
+      conversions,
+      ambassadors
+    };
+  }, [jobs]);
 
   const filtered = useMemo(() => jobs.filter(j => { const ms = fSt === 'all' || j.status === fSt; const q = sq.toLowerCase(); const mq = !sq || j.client_name?.toLowerCase().includes(q) || j.address?.toLowerCase().includes(q) || j.team_assigned?.toLowerCase().includes(q); return ms && mq; }), [jobs, fSt, sq]);
 
@@ -2626,6 +2740,76 @@ ${job.final_signature ? `<div class="sig"><p style="font-size:10px;color:#999;ma
                   <SleekAreaChart data={finance.mb2} color="#3b82f6" />
                 </div>
               </div>
+
+              {/* ── REFERRAL ENGINE DASHBOARD ── */}
+              <div className="g p-6 bg-[rgba(255,255,255,0.04)] border-[rgba(255,255,255,0.08)] space-y-6">
+                <div className="flex justify-between items-center border-b border-white/5 pb-4">
+                  <div>
+                    <h3 className="text-xs font-black text-white uppercase tracking-widest font-display">🎁 ORGANIC REFERRAL ENGINE</h3>
+                    <p className="text-[7.5px] text-slate-500 uppercase font-bold mt-0.5">Track referred leads, conversion rate and active program ambassadors</p>
+                  </div>
+                  <span className="text-[7.5px] font-black px-2 py-1 rounded-full bg-[#F5C518]/10 text-[#F5C518] border border-[#F5C518]/25 uppercase tracking-wider animate-pulse">ACTIVE ENGINE</span>
+                </div>
+
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div className="bg-white/5 border border-white/5 rounded-2xl p-4">
+                    <p className="text-[7.5px] text-slate-500 uppercase font-black tracking-wider">Total Referred Leads</p>
+                    <p className="text-2xl font-black text-white mt-1">{referralStats.totalReferred}</p>
+                  </div>
+                  <div className="bg-white/5 border border-white/5 rounded-2xl p-4">
+                    <p className="text-[7.5px] text-slate-500 uppercase font-black tracking-wider">Pending (Leads)</p>
+                    <p className="text-2xl font-black text-orange-400 mt-1">{referralStats.pendingReferrals}</p>
+                  </div>
+                  <div className="bg-white/5 border border-white/5 rounded-2xl p-4">
+                    <p className="text-[7.5px] text-slate-500 uppercase font-black tracking-wider">Converted (Paid)</p>
+                    <p className="text-2xl font-black text-green-400 mt-1">{referralStats.paidReferrals}</p>
+                  </div>
+                  <div className="bg-white/5 border border-white/5 rounded-2xl p-4">
+                    <p className="text-[7.5px] text-slate-500 uppercase font-black tracking-wider">Conversion Rate</p>
+                    <p className="text-2xl font-black text-[#F5C518] mt-1">{referralStats.conversions}%</p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
+                  <div className="space-y-3">
+                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">💰 DISCOUNTS LEDGER</p>
+                    <div className="bg-white/5 border border-white/5 rounded-2xl p-5 space-y-4">
+                      <div className="flex justify-between items-center">
+                        <span className="text-[8px] text-slate-400 uppercase font-bold">Estimated Discounts Granted</span>
+                        <span className="text-sm font-black text-white">{fmt$(referralStats.totalDiscountAmount)}</span>
+                      </div>
+                      <div className="flex justify-between items-center border-t border-white/5 pt-3">
+                        <span className="text-[8px] text-slate-400 uppercase font-bold">Standard Discount Value</span>
+                        <span className="text-sm font-black text-[#F5C518]">$25.00</span>
+                      </div>
+                      <p className="text-[7px] text-slate-600 uppercase font-bold italic leading-relaxed">
+                        * Referral discounts are automatically calculated at $25 per referred booking and saved inside mission parameters.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-3">
+                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">🏆 BRAND AMBASSADORS</p>
+                    <div className="bg-white/5 border border-white/5 rounded-2xl p-5 max-h-[170px] overflow-y-auto nsb">
+                      {referralStats.ambassadors.length === 0 ? (
+                        <p className="text-[8px] text-slate-600 italic uppercase text-center py-6">No active ambassadors yet</p>
+                      ) : (
+                        <div className="space-y-2.5">
+                          {referralStats.ambassadors.slice(0, 5).map((amb, idx) => (
+                            <div key={amb.name} className="flex justify-between items-center text-[8px] uppercase">
+                              <div className="flex items-center gap-2">
+                                <span className="w-4 h-4 rounded-lg bg-[#F5C518]/10 text-[#F5C518] flex items-center justify-center font-black text-[7px]">{idx + 1}</span>
+                                <span className="font-bold text-white">{amb.name.replace(/_/g, ' ')}</span>
+                              </div>
+                              <span className="font-black text-[#F5C518]">{amb.count} friends referred</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           )}
 
@@ -2662,6 +2846,11 @@ ${job.final_signature ? `<div class="sig"><p style="font-size:10px;color:#999;ma
                             <h3 className="text-base font-black uppercase italic text-white leading-none">{job.client_name}</h3>
                             <span className={`text-[6px] font-black px-1.5 py-0.5 rounded-full uppercase ${job.status === 'paid' ? 'bg-blue-600 text-white' : job.status === 'in_progress' ? 'bg-green-600 text-white' : job.status === 'lead' ? 'bg-[#F5C518] text-black' : job.status === 'completed' ? 'bg-purple-600 text-white' : job.status === 'lost' ? 'bg-red-900 text-red-300' : 'bg-slate-700 text-slate-300'}`}>{job.status}</span>
                             {isH && <span className="text-[6px] bg-green-600 text-black font-black px-1.5 py-0.5 rounded-full">🛠️</span>}
+                            {job.specs?.referred_by && (
+                              <span className="text-[6px] bg-[#F5C518]/10 text-[#F5C518] border border-[#F5C518]/25 font-black px-1.5 py-0.5 rounded-full flex items-center gap-0.5">
+                                🎁 Ref: {job.specs.referred_by.replace(/_/g, ' ')}
+                              </span>
+                            )}
                           </div>
                           <p className="text-[8px] text-slate-400 uppercase">{job.service_type} • {fmtD(job.scheduled_date)} • Assigned: {job.team_assigned || 'No worker'}</p>
                         </div>
