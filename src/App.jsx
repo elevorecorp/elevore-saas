@@ -841,7 +841,7 @@ Habla en español. Sé directo, estratégico y orientado a resultados. Si el CEO
     }
 
     const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_KEY}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_KEY}`,
       { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }
     );
 
@@ -3135,7 +3135,7 @@ Respond ONLY in this exact JSON format (no explanation, no markdown, just raw JS
                     try {
                       const GEMINI_KEY = import.meta.env.VITE_GEMINI_KEY;
                       const res = await fetch(
-                        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_KEY}`,
+                        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_KEY}`,
                         {
                           method: 'POST',
                           headers: { 'Content-Type': 'application/json' },
