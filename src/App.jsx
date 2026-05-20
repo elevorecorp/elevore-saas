@@ -1051,6 +1051,9 @@ function PublicLeadForm({ refCode }) {
     if (!form.name || !form.phone) return alert('Name and phone required');
     
     try {
+      // Extract tenant from URL (?t=tenantId encoded in referral link)
+      const urlParams = new URLSearchParams(window.location.search);
+      const tenantFromUrl = urlParams.get('t');
       await sb.from('elevore_missions').insert([{
         client_name: form.name,
         client_phone: form.phone,
@@ -1058,7 +1061,8 @@ function PublicLeadForm({ refCode }) {
         service_type: form.service_type,
         status: 'lead',
         total_price: 0,
-        specs: { referred_by: referrer, referral_discount: 25 },
+        tenant_id: tenantFromUrl || null,
+        specs: { referred_by: referrer, referral_discount: 25, referred_by_client_name: referrer },
         created_at: new Date().toISOString()
       }]);
       setSubmitted(true);
@@ -1996,7 +2000,7 @@ export default function App() {
     const p = job.client_phone?.replace(/\D/g, '') || ''; const ph = p.length === 10 ? '1' + p : p;
     const bal = job.total_price - job.deposit_paid;
     const portal = `${location.origin}${location.pathname}?mision=${job.id}`;
-    const ref = `${location.origin}${location.pathname}?ref=${job.client_name?.replace(/\s/g, '_')}`;
+    const ref = `${location.origin}${location.pathname}?ref=${job.client_name?.replace(/\s/g, '_')}&t=${tenantId}`;
     const msgs = {
       confirm: `Hi ${job.client_name}! ✨ Elevore confirming your ${job.service_type?.toUpperCase()} on ${fmtD(job.scheduled_date)}. Balance: ${fmt$(bal)}. Zelle: ${DEFAULT_CFG.ZELLE} 🏠`,
       reminder: `Hi ${job.client_name}! 🔔 Reminder — Elevore ${fmtD(job.scheduled_date)}. Balance: ${fmt$(bal)}. Reply if questions!`,
@@ -2292,148 +2296,254 @@ ${job.final_signature ? `<div class="sig"><p style="font-size:10px;color:#999;ma
               👑 ADMIN DASHBOARD BRIEF TABS
               ===================================================================== */}
           {role === 'admin' && view === 'brief' && (
-            <div className="space-y-6 animate-in fade-in">
-              {/* Headings */}
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="space-y-5 animate-in fade-in">
+
+              {/* ── HEADER ── */}
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pt-1">
                 <div>
-                  <p className="text-[9px] font-black text-[#F5C518] uppercase tracking-widest">Good morning, {activeEmployee?.name || 'Admin'} 👋</p>
-                  <h2 className="text-2xl md:text-3xl font-black tracking-widest uppercase text-white font-display">COMMAND DECK</h2>
+                  <p className="text-[9px] font-black text-[#F5C518] uppercase tracking-[0.25em] mb-0.5">Good morning, {activeEmployee?.name || 'Admin'} 👋</p>
+                  <h2 className="text-3xl font-black tracking-widest uppercase text-white font-display leading-none">COMMAND DECK</h2>
                 </div>
-                {activeMapAddress && (
-                  <div className="flex items-center gap-2 bg-white/5 border border-white/10 px-3.5 py-2 rounded-xl">
-                    <span className="dg"></span>
-                    <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest truncate max-w-[200px]">Active GPS: {activeMapAddress}</span>
+                <div className="flex items-center gap-2">
+                  {activeMapAddress && (
+                    <div className="flex items-center gap-2 bg-white/5 border border-white/10 px-3 py-2 rounded-xl">
+                      <span className="dg" />
+                      <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest truncate max-w-[180px]">GPS: {activeMapAddress}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* ── HERO REVENUE BANNER ── */}
+              <div className="relative rounded-3xl overflow-hidden border border-[#F5C518]/20 bg-gradient-to-br from-[#0d0d00] via-[#111108] to-black shadow-[0_0_60px_rgba(245,197,24,0.06)]">
+                <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_60%_at_0%_50%,rgba(245,197,24,0.07),transparent)] pointer-events-none" />
+                <div className="absolute top-0 left-0 w-full h-[2px] bg-gradient-to-r from-[#F5C518] via-[#F5C518]/40 to-transparent" />
+                <div className="p-6 md:p-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+                  <div>
+                    <p className="text-[8px] font-black text-[#F5C518]/60 uppercase tracking-[0.3em] mb-1">Total Revenue Acumulado</p>
+                    <p className="text-6xl md:text-7xl font-black italic tracking-tighter text-white leading-none">
+                      {isPrivate ? <span className="blur-sm select-none">$00,000</span> : fmt$(finance.gross)}
+                    </p>
+                    <div className="flex items-center gap-3 mt-3">
+                      <div className="flex-1 max-w-xs bg-white/5 rounded-full h-1.5 overflow-hidden">
+                        <div className="h-full bg-gradient-to-r from-[#F5C518] to-amber-300 rounded-full transition-all duration-1000" style={{ width: `${Math.min(finance.pct, 100)}%` }} />
+                      </div>
+                      <span className="text-[9px] font-black text-[#F5C518] uppercase">{Math.round(finance.pct)}% de meta</span>
+                    </div>
+                    <p className="text-[8px] text-slate-500 font-bold uppercase tracking-widest mt-1">Meta: {fmt$(DEFAULT_CFG.GOAL)} · Net: {isPrivate ? '****' : fmt$(finance.net)} · Proy: {isPrivate ? '****' : fmt$(finance.proj)}</p>
                   </div>
-                )}
-              </div>
-
-              {/* 👑 Empire Admin KPI Stats Grid */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                <div className="g p-6 relative overflow-hidden bg-[rgba(255,255,255,0.04)] border border-[rgba(255,255,255,0.08)] rounded-2xl flex flex-col justify-between min-h-[140px] hover:border-slate-500/20 transition-all">
-                  <span className="absolute top-4 right-4 bg-green-500/10 text-green-400 border border-green-500/20 text-[8px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">LIVE</span>
-                  <p className="text-5xl font-black tracking-tight text-white leading-none mt-4">{finance.todayJobs.length}</p>
-                  <p className="text-[9px] text-slate-400 uppercase font-black tracking-widest mt-2">JOBS TODAY</p>
-                </div>
-
-                <div className="g p-6 relative overflow-hidden bg-[rgba(255,255,255,0.04)] border border-[rgba(255,255,255,0.08)] rounded-2xl flex flex-col justify-between min-h-[140px] hover:border-slate-500/20 transition-all">
-                  <span className="absolute top-4 right-4 bg-amber-500/10 text-[#F5C518] border border-amber-500/20 text-[8px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">TODAY</span>
-                  <p className="text-5xl font-black tracking-tight text-white leading-none mt-4">
-                    {fmt$(finance.todayJobs.reduce((a, b) => a + (b.total_price || 0), 0))}
-                  </p>
-                  <p className="text-[9px] text-slate-400 uppercase font-black tracking-widest mt-2">REVENUE TODAY</p>
-                </div>
-
-                <div className="g p-6 relative overflow-hidden bg-[rgba(255,255,255,0.04)] border border-[rgba(255,255,255,0.08)] rounded-2xl flex flex-col justify-between min-h-[140px] hover:border-slate-500/20 transition-all">
-                  <span className="absolute top-4 right-4 bg-blue-500/10 text-blue-400 border border-blue-500/20 text-[8px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">MONTHLY</span>
-                  <p className="text-5xl font-black tracking-tight text-white leading-none mt-4">
-                    {isPrivate ? '***' : fmt$(finance.mrr)}
-                  </p>
-                  <p className="text-[9px] text-slate-400 uppercase font-black tracking-widest mt-2">MRR ACCUMULATED</p>
-                </div>
-
-                <div className="g p-6 relative overflow-hidden bg-[rgba(255,255,255,0.04)] border border-[rgba(255,255,255,0.08)] rounded-2xl flex flex-col justify-between min-h-[140px] hover:border-slate-500/20 transition-all">
-                  <span className="absolute top-4 right-4 bg-purple-500/10 text-purple-400 border border-purple-500/20 text-[8px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">RATING</span>
-                  <p className="text-5xl font-black tracking-tight text-white leading-none mt-4">{finance.avgRating || '5.0'}</p>
-                  <p className="text-[9px] text-slate-400 uppercase font-black tracking-widest mt-2">AVERAGE STARS</p>
+                  {/* Mini bar sparkline */}
+                  <div className="flex flex-col gap-2 min-w-[180px]">
+                    <p className="text-[7px] font-black text-slate-500 uppercase tracking-widest">Últimas semanas</p>
+                    {(() => {
+                      const bars = finance.wb?.slice(-7) || [];
+                      const max = Math.max(...bars.map(b => b.v || 0), 1);
+                      return (
+                        <div className="flex items-end gap-1 h-14">
+                          {bars.map((b, i) => (
+                            <div key={i} className="flex-1 flex flex-col items-center gap-0.5">
+                              <div className="w-full rounded-sm transition-all" style={{
+                                height: `${Math.max(((b.v || 0) / max) * 48, 3)}px`,
+                                background: i === bars.length - 1 ? 'linear-gradient(to top,#F5C518,#fde68a)' : 'rgba(255,255,255,0.10)'
+                              }} />
+                              <span className="text-[6px] text-slate-600 font-bold">{b.l?.slice(0, 1) || ''}</span>
+                            </div>
+                          ))}
+                          {bars.length === 0 && [1,2,3,4,5,6,7].map((_, i) => (
+                            <div key={i} className="flex-1 flex flex-col items-center gap-0.5">
+                              <div className="w-full rounded-sm" style={{ height: `${12 + i * 5}px`, background: i === 6 ? 'linear-gradient(to top,#F5C518,#fde68a)' : 'rgba(255,255,255,0.08)' }} />
+                            </div>
+                          ))}
+                        </div>
+                      );
+                    })()}
+                  </div>
                 </div>
               </div>
 
-              {/* Ecosystem Expansion AI */}
-              <div className="g p-6 border border-blue-500/20 bg-blue-500/[0.02] flex items-center justify-between shadow-md rounded-2xl relative overflow-hidden mt-4">
-                <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(59,130,246,0.05),transparent)] pointer-events-none"></div>
-                <div>
-                  <div className="flex items-center gap-2 mb-2">
-                    <p className="text-[10px] font-black text-blue-400 uppercase tracking-widest font-display">🧠 AI PREDICTIVE REVENUE</p>
-                    <span className="text-[6px] bg-blue-500/10 text-blue-300 font-bold px-1.5 py-0.5 rounded border border-blue-500/15">SMART ENGINE</span>
+              {/* ── KPI CARDS ── */}
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                <div className="relative rounded-2xl overflow-hidden border border-green-500/20 bg-gradient-to-br from-green-950/40 to-black p-5 flex flex-col justify-between min-h-[130px] hover:border-green-500/40 hover:shadow-[0_0_20px_rgba(34,197,94,0.08)] transition-all group">
+                  <div className="absolute top-0 left-0 w-full h-[1.5px] bg-gradient-to-r from-green-400/60 to-transparent" />
+                  <div className="flex items-center justify-between">
+                    <div className="w-8 h-8 rounded-xl bg-green-500/10 border border-green-500/20 flex items-center justify-center group-hover:scale-110 transition-transform">
+                      <Icon name="shield-check" className="w-4 h-4 text-green-400" />
+                    </div>
+                    <span className="text-[7px] font-black text-green-400 bg-green-500/10 border border-green-500/20 px-2 py-0.5 rounded-full uppercase">LIVE</span>
+                  </div>
+                  <div>
+                    <p className="text-4xl font-black text-white italic tracking-tight leading-none">{finance.todayJobs.length}</p>
+                    <p className="text-[8px] text-slate-400 uppercase font-black tracking-widest mt-1.5">Jobs Today</p>
+                  </div>
+                </div>
+
+                <div className="relative rounded-2xl overflow-hidden border border-[#F5C518]/20 bg-gradient-to-br from-amber-950/40 to-black p-5 flex flex-col justify-between min-h-[130px] hover:border-[#F5C518]/40 hover:shadow-[0_0_20px_rgba(245,197,24,0.08)] transition-all group">
+                  <div className="absolute top-0 left-0 w-full h-[1.5px] bg-gradient-to-r from-[#F5C518]/60 to-transparent" />
+                  <div className="flex items-center justify-between">
+                    <div className="w-8 h-8 rounded-xl bg-[#F5C518]/10 border border-[#F5C518]/20 flex items-center justify-center group-hover:scale-110 transition-transform">
+                      <Icon name="dollar-sign" className="w-4 h-4 text-[#F5C518]" />
+                    </div>
+                    <span className="text-[7px] font-black text-[#F5C518] bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded-full uppercase">HOY</span>
+                  </div>
+                  <div>
+                    <p className="text-3xl font-black text-white italic tracking-tight leading-none">
+                      {isPrivate ? '***' : fmt$(finance.todayJobs.reduce((a, b) => a + (b.total_price || 0), 0))}
+                    </p>
+                    <p className="text-[8px] text-slate-400 uppercase font-black tracking-widest mt-1.5">Revenue Hoy</p>
+                  </div>
+                </div>
+
+                <div className="relative rounded-2xl overflow-hidden border border-blue-500/20 bg-gradient-to-br from-blue-950/40 to-black p-5 flex flex-col justify-between min-h-[130px] hover:border-blue-500/40 hover:shadow-[0_0_20px_rgba(59,130,246,0.08)] transition-all group">
+                  <div className="absolute top-0 left-0 w-full h-[1.5px] bg-gradient-to-r from-blue-400/60 to-transparent" />
+                  <div className="flex items-center justify-between">
+                    <div className="w-8 h-8 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center group-hover:scale-110 transition-transform">
+                      <Icon name="repeat" className="w-4 h-4 text-blue-400" />
+                    </div>
+                    <span className="text-[7px] font-black text-blue-400 bg-blue-500/10 border border-blue-500/20 px-2 py-0.5 rounded-full uppercase">MRR</span>
+                  </div>
+                  <div>
+                    <p className="text-3xl font-black text-white italic tracking-tight leading-none">{isPrivate ? '***' : fmt$(finance.mrr)}</p>
+                    <p className="text-[8px] text-slate-400 uppercase font-black tracking-widest mt-1.5">Recurrente Mes</p>
+                  </div>
+                </div>
+
+                <div className="relative rounded-2xl overflow-hidden border border-purple-500/20 bg-gradient-to-br from-purple-950/40 to-black p-5 flex flex-col justify-between min-h-[130px] hover:border-purple-500/40 hover:shadow-[0_0_20px_rgba(168,85,247,0.08)] transition-all group">
+                  <div className="absolute top-0 left-0 w-full h-[1.5px] bg-gradient-to-r from-purple-400/60 to-transparent" />
+                  <div className="flex items-center justify-between">
+                    <div className="w-8 h-8 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center group-hover:scale-110 transition-transform">
+                      <Icon name="star" className="w-4 h-4 text-purple-400" />
+                    </div>
+                    <span className="text-[7px] font-black text-purple-400 bg-purple-500/10 border border-purple-500/20 px-2 py-0.5 rounded-full uppercase">⭐ SCORE</span>
+                  </div>
+                  <div>
+                    <p className="text-4xl font-black text-white italic tracking-tight leading-none">{finance.avgRating || '5.0'}</p>
+                    <p className="text-[8px] text-slate-400 uppercase font-black tracking-widest mt-1.5">Promedio Stars</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* ── OPERATIONS QUICK ACTIONS ── */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <button onClick={() => { setFSt('lead'); setView('agenda'); }} className="relative rounded-2xl border border-[#F5C518]/25 bg-gradient-to-br from-amber-950/30 to-black p-4 text-left active:scale-95 transition-all hover:border-[#F5C518]/50 hover:shadow-[0_0_20px_rgba(245,197,24,0.08)]">
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className="w-7 h-7 rounded-lg bg-[#F5C518]/10 flex items-center justify-center"><Icon name="clock" className="w-3.5 h-3.5 text-[#F5C518]" /></div>
+                    <p className="text-[8px] text-[#F5C518] font-black uppercase tracking-wider">Money Waiting</p>
+                  </div>
+                  <p className="text-3xl font-black italic text-white leading-none">{isPrivate ? '***' : fmt$(finance.moneyTable)}</p>
+                  <p className="text-[7px] text-slate-500 mt-1.5 font-bold">{finance.pendSig.length} sin firmar →</p>
+                </button>
+
+                <button onClick={() => { setFSt('lead'); setView('agenda'); }} className="relative rounded-2xl border border-red-500/25 bg-gradient-to-br from-red-950/30 to-black p-4 text-left active:scale-95 transition-all hover:border-red-500/50 hover:shadow-[0_0_20px_rgba(239,68,68,0.08)]">
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className="w-7 h-7 rounded-lg bg-red-500/10 flex items-center justify-center"><Icon name="alert-triangle" className="w-3.5 h-3.5 text-red-400" /></div>
+                    <p className="text-[8px] text-red-400 font-black uppercase tracking-wider">Expirando</p>
+                  </div>
+                  <p className="text-3xl font-black italic text-white leading-none">{finance.expiring.length}</p>
+                  <p className="text-[7px] text-slate-500 mt-1.5 font-bold">bajo 6h →</p>
+                </button>
+
+                <button onClick={() => { setFSt('completed'); setView('agenda'); }} className="relative rounded-2xl border border-purple-500/25 bg-gradient-to-br from-purple-950/30 to-black p-4 text-left active:scale-95 transition-all hover:border-purple-500/50 hover:shadow-[0_0_20px_rgba(168,85,247,0.08)]">
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className="w-7 h-7 rounded-lg bg-purple-500/10 flex items-center justify-center"><Icon name="camera" className="w-3.5 h-3.5 text-purple-400" /></div>
+                    <p className="text-[8px] text-purple-400 font-black uppercase tracking-wider">QC Queue</p>
+                  </div>
+                  <p className="text-3xl font-black italic text-white leading-none">{finance.qcQ.length}</p>
+                  <p className="text-[7px] text-slate-500 mt-1.5 font-bold">necesita revisión →</p>
+                </button>
+
+                <button onClick={() => { setFSt('paid'); setView('agenda'); }} className="relative rounded-2xl border border-blue-500/25 bg-gradient-to-br from-blue-950/30 to-black p-4 text-left active:scale-95 transition-all hover:border-blue-500/50 hover:shadow-[0_0_20px_rgba(59,130,246,0.08)]">
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className="w-7 h-7 rounded-lg bg-blue-500/10 flex items-center justify-center"><Icon name="message-circle" className="w-3.5 h-3.5 text-blue-400" /></div>
+                    <p className="text-[8px] text-blue-400 font-black uppercase tracking-wider">Reviews</p>
+                  </div>
+                  <p className="text-3xl font-black italic text-white leading-none">{finance.reviewQ.length}</p>
+                  <p className="text-[7px] text-slate-500 mt-1.5 font-bold">pedir estrellas →</p>
+                </button>
+              </div>
+
+              {/* ── AI INSIGHT + PROGRESS RINGS ── */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* AI Predictive */}
+                <div className="relative rounded-2xl overflow-hidden border border-blue-500/20 bg-gradient-to-br from-blue-950/30 to-black p-6">
+                  <div className="absolute top-0 left-0 w-full h-[1.5px] bg-gradient-to-r from-blue-400/60 to-transparent" />
+                  <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(59,130,246,0.06),transparent)] pointer-events-none" />
+                  <div className="flex items-start gap-3 mb-3">
+                    <div className="w-9 h-9 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center flex-shrink-0">
+                      <Icon name="brain" className="w-4 h-4 text-blue-400" />
+                    </div>
+                    <div>
+                      <p className="text-[8px] font-black text-blue-400 uppercase tracking-widest">🧠 AI Predictive Revenue</p>
+                      <span className="text-[6px] bg-blue-500/10 text-blue-300 font-bold px-1.5 py-0.5 rounded border border-blue-500/15">SMART ENGINE</span>
+                    </div>
                   </div>
                   {finance.mbTargets.length > 0 ? (
                     <>
-                      <p className="text-xl font-black italic text-white leading-none mb-1">Target Identified: {finance.mbTargets[0].name}</p>
-                      <p className="text-[9px] text-slate-400 w-3/4">Client has completed multiple services. High probability (89%) of converting to VIP Monthly Retainer. Send priority invitation to lock in LTV.</p>
+                      <p className="text-base font-black italic text-white leading-snug mb-1">Target: {finance.mbTargets[0].name}</p>
+                      <p className="text-[8px] text-slate-400 leading-relaxed">89% probabilidad de convertir a VIP Monthly Retainer. Envía invitación prioritaria para asegurar LTV.</p>
                     </>
                   ) : (
                     <>
-                      <p className="text-xl font-black italic text-white leading-none mb-1">Surge Pricing Optimal</p>
-                      <p className="text-[9px] text-slate-400 w-3/4">Demand capacity is reaching 80%. AI suggests enabling a 1.2x surge multiplier on all new estimates for the next 48 hours to maximize margin on affluent clients.</p>
+                      <p className="text-base font-black italic text-white leading-snug mb-1">Surge Pricing Óptimo</p>
+                      <p className="text-[8px] text-slate-400 leading-relaxed">Capacidad al 80%. IA sugiere multiplicador 1.2x en nuevos estimados por 48h para maximizar margen.</p>
                     </>
                   )}
+                  <button onClick={() => tt('Deploying Smart Campaign... 🚀')} className="mt-4 px-4 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-black text-[8px] uppercase active:scale-95 shadow-lg shadow-blue-600/20 transition-all">Deploy Campaign →</button>
                 </div>
-                <div>
-                  <button onClick={() => tt('Deploying Smart Campaign... 🚀')} className="px-5 py-3 bg-blue-600 text-white rounded-xl font-black text-[9px] uppercase active:scale-95 shadow-lg shadow-blue-600/20 whitespace-nowrap">Deploy Campaign</button>
+
+                {/* ── PROGRESS RINGS ── */}
+                <div className="relative rounded-2xl overflow-hidden border border-white/8 bg-gradient-to-br from-white/[0.03] to-black p-6 flex flex-col justify-between">
+                  <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-4">Progreso de Meta</p>
+                  <div className="flex items-center justify-around flex-1">
+                    <div className="flex flex-col items-center gap-2">
+                      <ProgressRing progress={finance.pct} radius={36} stroke={5} color="#22c55e" />
+                      <div className="text-center">
+                        <p className="text-[7px] text-slate-500 uppercase font-black">Meta</p>
+                        <p className="text-xs font-black text-white">{Math.round(finance.pct)}%</p>
+                      </div>
+                    </div>
+                    <div className="h-16 w-[1px] bg-white/5" />
+                    <div className="flex flex-col items-center gap-2">
+                      <ProgressRing progress={finance.avgRating * 20} radius={36} stroke={5} color="#F5C518" text={String(finance.avgRating || 5)} />
+                      <div className="text-center">
+                        <p className="text-[7px] text-slate-500 uppercase font-black">Rating</p>
+                        <p className="text-xs font-black text-white">{finance.avgRating || 5.0} ⭐</p>
+                      </div>
+                    </div>
+                    <div className="h-16 w-[1px] bg-white/5" />
+                    <div className="flex flex-col items-center gap-2">
+                      <ProgressRing progress={Math.min((clients.length / 50) * 100, 100)} radius={36} stroke={5} color="#8b5cf6" text={String(clients.length)} />
+                      <div className="text-center">
+                        <p className="text-[7px] text-slate-500 uppercase font-black">Clientes</p>
+                        <p className="text-xs font-black text-white">{clients.length}</p>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
 
-              {/* Progress and rings metrics */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* Thermometer */}
-                <div className="g p-6 bg-[rgba(255,255,255,0.04)] border-[rgba(255,255,255,0.08)]">
-                  <Thermo pct={finance.pct} goal={DEFAULT_CFG.GOAL} current={finance.gross} />
-                </div>
-                {/* Progress Rings */}
-                <div className="g p-6 flex justify-around items-center bg-[rgba(255,255,255,0.04)] border-[rgba(255,255,255,0.08)]">
-                  <div className="flex items-center gap-3.5">
-                    <ProgressRing progress={finance.pct} radius={28} stroke={4} color="#22c55e" />
-                    <div>
-                      <p className="text-[8px] text-slate-500 uppercase font-black">Meta de Ventas</p>
-                      <p className="text-sm font-black text-white">{Math.round(finance.pct)}% Logrado</p>
-                    </div>
-                  </div>
-                  <div className="h-16 w-[1px] bg-white/5"></div>
-                  <div className="flex items-center gap-3.5">
-                    <ProgressRing progress={finance.avgRating * 20} radius={28} stroke={4} color="#F5C518" text={String(finance.avgRating)} />
-                    <div>
-                      <p className="text-[8px] text-slate-500 uppercase font-black">Calificación</p>
-                      <p className="text-sm font-black text-white">{finance.avgRating || 5.0} de 5⭐</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              
-              {/* GPS Maps Section Moved Down */}
-              <div className="g p-6 border border-white/5 space-y-4 bg-[rgba(255,255,255,0.04)] border-[rgba(255,255,255,0.08)] mt-4">
-                <div className="flex justify-between items-center border-b border-white/5 pb-2">
-                  <div className="flex items-center gap-2">
-                    <h3 className="text-[10px] font-black text-slate-300 uppercase tracking-widest font-display">📍 LIVE LOGISTICS & DISPATCH</h3>
-                    <span className="text-[6px] bg-amber-500/10 text-amber-400 font-bold px-1.5 py-0.5 rounded border border-amber-500/15">SYNC ACTIVE</span>
-                  </div>
-                </div>
 
+              {/* ── LIVE GPS DISPATCH ── */}
+              <div className="relative rounded-2xl overflow-hidden border border-[#F5C518]/15 bg-gradient-to-br from-amber-950/10 to-black p-6 space-y-4">
+                <div className="absolute top-0 left-0 w-full h-[1.5px] bg-gradient-to-r from-[#F5C518]/40 to-transparent" />
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
+                  <h3 className="text-[10px] font-black text-white uppercase tracking-widest font-display">📍 Live Logistics & Dispatch</h3>
+                  <span className="text-[6px] bg-amber-500/10 text-amber-400 font-bold px-1.5 py-0.5 rounded border border-amber-500/15">SYNC ACTIVE</span>
+                </div>
                 <MapComponent address={activeMapAddress} />
-                <div className="flex gap-2 overflow-x-auto nsb pt-2">
+                <div className="flex gap-2 overflow-x-auto nsb">
                   {jobs.filter(j => j.status === 'scheduled' || j.status === 'in_progress').map(job => (
-                    <button key={job.id} onClick={() => setMapAddress(job.address)} className={`px-3 py-2 rounded-xl text-[8px] font-black uppercase flex-shrink-0 border transition-all ${activeMapAddress === job.address ? 'bg-[#F5C518] border-[#F5C518] text-black shadow-lg shadow-[#F5C518]/10' : 'bg-white/5 border-white/5 text-slate-400 hover:text-white'}`}>{job.client_name}</button>
+                    <button key={job.id} onClick={() => setMapAddress(job.address)} className={`px-3 py-2 rounded-xl text-[8px] font-black uppercase flex-shrink-0 border transition-all ${activeMapAddress === job.address ? 'bg-[#F5C518] border-[#F5C518] text-black shadow-lg shadow-[#F5C518]/10' : 'bg-white/5 border-white/5 text-slate-400 hover:text-white hover:border-white/20'}`}>{job.client_name}</button>
                   ))}
-                </div>
-              </div>
-
-              {/* AI Dispatch Actions */}
-              <div className="g p-6 space-y-4 bg-[rgba(255,255,255,0.04)] border border-[rgba(255,255,255,0.08)] mt-4">
-                <p className="text-[10px] font-black text-[#F5C518] uppercase tracking-widest font-display">⚡ AI OPERATIONS & DISPATCH</p>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                  <button onClick={() => { setFSt('lead'); setView('agenda'); }} className="bg-white/5 border border-white/5 hover:border-[#F5C518]/30 hover:bg-white/10 p-4 rounded-2xl text-left active:scale-95 transition-all">
-                    <p className="text-[8px] text-[#F5C518] font-black uppercase tracking-wider">Money Waiting</p>
-                    <p className="text-2xl font-black italic text-white mt-1">{isPrivate ? '***' : fmt$(finance.moneyTable)}</p>
-                    <p className="text-[8px] text-slate-500">{finance.pendSig.length} unsigned</p>
-                  </button>
-                  <button onClick={() => { setFSt('lead'); setView('agenda'); }} className="bg-white/5 border border-white/5 hover:border-red-500/30 hover:bg-white/10 p-4 rounded-2xl text-left active:scale-95 transition-all">
-                    <p className="text-[8px] text-red-400 font-black uppercase tracking-wider">Expiring</p>
-                    <p className="text-2xl font-black italic text-white mt-1">{finance.expiring.length}</p>
-                    <p className="text-[8px] text-slate-500">under 6h</p>
-                  </button>
-                  <button onClick={() => { setFSt('completed'); setView('agenda'); }} className="bg-white/5 border border-white/5 hover:border-purple-500/30 hover:bg-white/10 p-4 rounded-2xl text-left active:scale-95 transition-all">
-                    <p className="text-[8px] text-purple-400 font-black uppercase tracking-wider">QC Queue</p>
-                    <p className="text-2xl font-black italic text-white mt-1">{finance.qcQ.length}</p>
-                    <p className="text-[8px] text-slate-500">needs review</p>
-                  </button>
-                  <button onClick={() => { setFSt('paid'); setView('agenda'); }} className="bg-white/5 border border-white/5 hover:border-blue-500/30 hover:bg-white/10 p-4 rounded-2xl text-left active:scale-95 transition-all">
-                    <p className="text-[8px] text-blue-400 font-black uppercase tracking-wider">Review Queue</p>
-                    <p className="text-2xl font-black italic text-white mt-1">{finance.reviewQ.length}</p>
-                    <p className="text-[8px] text-slate-500">collect stars</p>
-                  </button>
+                  {jobs.filter(j => j.status === 'scheduled' || j.status === 'in_progress').length === 0 && (
+                    <p className="text-[8px] text-slate-600 font-bold uppercase italic">Sin misiones activas ahora</p>
+                  )}
                 </div>
               </div>
             </div>
           )}
+
+
 
           {/* =====================================================================
               👑 ADMIN DASHBOARD FINANCES TABS (intel)
