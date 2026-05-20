@@ -28,8 +28,8 @@ const DEFAULT_CFG = {
 };
 
 const T = {
-  en: { balance: 'Balance Due', pay: 'Pay via Zelle', approve: 'Sign to Approve Quote', before: 'Before', after: 'After', complete: 'Sign to Confirm Completion', review: 'Leave a Google Review', refer: 'Refer a Friend — Both Get $25 Off', syncing: 'Syncing...', hub: 'Live Mission Hub', arrived: 'Team Arrived', done: 'Completed', rating: 'Rate your service', submit: 'Submit Rating', chat: 'Message us', legal: 'Digital signatures are legally binding', urgency: 'Quote expires in', lock: 'Lock in your price!' },
-  es: { balance: 'Saldo Pendiente', pay: 'Paga por Zelle', approve: 'Firma para Aprobar tu Cotización', before: 'Antes', after: 'Después', complete: 'Firma para Confirmar que Quedó Bien', review: 'Déjanos una Reseña', refer: 'Refiere un Amigo — Ambos Reciben $25', syncing: 'Cargando...', hub: 'Estado del Servicio', arrived: 'El equipo llegó', done: 'Completado', rating: 'Califica el servicio', submit: 'Enviar Calificación', chat: 'Escríbenos', legal: 'Las firmas digitales tienen validez legal', urgency: 'Cotización vence en', lock: '¡Bloquea tu precio!' }
+  en: { balance: 'Balance Due', pay: 'Pay via Zelle', approve: 'Sign to Approve Quote', before: 'Before', after: 'After', complete: 'Sign to Confirm Completion', review: 'Leave a Google Review', refer: 'Refer a Friend — Both Get $25 Off', syncing: 'Syncing...', hub: 'Live Mission Hub', arrived: 'Team Arrived', done: 'Completed', rating: 'Rate your service', submit: 'Submit Rating', chat: 'Message us', legal: 'Digital signatures are legally binding', urgency: 'Quote expires in', lock: 'Lock in your price!', refTitle: 'Referral Program', refDesc: 'Share your link with friends. Both get $25 off when they complete their first booking!', copied: 'Copied! 🎁' },
+  es: { balance: 'Saldo Pendiente', pay: 'Paga por Zelle', approve: 'Firma para Aprobar tu Cotización', before: 'Antes', after: 'Después', complete: 'Firma para Confirmar que Quedó Bien', review: 'Déjanos una Reseña', refer: 'Refiere un Amigo — Ambos Reciben $25', syncing: 'Cargando...', hub: 'Estado del Servicio', arrived: 'El equipo llegó', done: 'Completado', rating: 'Califica el servicio', submit: 'Enviar Calificación', chat: 'Escríbenos', legal: 'Las firmas digitales tienen validez legal', urgency: 'Cotización vence en', lock: '¡Bloquea tu precio!', refTitle: 'Programa de Referidos', refDesc: 'Comparte tu link con amigos. ¡Ambos reciben $25 de descuento en su próximo servicio!', copied: '¡Link Copiado! 🎁' }
 };
 const tr = (l, k) => T[l]?.[k] || T.en[k] || k;
 
@@ -572,7 +572,43 @@ function Portal({ cjid }) {
         {job.status === 'paid' && !ratingDone && (<div className="g p-6 border border-amber-500/20 text-center space-y-4"><p className="text-[9px] font-black text-amber-500 uppercase tracking-widest">{tr(lang, 'rating')}</p><div className="flex justify-center"><Stars value={rating} onChange={setRating} size={8} /></div><button onClick={submitRating} disabled={!rating} className={`w-full py-3 rounded-xl font-black uppercase text-[10px] active:scale-95 ${rating ? 'gold' : 'bg-white/5 text-slate-600'}`}>{tr(lang, 'submit')}</button></div>)}
         {ratingDone && <div className="g p-4 text-center"><p className="text-[9px] text-amber-400 font-black uppercase">⭐ {job.client_rating}/5 — Thank you!</p></div>}
         <div className="g p-5 flex items-center gap-4"><QR url={`${location.origin}${location.pathname}?mision=${job.id}`} size={75} /><div><p className="text-[8px] font-black text-slate-500 uppercase mb-1">Your Portal QR</p><p className="text-[7px] text-slate-600 italic">Scan anytime</p></div></div>
-        {job.status === 'paid' && (<div className="space-y-2"><button onClick={() => window.open(DEFAULT_CFG.GOOGLE)} className="w-full gold py-4 rounded-2xl font-black uppercase text-sm active:scale-95">⭐ {tr(lang, 'review')}</button><button onClick={() => { const l = `${location.origin}${location.pathname}?ref=${job.client_name?.replace(/\s/g, '_')}`; navigator.clipboard?.writeText(l); tt('Copied! 🎁'); }} className="w-full bg-white/10 text-white py-4 rounded-2xl font-black uppercase text-sm active:scale-95">🎁 {tr(lang, 'refer')}</button></div>)}
+        {job.status === 'paid' && (
+          <button onClick={() => window.open(DEFAULT_CFG.GOOGLE)} className="w-full gold py-4 rounded-2xl font-black uppercase text-sm active:scale-95 mb-1">
+            ⭐ {tr(lang, 'review')}
+          </button>
+        )}
+
+        {/* ── PREMIUM REFERRAL SYSTEM ── */}
+        <div className="relative rounded-3xl overflow-hidden border border-[#F5C518]/25 bg-gradient-to-br from-[#0e0d02] via-[#121106] to-black p-6 space-y-4 shadow-[0_0_40px_rgba(245,197,24,0.05)] text-left">
+          <div className="absolute top-0 left-0 w-full h-[1.5px] bg-gradient-to-r from-[#F5C518] via-[#F5C518]/30 to-transparent" />
+          <div className="flex items-center gap-2.5">
+            <div className="w-7 h-7 rounded-lg bg-[#F5C518]/10 flex items-center justify-center">
+              <Icon name="gift" className="w-3.5 h-3.5 text-[#F5C518]" />
+            </div>
+            <h3 className="text-[10px] font-black text-white uppercase tracking-widest font-display">{tr(lang, 'refTitle')}</h3>
+          </div>
+          <p className="text-[8px] text-slate-400 leading-relaxed uppercase font-bold tracking-wider">
+            {tr(lang, 'refDesc')}
+          </p>
+          <div className="flex gap-2">
+            <input 
+              readOnly 
+              value={`${location.origin}${location.pathname}?ref=${job.client_name?.replace(/\s/g, '_')}&t=${job.tenant_id || ''}`} 
+              className="flex-1 bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-[8px] font-mono text-slate-400 outline-none select-all"
+            />
+            <button 
+              onClick={() => { 
+                const l = `${location.origin}${location.pathname}?ref=${job.client_name?.replace(/\s/g, '_')}&t=${job.tenant_id || ''}`; 
+                navigator.clipboard?.writeText(l); 
+                tt(tr(lang, 'copied')); 
+              }} 
+              className="px-4 py-2.5 bg-[#F5C518] hover:bg-amber-400 text-black font-black uppercase text-[8px] tracking-wider rounded-xl active:scale-95 transition-all shadow-lg shadow-[#F5C518]/10"
+            >
+              {lang === 'es' ? 'Copiar' : 'Copy'}
+            </button>
+          </div>
+        </div>
+
         <button onClick={() => window.open(`https://wa.me/${job.client_phone?.replace(/\D/g, '') || ''}`)} className="w-full g py-4 rounded-2xl font-black uppercase text-[10px] text-green-400 border border-green-600/20 active:scale-95 flex items-center justify-center gap-2"><Icon name="message-circle" className="w-4 h-4" />{tr(lang, 'chat')}</button>
         <p className="text-[7px] text-slate-700 text-center uppercase font-bold">{tr(lang, 'legal')}</p>
       </div></div>
