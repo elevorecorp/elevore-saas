@@ -1635,6 +1635,9 @@ export default function App() {
   const [isPrivate, setPriv] = useState(true);
   const [editId, setEdit] = useState(null);
   const [dtab, setDtab] = useState('identity');
+  const [aiPriceLoading, setAiPriceLoading] = useState(false);
+  const [aiPrices, setAiPrices] = useState(null);
+  const [aiInsight, setAiInsight] = useState('');
   const [fSt, setFSt] = useState('all');
   const [sq, setSQ] = useState('');
   const [toast, setToast] = useState(null);
@@ -3099,9 +3102,6 @@ ${job.final_signature ? `<div class="sig"><p style="font-size:10px;color:#999;ma
                 )}
 
                 {dtab === 'quote' && (() => {
-                  const [aiPriceLoading, setAiPriceLoading] = React.useState(false);
-                  const [aiPrices, setAiPrices] = React.useState(null);
-                  const [aiInsight, setAiInsight] = React.useState('');
 
                   const getMarketPrice = async () => {
                     setAiPriceLoading(true);
