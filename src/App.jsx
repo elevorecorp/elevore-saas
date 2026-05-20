@@ -768,8 +768,6 @@ function AIAdvisor({ jobs, clients, staff, isStaff, activeUser, onClose, tt, onO
   const [isTyping, setIsTyping] = useState(false);
 
   const callGemini = async (userMessage) => {
-    const GEMINI_KEY = import.meta.env.VITE_GEMINI_KEY;
-
     // --- BUILD SYSTEM PROMPT WITH REAL CONTEXT ---
     const systemPrompt = isStaff
       ? `Eres el Asistente de Operaciones de Campo de Elevore, una empresa de servicios de limpieza y mantenimiento de hogar en Orlando, Florida.
@@ -837,12 +835,38 @@ Habla en español. Sé directo, estratégico y orientado a resultados. Si el CEO
       ]
     };
 
+    const GEMINI_KEY = import.meta.env.VITE_GEMINI_KEY;
+    if (!GEMINI_KEY) {
+      return '⚠️ Error: No se pudo conectar a la IA. La clave de API no está configurada.';
+    }
+
     const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_KEY}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_KEY}`,
       { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }
     );
+
+    if (!res.ok) {
+      const errBody = await res.json().catch(() => ({}));
+      const errMsg = errBody?.error?.message || `HTTP ${res.status}`;
+      if (res.status === 429 || errMsg.toLowerCase().includes('quota')) {
+        return '⚠️ Has agotado la cuota de la IA. Si es una clave nueva, por favor revisa que tengas habilitada la cuota del modelo o intenta en unos minutos.';
+      }
+      return `⚠️ Error de Conexión IA: ${errMsg}`;
+    }
+
     const data = await res.json();
-    return data?.candidates?.[0]?.content?.parts?.[0]?.text || 'Lo siento, no pude procesar tu consulta. Intenta de nuevo.';
+    // Handle safety blocks
+    const candidate = data?.candidates?.[0];
+    if (!candidate) {
+      const blockReason = data?.promptFeedback?.blockReason;
+      return blockReason
+        ? `⚠️ Consulta bloqueada por filtro de seguridad (${blockReason}). Reformula tu pregunta.`
+        : 'Lo siento, no recibí respuesta de la IA. Intenta de nuevo.';
+    }
+    if (candidate.finishReason === 'SAFETY') {
+      return '⚠️ La respuesta fue bloqueada por filtros de seguridad. Intenta reformular tu pregunta.';
+    }
+    return candidate?.content?.parts?.[0]?.text || 'Lo siento, no pude generar una respuesta. Intenta de nuevo.';
   };
 
   const handleSend = async (overrideText) => {
@@ -1222,17 +1246,24 @@ function LoginFlow({ onLoginSuccess, onBack, tt }) {
     e.preventDefault();
     setLoading(true);
     tt('Authenticating...', 'yellow');
-    const { data, error } = await sb.auth.signInWithPassword({ email, password });
-    if (error) { setLoading(false); return tt('Invalid credentials. Try again.', 'red'); }
+    try {
+      const { data, error } = await sb.auth.signInWithPassword({ email, password });
+      if (error) { setLoading(false); return tt('Invalid credentials. Try again.', 'red'); }
 
-    const { data: tenant } = await sb.from('tenants').select('*').eq('owner_id', data.user.id).maybeSingle();
-    if (tenant) {
-      const { data: emp } = await sb.from('staff_profiles').select('*').eq('user_id', data.user.id).limit(1).maybeSingle();
-      tt(`Welcome back to ${tenant.business_name}!`, 'green');
-      onLoginSuccess('admin', tenant.id, data.user, emp || { name: tenant.business_name + ' CEO', role: 'admin' }, tenant.business_name);
-    } else {
+      const { data: tenant } = await sb.from('tenants').select('*').eq('owner_id', data.user.id).maybeSingle();
+      if (tenant) {
+        const { data: emp } = await sb.from('staff_profiles').select('*').eq('user_id', data.user.id).limit(1).maybeSingle();
+        tt(`Welcome back to ${tenant.business_name}!`, 'green');
+        onLoginSuccess('admin', tenant.id, data.user, emp || { name: tenant.business_name + ' CEO', role: 'admin' }, tenant.business_name);
+      } else {
+        // Tenant not found — sign out to avoid stale session
+        await sb.auth.signOut();
+        setLoading(false);
+        tt('No empire found for this account. Please register first.', 'red');
+      }
+    } catch (err) {
       setLoading(false);
-      tt('Empire not found.', 'red');
+      tt('Connection error. Check your internet and try again.', 'red');
     }
   };
 
@@ -1729,11 +1760,11 @@ export default function App() {
       if (cErr || !c) { tt('Clients Error: ' + (cErr?.message || 'Check RLS'), 'red'); setLoad(false); return; }
       const fd = { 'weekly': 7, 'bi-weekly': 14, 'monthly': 30, 'one-time': null }[state.frequency];
       let nv = null; if (fd && state.date) { const d = new Date(state.date); d.setDate(d.getDate() + fd); nv = d.toISOString().split('T')[0]; }
-      const payload = { client_name: state.name, client_phone: state.phone, address: state.address, service_type: state.svc, total_price: pricing.total, deposit_paid: state.deposit, team_assigned: state.team, status: state.status, specs: { ...state, referral: refCode || null }, scheduled_date: state.date || null, notes: state.notes || null, next_visit: nv, membership_plan: state.membership || null, urgency_expires: state.urgencyHours ? new Date(Date.now() + state.urgencyHours * 3600000).toISOString() : null, tenant_id: tenantId };
+      const payload = { client_name: state.name, client_phone: state.phone, address: state.address, service_type: state.svc, total_price: state.totalPrice || pricing.total, deposit_paid: state.deposit, team_assigned: state.team, status: state.status, specs: { ...state, referral: refCode || null }, scheduled_date: state.date || null, notes: state.notes || null, next_visit: nv, membership_plan: state.membership || null, urgency_expires: state.urgencyHours ? new Date(Date.now() + state.urgencyHours * 3600000).toISOString() : null, tenant_id: tenantId };
       const { error: jErr } = editId ? await sb.from('elevore_missions').update(payload).eq('id', editId) : await sb.from('elevore_missions').insert([payload]);
       if (jErr) { tt('Mission Error: ' + jErr.message, 'red'); setLoad(false); return; }
       setState(INIT); setEdit(null);
-      log(`${editId ? 'Updated' : 'New'}: ${state.name} — ${fmt$(pricing.total)}`);
+      log(`${editId ? 'Updated' : 'New'}: ${state.name} — ${fmt$(state.totalPrice || pricing.total)}`);
       tt(editId ? 'Updated! ⚡' : 'Deployed! 🚀');
       setView('agenda'); refresh();
     } catch (e) { tt('Error: ' + e.message, 'red'); }
@@ -3131,9 +3162,9 @@ Respond ONLY in this exact JSON format (no explanation, no markdown, just raw JS
                     }
                   };
 
-                  const goodPrice  = aiPrices ? aiPrices.good.price  : (state.price || 0);
-                  const betterPrice = aiPrices ? aiPrices.better.price : Math.round((state.price || 0) * 1.35);
-                  const bestPrice  = aiPrices ? aiPrices.best.price  : Math.round((state.price || 0) * 1.70);
+                  const goodPrice  = aiPrices ? aiPrices.good.price  : (state.price || pricing.total);
+                  const betterPrice = aiPrices ? aiPrices.better.price : Math.round((state.price || pricing.total) * 1.35);
+                  const bestPrice  = aiPrices ? aiPrices.best.price  : Math.round((state.price || pricing.total) * 1.70);
 
                   return (
                   <div className="space-y-4 animate-in fade-in">
@@ -3175,7 +3206,7 @@ Respond ONLY in this exact JSON format (no explanation, no markdown, just raw JS
                           {aiPrices ? aiPrices.good.description : 'Basic Clean / Standard Svc'}
                         </p>
                         {aiPrices && <span className="text-[7px] text-slate-400 font-bold mb-2">{aiPrices.good.label}</span>}
-                        <button onClick={() => { tt('Good Quote → WhatsApp! 🚀'); window.open(`https://wa.me/${state.phone?.replace(/\D/g, '') || ''}?text=Hola! Aqui está tu cotización Estándar: $${goodPrice}. ¿Te funciona? 😊`); }} className="w-full mt-auto py-2 rounded-xl text-[8px] uppercase font-black bg-white/10 hover:bg-white/20 active:scale-95">Select Good</button>
+                        <button onClick={() => { setState(s => ({ ...s, totalPrice: goodPrice })); tt(`Good Quote set to $${goodPrice}! 🚀`); window.open(`https://wa.me/${state.phone?.replace(/\D/g, '') || ''}?text=Hola! Aqui está tu cotización Estándar: $${goodPrice}. ¿Te funciona? 😊`); }} className="w-full mt-auto py-2 rounded-xl text-[8px] uppercase font-black bg-white/10 hover:bg-white/20 active:scale-95">Select Good</button>
                       </div>
 
                       {/* BETTER */}
@@ -3189,7 +3220,7 @@ Respond ONLY in this exact JSON format (no explanation, no markdown, just raw JS
                           {aiPrices ? aiPrices.better.description : '+ Premium Add-ons & Deep Clean'}
                         </p>
                         {aiPrices && <span className="text-[7px] text-[#F5C518]/80 font-bold mb-2">{aiPrices.better.label}</span>}
-                        <button onClick={() => { tt('Better Quote → WhatsApp! 🚀'); window.open(`https://wa.me/${state.phone?.replace(/\D/g, '') || ''}?text=Hola! Aqui está tu cotización Premium: $${betterPrice}. Incluye ${aiPrices?.better?.description || 'atención premium'}. ¿Lo reservamos? 🏆`); }} className="w-full mt-auto py-2.5 rounded-xl text-[8px] uppercase font-black bg-[#F5C518] text-black active:scale-95 shadow-md">Select Better</button>
+                        <button onClick={() => { setState(s => ({ ...s, totalPrice: betterPrice })); tt(`Better Quote set to $${betterPrice}! 🚀`); window.open(`https://wa.me/${state.phone?.replace(/\D/g, '') || ''}?text=Hola! Aqui está tu cotización Premium: $${betterPrice}. Incluye ${aiPrices?.better?.description || 'atención premium'}. ¿Lo reservamos? 🏆`); }} className="w-full mt-auto py-2.5 rounded-xl text-[8px] uppercase font-black bg-[#F5C518] text-black active:scale-95 shadow-md">Select Better</button>
                       </div>
 
                       {/* BEST */}
@@ -3200,7 +3231,7 @@ Respond ONLY in this exact JSON format (no explanation, no markdown, just raw JS
                           {aiPrices ? aiPrices.best.description : '+ The Ultimate VIP Experience'}
                         </p>
                         {aiPrices && <span className="text-[7px] text-purple-300/80 font-bold mb-2">{aiPrices.best.label}</span>}
-                        <button onClick={() => { tt('Best VIP Quote → WhatsApp! 🚀'); window.open(`https://wa.me/${state.phone?.replace(/\D/g, '') || ''}?text=Hola! Aqui está tu cotización VIP Elite: $${bestPrice}. ${aiPrices?.best?.description || 'La experiencia definitiva'}. ¿Lo agendamos? 👑`); }} className="w-full mt-auto py-2 rounded-xl text-[8px] uppercase font-black bg-purple-600/30 text-purple-200 active:scale-95 hover:bg-purple-600/50">Select Best</button>
+                        <button onClick={() => { setState(s => ({ ...s, totalPrice: bestPrice })); tt(`VIP Quote set to $${bestPrice}! 🚀`); window.open(`https://wa.me/${state.phone?.replace(/\D/g, '') || ''}?text=Hola! Aqui está tu cotización VIP Elite: $${bestPrice}. ${aiPrices?.best?.description || 'La experiencia definitiva'}. ¿Lo agendamos? 👑`); }} className="w-full mt-auto py-2 rounded-xl text-[8px] uppercase font-black bg-purple-600/30 text-purple-200 active:scale-95 hover:bg-purple-600/50">Select Best</button>
                       </div>
                     </div>
 
@@ -3251,14 +3282,22 @@ Respond ONLY in this exact JSON format (no explanation, no markdown, just raw JS
               </div>
 
               {/* Estimate Deployer Call to Action */}
-              <div className="bg-white text-black p-8 rounded-[2rem] text-center shadow-2xl relative overflow-hidden active:scale-95 transition-all shadow-[#F5C518]/5 border border-white/10">
+              <div className="bg-white text-black p-8 rounded-[2rem] text-center shadow-2xl relative overflow-hidden transition-all shadow-[#F5C518]/5 border border-white/10">
                 <div className="absolute top-0 left-0 w-full h-1.5 bg-[#F5C518]"></div>
                 <div className="flex justify-between items-center mb-3">
                   <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest font-display">Deployment Value</p>
                   <span className={`text-[8px] font-black px-3 py-1 rounded-lg border ${pricing.ac} border-current`}>{pricing.advice}</span>
                 </div>
-                <h4 className="text-[5.5rem] font-black italic tracking-tighter leading-none mb-4 text-black font-display"><span className="text-3xl align-top mr-1 font-light opacity-30">$</span>{state.totalPrice}</h4>
-                <button onClick={deploy} className="w-full bg-slate-900 text-white py-5 rounded-2xl font-black text-sm uppercase italic active:scale-90 transition-all shadow-xl shadow-slate-900/10 tracking-widest font-display">{editId ? 'Update Estimate ⚡' : 'Execute Deploy 🚀'}</button>
+                <div className="flex items-center justify-center mb-4">
+                  <span className="text-3xl font-light opacity-30 mr-1">$</span>
+                  <input
+                    type="number"
+                    value={state.totalPrice || 0}
+                    onChange={e => setState(s => ({ ...s, totalPrice: parseInt(e.target.value) || 0 }))}
+                    className="text-[5.5rem] font-black italic tracking-tighter leading-none text-black bg-transparent border-b border-dashed border-black/25 outline-none w-64 text-center font-display focus:border-black"
+                  />
+                </div>
+                <button onClick={deploy} className="w-full bg-slate-900 text-white py-5 rounded-2xl font-black text-sm uppercase italic active:scale-95 transition-all shadow-xl shadow-slate-900/10 tracking-widest font-display">{editId ? 'Update Estimate ⚡' : 'Execute Deploy 🚀'}</button>
               </div>
             </div>
           )}
