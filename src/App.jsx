@@ -4314,6 +4314,7 @@ ${job.final_signature ? `<div class="sig"><p style="font-size:10px;color:#999;ma
                     ))}
                   </div>
                 </div>
+              </div>
  
               {/* 🏆 STAFF LEADERBOARD & PERFORMANCE LEAGUE */}
               <div className="g p-6 bg-[rgba(255,255,255,0.04)] border-[rgba(255,255,255,0.08)] space-y-4">
