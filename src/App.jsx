@@ -2173,19 +2173,280 @@ const MODAL_CONTENT = {
   },
 };
 
+// ============================================================
+// 🌟 LANDING PAGE HELPERS
+// ============================================================
+
+// Video Demo Modal
+function VideoDemoModal({ onClose }) {
+  return (
+    <div
+      className="fixed inset-0 z-[9999] flex items-center justify-center p-4"
+      style={{ background: 'rgba(0,0,0,0.92)', backdropFilter: 'blur(20px)' }}
+      onClick={e => e.target === e.currentTarget && onClose()}
+    >
+      <div className="relative w-full max-w-4xl">
+        {/* Close */}
+        <button
+          onClick={onClose}
+          className="absolute -top-12 right-0 flex items-center gap-2 text-slate-400 hover:text-white transition-colors text-sm font-black uppercase tracking-widest"
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          Close
+        </button>
+        {/* Video wrapper */}
+        <div className="relative rounded-3xl overflow-hidden border border-white/10" style={{ boxShadow: '0 0 120px rgba(245,197,24,0.15), 0 40px 80px rgba(0,0,0,0.8)' }}>
+          {/* Fake video player — cinematic dashboard walkthrough */}
+          <div className="bg-[#080810] aspect-video flex flex-col">
+            {/* Player chrome */}
+            <div className="flex items-center gap-2 px-4 py-3 border-b border-white/5">
+              <div className="w-3 h-3 rounded-full bg-red-500/60" />
+              <div className="w-3 h-3 rounded-full bg-yellow-500/60" />
+              <div className="w-3 h-3 rounded-full bg-green-500/60" />
+              <span className="text-[9px] text-slate-600 font-black uppercase tracking-widest ml-3">Elevore Empire — Product Demo</span>
+            </div>
+            {/* Dashboard simulation */}
+            <div className="flex-1 p-6 overflow-hidden">
+              <div className="grid grid-cols-4 gap-4 mb-6">
+                {[{l:'MRR',v:'$31,420',c:'+28%',g:true},{l:'Active Jobs',v:'47',c:'12 today',g:true},{l:'Team Online',v:'8/9',c:'All active',g:true},{l:'AI Upsells',v:'23',c:'+$8,400',g:true}].map((m,i)=>(
+                  <div key={i} className="bg-white/[0.04] border border-white/8 rounded-2xl p-4">
+                    <div className="text-[10px] text-slate-500 uppercase font-black tracking-wider mb-1">{m.l}</div>
+                    <div className="text-2xl font-black text-white">{m.v}</div>
+                    <div className="text-[10px] text-green-400 font-bold mt-1">{m.c}</div>
+                  </div>
+                ))}
+              </div>
+              {/* Revenue chart bars */}
+              <div className="bg-white/[0.02] border border-white/5 rounded-2xl p-5">
+                <div className="flex items-center justify-between mb-4">
+                  <span className="text-sm font-black text-white">Monthly Revenue</span>
+                  <span className="text-xs text-[#F5C518] font-black">+128% YoY</span>
+                </div>
+                <div className="flex items-end gap-2 h-32">
+                  {[20,35,28,55,48,70,62,85,78,92,88,100].map((h,i)=>(
+                    <div key={i} className="flex-1 rounded-t-lg transition-all" style={{
+                      height: `${h}%`,
+                      background: i===11 ? 'linear-gradient(180deg,#F5C518,#d97706)' : 'rgba(255,255,255,0.06)',
+                      boxShadow: i===11 ? '0 0 20px rgba(245,197,24,0.4)' : 'none'
+                    }} />
+                  ))}
+                </div>
+                <div className="flex justify-between mt-2">
+                  {['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'].map(m=>(
+                    <span key={m} className="text-[7px] text-slate-600 font-bold">{m}</span>
+                  ))}
+                </div>
+              </div>
+            </div>
+            {/* Play overlay */}
+            <div className="absolute inset-0 flex flex-col items-center justify-center" style={{ background: 'rgba(0,0,0,0.3)', backdropFilter: 'blur(2px)' }}>
+              <div
+                className="w-20 h-20 rounded-full bg-[#F5C518] flex items-center justify-center cursor-pointer hover:scale-110 active:scale-95 transition-all"
+                style={{ boxShadow: '0 0 60px rgba(245,197,24,0.6)' }}
+                onClick={onClose}
+              >
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="black"><path d="M5 3l14 9-14 9V3z"/></svg>
+              </div>
+              <p className="text-white font-black text-xl mt-6 tracking-tight">Watch 3-Minute Demo</p>
+              <p className="text-slate-400 text-sm mt-2">See how operators go from $8K to $31K/mo</p>
+              <div className="flex items-center gap-6 mt-8">
+                {[['2:47','AI Revenue Engine'],['0:58','GPS Fleet Tracking'],['1:12','WhatsApp CRM']].map(([t,l])=>(
+                  <div key={l} className="text-center">
+                    <div className="text-[#F5C518] text-xs font-black">{t}</div>
+                    <div className="text-slate-500 text-[10px] font-bold">{l}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+        <p className="text-center text-[10px] text-slate-600 mt-4 font-bold uppercase tracking-widest">No signup required to watch • 3 min walkthrough</p>
+      </div>
+    </div>
+  );
+}
+
+// Animated counter hook
+function useCountUp(end, duration = 2000, start = 0) {
+  const [value, setValue] = useState(start);
+  const ref = useRef(null);
+  useEffect(() => {
+    const obs = new IntersectionObserver(([entry]) => {
+      if (!entry.isIntersecting) return;
+      obs.disconnect();
+      let startTime = null;
+      const step = (timestamp) => {
+        if (!startTime) startTime = timestamp;
+        const progress = Math.min((timestamp - startTime) / duration, 1);
+        const eased = 1 - Math.pow(1 - progress, 3);
+        setValue(Math.floor(start + (end - start) * eased));
+        if (progress < 1) requestAnimationFrame(step);
+      };
+      requestAnimationFrame(step);
+    }, { threshold: 0.5 });
+    if (ref.current) obs.observe(ref.current);
+    return () => obs.disconnect();
+  }, [end, duration, start]);
+  return [value, ref];
+}
+
+// Scroll reveal hook
+function useScrollReveal() {
+  useEffect(() => {
+    const obs = new IntersectionObserver((entries) => {
+      entries.forEach(e => {
+        if (e.isIntersecting) { e.target.classList.add('visible'); }
+      });
+    }, { threshold: 0.1, rootMargin: '0px 0px -50px 0px' });
+    document.querySelectorAll('.reveal, .reveal-left, .reveal-right, .reveal-scale').forEach(el => obs.observe(el));
+    return () => obs.disconnect();
+  }, []);
+}
+
+// Scroll progress bar
+function ScrollProgress() {
+  useEffect(() => {
+    const bar = document.getElementById('scroll-progress');
+    if (!bar) return;
+    const onScroll = () => {
+      const scrolled = window.scrollY;
+      const total = document.documentElement.scrollHeight - window.innerHeight;
+      bar.style.width = `${(scrolled / total) * 100}%`;
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
+  return <div id="scroll-progress" style={{ width: '0%' }} />;
+}
+
+// Live toast notifications
+const LIVE_TOASTS = [
+  { icon: '⚡', msg: 'Miguel just closed a $1,840 job', loc: 'Orlando, FL' },
+  { icon: '🎯', msg: 'New VIP client signed up', loc: 'Tampa, FL' },
+  { icon: '💰', msg: 'Sarah\'s MRR hit $12K this month', loc: 'Miami, FL' },
+  { icon: '📈', msg: 'AI upsell converted — +$350', loc: 'Atlanta, GA' },
+  { icon: '⭐', msg: '5-star review received — auto-shared', loc: 'Orlando, FL' },
+  { icon: '🔥', msg: 'Carlos activated Empire Pro plan', loc: 'Houston, TX' },
+  { icon: '💎', msg: 'VIP membership upgraded — $549/mo', loc: 'Dallas, TX' },
+];
+
+function LiveToasts() {
+  const [current, setCurrent] = useState(null);
+  const [fading, setFading] = useState(false);
+  useEffect(() => {
+    let idx = 0;
+    const show = () => {
+      setFading(false);
+      setCurrent(LIVE_TOASTS[idx % LIVE_TOASTS.length]);
+      idx++;
+      setTimeout(() => setFading(true), 3500);
+      setTimeout(() => setCurrent(null), 4200);
+    };
+    show();
+    const iv = setInterval(show, 6000);
+    return () => clearInterval(iv);
+  }, []);
+  if (!current) return null;
+  return (
+    <div
+      className={`fixed bottom-6 left-6 z-50 flex items-center gap-3 bg-[#0f0f14]/95 backdrop-blur-2xl border border-white/10 rounded-2xl px-4 py-3 shadow-2xl max-w-xs ${fading ? 'toast-out' : 'toast-in'}`}
+      style={{ boxShadow: '0 20px 60px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.05)' }}
+    >
+      <span className="text-xl">{current.icon}</span>
+      <div>
+        <p className="text-white text-xs font-bold leading-tight">{current.msg}</p>
+        <p className="text-slate-500 text-[10px] font-bold uppercase tracking-wider mt-0.5">{current.loc}</p>
+      </div>
+      <div className="relative flex-shrink-0 ml-1">
+        <div className="w-2 h-2 bg-green-400 rounded-full" />
+        <div className="pulse-ring" style={{ background: 'rgba(34,197,94,0.4)' }} />
+      </div>
+    </div>
+  );
+}
+
+// Animated stat
+function AnimatedStat({ end, prefix = '', suffix = '', label, delay = 0 }) {
+  const [val, ref] = useCountUp(end, 1800);
+  return (
+    <div ref={ref} className="text-center">
+      <div className="text-4xl md:text-5xl font-black italic glow-text tracking-tighter">
+        {prefix}{val.toLocaleString()}{suffix}
+      </div>
+      <div className="text-[10px] text-slate-500 uppercase tracking-[0.2em] font-bold mt-2">{label}</div>
+    </div>
+  );
+}
+
+// Feature card with 3D tilt on hover
+function FeatureCard({ icon, label, desc, color, border, text, bgColor, big, onClick }) {
+  const cardRef = useRef(null);
+  const handleMouseMove = (e) => {
+    const card = cardRef.current;
+    if (!card) return;
+    const rect = card.getBoundingClientRect();
+    const x = (e.clientX - rect.left) / rect.width - 0.5;
+    const y = (e.clientY - rect.top) / rect.height - 0.5;
+    card.style.transform = `perspective(800px) rotateY(${x * 8}deg) rotateX(${-y * 8}deg) scale(1.02) translateY(-6px)`;
+    card.style.boxShadow = `${x * -20}px ${y * -20}px 60px rgba(0,0,0,0.5)`;
+  };
+  const handleMouseLeave = () => {
+    const card = cardRef.current;
+    if (!card) return;
+    card.style.transform = 'perspective(800px) rotateY(0deg) rotateX(0deg) scale(1) translateY(0px)';
+    card.style.boxShadow = '';
+  };
+  return (
+    <button
+      ref={cardRef}
+      onClick={onClick}
+      onMouseMove={handleMouseMove}
+      onMouseLeave={handleMouseLeave}
+      className={`bg-gradient-to-br ${color} border ${border} rounded-3xl p-8 ${big ? 'md:col-span-2' : ''} relative overflow-hidden group text-left w-full cursor-pointer`}
+      style={{ transition: 'box-shadow 0.1s ease', willChange: 'transform' }}
+    >
+      {/* Shine sweep on hover */}
+      <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
+        style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.08) 50%, rgba(255,255,255,0.03) 100%)' }} />
+      <div className={`w-14 h-14 rounded-2xl bg-${text}/10 border border-${text}/20 flex items-center justify-center mb-6 group-hover:scale-110 group-hover:rotate-3 transition-all duration-300`}>
+        <Icon name={icon} className={`w-7 h-7 text-${text}`} />
+      </div>
+      <h3 className="text-xl font-black uppercase tracking-wide text-white mb-3">{label}</h3>
+      <p className="text-slate-400 leading-relaxed text-sm">{desc}</p>
+      <div className="mt-6 inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-widest opacity-40 group-hover:opacity-100 transition-opacity duration-300" style={{ color: 'inherit' }}>
+        Explore feature
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+      </div>
+    </button>
+  );
+}
+
 function LandingPage({ onLogin, onSignup }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [activeModal, setActiveModal] = useState(null);
+  const [billingAnnual, setBillingAnnual] = useState(false);
+  const [showVideoDemo, setShowVideoDemo] = useState(false);
   const openModal = (key) => setActiveModal(key);
   const closeModal = () => setActiveModal(null);
 
-  // Smooth scroll helper
+  useScrollReveal();
+
+  // Re-run scroll reveal on DOM changes
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      document.querySelectorAll('.reveal, .reveal-left, .reveal-right, .reveal-scale').forEach(el => {
+        const rect = el.getBoundingClientRect();
+        if (rect.top < window.innerHeight * 0.9) el.classList.add('visible');
+      });
+    }, 100);
+    return () => clearTimeout(timer);
+  }, []);
+
   const scrollTo = (id) => {
     setMenuOpen(false);
     document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
 
-  // Close modal on ESC key
   React.useEffect(() => {
     const handler = (e) => { if (e.key === 'Escape') closeModal(); };
     window.addEventListener('keydown', handler);
@@ -2193,185 +2454,206 @@ function LandingPage({ onLogin, onSignup }) {
   }, []);
 
   const features = [
-    { icon: 'brain', color: 'from-amber-500/20 to-amber-500/5', border: 'border-amber-500/30', text: 'amber-400', label: 'Predictive AI Engine', desc: 'Identifies VIP upsell opportunities automatically and forecasts monthly revenue with 94% accuracy.', big: true },
+    { icon: 'brain', color: 'from-amber-500/20 to-amber-500/5', border: 'border-amber-500/30', text: 'amber-400', label: 'Predictive AI Engine', desc: 'Identifies VIP upsell opportunities automatically and forecasts monthly revenue with 94% accuracy. Your personal CFO never sleeps.', big: true },
     { icon: 'camera', color: 'from-purple-500/20 to-purple-500/5', border: 'border-purple-500/30', text: 'purple-400', label: 'AI Vision QC', desc: 'Computer vision scans every after-photo ensuring 99.4% quality pass rate before client sees it.' },
     { icon: 'truck', color: 'from-blue-500/20 to-blue-500/5', border: 'border-blue-500/30', text: 'blue-400', label: 'On-My-Way GPS', desc: 'Auto-notifies clients with real-time tracking link the moment staff departs — Uber-style.' },
-    { icon: 'message-circle', color: 'from-green-500/20 to-green-500/5', border: 'border-green-500/30', text: 'green-400', label: 'WhatsApp CRM', desc: 'One-click AI scripts for dead leads, 5-star review requests, and quote follow-ups.', big: true },
+    { icon: 'message-circle', color: 'from-green-500/20 to-green-500/5', border: 'border-green-500/30', text: 'green-400', label: 'WhatsApp CRM', desc: 'One-click AI scripts for dead leads, 5-star review requests, and quote follow-ups. Close more with less effort.', big: true },
     { icon: 'edit-3', color: 'from-rose-500/20 to-rose-500/5', border: 'border-rose-500/30', text: 'rose-400', label: 'Digital Signatures', desc: 'Clients sign off on-site with finger — legally binding proof before staff leaves.' },
     { icon: 'zap', color: 'from-yellow-500/20 to-yellow-500/5', border: 'border-yellow-500/30', text: 'yellow-400', label: 'Good-Better-Best Quotes', desc: 'Psychology-driven 3-tier pricing sent via WhatsApp. 80% pick the middle = +35% revenue.' },
   ];
   const testimonials = [
-    { name: 'Carlos R.', biz: 'Pristine Cleaning Co.', text: 'We went from $8K/mo to $31K/mo in 4 months. The AI upsell engine paid for itself in week 1.', stars: 5 },
-    { name: 'Maria S.', biz: 'Elite Handyman Services', text: 'My clients love the GPS tracking and signature feature. Zero disputes since we launched.', stars: 5 },
-    { name: 'David K.', biz: 'Apex Property Services', text: 'The quote matrix alone increased our average job value by 40%. Insane ROI.', stars: 5 },
+    { name: 'Carlos R.', biz: 'Pristine Cleaning Co.', loc: 'Orlando, FL', text: 'We went from $8K/mo to $31K/mo in 4 months. The AI upsell engine paid for itself in week 1.', stars: 5, avatar: 'CR', avatarColor: 'from-amber-500 to-orange-600' },
+    { name: 'Maria S.', biz: 'Elite Handyman Services', loc: 'Tampa, FL', text: 'My clients love the GPS tracking and signature feature. Zero disputes since we launched. Game changer.', stars: 5, avatar: 'MS', avatarColor: 'from-purple-500 to-pink-600' },
+    { name: 'David K.', biz: 'Apex Property Services', loc: 'Miami, FL', text: 'The quote matrix alone increased our average job value by 40%. Insane ROI from day one.', stars: 5, avatar: 'DK', avatarColor: 'from-blue-500 to-cyan-600' },
   ];
-  return (
-    <div className="min-h-screen bg-[#030303] text-white selection:bg-[#F5C518] selection:text-black overflow-x-hidden">
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
-        .land { font-family: 'Inter', sans-serif; }
-        .glow-text { background: linear-gradient(135deg, #F5C518 0%, #ff9500 50%, #F5C518 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
-        .grid-bg { background-image: linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px); background-size: 60px 60px; }
-        .card-hover { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
-        .card-hover:hover { transform: translateY(-4px); box-shadow: 0 20px 60px rgba(0,0,0,0.5); }
-        @keyframes float { 0%,100% { transform: translateY(0px) rotate(0deg); } 50% { transform: translateY(-20px) rotate(2deg); } }
-        @keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
-        .shimmer { background: linear-gradient(90deg, transparent, rgba(245,197,24,0.1), transparent); background-size: 200% 100%; animation: shimmer 3s infinite; }
-        .float-anim { animation: float 6s ease-in-out infinite; }
-      `}</style>
 
-      {/* NAVBAR */}
-      <nav className="land fixed top-0 left-0 w-full z-50 border-b border-white/5 bg-[#030303]/80 backdrop-blur-2xl">
-        <div className="max-w-7xl mx-auto px-6 h-18 flex items-center justify-between py-4">
-          {/* Logo — clicks scroll to top */}
-          <button
-            onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-            className="flex items-center gap-3 hover:opacity-80 transition-opacity"
-          >
-            <div className="w-9 h-9 bg-[#F5C518] rounded-xl flex items-center justify-center font-black text-black text-lg italic shadow-[0_0_20px_rgba(245,197,24,0.4)]">E</div>
+
+  return (
+    <div className="min-h-screen bg-[#030303] text-white selection:bg-[#F5C518] selection:text-black overflow-x-hidden land">
+
+      {/* Scroll Progress Bar */}
+      <ScrollProgress />
+      {/* Live toast popups */}
+      <LiveToasts />
+
+      {/* ═══ NAVBAR ═══ */}
+      <nav className="fixed top-0 left-0 w-full z-50 border-b border-white/5" style={{ background: 'rgba(3,3,3,0.88)', backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)' }}>
+        <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
+          <button onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} className="flex items-center gap-3 group">
+            <div className="relative w-9 h-9">
+              <div className="absolute inset-0 rounded-xl bg-[#F5C518] flex items-center justify-center font-black text-black text-lg italic z-10 group-hover:scale-110 transition-transform duration-300" style={{ boxShadow: '0 0 20px rgba(245,197,24,0.5)' }}>E</div>
+              <div className="absolute inset-0 rounded-xl bg-[#F5C518] blur-md opacity-40 group-hover:opacity-70 transition-opacity" />
+            </div>
             <span className="font-black tracking-tight text-xl">Elevore <span className="glow-text italic">Empire</span></span>
           </button>
-
-          {/* Desktop nav links */}
           <div className="hidden md:flex items-center gap-8 text-[11px] font-bold uppercase tracking-widest text-slate-400">
-            <button onClick={() => scrollTo('features')} className="hover:text-white transition-colors">Features</button>
-            <button onClick={() => scrollTo('pricing')} className="hover:text-white transition-colors">Pricing</button>
-            <button onClick={() => scrollTo('testimonials')} className="hover:text-white transition-colors">Reviews</button>
-            <button onClick={() => openModal('Changelog')} className="hover:text-[#F5C518] transition-colors">Changelog</button>
+            {[['features','Features'],['pricing','Pricing'],['testimonials','Reviews']].map(([id, label]) => (
+              <button key={id} onClick={() => scrollTo(id)} className="animated-underline hover:text-white transition-colors">{label}</button>
+            ))}
+            <button onClick={() => openModal('Changelog')} className="animated-underline hover:text-[#F5C518] transition-colors">Changelog</button>
           </div>
-
-          {/* Right side actions */}
           <div className="flex items-center gap-3">
             <button onClick={onLogin} className="hidden sm:block text-[11px] font-black uppercase tracking-widest text-slate-400 hover:text-white transition-colors px-4 py-2">Log In</button>
-            <button onClick={onSignup} className="px-5 py-2.5 bg-[#F5C518] text-black rounded-xl font-black text-[11px] uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shadow-[0_0_20px_rgba(245,197,24,0.3)]">Start Free Trial</button>
-            {/* Mobile hamburger */}
-            <button
-              onClick={() => setMenuOpen(m => !m)}
-              className="md:hidden flex flex-col gap-1.5 p-2 rounded-lg hover:bg-white/5 transition-colors"
-              aria-label="Toggle menu"
-            >
-              <span className={`block w-5 h-0.5 bg-white transition-all duration-300 ${menuOpen ? 'rotate-45 translate-y-2' : ''}`} />
+            <button onClick={onSignup} className="btn-gold px-5 py-2.5 text-[11px] uppercase tracking-widest">Start Free Trial</button>
+            <button onClick={() => setMenuOpen(m => !m)} className="md:hidden flex flex-col gap-1.5 p-2 rounded-lg hover:bg-white/5 transition-colors" aria-label="Toggle menu">
+              <span className={`block w-5 h-0.5 bg-white transition-all duration-300 origin-center ${menuOpen ? 'rotate-45 translate-y-2' : ''}`} />
               <span className={`block w-5 h-0.5 bg-white transition-all duration-300 ${menuOpen ? 'opacity-0' : ''}`} />
-              <span className={`block w-5 h-0.5 bg-white transition-all duration-300 ${menuOpen ? '-rotate-45 -translate-y-2' : ''}`} />
+              <span className={`block w-5 h-0.5 bg-white transition-all duration-300 origin-center ${menuOpen ? '-rotate-45 -translate-y-2' : ''}`} />
             </button>
           </div>
         </div>
-
-        {/* Mobile dropdown menu */}
         {menuOpen && (
-          <div className="md:hidden bg-[#030303]/98 backdrop-blur-2xl border-t border-white/5 px-6 py-6 space-y-4">
-            <button onClick={() => scrollTo('features')} className="block w-full text-left text-sm font-black uppercase tracking-widest text-slate-300 hover:text-white py-2 border-b border-white/5 transition-colors">⚡ Features</button>
-            <button onClick={() => scrollTo('pricing')} className="block w-full text-left text-sm font-black uppercase tracking-widest text-slate-300 hover:text-white py-2 border-b border-white/5 transition-colors">💎 Pricing</button>
-            <button onClick={() => scrollTo('testimonials')} className="block w-full text-left text-sm font-black uppercase tracking-widest text-slate-300 hover:text-white py-2 border-b border-white/5 transition-colors">⭐ Reviews</button>
-            <button onClick={() => { openModal('Changelog'); setMenuOpen(false); }} className="block w-full text-left text-sm font-black uppercase tracking-widest text-slate-300 hover:text-[#F5C518] py-2 border-b border-white/5 transition-colors">📋 Changelog</button>
+          <div className="md:hidden border-t border-white/5 px-6 py-6 space-y-4" style={{ background: 'rgba(3,3,3,0.98)' }}>
+            {[['features','⚡ Features'],['pricing','💎 Pricing'],['testimonials','⭐ Reviews']].map(([id, label]) => (
+              <button key={id} onClick={() => scrollTo(id)} className="block w-full text-left text-sm font-black uppercase tracking-widest text-slate-300 hover:text-white py-2 border-b border-white/5 transition-colors">{label}</button>
+            ))}
+            <button onClick={() => { openModal('Changelog'); setMenuOpen(false); }} className="block w-full text-left text-sm font-black uppercase tracking-widest text-slate-300 hover:text-[#F5C518] py-2 border-b border-white/5">📋 Changelog</button>
             <div className="flex gap-3 pt-2">
               <button onClick={() => { onLogin(); setMenuOpen(false); }} className="flex-1 py-3 border border-white/10 rounded-xl text-sm font-black uppercase tracking-wider text-slate-300 hover:bg-white/5 active:scale-95 transition-all">Log In</button>
-              <button onClick={() => { onSignup(); setMenuOpen(false); }} className="flex-1 py-3 bg-[#F5C518] text-black rounded-xl text-sm font-black uppercase tracking-wider hover:bg-amber-400 active:scale-95 transition-all">Free Trial</button>
+              <button onClick={() => { onSignup(); setMenuOpen(false); }} className="flex-1 py-3 bg-[#F5C518] text-black rounded-xl text-sm font-black uppercase tracking-wider active:scale-95 transition-all">Free Trial</button>
             </div>
           </div>
         )}
       </nav>
 
-      {/* HERO */}
-      <section className="land relative min-h-screen flex flex-col items-center justify-center text-center px-6 pt-24 pb-20 grid-bg">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_60%_at_50%_-10%,rgba(245,197,24,0.12),transparent)] pointer-events-none" />
-        <div className="absolute top-1/3 left-1/4 w-72 h-72 bg-amber-500/5 rounded-full blur-3xl float-anim pointer-events-none" />
-        <div className="absolute top-1/2 right-1/4 w-96 h-96 bg-blue-500/5 rounded-full blur-3xl float-anim pointer-events-none" style={{animationDelay:'3s'}} />
-
+      {/* ═══ HERO ═══ */}
+      <section className="relative min-h-screen flex flex-col items-center justify-center text-center px-6 pt-24 pb-20 grid-bg overflow-hidden">
+        <div className="hero-orb-1" style={{ top: '-10%', left: '50%', transform: 'translateX(-50%)' }} />
+        <div className="hero-orb-2" style={{ top: '30%', left: '-10%' }} />
+        <div className="hero-orb-3" style={{ bottom: '10%', right: '-5%' }} />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_50%_at_50%_0%,rgba(245,197,24,0.1),transparent)] pointer-events-none" />
         <div className="relative z-10 max-w-5xl mx-auto space-y-8">
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-[#F5C518]/30 bg-[#F5C518]/5 text-[#F5C518] text-[10px] font-black uppercase tracking-[0.3em] shimmer">
-            <div className="w-1.5 h-1.5 bg-[#F5C518] rounded-full animate-pulse" />
-            The #1 OS for Elite Service Companies
+          <div className="reveal inline-flex items-center gap-3 px-5 py-2.5 rounded-full border border-[#F5C518]/30 bg-[#F5C518]/5 shimmer-badge">
+            <div className="relative flex items-center">
+              <div className="w-2 h-2 bg-[#F5C518] rounded-full" />
+              <div className="pulse-ring" style={{ background: 'rgba(245,197,24,0.4)' }} />
+            </div>
+            <span className="text-[#F5C518] text-[10px] font-black uppercase tracking-[0.3em]">The #1 OS for Elite Service Companies</span>
           </div>
-
-          <h1 className="text-5xl sm:text-7xl md:text-[90px] font-black leading-[0.9] tracking-tighter">
+          <h1 className="reveal delay-100 text-5xl sm:text-7xl md:text-[96px] font-black leading-[0.88] tracking-tighter">
             Run Your Empire<br />
             <span className="glow-text italic">on Autopilot.</span>
           </h1>
-
-          <p className="text-slate-400 text-lg md:text-xl max-w-2xl mx-auto leading-relaxed">
-            AI dispatch, GPS fleet tracking, digital contracts, predictive revenue — everything your cleaning or handyman company needs to operate like a Fortune 500.
+          <p className="reveal delay-200 text-slate-400 text-lg md:text-xl max-w-2xl mx-auto leading-relaxed">
+            AI dispatch, GPS fleet tracking, digital contracts, predictive revenue — everything your cleaning or handyman company needs to <strong className="text-white font-black">operate like a Fortune 500.</strong>
           </p>
-
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-            <button onClick={onSignup} className="group w-full sm:w-auto px-10 py-5 bg-[#F5C518] text-black rounded-2xl font-black uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shadow-[0_0_50px_rgba(245,197,24,0.4)] text-sm flex items-center justify-center gap-2">
+          <div className="reveal delay-300 flex flex-col sm:flex-row items-center justify-center gap-4">
+            <button onClick={onSignup} className="btn-gold group w-full sm:w-auto px-10 py-5 text-sm uppercase tracking-widest flex items-center justify-center gap-2">
               Start 14-Day Free Trial <Icon name="arrow-right" className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
             </button>
-            <button onClick={onLogin} className="w-full sm:w-auto px-10 py-5 border border-white/10 rounded-2xl font-black uppercase tracking-widest hover:bg-white/5 transition-all text-sm text-slate-300">
-              Sign In to Dashboard
+            <button
+              onClick={() => setShowVideoDemo(true)}
+              className="w-full sm:w-auto px-10 py-5 border border-white/10 rounded-2xl font-black uppercase tracking-widest hover:bg-white/5 hover:border-white/20 transition-all text-sm text-slate-300 flex items-center justify-center gap-3 group"
+            >
+              <div className="w-8 h-8 rounded-full bg-white/5 border border-white/10 flex items-center justify-center group-hover:border-[#F5C518]/30 group-hover:bg-[#F5C518]/5 transition-all">
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" className="text-[#F5C518] ml-0.5"><path d="M5 3l14 9-14 9V3z"/></svg>
+              </div>
+              Watch 3-Min Demo
             </button>
           </div>
-
           <p className="text-[10px] text-slate-600 uppercase tracking-widest font-bold">No credit card required • Cancel anytime • Setup in 2 minutes</p>
+          <div className="reveal delay-400 grid grid-cols-3 gap-6 pt-12 max-w-2xl mx-auto border-t border-white/5">
+            <AnimatedStat end={500} suffix="+" label="Active Businesses" />
+            <AnimatedStat end={94} suffix="%" label="Revenue Accuracy" />
+            <AnimatedStat end={31} prefix="$" suffix="K" label="Avg Client MRR" />
+          </div>
+          {/* Mini dashboard preview */}
+          <div className="reveal delay-500 relative max-w-2xl mx-auto mt-4">
+            <div className="dashboard-preview p-5 text-left">
+              <div className="flex items-center gap-2 mb-4 pb-3 border-b border-white/5">
+                <div className="w-3 h-3 rounded-full bg-red-500/60" />
+                <div className="w-3 h-3 rounded-full bg-yellow-500/60" />
+                <div className="w-3 h-3 rounded-full bg-green-500/60" />
+                <span className="text-[9px] text-slate-600 uppercase font-black tracking-widest ml-3">Elevore Empire — Live Dashboard</span>
+                <div className="ml-auto flex items-center gap-1.5">
+                  <div className="w-1.5 h-1.5 bg-green-400 rounded-full" />
+                  <span className="text-[8px] text-green-400 font-black uppercase">Live</span>
+                </div>
+              </div>
+              <div className="grid grid-cols-4 gap-3 mb-4">
+                {[{label:'MRR',val:'$8,420',change:'+12%'},{label:'Active Jobs',val:'14',change:'3 today'},{label:'Team',val:'6 staff',change:'All on route'},{label:'AI Upsells',val:'7',change:'+$2,100'}].map((m,i) => (
+                  <div key={i} className="bg-white/[0.03] border border-white/5 rounded-xl p-2.5">
+                    <div className="text-[8px] text-slate-500 uppercase font-black tracking-wider">{m.label}</div>
+                    <div className="text-sm font-black text-white mt-0.5">{m.val}</div>
+                    <div className="text-[8px] text-green-400 font-bold">{m.change}</div>
+                  </div>
+                ))}
+              </div>
+              <div className="space-y-2">
+                {[{name:'Rodriguez Residence',status:'En Route',dot:'bg-blue-400',price:'$380'},{name:'Smith Property Deep',status:'In Service',dot:'bg-amber-400',price:'$520'},{name:'Johnson Move-Out',status:'Completed ✓',dot:'bg-green-400',price:'$890'}].map((job,i) => (
+                  <div key={i} className="flex items-center justify-between bg-white/[0.02] border border-white/5 rounded-xl px-3 py-2">
+                    <div className="flex items-center gap-2.5">
+                      <div className={`w-1.5 h-1.5 rounded-full ${job.dot}`} />
+                      <span className="text-[10px] font-bold text-slate-300">{job.name}</span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <span className="text-[8px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-white/5 text-slate-400">{job.status}</span>
+                      <span className="text-[10px] font-black text-[#F5C518]">{job.price}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="absolute -bottom-8 left-1/2 -translate-x-1/2 w-2/3 h-8 bg-[#F5C518]/10 blur-2xl rounded-full" />
+          </div>
+        </div>
+      </section>
 
-          {/* STATS ROW */}
-          <div id="stats" className="grid grid-cols-3 gap-6 pt-12 max-w-2xl mx-auto border-t border-white/5">
-            {[
-              { end: 500, suffix: '+', label: 'Active Businesses' },
-              { end: 94, suffix: '%', label: 'Revenue Accuracy' },
-              { end: 31, prefix: '$', suffix: 'K avg MRR', label: 'Top Client Revenue' },
-            ].map((s, i) => (
-              <div key={i} className="text-center">
-                <div className="text-3xl md:text-4xl font-black italic glow-text"><CountUp end={s.end} prefix={s.prefix||''} suffix={s.suffix||''} /></div>
-                <div className="text-[9px] text-slate-500 uppercase tracking-widest font-bold mt-1">{s.label}</div>
+      {/* ═══ MARQUEE TICKER ═══ */}
+      <div className="border-y border-white/5 py-8 overflow-hidden bg-white/[0.01]">
+        <p className="text-center text-[9px] text-slate-700 font-black uppercase tracking-[0.3em] mb-6">Trusted by 500+ Elite Service Operations Across North America</p>
+        <div className="overflow-hidden">
+          <div className="marquee-track flex items-center gap-16" style={{ width: 'max-content' }}>
+            {['BREEZE CLEAN','LUMIN SERVICES','APEX PROPERTY','VANGUARD HOME','NOVA CLEANING','PRISM SERVICES','TITAN CLEAN','ELITE HANDYMAN','AURA PROPERTY','PEAK SERVICES','BREEZE CLEAN','LUMIN SERVICES','APEX PROPERTY','VANGUARD HOME','NOVA CLEANING','PRISM SERVICES','TITAN CLEAN','ELITE HANDYMAN','AURA PROPERTY','PEAK SERVICES'].map((name, i) => (
+              <div key={i} className="flex items-center gap-2 font-black text-sm tracking-widest opacity-20 hover:opacity-50 transition-opacity flex-shrink-0" style={{ minWidth: 'max-content' }}>
+                <div className="w-5 h-5 rounded-md bg-white/10 flex items-center justify-center text-[8px] font-black">{name[0]}</div>
+                {name}
               </div>
             ))}
           </div>
         </div>
-      </section>
-
-      {/* SOCIAL PROOF */}
-      <div className="border-y border-white/5 py-10 bg-white/[0.01]">
-        <p className="text-center text-[9px] text-slate-600 font-black uppercase tracking-[0.3em] mb-8">Trusted by 500+ Elite Service Operations Across North America</p>
-        <div className="flex flex-wrap justify-center items-center gap-10 sm:gap-20 opacity-30 hover:opacity-60 transition-all duration-700">
-          {[['wind','BREEZE CLEAN'],['droplet','LUMIN SERVICES'],['hexagon','APEX PROPERTY'],['shield','VANGUARD HOME'],['star','NOVA CLEANING']].map(([icon, name]) => (
-            <div key={name} className="flex items-center gap-2 font-black text-base tracking-widest"><Icon name={icon} className="w-5 h-5" />{name}</div>
-          ))}
-        </div>
       </div>
 
-      {/* FEATURES BENTO */}
-      <section id="features" className="land max-w-7xl mx-auto px-6 py-32">
+      {/* ═══ FEATURES BENTO ═══ */}
+      <section id="features" className="max-w-7xl mx-auto px-6 py-32">
         <div className="text-center mb-20 space-y-4">
-          <div className="inline-block text-[10px] font-black uppercase tracking-[0.3em] text-amber-500 border border-amber-500/30 px-4 py-2 rounded-full bg-amber-500/5">Platform Features</div>
-          <h2 className="text-4xl md:text-6xl font-black tracking-tighter">Everything You Need.<br /><span className="glow-text italic">Nothing You Don't.</span></h2>
-          <p className="text-slate-400 text-lg max-w-xl mx-auto">Built specifically for cleaning and handyman businesses that want to scale fast without losing quality.</p>
+          <div className="reveal inline-block text-[10px] font-black uppercase tracking-[0.3em] text-amber-500 border border-amber-500/30 px-4 py-2 rounded-full bg-amber-500/5">Platform Features</div>
+          <h2 className="reveal delay-100 text-4xl md:text-6xl font-black tracking-tighter">Everything You Need.<br /><span className="glow-text italic">Nothing You Don't.</span></h2>
+          <p className="reveal delay-200 text-slate-400 text-lg max-w-xl mx-auto">Built specifically for cleaning and handyman businesses that want to scale fast without losing quality.</p>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
           {features.map((f, i) => (
-            <button
-              key={i}
-              onClick={() => openModal('Features')}
-              className={`card-hover bg-gradient-to-br ${f.color} border ${f.border} rounded-3xl p-8 ${f.big ? 'md:col-span-2' : ''} relative overflow-hidden group text-left w-full cursor-pointer`}
-            >
-              <div className={`w-12 h-12 rounded-2xl bg-${f.text}/10 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform`}>
-                <Icon name={f.icon} className={`w-6 h-6 text-${f.text}`} />
-              </div>
-              <h3 className="text-xl font-black uppercase tracking-wide text-white mb-3">{f.label}</h3>
-              <p className="text-slate-400 leading-relaxed">{f.desc}</p>
-              <div className="mt-4 inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-current opacity-50 group-hover:opacity-100 transition-opacity">
-                Learn more <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-              </div>
-            </button>
+            <div key={i} className={`reveal delay-${Math.min((i+1)*100, 600)}`}>
+              <FeatureCard {...f} onClick={() => openModal('Features')} />
+            </div>
           ))}
         </div>
       </section>
 
-      {/* TESTIMONIALS */}
-      <section id="testimonials" className="land border-t border-white/5 py-32 bg-[radial-gradient(ellipse_at_center,rgba(245,197,24,0.04),transparent)]">
-        <div className="max-w-6xl mx-auto px-6">
-          <div className="text-center mb-16 space-y-3">
-            <div className="text-[10px] font-black uppercase tracking-[0.3em] text-amber-500">⭐⭐⭐⭐⭐ Real Results</div>
-            <h2 className="text-4xl md:text-5xl font-black tracking-tighter">CEOs Who <span className="glow-text italic">Trust Elevore</span></h2>
+      {/* ═══ HOW IT WORKS ═══ */}
+      <section className="section-dark border-t border-white/5 py-32 relative overflow-hidden">
+        <div className="absolute inset-0 dot-grid pointer-events-none opacity-20" />
+        <div className="max-w-4xl mx-auto px-6">
+          <div className="text-center mb-20 space-y-4">
+            <div className="reveal inline-block text-[10px] font-black uppercase tracking-[0.3em] text-blue-400 border border-blue-400/30 px-4 py-2 rounded-full bg-blue-400/5">Quick Setup</div>
+            <h2 className="reveal delay-100 text-4xl md:text-5xl font-black tracking-tighter">Go Live in <span className="glow-text italic">Under 5 Minutes</span></h2>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {testimonials.map((t, i) => (
-              <div key={i} className="card-hover bg-white/[0.03] border border-white/8 rounded-3xl p-8 space-y-4">
-                <div className="flex gap-1">{Array(t.stars).fill(0).map((_,j)=><span key={j} className="text-[#F5C518] text-lg">★</span>)}</div>
-                <p className="text-slate-300 leading-relaxed italic">"{t.text}"</p>
-                <div className="border-t border-white/5 pt-4">
-                  <p className="font-black text-white">{t.name}</p>
-                  <p className="text-[11px] text-slate-500 uppercase tracking-widest font-bold">{t.biz}</p>
+          <div className="space-y-0 relative">
+            <div className="absolute left-7 md:left-10 top-10 bottom-10 w-px bg-gradient-to-b from-[#F5C518]/40 via-blue-500/20 to-transparent" />
+            {[
+              { step:'01', icon:'user-plus', title:'Create Your Account', desc:'Sign up free in 30 seconds. No credit card. Instant access to the full platform.', color:'text-amber-400', bg:'bg-amber-400/10', border:'border-amber-400/20' },
+              { step:'02', icon:'settings', title:'Configure Your Business', desc:'Add your services, pricing, team members, and brand in minutes with our guided setup wizard.', color:'text-blue-400', bg:'bg-blue-400/10', border:'border-blue-400/20' },
+              { step:'03', icon:'users', title:'Invite Your Team', desc:'Each staff member gets a secure PIN. They access only their missions — nothing confidential.', color:'text-purple-400', bg:'bg-purple-400/10', border:'border-purple-400/20' },
+              { step:'04', icon:'trending-up', title:'Watch Revenue Grow', desc:'The AI engine starts analyzing patterns immediately. Most operators see +30% revenue in 30 days.', color:'text-green-400', bg:'bg-green-400/10', border:'border-green-400/20' },
+            ].map((s, i) => (
+              <div key={i} className={`reveal delay-${i*100} flex gap-6 md:gap-10 pb-10 relative`}>
+                <div className={`relative flex-shrink-0 w-14 h-14 md:w-20 md:h-20 rounded-2xl ${s.bg} border ${s.border} flex items-center justify-center z-10`}>
+                  <Icon name={s.icon} className={`w-6 h-6 md:w-8 md:h-8 ${s.color}`} />
+                  <div className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-[#030303] border border-white/10 flex items-center justify-center text-[9px] font-black text-slate-500">{s.step}</div>
+                </div>
+                <div className="pt-3">
+                  <h3 className={`text-xl font-black text-white mb-2`}>{s.title}</h3>
+                  <p className="text-slate-400 leading-relaxed">{s.desc}</p>
                 </div>
               </div>
             ))}
@@ -2379,155 +2661,368 @@ function LandingPage({ onLogin, onSignup }) {
         </div>
       </section>
 
-      {/* CLIENT REFERRAL LINK UTILITY */}
-      <section className="land border-t border-white/5 py-24 bg-gradient-to-b from-black to-[#050505] relative overflow-hidden">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(245,197,24,0.03),transparent)]" />
-        <div className="max-w-xl mx-auto px-6 relative z-10 text-center space-y-6">
-          <div className="inline-block text-[10px] font-black uppercase tracking-[0.3em] text-[#F5C518] border border-[#F5C518]/30 px-4 py-2 rounded-full bg-[#F5C518]/5">
-            🎁 Share & Earn
-          </div>
-          <h2 className="text-3xl md:text-4xl font-black tracking-tighter">Existing Client?<br /><span className="glow-text italic">Get Your Referral Link</span></h2>
-          <p className="text-slate-400 text-sm">Enter your name below to instantly generate your unique referral link. Share it with friends and you both get a $25 discount on your next service!</p>
-          
-          <div className="g p-6 bg-white/[0.02] border border-white/5 rounded-3xl space-y-4 text-left">
-            <div className="flex flex-col sm:flex-row gap-3">
-              <input 
-                type="text" 
-                id="landingRefName"
-                placeholder="Enter your full name" 
-                className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-500 outline-none focus:border-[#F5C518] transition-all"
-              />
-              <button 
-                onClick={() => {
-                  const val = document.getElementById('landingRefName')?.value?.trim();
-                  if (!val) return alert('Please enter your name first');
-                  const urlP = new URLSearchParams(window.location.search);
-                  const tenantParam = urlP.get('t') || '';
-                  const link = `${location.origin}${location.pathname}?ref=${val.replace(/\s/g, '_')}${tenantParam ? '&t=' + tenantParam : ''}`;
-                  navigator.clipboard.writeText(link);
-                  alert(`Success! Your referral link has been copied:\n\n${link}`);
-                }}
-                className="px-6 py-3 bg-[#F5C518] hover:bg-amber-400 text-black font-black uppercase text-xs tracking-wider rounded-xl active:scale-95 transition-all shadow-lg shadow-[#F5C518]/10 text-center"
-              >
-                Copy Link
-              </button>
+      {/* ═══ METRICS ═══ */}
+      <section className="py-24 relative overflow-hidden" style={{ background: 'linear-gradient(135deg, rgba(245,197,24,0.05) 0%, rgba(3,3,3,1) 40%, rgba(3,3,3,1) 60%, rgba(59,130,246,0.03) 100%)' }}>
+        <div className="absolute inset-0 pointer-events-none" style={{ background: 'radial-gradient(ellipse at 50% 50%, rgba(245,197,24,0.04), transparent 70%)' }} />
+        <div className="max-w-5xl mx-auto px-6 grid grid-cols-2 md:grid-cols-4 gap-8">
+          {[{end:500,suffix:'+',label:'Businesses Live',icon:'building-2'},{end:94,suffix:'%',label:'Revenue Accuracy',icon:'target'},{end:4200,prefix:'$',suffix:'+',label:'Avg Job Value Boost',icon:'trending-up'},{end:99,suffix:'.4%',label:'QC Pass Rate',icon:'shield-check'}].map((s,i) => (
+            <div key={i} className={`reveal delay-${i*100} text-center space-y-3 p-6 rounded-2xl bg-white/[0.02] border border-white/5 hover:border-[#F5C518]/20 transition-all`}>
+              <div className="w-10 h-10 rounded-xl bg-[#F5C518]/10 border border-[#F5C518]/20 flex items-center justify-center mx-auto">
+                <Icon name={s.icon} className="w-5 h-5 text-[#F5C518]" />
+              </div>
+              <AnimatedStat end={s.end} prefix={s.prefix||''} suffix={s.suffix||''} label={s.label} />
             </div>
-            <p className="text-[7.5px] text-slate-500 leading-normal uppercase font-bold tracking-wider">
-              * Note: No login required. The link automatically embeds your name and associates any referrals to you.
-            </p>
-          </div>
+          ))}
         </div>
       </section>
 
-      {/* PRICING */}
-      <section id="pricing" className="land border-t border-white/5 py-32">
-        <div className="max-w-5xl mx-auto px-6">
-          <div className="text-center mb-16 space-y-4">
-            <h2 className="text-4xl md:text-6xl font-black tracking-tighter">Simple <span className="glow-text italic">Pricing</span></h2>
-            <p className="text-slate-400 text-lg">One platform. All features. Cancel anytime.</p>
+      {/* ═══ TESTIMONIALS ═══ */}
+      <section id="testimonials" className="border-t border-white/5 py-32 section-deeper">
+        <div className="max-w-6xl mx-auto px-6">
+          <div className="text-center mb-16 space-y-3">
+            <div className="reveal text-[10px] font-black uppercase tracking-[0.3em] text-amber-500">⭐⭐⭐⭐⭐ Real Results</div>
+            <h2 className="reveal delay-100 text-4xl md:text-5xl font-black tracking-tighter">CEOs Who <span className="glow-text italic">Trust Elevore</span></h2>
+            <p className="reveal delay-200 text-slate-500 text-base max-w-xl mx-auto">Real businesses, real numbers, real growth.</p>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-center">
-            {[
-              { name: 'Starter', price: '$0', period: '/mo', desc: 'For solo operators just getting started.', features: ['Up to 5 missions/mo', 'Basic Client Database', 'Staff PIN Access', 'WhatsApp Templates'], cta: 'Start Free', action: onSignup, highlight: false },
-              { name: 'Empire Pro', price: '$149', period: '/mo', desc: 'The full arsenal. Unlimited everything.', features: ['Unlimited Missions', 'AI Revenue Engine', 'GPS Fleet Tracking', 'Digital Signatures', 'AI Vision QC', 'WhatsApp CRM', 'Good-Better-Best Quotes', 'Photo Storage', 'Priority Support'], cta: 'Start 14-Day Trial', action: onSignup, highlight: true },
-              { name: 'Enterprise', price: 'Custom', period: '', desc: 'For franchises and multi-location operations.', features: ['Everything in Pro', 'Dedicated Account Manager', 'Custom Integrations', 'White-label Option', 'SLA Agreement'], cta: 'Contact Us', action: () => openModal('Contact'), highlight: false },
-            ].map((plan, i) => (
-              <div key={i} className={`card-hover rounded-3xl p-8 flex flex-col relative overflow-hidden ${plan.highlight ? 'bg-gradient-to-b from-[#F5C518]/10 to-black border-2 border-[#F5C518] shadow-[0_0_80px_rgba(245,197,24,0.15)] md:-translate-y-4 scale-105' : 'bg-white/[0.03] border border-white/10'}`}>
-                {plan.highlight && <div className="absolute top-0 right-0 bg-[#F5C518] text-black text-[8px] font-black uppercase tracking-widest px-4 py-2 rounded-bl-xl rounded-tr-3xl">Most Popular</div>}
-                <div className={`text-[11px] font-black uppercase tracking-widest mb-3 ${plan.highlight ? 'text-[#F5C518]' : 'text-slate-400'}`}>{plan.name}</div>
-                <div className="mb-2"><span className="text-5xl font-black tracking-tighter">{plan.price}</span><span className="text-slate-500 text-sm">{plan.period}</span></div>
-                <p className="text-slate-500 text-sm mb-6">{plan.desc}</p>
-                <ul className="space-y-3 mb-8 flex-1">
-                  {plan.features.map((feat, j) => (
-                    <li key={j} className="flex items-center gap-2.5 text-sm text-slate-300">
-                      <Icon name="check-circle" className={`w-4 h-4 flex-shrink-0 ${plan.highlight ? 'text-[#F5C518]' : 'text-slate-600'}`} /> {feat}
-                    </li>
-                  ))}
-                </ul>
-                <button onClick={plan.action} className={`w-full py-4 rounded-2xl font-black uppercase tracking-widest text-sm active:scale-95 transition-all ${plan.highlight ? 'bg-[#F5C518] text-black hover:scale-105 shadow-[0_0_30px_rgba(245,197,24,0.3)]' : 'border border-white/10 hover:bg-white/5 text-white'}`}>{plan.cta}</button>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {testimonials.map((t, i) => (
+              <div key={i} className={`reveal delay-${i*100} bg-white/[0.03] border border-white/8 rounded-3xl p-8 space-y-5 hover:border-[#F5C518]/20 hover:-translate-y-2 transition-all duration-300 relative overflow-hidden group`}>
+                <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500" style={{ background: 'radial-gradient(ellipse at 50% 0%, rgba(245,197,24,0.04), transparent 60%)' }} />
+                <div className="flex gap-1">{Array(t.stars).fill(0).map((_,j) => <span key={j} className="text-[#F5C518] text-lg" style={{ textShadow:'0 0 10px rgba(245,197,24,0.5)' }}>★</span>)}</div>
+                <p className="text-slate-300 leading-relaxed italic text-sm">"{t.text}"</p>
+                <div className="border-t border-white/5 pt-4 flex items-center gap-3">
+                  <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${t.avatarColor} flex items-center justify-center text-white text-xs font-black flex-shrink-0`}>{t.avatar}</div>
+                  <div>
+                    <p className="font-black text-white text-sm">{t.name}</p>
+                    <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold">{t.biz}</p>
+                    <p className="text-[9px] text-slate-600 font-bold">{t.loc}</p>
+                  </div>
+                </div>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* CTA BANNER */}
-      <section className="land border-t border-white/5 py-32 bg-[radial-gradient(ellipse_at_center,rgba(245,197,24,0.08),transparent)]">
-        <div className="max-w-3xl mx-auto px-6 text-center space-y-8">
-          <h2 className="text-4xl md:text-6xl font-black tracking-tighter">Ready to Build Your <span className="glow-text italic">Empire?</span></h2>
-          <p className="text-slate-400 text-xl">Join 500+ service businesses already running on Elevore. Setup takes 2 minutes.</p>
-          <button onClick={onSignup} className="px-14 py-6 bg-[#F5C518] text-black rounded-2xl font-black uppercase tracking-widest text-lg hover:scale-105 active:scale-95 transition-all shadow-[0_0_60px_rgba(245,197,24,0.4)]">
-            Start For Free Today →
-          </button>
-          <p className="text-[10px] text-slate-600 uppercase tracking-widest">No credit card • Cancel anytime • 14-day full access</p>
+      {/* ═══ REFERRAL ═══ */}
+      <section className="border-t border-white/5 py-24 relative overflow-hidden section-dark">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(245,197,24,0.04),transparent)]" />
+        <div className="max-w-xl mx-auto px-6 relative z-10 text-center space-y-6">
+          <div className="reveal inline-block text-[10px] font-black uppercase tracking-[0.3em] text-[#F5C518] border border-[#F5C518]/30 px-4 py-2 rounded-full bg-[#F5C518]/5 shimmer-badge">🎁 Share &amp; Earn</div>
+          <h2 className="reveal delay-100 text-3xl md:text-4xl font-black tracking-tighter">Existing Client?<br /><span className="glow-text italic">Get Your Referral Link</span></h2>
+          <p className="reveal delay-200 text-slate-400 text-sm">Enter your name to instantly generate your unique referral link. Share it and you both get $25 off!</p>
+          <div className="reveal delay-300 bg-white/[0.02] border border-white/5 rounded-3xl p-6 space-y-4 text-left">
+            <div className="flex flex-col sm:flex-row gap-3">
+              <input type="text" id="landingRefName" placeholder="Enter your full name" className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-500 outline-none focus:border-[#F5C518] transition-all" />
+              <button onClick={() => {
+                const val = document.getElementById('landingRefName')?.value?.trim();
+                if (!val) return alert('Please enter your name first');
+                const urlP = new URLSearchParams(window.location.search);
+                const tenantParam = urlP.get('t') || '';
+                const link = `${location.origin}${location.pathname}?ref=${val.replace(/\s/g, '_')}${tenantParam ? '&t=' + tenantParam : ''}`;
+                navigator.clipboard.writeText(link);
+                alert(`Success! Your referral link has been copied:\n\n${link}`);
+              }} className="btn-gold px-6 py-3 text-xs uppercase tracking-wider">Copy Link</button>
+            </div>
+            <p className="text-[7.5px] text-slate-600 leading-normal uppercase font-bold tracking-wider">* No login required. Link auto-associates referrals to you.</p>
+          </div>
         </div>
       </section>
 
-      {/* FOOTER */}
-      <footer className="land border-t border-white/5 py-16 bg-black/60">
+      {/* ═══ PRICING ═══ */}
+      <section id="pricing" className="border-t border-white/5 py-32 section-deeper">
+        <div className="max-w-6xl mx-auto px-6">
+          <div className="text-center mb-12 space-y-4">
+            <div className="reveal inline-block text-[10px] font-black uppercase tracking-[0.3em] text-[#F5C518] border border-[#F5C518]/30 px-4 py-2 rounded-full bg-[#F5C518]/5">Transparent Pricing</div>
+            <h2 className="reveal delay-100 text-4xl md:text-6xl font-black tracking-tighter">Simple <span className="glow-text italic">Pricing</span></h2>
+            <p className="reveal delay-200 text-slate-400 text-lg">One platform. All features. Cancel anytime.</p>
+            {/* Billing Toggle */}
+            <div className="reveal delay-300 inline-flex items-center gap-3 bg-white/[0.03] border border-white/8 rounded-2xl p-1.5">
+              <button onClick={() => setBillingAnnual(false)} className={`px-5 py-2 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all ${!billingAnnual ? 'bg-white/10 text-white shadow' : 'text-slate-500 hover:text-slate-300'}`}>Monthly</button>
+              <button onClick={() => setBillingAnnual(true)} className={`px-5 py-2 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all flex items-center gap-2 ${billingAnnual ? 'bg-white/10 text-white shadow' : 'text-slate-500 hover:text-slate-300'}`}>
+                Annual
+                <span className="text-[9px] bg-green-500/20 text-green-400 border border-green-500/20 px-2 py-0.5 rounded-full font-black">Save 20%</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Pricing Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-center mb-20">
+            {[
+              { name:'Starter', price:'$0', annualPrice:'$0', annualNote:'', period:'/mo', desc:'For solo operators just getting started.', features:['Up to 5 missions/mo','Basic Client Database','Staff PIN Access','WhatsApp Templates'], cta:'Start Free', action:onSignup, highlight:false },
+              { name:'Empire Pro', price:'$149', annualPrice:'$119', annualNote:'/mo — billed $1,428/yr', period:'/mo', desc:'The full arsenal. Unlimited everything.', features:['Unlimited Missions','AI Revenue Engine','GPS Fleet Tracking','Digital Signatures','AI Vision QC','WhatsApp CRM','Good-Better-Best Quotes','Photo Storage','Priority Support'], cta:'Start 14-Day Trial', action:onSignup, highlight:true },
+              { name:'Enterprise', price:'Custom', annualPrice:'Custom', annualNote:'', period:'', desc:'For franchises and multi-location ops.', features:['Everything in Pro','Dedicated Account Manager','Custom Integrations','White-label Option','SLA Agreement'], cta:'Contact Sales', action:() => openModal('Contact'), highlight:false },
+            ].map((plan, i) => (
+              <div key={i} className={`reveal delay-${i*100} rounded-3xl p-8 flex flex-col relative overflow-hidden transition-all duration-500 ${plan.highlight ? 'holo-card border-2 border-[#F5C518] shadow-[0_0_100px_rgba(245,197,24,0.2)] md:-translate-y-4 scale-105 hover:scale-[1.07]' : 'bg-white/[0.03] border border-white/8 hover:-translate-y-2 hover:border-white/15'}`}>
+                {plan.highlight && (
+                  <>
+                    <div className="absolute top-0 right-0 bg-[#F5C518] text-black text-[8px] font-black uppercase tracking-widest px-4 py-2 rounded-bl-xl rounded-tr-3xl">🔥 Most Popular</div>
+                    <div className="beam-line top-1/2" />
+                  </>
+                )}
+                <div className={`text-[11px] font-black uppercase tracking-widest mb-3 ${plan.highlight ? 'text-[#F5C518]' : 'text-slate-400'}`}>{plan.name}</div>
+                <div className="mb-1 flex items-end gap-1">
+                  <span className="text-5xl font-black tracking-tighter">{billingAnnual ? plan.annualPrice : plan.price}</span>
+                  <span className="text-slate-500 text-sm pb-1">{billingAnnual && plan.annualNote ? plan.annualNote : plan.period}</span>
+                </div>
+                {billingAnnual && plan.highlight && <div className="text-[10px] text-green-400 font-black mb-1">✓ You save $360/year</div>}
+                <p className="text-slate-500 text-sm mb-6">{plan.desc}</p>
+                <ul className="space-y-3 mb-8 flex-1">
+                  {plan.features.map((feat, j) => (
+                    <li key={j} className="flex items-center gap-2.5 text-sm text-slate-300">
+                      <div className={`w-4 h-4 rounded-full flex items-center justify-center flex-shrink-0 ${plan.highlight ? 'bg-[#F5C518]/20' : 'bg-white/5'}`}>
+                        <Icon name="check" className={`w-2.5 h-2.5 ${plan.highlight ? 'text-[#F5C518]' : 'text-slate-500'}`} />
+                      </div>
+                      {feat}
+                    </li>
+                  ))}
+                </ul>
+                <button onClick={plan.action} className={`w-full py-4 rounded-2xl font-black uppercase tracking-widest text-sm active:scale-95 transition-all ${plan.highlight ? 'btn-gold' : 'border border-white/10 hover:bg-white/5 text-white hover:border-white/20'}`}>{plan.cta}</button>
+              </div>
+            ))}
+          </div>
+
+          {/* ── Comparison Table ── */}
+          <div className="reveal">
+            <div className="text-center mb-8">
+              <h3 className="text-2xl font-black tracking-tighter text-white">Full Feature <span className="glow-text italic">Comparison</span></h3>
+              <p className="text-slate-500 text-sm mt-2">Every detail, side by side.</p>
+            </div>
+            <div className="overflow-x-auto rounded-3xl border border-white/8 bg-white/[0.02]">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-white/8">
+                    <th className="text-left p-5 text-slate-400 font-black uppercase tracking-widest text-[10px] w-1/2">Feature</th>
+                    {['Starter','Empire Pro','Enterprise'].map((n,i) => (
+                      <th key={i} className={`p-5 text-center font-black uppercase tracking-widest text-[10px] ${i===1 ? 'text-[#F5C518]' : 'text-slate-400'}`}>{n}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {[
+                    { feature:'Missions / Month', vals:['Up to 5','Unlimited','Unlimited'] },
+                    { feature:'AI Revenue Engine', vals:[false, true, true] },
+                    { feature:'GPS Fleet Tracking', vals:[false, true, true] },
+                    { feature:'WhatsApp CRM', vals:['Templates only', 'Full AI Scripts', 'Full AI Scripts'] },
+                    { feature:'Digital Signatures', vals:[false, true, true] },
+                    { feature:'AI Vision QC', vals:[false, true, true] },
+                    { feature:'Good-Better-Best Quotes', vals:[false, true, true] },
+                    { feature:'Photo Storage', vals:['1 GB', '100 GB', 'Unlimited'] },
+                    { feature:'Staff Members', vals:['1', 'Up to 20', 'Unlimited'] },
+                    { feature:'Client Database', vals:['Basic', 'Full CRM', 'Full CRM'] },
+                    { feature:'Analytics & Reports', vals:[false, true, true] },
+                    { feature:'API Access', vals:[false, false, true] },
+                    { feature:'White-label', vals:[false, false, true] },
+                    { feature:'Dedicated Account Manager', vals:[false, false, true] },
+                    { feature:'SLA / Uptime Guarantee', vals:[false, false, true] },
+                    { feature:'Support', vals:['Community','Priority Email','24/7 Dedicated'] },
+                  ].map((row, ri) => (
+                    <tr key={ri} className={`border-b border-white/5 ${ri % 2 === 0 ? '' : 'bg-white/[0.01]'} hover:bg-white/[0.03] transition-colors group`}>
+                      <td className="p-4 text-slate-300 font-bold">{row.feature}</td>
+                      {row.vals.map((v, vi) => (
+                        <td key={vi} className={`p-4 text-center ${vi===1 ? 'bg-[#F5C518]/[0.03]' : ''}`}>
+                          {v === true ? (
+                            <div className="flex justify-center"><div className={`w-5 h-5 rounded-full flex items-center justify-center ${vi===1 ? 'bg-[#F5C518]/20' : 'bg-green-500/20'}`}><Icon name="check" className={`w-3 h-3 ${vi===1 ? 'text-[#F5C518]' : 'text-green-400'}`} /></div></div>
+                          ) : v === false ? (
+                            <div className="flex justify-center"><div className="w-5 h-5 rounded-full bg-white/5 flex items-center justify-center"><span className="text-slate-700 text-xs font-black">—</span></div></div>
+                          ) : (
+                            <span className={`text-[11px] font-black ${vi===1 ? 'text-[#F5C518]' : 'text-slate-400'}`}>{v}</span>
+                          )}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mt-8">
+              <button onClick={onSignup} className="btn-gold px-10 py-4 text-sm uppercase tracking-widest">Start Free — No Card Needed</button>
+              <button onClick={() => openModal('Contact')} className="px-10 py-4 border border-white/10 rounded-2xl font-black uppercase tracking-widest text-sm text-slate-400 hover:text-white hover:border-white/20 transition-all">Talk to Sales →</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ═══ BLOG / RESOURCES ═══ */}
+      <section className="border-t border-white/5 py-32 section-dark">
+        <div className="max-w-7xl mx-auto px-6">
+          <div className="text-center mb-16 space-y-4">
+            <div className="reveal inline-block text-[10px] font-black uppercase tracking-[0.3em] text-purple-400 border border-purple-400/30 px-4 py-2 rounded-full bg-purple-400/5">Growth Playbook</div>
+            <h2 className="reveal delay-100 text-4xl md:text-5xl font-black tracking-tighter">Built to Help You <span className="glow-text italic">Scale Faster</span></h2>
+            <p className="reveal delay-200 text-slate-400 max-w-xl mx-auto">Battle-tested strategies from operators who went from $5K to $50K/mo using Elevore.</p>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {[
+              {
+                tag: 'Revenue',
+                tagColor: 'text-amber-400 bg-amber-400/10 border-amber-400/20',
+                title: 'The Good-Better-Best Pricing Method That Added $35K in 90 Days',
+                excerpt: 'How psychology-driven 3-tier pricing changes the conversation entirely. When clients see three options, 80% choose the middle — and that middle is where your margin lives.',
+                readTime: '6 min read',
+                author: 'Jose M.',
+                authorRole: 'Founder, Elevore',
+                date: 'May 2026',
+                icon: 'trending-up',
+                featured: true,
+              },
+              {
+                tag: 'Operations',
+                tagColor: 'text-blue-400 bg-blue-400/10 border-blue-400/20',
+                title: 'Why GPS Tracking Reduced Client Disputes by 100% for Elite Handyman',
+                excerpt: 'Maria S. shares how the On-My-Way notification feature transformed client trust. No more "where is your team?" calls — just real-time Uber-style tracking.',
+                readTime: '4 min read',
+                author: 'Maria S.',
+                authorRole: 'CEO, Elite Handyman',
+                date: 'Apr 2026',
+                icon: 'map-pin',
+                featured: false,
+              },
+              {
+                tag: 'AI',
+                tagColor: 'text-green-400 bg-green-400/10 border-green-400/20',
+                title: 'AI Upsell Engine: The Feature That Pays for Itself on Day 1',
+                excerpt: 'A deep dive into how Elevore\'s predictive AI scans job history to surface upsell opportunities at exactly the right moment — before, during, and after each service.',
+                readTime: '8 min read',
+                author: 'David K.',
+                authorRole: 'CEO, Apex Property',
+                date: 'Mar 2026',
+                icon: 'brain',
+                featured: false,
+              },
+            ].map((post, i) => (
+              <div
+                key={i}
+                className={`reveal delay-${i*100} group cursor-pointer rounded-3xl overflow-hidden border transition-all duration-300 hover:-translate-y-2 ${
+                  post.featured
+                    ? 'border-[#F5C518]/20 bg-gradient-to-b from-[#F5C518]/5 to-transparent hover:border-[#F5C518]/40'
+                    : 'border-white/8 bg-white/[0.02] hover:border-white/15'
+                }`}
+                onClick={() => openModal('Features')}
+              >
+                {/* Card top bar */}
+                <div className={`h-1 w-full ${
+                  post.featured ? 'bg-gradient-to-r from-amber-500 to-orange-400' :
+                  i === 1 ? 'bg-gradient-to-r from-blue-500 to-cyan-400' :
+                  'bg-gradient-to-r from-green-500 to-emerald-400'
+                }`} />
+                <div className="p-7 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <span className={`text-[9px] font-black uppercase tracking-widest px-3 py-1 rounded-full border ${post.tagColor}`}>{post.tag}</span>
+                    <span className="text-[9px] text-slate-600 font-bold">{post.readTime}</span>
+                  </div>
+                  <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${
+                    post.featured ? 'bg-amber-400/10 border border-amber-400/20' :
+                    i === 1 ? 'bg-blue-400/10 border border-blue-400/20' :
+                    'bg-green-400/10 border border-green-400/20'
+                  }`}>
+                    <Icon name={post.icon} className={`w-6 h-6 ${
+                      post.featured ? 'text-amber-400' : i === 1 ? 'text-blue-400' : 'text-green-400'
+                    }`} />
+                  </div>
+                  <h3 className="text-lg font-black text-white leading-snug group-hover:text-[#F5C518] transition-colors">{post.title}</h3>
+                  <p className="text-slate-400 text-sm leading-relaxed">{post.excerpt}</p>
+                  <div className="border-t border-white/5 pt-4 flex items-center justify-between">
+                    <div>
+                      <p className="text-white text-xs font-black">{post.author}</p>
+                      <p className="text-slate-600 text-[9px] font-bold">{post.authorRole} • {post.date}</p>
+                    </div>
+                    <div className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-slate-500 group-hover:text-[#F5C518] transition-colors">
+                      Read
+                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="text-center mt-10">
+            <button onClick={() => openModal('Changelog')} className="text-[11px] font-black uppercase tracking-widest text-slate-500 hover:text-[#F5C518] transition-colors animated-underline">View All Articles & Updates →</button>
+          </div>
+        </div>
+      </section>
+
+      {/* ═══ FINAL CTA ═══ */}
+      <section className="border-t border-white/5 py-36 relative overflow-hidden">
+        <div className="absolute inset-0" style={{ background: 'radial-gradient(ellipse at 50% 50%, rgba(245,197,24,0.08) 0%, transparent 70%)' }} />
+        <div className="hero-orb-1" style={{ top:'50%', left:'50%', transform:'translate(-50%,-50%)', opacity: 0.5 }} />
+        <div className="max-w-3xl mx-auto px-6 text-center space-y-8 relative z-10">
+          <div className="reveal inline-flex items-center gap-2 px-4 py-2 rounded-full border border-[#F5C518]/30 bg-[#F5C518]/5 text-[#F5C518] text-[10px] font-black uppercase tracking-widest">
+            <div className="relative flex items-center">
+              <div className="w-2 h-2 bg-[#F5C518] rounded-full" />
+              <div className="pulse-ring" />
+            </div>
+            500+ Businesses Growing Right Now
+          </div>
+          <h2 className="reveal delay-100 text-4xl md:text-6xl font-black tracking-tighter">Ready to Build Your <span className="glow-text italic">Empire?</span></h2>
+          <p className="reveal delay-200 text-slate-400 text-xl">Join the fastest-growing SaaS for service businesses. Setup takes 2 minutes. Results in days.</p>
+          <div className="reveal delay-300">
+            <button onClick={onSignup} className="btn-gold group px-14 py-6 text-lg uppercase tracking-widest flex items-center gap-3 mx-auto">
+              Launch Your Empire →
+              <div className="w-6 h-6 rounded-full bg-black/20 flex items-center justify-center group-hover:scale-125 transition-transform">
+                <Icon name="zap" className="w-3 h-3" />
+              </div>
+            </button>
+          </div>
+          <p className="text-[10px] text-slate-600 uppercase tracking-widest">No credit card • Cancel anytime • 14-day full access</p>
+          <div className="reveal delay-400 flex flex-wrap items-center justify-center gap-6 pt-4">
+            {[['shield-check','SOC 2 Compliant'],['lock','256-bit SSL'],['clock','99.9% Uptime'],['star','4.9/5 Rating']].map(([icon, label]) => (
+              <div key={label} className="flex items-center gap-1.5 text-[10px] text-slate-600 font-bold uppercase tracking-widest">
+                <Icon name={icon} className="w-3 h-3 text-slate-700" />{label}
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ═══ FOOTER ═══ */}
+      <footer className="border-t border-white/5 py-16 relative" style={{ background: 'rgba(0,0,0,0.7)' }}>
+        <div className="absolute top-0 left-0 right-0 h-px shimmer-gold" />
         <div className="max-w-7xl mx-auto px-6">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-12 mb-12">
             <div className="col-span-2 md:col-span-1">
               <div className="flex items-center gap-3 mb-4">
-                <div className="w-8 h-8 bg-[#F5C518] rounded-lg flex items-center justify-center font-black text-black italic">E</div>
-                <span className="font-black text-lg tracking-tight">Elevore</span>
+                <div className="w-8 h-8 bg-[#F5C518] rounded-lg flex items-center justify-center font-black text-black italic" style={{ boxShadow:'0 0 15px rgba(245,197,24,0.3)' }}>E</div>
+                <span className="font-black text-lg tracking-tight">Elevore <span className="glow-text italic">Empire</span></span>
               </div>
-              <p className="text-slate-500 text-sm leading-relaxed">The operating system for elite service businesses.</p>
+              <p className="text-slate-500 text-sm leading-relaxed mb-4">The operating system for elite service businesses. Built by operators, for operators.</p>
+              <div className="flex items-center gap-1.5">
+                <div className="w-2 h-2 bg-green-400 rounded-full" />
+                <span className="text-[10px] text-green-400 font-black uppercase tracking-wider">All Systems Operational</span>
+              </div>
             </div>
-            {[
-              { title: 'Product', links: ['Features', 'Pricing', 'Changelog', 'Roadmap'] },
-              { title: 'Company', links: ['About', 'Blog', 'Careers', 'Press'] },
-              { title: 'Legal', links: ['Privacy Policy', 'Terms of Service', 'Security', 'Contact'] },
-            ].map((col, i) => (
+            {[{title:'Product',links:['Features','Pricing','Changelog','Roadmap']},{title:'Company',links:['About','Blog','Careers','Press']},{title:'Legal',links:['Privacy Policy','Terms of Service','Security','Contact']}].map((col,i) => (
               <div key={i}>
                 <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-4">{col.title}</p>
-                <ul className="space-y-2">{col.links.map(l => (
-                  <li key={l}>
-                    <button
-                      onClick={() => openModal(l)}
-                      className="text-slate-500 hover:text-[#F5C518] transition-colors text-sm text-left cursor-pointer"
-                    >{l}</button>
-                  </li>
-                ))}</ul>
+                <ul className="space-y-2">{col.links.map(l => <li key={l}><button onClick={() => openModal(l)} className="text-slate-500 hover:text-[#F5C518] transition-colors text-sm animated-underline">{l}</button></li>)}</ul>
               </div>
             ))}
           </div>
           <div className="border-t border-white/5 pt-8 flex flex-col sm:flex-row items-center justify-between gap-4">
             <p className="text-[10px] text-slate-700 font-bold uppercase tracking-widest">© 2026 Elevore Empire SaaS. All Rights Reserved.</p>
-            <p className="text-[10px] text-slate-700 font-bold uppercase tracking-widest">Built for the hustlers. Powered by AI.</p>
+            <p className="text-[10px] text-slate-700 font-bold uppercase tracking-widest">Built for the hustlers. <span className="text-[#F5C518]/40">Powered by AI.</span></p>
           </div>
         </div>
       </footer>
 
-      {/* ── Page Modals ── */}
+      {/* ═══ MODALS ═══ */}
       {activeModal && MODAL_CONTENT[activeModal] && (() => {
         const page = MODAL_CONTENT[activeModal];
         return (
-          <div
-            className="fixed inset-0 z-[9000] flex items-center justify-center p-4 bg-black/80 backdrop-blur-lg"
-            onClick={e => e.target === e.currentTarget && closeModal()}
-          >
+          <div className="fixed inset-0 z-[9000] flex items-center justify-center p-4 bg-black/80 backdrop-blur-lg" onClick={e => e.target === e.currentTarget && closeModal()}>
             <div className="land relative w-full max-w-2xl max-h-[85vh] flex flex-col bg-[#0a0a0f] border border-white/10 rounded-3xl shadow-2xl overflow-hidden">
-              {/* Modal header */}
               <div className="flex items-start justify-between p-7 border-b border-white/5 bg-gradient-to-r from-[#F5C518]/5 to-transparent flex-shrink-0">
                 <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-2xl bg-[#F5C518]/10 border border-[#F5C518]/20 flex items-center justify-center text-2xl flex-shrink-0">
-                    {page.icon}
-                  </div>
+                  <div className="w-12 h-12 rounded-2xl bg-[#F5C518]/10 border border-[#F5C518]/20 flex items-center justify-center text-2xl flex-shrink-0">{page.icon}</div>
                   <div>
                     <h2 className="text-xl font-black text-white tracking-tight">{page.title}</h2>
                     <p className="text-[11px] text-slate-500 font-bold uppercase tracking-widest mt-0.5">{page.subtitle}</p>
                   </div>
                 </div>
-                <button
-                  onClick={closeModal}
-                  className="w-9 h-9 rounded-xl bg-white/5 hover:bg-white/10 flex items-center justify-center text-slate-400 hover:text-white transition-all flex-shrink-0 mt-0.5"
-                >
+                <button onClick={closeModal} className="w-9 h-9 rounded-xl bg-white/5 hover:bg-white/10 flex items-center justify-center text-slate-400 hover:text-white transition-all flex-shrink-0 mt-0.5">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
                 </button>
               </div>
-              {/* Modal body */}
-              <div className="flex-1 overflow-y-auto p-7 space-y-5" style={{scrollbarWidth:'thin', scrollbarColor:'rgba(255,255,255,0.1) transparent'}}>
+              <div className="flex-1 overflow-y-auto p-7 space-y-5" style={{scrollbarWidth:'thin',scrollbarColor:'rgba(255,255,255,0.1) transparent'}}>
                 {page.body.map((item, idx) => (
                   <div key={idx} className="p-5 rounded-2xl bg-white/[0.03] border border-white/5 hover:border-[#F5C518]/20 transition-all group">
                     <p className="text-[11px] font-black text-[#F5C518] uppercase tracking-widest mb-2 group-hover:text-amber-300 transition-colors">{item.head}</p>
@@ -2535,23 +3030,19 @@ function LandingPage({ onLogin, onSignup }) {
                   </div>
                 ))}
               </div>
-              {/* Modal footer */}
               <div className="flex-shrink-0 px-7 py-5 border-t border-white/5 bg-black/30 flex items-center justify-between gap-4">
                 <p className="text-[10px] text-slate-700 font-bold uppercase tracking-widest">Elevore Empire © 2026</p>
-                <button
-                  onClick={onSignup}
-                  className="px-6 py-2.5 bg-[#F5C518] text-black rounded-xl font-black text-[10px] uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shadow-[0_0_20px_rgba(245,197,24,0.2)]"
-                >
-                  Start Free Trial →
-                </button>
+                <button onClick={onSignup} className="btn-gold px-6 py-2.5 text-[10px] uppercase tracking-widest">Start Free Trial →</button>
               </div>
             </div>
           </div>
         );
       })()}
+      {showVideoDemo && <VideoDemoModal onClose={() => setShowVideoDemo(false)} />}
     </div>
   );
 }
+
 
 
 
