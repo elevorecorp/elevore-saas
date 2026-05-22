@@ -1209,6 +1209,7 @@ function AIAdvisor({ jobs, clients, staff, isStaff, activeUser, onClose, tt, onO
     return saved || 'http://127.0.0.1:11434';
   });
   const [ollamaModel, setOllamaModel] = useState(() => localStorage.getItem('elevore_ollama_model') || 'llama3');
+  const [openaiApiKey, setOpenaiApiKey] = useState(() => localStorage.getItem('elevore_openai_api_key') || '');
   const [showSettings, setShowSettings] = useState(false);
   const [connStatus, setConnStatus] = useState('idle'); // idle, testing, connected, error
 
@@ -1224,6 +1225,10 @@ function AIAdvisor({ jobs, clients, staff, isStaff, activeUser, onClose, tt, onO
   useEffect(() => {
     localStorage.setItem('elevore_ollama_model', ollamaModel);
   }, [ollamaModel]);
+
+  useEffect(() => {
+    localStorage.setItem('elevore_openai_api_key', openaiApiKey);
+  }, [openaiApiKey]);
 
   // Load chat memory from LocalStorage
   const storageKey = `elevore_chat_history_${isStaff ? 'staff' : 'admin'}`;
@@ -1281,6 +1286,43 @@ function AIAdvisor({ jobs, clients, staff, isStaff, activeUser, onClose, tt, onO
       } else {
         setConnStatus('connected');
         tt('Conexión con Gemini lista', 'green');
+      }
+    } else if (aiProvider === 'openai') {
+      const key = import.meta.env.VITE_OPENAI_API_KEY || openaiApiKey;
+      if (!key) {
+        setConnStatus('error');
+        tt('Falta la API Key de OpenAI. Configúrala en Ajustes.', 'red');
+      } else {
+        const controller = new AbortController();
+        const id = setTimeout(() => controller.abort(), 4000);
+        try {
+          const res = await fetch('https://api.openai.com/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${key}`
+            },
+            body: JSON.stringify({
+              model: 'gpt-4o-mini',
+              messages: [{ role: 'user', content: 'Ping' }],
+              max_tokens: 5
+            }),
+            signal: controller.signal
+          });
+          clearTimeout(id);
+          if (res.ok) {
+            setConnStatus('connected');
+            tt('Conexión con OpenAI (GPT-4o-mini) exitosa', 'green');
+          } else {
+            const err = await res.json().catch(() => ({}));
+            setConnStatus('error');
+            tt(`OpenAI rechazó la conexión: ${err.error?.message || 'Error de autenticación'}`, 'red');
+          }
+        } catch (e) {
+          clearTimeout(id);
+          setConnStatus('error');
+          tt('Error de red al conectar con OpenAI.', 'red');
+        }
       }
     } else {
       const controller = new AbortController();
@@ -1421,6 +1463,49 @@ Habla en español. Sé directo, estratégico y orientado a resultados. Si el CEO
           return '⚠️ La respuesta fue bloqueada por filtros de seguridad. Intenta reformular tu pregunta.';
         }
         return candidate?.content?.parts?.[0]?.text || 'Lo siento, no pude generar una respuesta. Intenta de nuevo.';
+      } else if (aiProvider === 'openai') {
+        const OPENAI_KEY = import.meta.env.VITE_OPENAI_API_KEY || openaiApiKey;
+        if (!OPENAI_KEY) {
+          clearTimeout(timeoutId);
+          return '⚠️ Error: No se pudo conectar a la IA. La clave de API de OpenAI no está configurada. Abre Ajustes en el chat para guardarla.';
+        }
+
+        const res = await fetch('https://api.openai.com/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${OPENAI_KEY}`
+          },
+          body: JSON.stringify({
+            model: 'gpt-4o-mini',
+            messages: [
+              { role: 'system', content: systemPrompt },
+              { role: 'assistant', content: isStaff
+                ? `Hola ${activeUser}! Soy tu guía de operaciones de campo. Estoy aquí para ayudarte en tiempo real. ¿Qué necesitas?`
+                : `Hola ${activeUser}! Sistema de IA Elevore activo. Tengo acceso completo a tus métricas en tiempo real. ¿Qué analizamos?`
+              },
+              ...messages.slice(-8).map(m => ({
+                role: m.from === 'user' ? 'user' : 'assistant',
+                content: m.text
+              })),
+              { role: 'user', content: userMessage }
+            ],
+            temperature: 0.7,
+            max_tokens: 600
+          }),
+          signal: controller.signal
+        });
+
+        clearTimeout(timeoutId);
+
+        if (!res.ok) {
+          const errBody = await res.json().catch(() => ({}));
+          const errMsg = errBody?.error?.message || `HTTP ${res.status}`;
+          return `⚠️ Error de Conexión OpenAI: ${errMsg}`;
+        }
+
+        const data = await res.json();
+        return data.choices?.[0]?.message?.content || 'Lo siento, no recibí respuesta de OpenAI. Intenta de nuevo.';
       } else {
         // --- OLLAMA LOCAL AI CALL ---
         const res = await fetch(`${ollamaUrl}/api/chat`, {
@@ -1497,7 +1582,7 @@ Habla en español. Sé directo, estratégico y orientado a resultados. Si el CEO
                   {isStaff ? 'Elevore Field Operations Guide' : 'Elevore AI Command'}
                 </p>
                 <span className="text-[6px] bg-white/10 text-slate-400 px-1 py-0.5 rounded uppercase font-bold">
-                  {aiProvider === 'gemini' ? 'Gemini 2.5' : `Ollama: ${ollamaModel}`}
+                  {aiProvider === 'gemini' ? 'Gemini 2.5' : aiProvider === 'openai' ? 'OpenAI: GPT-4o-mini' : `Ollama: ${ollamaModel}`}
                 </span>
               </div>
               <p className="text-[7px] text-slate-500 uppercase mt-0.5">
@@ -1527,21 +1612,47 @@ Habla en español. Sé directo, estratégico y orientado a resultados. Si el CEO
             
             <div className="space-y-1.5">
               <label className="text-[8px] font-bold text-slate-400 uppercase block">Proveedor de IA</label>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-3 gap-1.5">
                 <button
                   onClick={() => { setAiProvider('gemini'); setConnStatus('idle'); }}
-                  className={`py-2 rounded-xl text-[8px] font-black uppercase border transition-all ${aiProvider === 'gemini' ? 'bg-[#F5C518] text-black border-[#F5C518]' : 'bg-white/5 border-white/5 text-slate-400'}`}
+                  className={`py-2 rounded-xl text-[7px] font-black uppercase border transition-all text-center ${aiProvider === 'gemini' ? 'bg-[#F5C518] text-black border-[#F5C518]' : 'bg-white/5 border-white/5 text-slate-400'}`}
                 >
-                  ☁️ Gemini Cloud
+                  ☁️ Gemini
+                </button>
+                <button
+                  onClick={() => { setAiProvider('openai'); setConnStatus('idle'); }}
+                  className={`py-2 rounded-xl text-[7px] font-black uppercase border transition-all text-center ${aiProvider === 'openai' ? 'bg-[#F5C518] text-black border-[#F5C518]' : 'bg-white/5 border-white/5 text-slate-400'}`}
+                >
+                  🧠 OpenAI
                 </button>
                 <button
                   onClick={() => { setAiProvider('ollama'); setConnStatus('idle'); }}
-                  className={`py-2 rounded-xl text-[8px] font-black uppercase border transition-all ${aiProvider === 'ollama' ? 'bg-[#F5C518] text-black border-[#F5C518]' : 'bg-white/5 border-white/5 text-slate-400'}`}
+                  className={`py-2 rounded-xl text-[7px] font-black uppercase border transition-all text-center ${aiProvider === 'ollama' ? 'bg-[#F5C518] text-black border-[#F5C518]' : 'bg-white/5 border-white/5 text-slate-400'}`}
                 >
-                  💻 Ollama Local
+                  💻 Ollama
                 </button>
               </div>
             </div>
+
+            {aiProvider === 'openai' && (
+              <div className="space-y-2.5 animate-in fade-in duration-200">
+                <div className="space-y-1">
+                  <div className="flex justify-between items-center">
+                    <label className="text-[7px] font-bold text-slate-400 uppercase block">Clave API de OpenAI</label>
+                    {import.meta.env.VITE_OPENAI_API_KEY && (
+                      <span className="text-[6px] text-green-400 uppercase font-black">✓ Detectada en Env</span>
+                    )}
+                  </div>
+                  <input
+                    type="password"
+                    value={openaiApiKey}
+                    onChange={e => { setOpenaiApiKey(e.target.value); setConnStatus('idle'); }}
+                    placeholder={import.meta.env.VITE_OPENAI_API_KEY ? "•••••••••••••••• (Usando Env)" : "sk-proj-..."}
+                    className="inp text-[10px] py-1.5"
+                  />
+                </div>
+              </div>
+            )}
 
             {aiProvider === 'ollama' && (
               <div className="space-y-2.5 animate-in fade-in duration-200">
@@ -4847,6 +4958,39 @@ Respond ONLY in this exact JSON format (no explanation, no markdown, just raw JS
 
                         const data = await res.json();
                         raw = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+                      } else if (provider === 'openai') {
+                        const OPENAI_KEY = import.meta.env.VITE_OPENAI_API_KEY || localStorage.getItem('elevore_openai_api_key') || '';
+                        if (!OPENAI_KEY) {
+                          throw new Error('La API Key de OpenAI no está configurada. Configúrala en los Ajustes del Chat.');
+                        }
+
+                        const res = await fetch('https://api.openai.com/v1/chat/completions', {
+                          method: 'POST',
+                          headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${OPENAI_KEY}`
+                          },
+                          body: JSON.stringify({
+                            model: 'gpt-4o-mini',
+                            messages: [
+                              { role: 'system', content: 'You must respond ONLY with raw valid JSON. No markdown code blocks, no other text.' },
+                              { role: 'user', content: prompt }
+                            ],
+                            temperature: 0.3,
+                            max_tokens: 500
+                          }),
+                          signal: controller.signal
+                        });
+
+                        clearTimeout(timeoutId);
+
+                        if (!res.ok) {
+                          const errBody = await res.json().catch(() => ({}));
+                          throw new Error(errBody?.error?.message || `HTTP ${res.status}`);
+                        }
+
+                        const data = await res.json();
+                        raw = data.choices?.[0]?.message?.content || '';
                       } else {
                         // Ollama Chat API call
                         const res = await fetch(`${ollamaUrl}/api/chat`, {
