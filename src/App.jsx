@@ -4711,103 +4711,40 @@ Based on current market rates from platforms like Angi, Thumbtack, and HomeAdvis
 Respond ONLY in this exact JSON format (no explanation, no markdown, just raw JSON):
 {"good":{"price":120,"label":"Standard Service","description":"Basic clean, meets expectations"},"better":{"price":160,"label":"Premium Service","description":"Deep attention to detail, priority scheduling"},"best":{"price":210,"label":"VIP Elite","description":"Full white-glove treatment, same-day, satisfaction guarantee"},"insight":"One sentence about Orlando market conditions for this service."}`;
 
-                    const provider = localStorage.getItem('elevore_ai_provider') || 'gemini';
                     let ollamaUrl = localStorage.getItem('elevore_ollama_url') || 'http://127.0.0.1:11434';
                     if (ollamaUrl === 'http://localhost:11434') ollamaUrl = 'http://127.0.0.1:11434';
                     const ollamaModel = localStorage.getItem('elevore_ollama_model') || 'llama3';
 
                     const controller = new AbortController();
-                    const timeoutDuration = provider === 'ollama' ? 90000 : 15000; // 90s for local Ollama, 15s for Gemini Cloud
+                    const timeoutDuration = 90000; // 90s for local Ollama
                     const timeoutId = setTimeout(() => controller.abort(), timeoutDuration);
 
                     try {
                       let raw = '';
-                      if (provider === 'gemini') {
-                        const GEMINI_KEY = import.meta.env.VITE_GEMINI_KEY;
-                        if (!GEMINI_KEY) {
-                          throw new Error('La API Key de Gemini no está configurada.');
-                        }
+                      // Ollama Chat API call
+                      const res = await fetch(`${ollamaUrl}/api/chat`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                          model: ollamaModel,
+                          messages: [
+                            { role: 'system', content: 'You must respond ONLY with raw valid JSON. No markdown code blocks, no other text.' },
+                            { role: 'user', content: prompt }
+                          ],
+                          stream: false,
+                          options: { temperature: 0.2 }
+                        }),
+                        signal: controller.signal
+                      });
 
-                        const res = await fetch(
-                          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_KEY}`,
-                          {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({
-                              contents: [{ parts: [{ text: prompt }] }],
-                              generationConfig: { temperature: 0.3, maxOutputTokens: 500 }
-                            }),
-                            signal: controller.signal
-                          }
-                        );
+                      clearTimeout(timeoutId);
 
-                        clearTimeout(timeoutId);
-
-                        if (!res.ok) {
-                          throw new Error(`HTTP ${res.status}`);
-                        }
-
-                        const data = await res.json();
-                        raw = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
-                      } else if (provider === 'openai') {
-                        const OPENAI_KEY = import.meta.env.VITE_OPENAI_API_KEY || localStorage.getItem('elevore_openai_api_key') || '';
-                        if (!OPENAI_KEY) {
-                          throw new Error('La API Key de OpenAI no está configurada. Configúrala en los Ajustes del Chat.');
-                        }
-
-                        const res = await fetch('https://api.openai.com/v1/chat/completions', {
-                          method: 'POST',
-                          headers: {
-                            'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${OPENAI_KEY}`
-                          },
-                          body: JSON.stringify({
-                            model: 'gpt-4o-mini',
-                            messages: [
-                              { role: 'system', content: 'You must respond ONLY with raw valid JSON. No markdown code blocks, no other text.' },
-                              { role: 'user', content: prompt }
-                            ],
-                            temperature: 0.3,
-                            max_tokens: 500
-                          }),
-                          signal: controller.signal
-                        });
-
-                        clearTimeout(timeoutId);
-
-                        if (!res.ok) {
-                          const errBody = await res.json().catch(() => ({}));
-                          throw new Error(errBody?.error?.message || `HTTP ${res.status}`);
-                        }
-
-                        const data = await res.json();
-                        raw = data.choices?.[0]?.message?.content || '';
-                      } else {
-                        // Ollama Chat API call
-                        const res = await fetch(`${ollamaUrl}/api/chat`, {
-                          method: 'POST',
-                          headers: { 'Content-Type': 'application/json' },
-                          body: JSON.stringify({
-                            model: ollamaModel,
-                            messages: [
-                              { role: 'system', content: 'You must respond ONLY with raw valid JSON. No markdown code blocks, no other text.' },
-                              { role: 'user', content: prompt }
-                            ],
-                            stream: false,
-                            options: { temperature: 0.2 }
-                          }),
-                          signal: controller.signal
-                        });
-
-                        clearTimeout(timeoutId);
-
-                        if (!res.ok) {
-                          throw new Error(`Ollama HTTP ${res.status}`);
-                        }
-
-                        const data = await res.json();
-                        raw = data.message?.content || '';
+                      if (!res.ok) {
+                        throw new Error(`Ollama HTTP ${res.status}`);
                       }
+
+                      const data = await res.json();
+                      raw = data.message?.content || '';
 
                       // Strip markdown code fences if present
                       const cleaned = raw.replace(/```json|```/g, '').trim();
@@ -4821,7 +4758,7 @@ Respond ONLY in this exact JSON format (no explanation, no markdown, just raw JS
                       clearTimeout(timeoutId);
                       console.error(err);
                       if (err.name === 'AbortError') {
-                        tt('Tiempo de espera agotado (15s). ¿Tu IA local está encendida?', 'red');
+                        tt('Tiempo de espera agotado (90s). ¿Tu IA local está encendida?', 'red');
                       } else {
                         tt(`Error IA: ${err.message || 'Verifica la conexión.'}`, 'red');
                       }
