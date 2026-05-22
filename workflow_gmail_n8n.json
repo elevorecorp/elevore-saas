@@ -1,0 +1,65 @@
+{
+  "id": "1",
+  "name": "Elevore - Enviar Correo de Servicio Completado (SMTP)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "elevore-servicio-completado",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ],
+      "id": "webhook-trigger-supabase",
+      "name": "Webhook (Supabase Trigger)",
+      "webhookId": "30720017-bb4a-45c6-b5ae-5c578f1ca573"
+    },
+    {
+      "parameters": {
+        "fromEmail": "elevorecorporation@gmail.com",
+        "toEmail": "={{ $json.body.record.client_email || 'cliente@ejemplo.com' }}",
+        "subject": "¡Tu servicio de Elevore ha sido completado! 🌟",
+        "emailFormat": "html",
+        "html": "=<!DOCTYPE html>\n<html lang=\"es\">\n<head>\n  <meta charset=\"UTF-8\">\n  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n  <style>\n    body {\n      background-color: #060609;\n      margin: 0;\n      padding: 0;\n      font-family: -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, sans-serif;\n    }\n    .wrapper {\n      width: 100%;\n      background-color: #060609;\n      padding: 40px 0;\n    }\n    .main-table {\n      background-color: #0d0d12;\n      margin: 0 auto;\n      width: 100%;\n      max-width: 600px;\n      border-radius: 24px;\n      border: 1px solid rgba(245, 197, 24, 0.15);\n      overflow: hidden;\n      color: #ffffff;\n    }\n    .header {\n      background-color: #13131a;\n      padding: 40px 30px;\n      text-align: center;\n    }\n    .logo {\n      color: #F5C518;\n      font-size: 28px;\n      font-weight: 900;\n      letter-spacing: 2px;\n      text-transform: uppercase;\n    }\n    .content {\n      padding: 40px 35px;\n    }\n    .badge {\n      display: inline-block;\n      background: rgba(245, 197, 24, 0.1);\n      border: 1px solid rgba(245, 197, 24, 0.3);\n      color: #F5C518;\n      font-size: 11px;\n      font-weight: 800;\n      text-transform: uppercase;\n      padding: 8px 16px;\n      border-radius: 100px;\n      margin-bottom: 25px;\n    }\n    .title {\n      color: #ffffff;\n      font-size: 26px;\n      font-weight: 800;\n      margin-bottom: 15px;\n    }\n    .description {\n      color: #a1a1aa;\n      font-size: 15px;\n      line-height: 1.6;\n      margin-bottom: 35px;\n    }\n    .card {\n      background-color: #13131a;\n      border: 1px solid rgba(255, 255, 255, 0.05);\n      border-radius: 16px;\n      padding: 25px;\n      margin-bottom: 35px;\n    }\n    .card-title {\n      color: #ffffff;\n      font-size: 14px;\n      font-weight: 800; \n      text-transform: uppercase;\n      border-bottom: 1px solid rgba(255, 255, 255, 0.05);\n      padding-bottom: 10px;\n      margin-top: 0;\n    }\n    .data-row {\n      margin-bottom: 12px;\n      font-size: 14px;\n    }\n    .data-label {\n      color: #71717a;\n      display: inline-block;\n      width: 120px;\n      font-weight: 600;\n    }\n    .data-value {\n      color: #e4e4e7;\n    }\n    .data-highlight {\n      color: #F5C518;\n      font-weight: 700;\n    }\n    .btn {\n      display: inline-block;\n      background-color: #F5C518;\n      color: #060609 !important;\n      font-weight: 800;\n      text-decoration: none;\n      padding: 16px 32px;\n      border-radius: 12px;\n    }\n    .footer {\n      background-color: #08080c;\n      padding: 30px;\n      text-align: center;\n      font-size: 12px;\n      color: #52525b;\n    }\n    .footer-link {\n      color: #F5C518;\n      text-decoration: none;\n    }\n  </style>\n</head>\n<body>\n  <center class=\"wrapper\">\n    <div class=\"main-table\">\n      <div class=\"header\">\n        <div class=\"logo\">ELEVORE</div>\n      </div>\n      <div class=\"content\">\n        <center><div class=\"badge\">Servicio Completado</div></center>\n        <h1 class=\"title\">¡Hola {{ $json.body.record.client_name || 'Cliente' }}!</h1>\n        <p class=\"description\">\n          Te informamos que nuestro equipo ha finalizado con éxito el servicio programado para hoy en tu propiedad.\n        </p>\n        <div class=\"card\">\n          <h2 class=\"card-title\">Detalles del Trabajo</h2>\n          <div class=\"data-row\">\n            <span class=\"data-label\">Servicio:</span>\n            <span class=\"data-value\">{{ $json.body.record.title || 'Limpieza General' }}</span>\n          </div>\n          <div class=\"data-row\">\n            <span class=\"data-label\">Fecha:</span>\n            <span class=\"data-value\">{{ $json.body.record.scheduled_date || 'Hoy' }}</span>\n          </div>\n          <div class=\"data-row\">\n            <span class=\"data-label\">Total:</span>\n            <span class=\"data-highlight\">${{ $json.body.record.total_price || '0' }} USD</span>\n          </div>\n        </div>\n        <center><a href=\"https://elevore-saas.vercel.app\" class=\"btn\">Ver Mi Cuenta</a></center>\n      </div>\n      <div class=\"footer\">\n        <p>¿Tienes dudas? Escríbenos a <a href=\"mailto:elevorecorporation@gmail.com\" class=\"footer-link\">elevorecorporation@gmail.com</a></p>\n        <p>&copy; 2026 Elevore. Todos los derechos reservados.</p>\n      </div>\n    </div>\n  </center>\n</body>\n</html>",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        250,
+        0
+      ],
+      "id": "email-smtp-send",
+      "name": "Send Email (SMTP)",
+      "credentials": {
+        "smtp": {
+          "id": "RD7hCb4Op8i8Phk9",
+          "name": "Elevore Gmail SMTP"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Webhook (Supabase Trigger)": {
+      "main": [
+        [
+          {
+            "node": "Send Email (SMTP)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {},
+  "staticData": null,
+  "pinData": null,
+  "active": true
+}

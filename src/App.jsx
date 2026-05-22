@@ -2699,6 +2699,8 @@ export default function App() {
   const [toast, setToast] = useState(null);
   const [aStaff, setAStaff] = useState(null);
   const [editingStaff, setEditingStaff] = useState(null);
+  const [selectedClient, setSelectedClient] = useState(null);
+  const [selectedJobs, setSelectedJobs] = useState([]);
   const [quickMode, setQM] = useState(false);
   const [chatJob, setChatJob] = useState(null);
   const [chatMsg, setChatMsg] = useState('');
@@ -2736,6 +2738,21 @@ export default function App() {
 
   useEffect(() => { try { localStorage.setItem('ev97', JSON.stringify(state)); } catch { }; }, [state]);
   useEffect(() => { try { const d = JSON.parse(localStorage.getItem('ev97') || '{}'); if (d.name) setState(s => ({ ...s, ...d })); } catch { }; }, []);
+
+  useEffect(() => {
+    const handleESC = (e) => {
+      if (e.key === 'Escape') {
+        setQM(false);
+        setChatJob(null);
+        setAIOpen(false);
+        setAIReportOpen(false);
+        setPayoutModalWorker(null);
+        setSelectedClient(null);
+      }
+    };
+    window.addEventListener('keydown', handleESC);
+    return () => window.removeEventListener('keydown', handleESC);
+  }, []);
 
   const refresh = useCallback(async () => {
     // ⚠️ SECURITY: Never fetch data without a confirmed tenantId.
@@ -3147,7 +3164,29 @@ export default function App() {
   const filtered = useMemo(() => jobs.filter(j => { const ms = fSt === 'all' || j.status === fSt; const q = sq.toLowerCase(); const mq = !sq || j.client_name?.toLowerCase().includes(q) || j.address?.toLowerCase().includes(q) || j.team_assigned?.toLowerCase().includes(q); return ms && mq; }), [jobs, fSt, sq]);
 
   const todayStr = new Date().toISOString().split('T')[0];
-  const staffJobs = useMemo(() => jobs.filter(j => j.scheduled_date === todayStr || j.status === 'scheduled' || j.status === 'in_progress'), [jobs, todayStr]);
+
+  const tomorrowStr = useMemo(() => {
+    const d = new Date();
+    d.setDate(d.getDate() + 1);
+    return d.toISOString().split('T')[0];
+  }, []);
+
+  const remindersBadgeCount = useMemo(() => {
+    const pendingManual = reminders.filter(r => !r.done).length;
+    const unpaidCompleted = jobs.filter(j => j.status === 'completed').length;
+    const tomorrowAuto = jobs.filter(j => j.scheduled_date === tomorrowStr && j.status === 'scheduled').length;
+    return pendingManual + unpaidCompleted + tomorrowAuto;
+  }, [reminders, jobs, tomorrowStr]);
+
+  const staffJobs = useMemo(() => {
+    const basicFiltered = jobs.filter(j => j.scheduled_date === todayStr || j.status === 'scheduled' || j.status === 'in_progress');
+    if (activeEmployee && activeEmployee.name && activeEmployee.name !== 'General Staff' && role === 'staff') {
+      const nameLower = activeEmployee.name.toLowerCase();
+      return basicFiltered.filter(j => j.team_assigned && j.team_assigned.toLowerCase().includes(nameLower));
+    }
+    return basicFiltered;
+  }, [jobs, todayStr, activeEmployee, role]);
+
   const seasons = season();
 
   // Authentication Pin matching logic
@@ -3301,6 +3340,93 @@ ${job.final_signature ? `<div class="sig"><p style="font-size:10px;color:#999;ma
       {chatJob && <ChatModal />}
       {aiOpen && <AIAdvisor jobs={jobs} clients={clients} staff={staff} isStaff={role === 'staff'} activeUser={activeEmployee?.name || 'User'} onClose={() => setAIOpen(false)} tt={tt} onOpenReport={() => { setAIOpen(false); setAIReportOpen(true); }} />}
       {aiReportOpen && <AIReportModal jobs={jobs} clients={clients} staff={staff} onClose={() => setAIReportOpen(false)} tt={tt} />}
+
+      {/* 🧬 CLIENT DNA DETAIL MODAL */}
+      {selectedClient && (() => {
+        const clientJobs = jobs.filter(j => j.client_name === selectedClient.name);
+        const ltv = clientJobs.reduce((acc, j) => acc + (j.total_price || 0), 0);
+        const totalCount = clientJobs.length;
+        const lv = lvl(totalCount);
+        return (
+          <div className="fixed inset-0 bg-black/90 backdrop-blur-md z-[2000] flex items-center justify-center p-4" onClick={e => e.target === e.currentTarget && setSelectedClient(null)}>
+            <div className="g p-6 w-full max-w-2xl space-y-5 border-t-4 mx-auto bg-slate-950 rounded-2xl shadow-2xl border border-white/5 animate-in fade-in-50 zoom-in-95 duration-150" style={{ borderTopColor: lv.color }}>
+              <div className="flex justify-between items-start pb-2 border-b border-white/5">
+                <div>
+                  <span className="text-[7px] font-black px-2 py-0.5 rounded-full uppercase" style={{ background: lv.color, color: '#000' }}>{lv.name}</span>
+                  <h3 className="text-xl font-black uppercase italic text-white mt-1">{selectedClient.name}</h3>
+                  <p className="text-[8px] text-slate-500 uppercase mt-0.5">Client Profile DNA & History</p>
+                </div>
+                <button onClick={() => setSelectedClient(null)} className="text-slate-500 hover:text-white"><Icon name="x" className="w-5 h-5" /></button>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="bg-white/5 border border-white/5 p-4 rounded-xl">
+                  <p className="text-[7px] text-slate-500 uppercase font-black tracking-wider">Total LTV (Spend)</p>
+                  <p className="text-xl font-black text-green-400 mt-1">{fmt$(ltv)}</p>
+                </div>
+                <div className="bg-white/5 border border-white/5 p-4 rounded-xl">
+                  <p className="text-[7px] text-slate-500 uppercase font-black tracking-wider">Total Services</p>
+                  <p className="text-xl font-black text-[#F5C518] mt-1">{totalCount}</p>
+                </div>
+                <div className="bg-white/5 border border-white/5 p-4 rounded-xl">
+                  <p className="text-[7px] text-slate-500 uppercase font-black tracking-wider">Contact Phone</p>
+                  <p className="text-sm font-black text-white mt-2 truncate">{selectedClient.phone || 'N/A'}</p>
+                </div>
+              </div>
+              <div className="bg-white/5 border border-white/5 p-3 rounded-xl flex items-center justify-between">
+                <div>
+                  <p className="text-[7px] text-slate-500 uppercase font-black">Main Address</p>
+                  <p className="text-[10px] text-white font-bold mt-0.5">{selectedClient.address || 'No address specified'}</p>
+                </div>
+                {selectedClient.address && (
+                  <button onClick={() => { setMapAddress(selectedClient.address); setView('brief'); setSelectedClient(null); tt('🗺️ Showing client map...'); }} className="px-3 py-1.5 bg-blue-900/30 text-blue-400 border border-blue-500/10 rounded-lg text-[8px] font-black uppercase hover:bg-blue-600 transition-all flex items-center gap-1"><Icon name="navigation" className="w-3 h-3" /> Map</button>
+                )}
+              </div>
+              <div className="space-y-2">
+                <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest px-1">📅 Service History</p>
+                <div className="max-h-[180px] overflow-y-auto border border-white/5 rounded-xl nsb">
+                  {clientJobs.length === 0 ? (
+                    <div className="text-center py-8 text-[8px] text-slate-600 uppercase font-black italic">No past jobs recorded.</div>
+                  ) : (
+                    <table className="w-full text-left border-collapse">
+                      <thead>
+                        <tr className="bg-white/5 border-b border-white/5 text-[7px] uppercase font-black text-slate-400">
+                          <th className="p-3">Service</th>
+                          <th className="p-3">Date</th>
+                          <th className="p-3">Price</th>
+                          <th className="p-3">Status</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-white/5">
+                        {clientJobs.map(job => (
+                          <tr key={job.id} className="text-[8px] text-slate-300 font-bold uppercase hover:bg-white/[0.02]">
+                            <td className="p-3 font-black text-white">{job.service_type || 'Cleaning'}</td>
+                            <td className="p-3">{fmtD(job.scheduled_date)}</td>
+                            <td className="p-3 text-gradient font-gradient font-black">{fmt$(job.total_price)}</td>
+                            <td className="p-3">
+                              <span className={`text-[6px] font-black px-2 py-0.5 rounded-full uppercase ${job.status === 'paid' ? 'bg-blue-600 text-white' : job.status === 'in_progress' ? 'bg-green-600 text-white' : job.status === 'completed' ? 'bg-purple-600 text-white' : 'bg-[#F5C518] text-black'}`}>{job.status}</span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  )}
+                </div>
+              </div>
+              <div className="flex gap-2 justify-end border-t border-white/5 pt-3">
+                <button onClick={() => {
+                  setState({ ...INIT, ...selectedClient.specs, name: selectedClient.name, phone: selectedClient.phone, address: selectedClient.address });
+                  setSelectedClient(null);
+                  setView('deploy');
+                  setDtab('specs');
+                  tt('Quick booking initialized 🚀');
+                }} className="px-4 py-2.5 bg-[#F5C518] hover:bg-[#F5C518]/90 text-black text-[9px] font-black uppercase rounded-xl active:scale-95 transition-all">+ Quick Book Service</button>
+                <button onClick={() => setSelectedClient(null)} className="px-4 py-2.5 bg-white/5 hover:bg-white/10 text-slate-400 rounded-xl text-[9px] font-black uppercase active:scale-95 transition-all">Close</button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
       <Loader />
 
       {/* 👑 FIXED SIDEBAR ON LEFT (EMPIRE ADMIN STYLE) */}
@@ -3345,9 +3471,16 @@ ${job.final_signature ? `<div class="sig"><p style="font-size:10px;color:#999;ma
               ].map(item => {
                 const isActive = view === item.id;
                 return (
-                  <button key={item.id} onClick={() => { if (item.id === 'deploy') { setEdit(null); setState(INIT); setDtab('identity'); } setView(item.id); setMobileMenuOpen(false); }} className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all duration-200 active:scale-95 ${isActive ? 'bg-[#F5C518] text-black shadow-lg shadow-[#F5C518]/15' : 'text-slate-400 hover:bg-white/5 hover:text-white'}`}>
-                    <Icon name={item.icon} className={`w-4 h-4 ${isActive ? 'text-black' : 'text-slate-400'}`} />
-                    <span>{item.label}</span>
+                  <button key={item.id} onClick={() => { if (item.id === 'deploy') { setEdit(null); setState(INIT); setDtab('identity'); } setView(item.id); setMobileMenuOpen(false); }} className={`w-full flex items-center justify-between gap-3 px-4 py-3.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all duration-200 active:scale-95 ${isActive ? 'bg-[#F5C518] text-black shadow-lg shadow-[#F5C518]/15' : 'text-slate-400 hover:bg-white/5 hover:text-white'}`}>
+                    <div className="flex items-center gap-3">
+                      <Icon name={item.icon} className={`w-4 h-4 ${isActive ? 'text-black' : 'text-slate-400'}`} />
+                      <span>{item.label}</span>
+                    </div>
+                    {item.id === 'reminders' && remindersBadgeCount > 0 && (
+                      <span className="bg-red-600 text-white font-bold text-[8px] px-1.5 py-0.5 rounded-full shadow-[0_0_8px_rgba(239,68,68,0.5)]">
+                        {remindersBadgeCount}
+                      </span>
+                    )}
                   </button>
                 );
               })
@@ -3443,6 +3576,51 @@ ${job.final_signature ? `<div class="sig"><p style="font-size:10px;color:#999;ma
                 </div>
                 <button onClick={() => setAIOpen(true)} className="px-4 py-2.5 bg-[#F5C518] hover:bg-[#F5C518]/90 text-black font-black uppercase text-[9px] flex items-center gap-1 active:scale-95 shadow-lg shadow-[#F5C518]/15 rounded-xl transition-all">🧠 Operaciones IA</button>
               </div>
+
+              {/* Today's Missions Prominent Widget */}
+              {(() => {
+                const todayJobs = staffJobs.filter(j => j.scheduled_date === todayStr);
+                const todayCompleted = todayJobs.filter(j => j.status === 'completed' || j.status === 'paid').length;
+                const todayPending = todayJobs.filter(j => j.status !== 'completed' && j.status !== 'paid').length;
+                const activeJob = todayJobs.find(j => j.status === 'in_progress');
+
+                return (
+                  <div className="g p-6 bg-gradient-to-br from-slate-950 via-zinc-900 to-black border border-[#F5C518]/20 rounded-2xl relative overflow-hidden shadow-2xl space-y-4">
+                    <div className="absolute top-0 right-0 w-32 h-32 bg-[#F5C518]/5 rounded-full blur-3xl pointer-events-none"></div>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-[7px] font-black text-[#F5C518] uppercase tracking-wider">🎯 STATUS HOY</p>
+                        <h3 className="text-sm font-black text-white uppercase tracking-widest mt-0.5">Misiones de Hoy</h3>
+                      </div>
+                      <span className="text-[8px] font-black text-slate-400 uppercase bg-white/5 border border-white/5 px-2.5 py-1 rounded-lg">
+                        {todayCompleted}/{todayJobs.length} Completadas
+                      </span>
+                    </div>
+
+                    {todayJobs.length > 0 ? (
+                      <div className="w-full bg-white/5 h-1.5 rounded-full overflow-hidden">
+                        <div 
+                          className="bg-gradient-to-r from-[#F5C518] to-amber-500 h-full transition-all duration-500" 
+                          style={{ width: `${(todayCompleted / todayJobs.length) * 100}%` }}
+                        />
+                      </div>
+                    ) : null}
+
+                    <div className="grid grid-cols-2 gap-3 pt-1">
+                      <div className="bg-black/35 border border-white/5 p-3 rounded-xl">
+                        <p className="text-[7px] text-slate-500 uppercase font-black">Pendientes</p>
+                        <p className="text-xl font-black text-white mt-0.5">{todayPending}</p>
+                      </div>
+                      <div className="bg-black/35 border border-white/5 p-3 rounded-xl">
+                        <p className="text-[7px] text-slate-500 uppercase font-black">Misión Activa</p>
+                        <p className={`text-[10px] font-black mt-1.5 truncate ${activeJob ? 'text-green-400' : 'text-slate-500'}`}>
+                          {activeJob ? activeJob.client_name : 'Ninguna'}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
 
               {/* Dynamic Wallet Dashboard for Active Employee */}
               <div className="g p-6 flex items-center justify-between shadow-xl bg-[rgba(255,255,255,0.04)] border border-[rgba(255,255,255,0.08)] rounded-2xl relative overflow-hidden">
@@ -3853,34 +4031,96 @@ ${job.final_signature ? `<div class="sig"><p style="font-size:10px;color:#999;ma
           {/* =====================================================================
               👑 ADMIN DASHBOARD MISSIONS TABS (agenda)
               ===================================================================== */}
-          {role === 'admin' && view === 'agenda' && (
-            <div className="space-y-4 animate-in fade-in pb-24">
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <h2 className="text-xl md:text-2xl font-black tracking-widest uppercase text-white font-display">MISSIONS DIRECTORY</h2>
-                <input className="inp md:max-w-xs text-xs" placeholder="🔍 Search by name or address..." value={sq} onChange={e => setSQ(e.target.value)} />
-              </div>
-              <div className="flex gap-1.5 overflow-x-auto nsb pb-1">
-                {['all', 'lead', 'scheduled', 'in_progress', 'completed', 'paid', 'lost'].map(s => (
-                  <button key={s} onClick={() => setFSt(s)} className={`px-4 py-2 rounded-xl text-[8px] font-black uppercase whitespace-nowrap active:scale-95 transition-all ${fSt === s ? 'bg-[#F5C518] text-black shadow-lg shadow-[#F5C518]/15' : 'bg-white/5 text-slate-500'}`}>{s}</button>
-                ))}
-              </div>
+          {role === 'admin' && view === 'agenda' && (() => {
+            const bulkMarkStatus = async (status) => {
+              if (selectedJobs.length === 0) return;
+              setLoad(true);
+              try {
+                const jobsToUpdate = jobs.filter(j => selectedJobs.includes(j.id));
+                for (const job of jobsToUpdate) {
+                  const { error } = await sb.from('elevore_missions').update({ status }).eq('id', job.id);
+                  if (!error) {
+                    if (status === 'completed' || status === 'paid') {
+                      triggerN8nEmail({ ...job, status });
+                    }
+                  }
+                }
+                tt(`Bulk updated ${selectedJobs.length} jobs to ${status} ✓`);
+                setSelectedJobs([]);
+                refresh();
+              } catch (e) {
+                tt('Error bulk updating: ' + e.message, 'red');
+              }
+              setLoad(false);
+            };
 
-              {filtered.length === 0 && <div className="g p-10 text-center text-slate-500 font-black italic uppercase bg-[rgba(255,255,255,0.04)] border-[rgba(255,255,255,0.08)]">No missions found.</div>}
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {filtered.map(job => {
-                  const isH = job.service_type === 'handyman';
-                  const bal = job.total_price - job.deposit_paid;
-                  const d = dna[job.client_name];
-                  const lv = lvl(d?.count || 0);
-                  const profit = realProfit(job);
-                  const bonus = calcBonus(job);
-                  return (
-                    <div key={job.id} className={`g p-5 border-l-[7px] shadow-xl hover:bg-white/[0.01] transition-all bg-[rgba(255,255,255,0.04)] border-[rgba(255,255,255,0.08)] ${isH ? 'border-green-500' : job.status === 'paid' ? 'border-blue-500' : job.status === 'in_progress' ? 'border-green-400' : job.status === 'lead' ? 'border-[#F5C518]' : job.status === 'completed' ? 'border-purple-500' : job.status === 'lost' ? 'border-red-800' : 'border-amber-500'}`}>
-                      <div className="flex justify-between items-start mb-2">
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-1.5 flex-wrap mb-1">
-                            <h3 className="text-base font-black uppercase italic text-white leading-none">{job.client_name}</h3>
+            const bulkWAReminders = () => {
+              if (selectedJobs.length === 0) return;
+              const jobsToNotify = jobs.filter(j => selectedJobs.includes(j.id));
+              jobsToNotify.forEach(job => {
+                const p = job.client_phone?.replace(/\D/g, '') || '';
+                const ph = p.length === 10 ? '1' + p : p;
+                const msg = `Hi ${job.client_name}! 🔔 Recordatorio — Elevore. Tienes un servicio programado el ${fmtD(job.scheduled_date)}.`;
+                window.open(`https://wa.me/${ph}?text=${encodeURIComponent(msg)}`, '_blank');
+              });
+              tt(`Opened ${selectedJobs.length} WhatsApp tabs ✓`);
+            };
+
+            const allFilteredIds = filtered.map(j => j.id);
+            const isAllSelected = allFilteredIds.length > 0 && allFilteredIds.every(id => selectedJobs.includes(id));
+
+            return (
+              <div className="space-y-4 animate-in fade-in pb-24">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                  <h2 className="text-xl md:text-2xl font-black tracking-widest uppercase text-white font-display">MISSIONS DIRECTORY</h2>
+                  <input className="inp md:max-w-xs text-xs" placeholder="🔍 Search by name or address..." value={sq} onChange={e => setSQ(e.target.value)} />
+                </div>
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div className="flex gap-1.5 overflow-x-auto nsb pb-1">
+                    {['all', 'lead', 'scheduled', 'in_progress', 'completed', 'paid', 'lost'].map(s => (
+                      <button key={s} onClick={() => setFSt(s)} className={`px-4 py-2 rounded-xl text-[8px] font-black uppercase whitespace-nowrap active:scale-95 transition-all ${fSt === s ? 'bg-[#F5C518] text-black shadow-lg shadow-[#F5C518]/15' : 'bg-white/5 text-slate-500'}`}>{s}</button>
+                    ))}
+                  </div>
+                  <button onClick={() => {
+                    if (isAllSelected) {
+                      setSelectedJobs(selectedJobs.filter(id => !allFilteredIds.includes(id)));
+                    } else {
+                      setSelectedJobs([...new Set([...selectedJobs, ...allFilteredIds])]);
+                    }
+                  }} className="px-3.5 py-2 bg-white/5 hover:bg-white/10 border border-white/5 text-slate-400 hover:text-white rounded-xl text-[8px] font-black uppercase active:scale-95 transition-all flex items-center gap-1.5">
+                    <Icon name={isAllSelected ? "check-square" : "square"} className="w-3.5 h-3.5" />
+                    Select All ({filtered.length})
+                  </button>
+                </div>
+
+                {filtered.length === 0 && <div className="g p-10 text-center text-slate-500 font-black italic uppercase bg-[rgba(255,255,255,0.04)] border-[rgba(255,255,255,0.08)]">No missions found.</div>}
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {filtered.map(job => {
+                    const isH = job.service_type === 'handyman';
+                    const bal = job.total_price - job.deposit_paid;
+                    const d = dna[job.client_name];
+                    const lv = lvl(d?.count || 0);
+                    const profit = realProfit(job);
+                    const bonus = calcBonus(job);
+                    return (
+                      <div key={job.id} className={`g p-5 border-l-[7px] shadow-xl hover:bg-white/[0.01] transition-all bg-[rgba(255,255,255,0.04)] border-[rgba(255,255,255,0.08)] relative ${isH ? 'border-green-500' : job.status === 'paid' ? 'border-blue-500' : job.status === 'in_progress' ? 'border-green-400' : job.status === 'lead' ? 'border-[#F5C518]' : job.status === 'completed' ? 'border-purple-500' : job.status === 'lost' ? 'border-red-800' : 'border-amber-500'}`}>
+                        <div className="flex justify-between items-start mb-2">
+                          <div className="flex items-center gap-3 flex-1 min-w-0">
+                            <button onClick={() => {
+                              if (selectedJobs.includes(job.id)) {
+                                setSelectedJobs(selectedJobs.filter(id => id !== job.id));
+                              } else {
+                                setSelectedJobs([...selectedJobs, job.id]);
+                              }
+                            }} className="w-5 h-5 rounded-lg border-2 border-white/10 hover:border-[#F5C518] flex items-center justify-center flex-shrink-0 transition-all">
+                              {selectedJobs.includes(job.id) ? (
+                                <div className="w-3 h-3 bg-[#F5C518] rounded-sm" />
+                              ) : null}
+                            </button>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-1.5 flex-wrap mb-1">
+                                <h3 onClick={() => setSelectedClient(clients.find(c => c.name === job.client_name) || { name: job.client_name, phone: job.client_phone, address: job.address })} className="text-base font-black uppercase italic text-white leading-none hover:text-[#F5C518] cursor-pointer transition-colors">{job.client_name}</h3>
                             <span className={`text-[6px] font-black px-1.5 py-0.5 rounded-full uppercase ${job.status === 'paid' ? 'bg-blue-600 text-white' : job.status === 'in_progress' ? 'bg-green-600 text-white' : job.status === 'lead' ? 'bg-[#F5C518] text-black' : job.status === 'completed' ? 'bg-purple-600 text-white' : job.status === 'lost' ? 'bg-red-900 text-red-300' : 'bg-slate-700 text-slate-300'}`}>{job.status}</span>
                             {isH && <span className="text-[6px] bg-green-600 text-black font-black px-1.5 py-0.5 rounded-full">🛠️</span>}
                             {job.specs?.referred_by && (
@@ -3904,8 +4144,9 @@ ${job.final_signature ? `<div class="sig"><p style="font-size:10px;color:#999;ma
                             </div>
                           )}
                         </div>
-                        <button onClick={() => { setMapAddress(job.address); setView('brief'); tt('🗺️ Mostrando mapa en Dashboard...'); }} className="p-2.5 bg-blue-900/30 text-blue-400 rounded-xl hover:bg-blue-600 transition-all flex items-center justify-center gap-1 text-[8px] font-black uppercase"><Icon name="navigation" className="w-3.5 h-3.5" />Map</button>
                       </div>
+                      <button onClick={() => { setMapAddress(job.address); setView('brief'); tt('🗺️ Mostrando mapa en Dashboard...'); }} className="p-2.5 bg-blue-900/30 text-blue-400 rounded-xl hover:bg-blue-600 transition-all flex items-center justify-center gap-1 text-[8px] font-black uppercase"><Icon name="navigation" className="w-3.5 h-3.5" />Map</button>
+                    </div>
                       <p className="text-[8px] text-slate-500 italic mb-2">{job.address}</p>
                       
                       <div className="grid grid-cols-3 gap-1 mb-2">
@@ -3940,8 +4181,23 @@ ${job.final_signature ? `<div class="sig"><p style="font-size:10px;color:#999;ma
                   );
                 })}
               </div>
-            </div>
-          )}
+                {/* Bulk Actions Panel */}
+                {selectedJobs.length > 0 && (
+                  <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 z-[1050] bg-slate-900/90 backdrop-blur-xl border border-white/10 px-6 py-4 rounded-2xl flex flex-wrap items-center gap-4 shadow-2xl animate-in slide-in-from-bottom duration-250">
+                    <span className="text-[10px] font-black text-white uppercase tracking-wider">
+                      Selected: <span className="text-[#F5C518]">{selectedJobs.length}</span>
+                    </span>
+                    <div className="flex gap-2">
+                      <button onClick={() => bulkMarkStatus('completed')} className="px-3 py-2 bg-purple-600 text-white rounded-xl text-[8px] font-black uppercase hover:bg-purple-700 active:scale-95 transition-all">Mark Completed</button>
+                      <button onClick={() => bulkMarkStatus('paid')} className="px-3 py-2 bg-blue-600 text-white rounded-xl text-[8px] font-black uppercase hover:bg-blue-700 active:scale-95 transition-all">Mark Paid</button>
+                      <button onClick={bulkWAReminders} className="px-3 py-2 bg-green-600 text-white rounded-xl text-[8px] font-black uppercase hover:bg-green-700 active:scale-95 transition-all">📱 WA Reminders</button>
+                      <button onClick={() => setSelectedJobs([])} className="px-3 py-2 bg-white/5 hover:bg-white/10 text-slate-400 rounded-xl text-[8px] font-black uppercase active:scale-95 transition-all">Cancel</button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
 
           {/* =====================================================================
               👑 ADMIN DASHBOARD CLIENTS TABS (clients)
@@ -3962,7 +4218,7 @@ ${job.final_signature ? `<div class="sig"><p style="font-size:10px;color:#999;ma
                       <div className="flex justify-between items-start">
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-1 flex-wrap">
-                            <h3 className="text-base font-black uppercase italic text-white">{client.name}</h3>
+                            <h3 onClick={() => setSelectedClient(client)} className="text-base font-black uppercase italic text-white hover:text-[#F5C518] cursor-pointer transition-colors">{client.name}</h3>
                             <span className="text-[7px] font-black px-2 py-0.5 rounded-full" style={{ background: lv.color, color: '#000' }}>{lv.name}</span>
                             {daysSince >= 45 && <span className="text-[7px] bg-red-900/50 text-red-400 font-black px-2 py-0.5 rounded-full">⚠️ Churn Risk</span>}
                           </div>
