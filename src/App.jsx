@@ -28,8 +28,8 @@ const DEFAULT_CFG = {
 };
 
 const T = {
-  en: { balance: 'Balance Due', pay: 'Pay via Zelle', approve: 'Sign to Approve Quote', before: 'Before', after: 'After', complete: 'Sign to Confirm Completion', review: 'Leave a Google Review', refer: 'Refer a Friend — Both Get $25 Off', syncing: 'Syncing...', hub: 'Live Mission Hub', arrived: 'Team Arrived', done: 'Completed', rating: 'Rate your service', submit: 'Submit Rating', chat: 'Message us', legal: 'Digital signatures are legally binding', urgency: 'Quote expires in', lock: 'Lock in your price!', refTitle: 'Referral Program', refDesc: 'Share your link with friends. Both get $25 off when they complete their first booking!', copied: 'Copied! 🎁' },
-  es: { balance: 'Saldo Pendiente', pay: 'Paga por Zelle', approve: 'Firma para Aprobar tu Cotización', before: 'Antes', after: 'Después', complete: 'Firma para Confirmar que Quedó Bien', review: 'Déjanos una Reseña', refer: 'Refiere un Amigo — Ambos Reciben $25', syncing: 'Cargando...', hub: 'Estado del Servicio', arrived: 'El equipo llegó', done: 'Completado', rating: 'Califica el servicio', submit: 'Enviar Calificación', chat: 'Escríbenos', legal: 'Las firmas digitales tienen validez legal', urgency: 'Cotización vence en', lock: '¡Bloquea tu precio!', refTitle: 'Programa de Referidos', refDesc: 'Comparte tu link con amigos. ¡Ambos reciben $25 de descuento en su próximo servicio!', copied: '¡Link Copiado! 🎁' }
+  en: { balance: 'Balance Due', pay: 'Pay via Zelle', approve: 'Sign to Approve Quote', before: 'Before', after: 'After', complete: 'Sign to Confirm Completion', review: 'Leave a Google Review', refer: 'Refer a Friend — Both Get $25 Off', syncing: 'Syncing...', hub: 'Live Mission Hub', arrived: 'Team Arrived', done: 'Completed', rating: 'Rate your service', submit: 'Submit Rating', chat: 'Message us', legal: 'Digital signatures are legally binding', urgency: 'Quote expires in', lock: 'Lock in your price!', refTitle: 'Referral Program', refDesc: 'Share your link with friends. Both get $25 off when they complete their first booking!', copied: 'Copied! 🎁', stepApproved: 'Quote Approved', stepEnRoute: 'Team En Route', stepInService: 'In Service', stepQC: 'Quality Control', stepCompletedPaid: 'Completed & Paid', sliderBeforeAfter: 'Before / After Comparison', trackerTitle: 'Uber-Style Live Service Tracker', destLocation: 'Destination Location', routeMap: 'Live Destination Map' },
+  es: { balance: 'Saldo Pendiente', pay: 'Paga por Zelle', approve: 'Firma para Aprobar tu Cotización', before: 'Antes', after: 'Después', complete: 'Firma para Confirmar que Quedó Bien', review: 'Déjanos una Reseña', refer: 'Refiere un Amigo — Ambos Reciben $25', syncing: 'Cargando...', hub: 'Estado del Servicio', arrived: 'El equipo llegó', done: 'Completado', rating: 'Califica el servicio', submit: 'Enviar Calificación', chat: 'Escríbenos', legal: 'Las firmas digitales tienen validez legal', urgency: 'Cotización vence en', lock: '¡Bloquea tu precio!', refTitle: 'Programa de Referidos', refDesc: 'Comparte tu link con amigos. ¡Ambos reciben $25 de descuento en su próximo servicio!', copied: '¡Link Copiado! 🎁', stepApproved: 'Cotización Aprobada', stepEnRoute: 'Equipo en Camino', stepInService: 'En Servicio', stepQC: 'Control de Calidad', stepCompletedPaid: 'Completado y Pagado', sliderBeforeAfter: 'Comparación Antes / Después', trackerTitle: 'Rastreador en Vivo del Servicio', destLocation: 'Ubicación de Destino', routeMap: 'Mapa de Destino en Vivo' }
 };
 const tr = (l, k) => T[l]?.[k] || T.en[k] || k;
 
@@ -76,7 +76,7 @@ const SEASONS = [
   { name: 'New Year', months: [1], discount: 10, msg: 'Fresh start — 10% off! 🎉' }
 ];
 
-const INIT = { name: '', phone: '', address: '', svc: 'regular', beds: 2, baths: 2, living: 1, laundryRoom: 0, complexity: 1, sqft: 2000, oven: false, fridge: false, windows: false, pethair: false, garage: false, laundryLoads: 0, expenses: 0, deposit: 0, discount: 0, frequency: 'one-time', team: '', date: '', status: 'lead', totalPrice: 0, laborHours: 2, materialCost: 0, riskMargin: 50, selectedQuickJobs: [], audit_link: '', notes: '', urgencyHours: 24, membership: 'none', lang: 'en' };
+const INIT = { name: '', phone: '', email: '', address: '', svc: 'regular', beds: 2, baths: 2, living: 1, laundryRoom: 0, complexity: 1, sqft: 2000, oven: false, fridge: false, windows: false, pethair: false, garage: false, laundryLoads: 0, expenses: 0, deposit: 0, discount: 0, frequency: 'one-time', team: '', date: '', status: 'lead', totalPrice: 0, laborHours: 2, materialCost: 0, riskMargin: 50, selectedQuickJobs: [], audit_link: '', notes: '', urgencyHours: 24, membership: 'none', lang: 'en' };
 
 const fmt$ = n => '$' + Math.round(n || 0).toLocaleString();
 const fmtD = d => d ? new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'TBD';
@@ -93,6 +93,89 @@ const lvl = n => n >= 15 ? { name: 'Platinum', color: '#e5e4e2' } : n >= 7 ? { n
 const season = () => {
   const m = new Date().getMonth() + 1;
   return SEASONS.filter(s => s.months?.includes(m));
+};
+
+const geocodeAddress = async (address) => {
+  if (!address) return null;
+  try {
+    const res = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(address)}&format=json&limit=1`);
+    const data = await res.json();
+    if (data && data[0]) {
+      return {
+        lat: parseFloat(data[0].lat),
+        lng: parseFloat(data[0].lon)
+      };
+    }
+  } catch (e) {
+    console.error("Geocoding failed:", e);
+  }
+  return null;
+};
+
+const getDistanceMeters = (lat1, lon1, lat2, lon2) => {
+  if (lat1 === undefined || lon1 === undefined || lat2 === undefined || lon2 === undefined) return null;
+  if (lat1 === null || lon1 === null || lat2 === null || lon2 === null) return null;
+  const R = 6371000;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+    Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return Math.round(R * c);
+};
+
+
+const triggerN8nEmail = async (job) => {
+  const webhookUrl = import.meta.env.VITE_N8N_WEBHOOK_URL;
+  if (!webhookUrl) {
+    console.warn("n8n Webhook URL is not configured in .env");
+    return;
+  }
+
+  const email = job.specs?.email || job.email || '';
+  if (!email) {
+    console.warn("No email address found for job", job.id);
+    return;
+  }
+
+  const svcTitle = {
+    regular: 'Limpieza Residencial Regular',
+    deep: 'Limpieza Residencial Profunda',
+    moveout: 'Limpieza de Mudanza (Move-Out)',
+    postcon: 'Limpieza Post-Construcción',
+    handyman: 'Servicio Handyman / Mantenimiento'
+  }[job.service_type] || job.service_type || 'Servicio Premium';
+
+  try {
+    const response = await fetch(webhookUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        record: {
+          id: job.id,
+          client_name: job.client_name,
+          client_email: email,
+          client_phone: job.client_phone,
+          address: job.address,
+          title: svcTitle,
+          total_price: job.total_price || job.specs?.totalPrice || 0,
+          status: job.status,
+          scheduled_date: job.scheduled_date ? new Date(job.scheduled_date).toLocaleDateString() : 'TBD'
+        }
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    console.log("n8n webhook triggered successfully for job:", job.id);
+  } catch (error) {
+    console.error("Failed to trigger n8n email webhook:", error);
+  }
 };
 
 // SigPad Component
@@ -337,12 +420,186 @@ function Thermo({ pct, goal, current }) {
 }
 
 // MapComponent
-function MapComponent({ address }) {
-  if (!address) return <div className="g p-10 text-center text-slate-500 font-black uppercase text-[10px] border border-dashed border-white/5">Select a mission to load GPS Map</div>;
-  const src = `https://maps.google.com/maps?q=${encodeURIComponent(address)}&t=&z=14&ie=UTF8&iwloc=&output=embed`;
+function MapComponent({ address, lat, lng, workerLat, workerLng }) {
+  const srcDoc = useMemo(() => {
+    const destination = lat && lng ? [lat, lng] : null;
+    const worker = workerLat && workerLng ? [workerLat, workerLng] : null;
+    return `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+        <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+        <style>
+          html, body, #map { margin: 0; padding: 0; height: 100%; background: #0b0f19; }
+          .leaflet-control-zoom { display: none; }
+        </style>
+      </head>
+      <body>
+        <div id="map"></div>
+        <script>
+          const dest = ${destination ? JSON.stringify(destination) : 'null'};
+          const worker = ${worker ? JSON.stringify(worker) : 'null'};
+          const address = ${JSON.stringify(address || '')};
+
+          const map = L.map('map', { zoomControl: false });
+
+          L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+            attribution: '&copy; OpenStreetMap &copy; CartoDB'
+          }).addTo(map);
+
+          const goldIcon = L.divIcon({
+            html: '<div style="background-color: #F5C518; width: 14px; height: 14px; border: 2px solid white; border-radius: 50%; box-shadow: 0 0 10px #F5C518;"></div>',
+            className: '',
+            iconSize: [14, 14],
+            iconAnchor: [7, 7]
+          });
+
+          const workerIcon = L.divIcon({
+            html: '<div style="background-color: #3b82f6; width: 16px; height: 16px; border: 2px solid white; border-radius: 50%; box-shadow: 0 0 12px #3b82f6; display: flex; align-items: center; justify-content: center; color: white; font-size: 8px; font-weight: bold;">🚗</div>',
+            className: '',
+            iconSize: [16, 16],
+            iconAnchor: [8, 8]
+          });
+
+          let bounds = [];
+
+          if (dest) {
+            L.marker(dest, { icon: goldIcon }).addTo(map).bindPopup('<b>Destination</b><br>' + address).openPopup();
+            bounds.push(dest);
+          }
+
+          if (worker) {
+            L.marker(worker, { icon: workerIcon }).addTo(map).bindPopup('<b>Our Team</b>').openPopup();
+            bounds.push(worker);
+          }
+
+          if (dest && worker) {
+            L.polyline([worker, dest], { color: '#F5C518', weight: 3, dashArray: '5, 10', opacity: 0.8 }).addTo(map);
+          }
+
+          if (bounds.length === 2) {
+            map.fitBounds(bounds, { padding: [40, 40] });
+          } else if (bounds.length === 1) {
+            map.setView(bounds[0], 14);
+          } else if (address) {
+            fetch('https://nominatim.openstreetmap.org/search?q=' + encodeURIComponent(address) + '&format=json&limit=1')
+              .then(res => res.json())
+              .then(data => {
+                if (data && data[0]) {
+                  const loc = [parseFloat(data[0].lat), parseFloat(data[0].lon)];
+                  L.marker(loc, { icon: goldIcon }).addTo(map).bindPopup('<b>Destination</b><br>' + address).openPopup();
+                  map.setView(loc, 14);
+                } else {
+                  map.setView([28.5383, -81.3792], 12);
+                }
+              })
+              .catch(() => {
+                map.setView([28.5383, -81.3792], 12);
+              });
+          } else {
+            map.setView([28.5383, -81.3792], 10);
+          }
+        </script>
+      </body>
+      </html>
+    `;
+  }, [lat, lng, workerLat, workerLng, address]);
+
+  if (!address && !lat) return <div className="g p-10 text-center text-slate-500 font-black uppercase text-[10px] border border-dashed border-white/5">Select a mission to load GPS Map</div>;
   return (
-    <div className="g overflow-hidden border border-white/10 h-64 w-full relative">
-      <iframe title="GPS Map" width="100%" height="100%" frameBorder="0" scrolling="no" marginHeight="0" marginWidth="0" src={src} className="w-full h-full rounded-xl"></iframe>
+    <div className="g overflow-hidden border border-white/10 h-64 w-full relative rounded-2xl shadow-xl shadow-black/40">
+      <iframe title="GPS Map" width="100%" height="100%" frameBorder="0" scrolling="no" srcDoc={srcDoc} className="w-full h-full rounded-2xl"></iframe>
+    </div>
+  );
+}
+
+// BeforeAfterSlider Component
+function BeforeAfterSlider({ beforePhotos = [], afterPhotos = [] }) {
+  const [activeIdx, setActiveIdx] = useState(0);
+  const [viewMode, setViewMode] = useState('after');
+  
+  const total = Math.max(beforePhotos.length, afterPhotos.length);
+  if (total === 0) return null;
+
+  const beforePhoto = beforePhotos[activeIdx] || null;
+  const afterPhoto = afterPhotos[activeIdx] || null;
+
+  return (
+    <div className="g p-5 border border-white/10 rounded-2xl space-y-4 bg-black/40">
+      <div className="flex justify-between items-center">
+        <p className="text-[9px] font-black text-amber-500 uppercase tracking-widest flex items-center gap-1.5">
+          <Icon name="columns" className="w-3.5 h-3.5 text-amber-500" />
+          Comparación Antes / Después
+        </p>
+        {total > 1 && (
+          <div className="flex gap-1">
+            {Array.from({ length: total }).map((_, i) => (
+              <button 
+                key={i} 
+                onClick={() => { setActiveIdx(i); setViewMode('after'); }}
+                className={`text-[8px] font-black w-5 h-5 rounded-full flex items-center justify-center ${activeIdx === i ? 'bg-amber-500 text-black' : 'bg-white/5 text-slate-500'}`}
+              >
+                {i + 1}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div className="relative aspect-video w-full rounded-xl overflow-hidden border border-white/10 bg-slate-950 flex items-center justify-center">
+        {viewMode === 'before' && beforePhoto && (
+          <img src={beforePhoto} className="w-full h-full object-cover animate-in fade-in duration-300" alt="Before" />
+        )}
+        {viewMode === 'after' && afterPhoto && (
+          <img src={afterPhoto} className="w-full h-full object-cover animate-in fade-in duration-300" alt="After" />
+        )}
+        {viewMode === 'side-by-side' && (
+          <div className="grid grid-cols-2 w-full h-full gap-0.5">
+            <div className="relative w-full h-full">
+              {beforePhoto ? <img src={beforePhoto} className="w-full h-full object-cover" alt="Before" /> : <div className="w-full h-full bg-zinc-900 flex items-center justify-center text-[8px] text-slate-600">N/A</div>}
+              <div className="absolute bottom-2 left-2 bg-black/70 px-2 py-0.5 rounded text-[8px] font-black text-red-400 border border-red-500/20">ANTES</div>
+            </div>
+            <div className="relative w-full h-full">
+              {afterPhoto ? <img src={afterPhoto} className="w-full h-full object-cover" alt="After" /> : <div className="w-full h-full bg-zinc-900 flex items-center justify-center text-[8px] text-slate-600">N/A</div>}
+              <div className="absolute bottom-2 right-2 bg-black/70 px-2 py-0.5 rounded text-[8px] font-black text-green-400 border border-green-500/20">DESPUÉS</div>
+            </div>
+          </div>
+        )}
+
+        {viewMode !== 'side-by-side' && (
+          <div className="absolute top-2 left-2 bg-black/70 px-2 py-0.5 rounded text-[8px] font-black border border-white/10 uppercase tracking-widest">
+            {viewMode === 'before' ? (
+              <span className="text-red-400">🔴 Antes</span>
+            ) : (
+              <span className="text-green-400">🟢 Después</span>
+            )}
+          </div>
+        )}
+      </div>
+
+      <div className="grid grid-cols-3 gap-1 bg-white/5 p-1 rounded-xl border border-white/5">
+        <button 
+          onClick={() => setViewMode('before')} 
+          disabled={!beforePhoto}
+          className={`py-1.5 rounded-lg text-[8px] font-black uppercase tracking-wider transition-all ${viewMode === 'before' ? 'bg-red-500/20 border border-red-500/30 text-red-400' : 'text-slate-500 hover:text-slate-400'}`}
+        >
+          Antes
+        </button>
+        <button 
+          onClick={() => setViewMode('side-by-side')} 
+          className={`py-1.5 rounded-lg text-[8px] font-black uppercase tracking-wider transition-all ${viewMode === 'side-by-side' ? 'bg-amber-500/20 border border-amber-500/30 text-amber-400' : 'text-slate-500 hover:text-slate-400'}`}
+        >
+          Dividido
+        </button>
+        <button 
+          onClick={() => setViewMode('after')} 
+          disabled={!afterPhoto}
+          className={`py-1.5 rounded-lg text-[8px] font-black uppercase tracking-wider transition-all ${viewMode === 'after' ? 'bg-green-500/20 border border-green-500/30 text-green-400' : 'text-slate-500 hover:text-slate-400'}`}
+        >
+          Después
+        </button>
+      </div>
     </div>
   );
 }
@@ -549,8 +806,32 @@ function Portal({ cjid }) {
   const urgent = job.urgency_expires ? Math.max(0, Math.round((new Date(job.urgency_expires) - Date.now()) / 3600000)) : null;
 
   const saveApproval = async sig => { await sb.from('elevore_missions').update({ approval_signature: sig, status: 'scheduled' }).eq('id', cjid); tt('✅ Approved!'); load(); };
-  const saveFinal = async sig => { await sb.from('elevore_missions').update({ final_signature: sig, status: 'paid' }).eq('id', cjid); tt('🌟 Done!'); load(); };
+  const saveFinal = async sig => {
+    await sb.from('elevore_missions').update({ final_signature: sig, status: 'paid' }).eq('id', cjid);
+    tt('🌟 Done!');
+    if (job) {
+      triggerN8nEmail({ ...job, status: 'paid', final_signature: sig });
+    }
+    load();
+  };
   const submitRating = async () => { await sb.from('elevore_missions').update({ client_rating: rating }).eq('id', cjid); setRDone(true); tt('⭐ Thank you!'); };
+
+  // Uber-Style Timeline Steps calculation
+  const steps = [
+    { key: 'stepApproved', title: tr(lang, 'stepApproved'), desc: job.scheduled_date ? `${lang === 'es' ? 'Programado' : 'Scheduled'}: ${fmtD(job.scheduled_date)}` : 'Approved' },
+    { key: 'stepEnRoute', title: tr(lang, 'stepEnRoute'), desc: job.specs?.en_route_at ? `${lang === 'es' ? 'En camino a las' : 'On the way at'} ${new Date(job.specs.en_route_at).toLocaleTimeString()}` : (lang === 'es' ? 'Equipo en ruta a la ubicación' : 'En route to location') },
+    { key: 'stepInService', title: tr(lang, 'stepInService'), desc: job.check_in_time ? `${lang === 'es' ? 'Llegó a las' : 'Arrived at'} ${new Date(job.check_in_time).toLocaleTimeString()}` : (lang === 'es' ? 'Servicio iniciado' : 'Service started') },
+    { key: 'stepQC', title: tr(lang, 'stepQC'), desc: job.check_out_time ? `${lang === 'es' ? 'Finalizado a las' : 'Completed at'} ${new Date(job.check_out_time).toLocaleTimeString()}` : (lang === 'es' ? 'Control de calidad' : 'Checking work quality') },
+    { key: 'stepCompletedPaid', title: tr(lang, 'stepCompletedPaid'), desc: job.status === 'paid' ? (lang === 'es' ? 'Pagado y cerrado' : 'Paid & closed') : (lang === 'es' ? 'Esperando pago final' : 'Awaiting final payment') }
+  ];
+
+  let activeStepIdx = 0;
+  if (job.status === 'paid') activeStepIdx = 4;
+  else if (job.status === 'completed') activeStepIdx = 3;
+  else if (job.status === 'in_progress') activeStepIdx = 2;
+  else if (job.specs?.en_route) activeStepIdx = 1;
+  else if (job.status === 'scheduled') activeStepIdx = 0;
+  else activeStepIdx = -1; // lead
 
   return (
     <div className="min-h-screen p-5 bg-gradient-to-b from-slate-950 via-black to-zinc-900 animate-in fade-in duration-700">
@@ -559,19 +840,132 @@ function Portal({ cjid }) {
         <div className="flex justify-end gap-2">{['en', 'es'].map(lg => (<button key={lg} onClick={() => setLang(lg)} className={`text-[8px] font-black px-3 py-1.5 rounded-xl ${lang === lg ? 'bg-amber-500 text-black' : 'bg-white/5 text-slate-500'}`}>{lg.toUpperCase()}</button>))}</div>
         <div className="text-center space-y-2"><div className="w-16 h-16 bg-white rounded-2xl mx-auto flex items-center justify-center font-black text-black text-2xl italic shadow-xl">E</div><h1 className="text-xl font-black uppercase tracking-[0.3em] text-white">ELEVORE</h1><p className="text-[9px] text-green-500 font-bold uppercase tracking-[0.4em]">{tr(lang, 'hub')}</p></div>
         {urgent !== null && urgent > 0 && !job.approval_signature && <div className="gold py-3 px-5 rounded-2xl text-center font-black uppercase text-sm">⏰ {tr(lang, 'urgency')} {urgent}h — {tr(lang, 'lock')}</div>}
+        
+        {/* Core Detail Card */}
         <div className="g p-6 border-t-4 border-green-500 space-y-4">
           <div className="flex justify-between items-center"><div><p className="text-[9px] font-black text-slate-500 uppercase">Client</p><h2 className="text-xl font-black italic uppercase text-white">{job.client_name}</h2></div><span className={`text-[8px] font-black px-3 py-1.5 rounded-xl uppercase ${job.status === 'paid' ? 'bg-blue-600 text-white' : job.status === 'in_progress' ? 'bg-green-600 text-white' : job.status === 'completed' ? 'bg-purple-600 text-white' : 'bg-amber-500 text-black'}`}>{job.status}</span></div>
           <div className="text-[9px] text-slate-500 font-black uppercase space-y-1"><p>📋 {job.service_type?.toUpperCase()}</p><p>📅 {fmtD(job.scheduled_date)}</p><p>👥 {job.team_assigned || 'TBD'}</p><p>📍 {job.address}</p>{job.check_in_time && <p className="text-green-400">▶ {tr(lang, 'arrived')}: {new Date(job.check_in_time).toLocaleTimeString()}</p>}{job.check_out_time && <p className="text-purple-400">⏹ {tr(lang, 'done')}: {new Date(job.check_out_time).toLocaleTimeString()}</p>}</div>
           <div><div className="flex justify-between text-[8px] font-black uppercase text-slate-500 mb-1"><span>Booked</span><span>{sm[job.status] || 0}%</span></div><div className="pb"><div className="pf" style={{ width: `${sm[job.status] || 0}%` }}></div></div></div>
         </div>
-        <div className="g p-6 text-center space-y-2"><p className="text-[9px] font-black text-slate-500 uppercase tracking-widest">{tr(lang, 'balance')}</p><h3 className="text-6xl font-black italic tracking-tighter text-white">{fmt$(bal)}</h3><p className="text-[9px] text-green-500 font-black uppercase pt-2">💸 {tr(lang, 'pay')}: {DEFAULT_CFG.ZELLE}</p></div>
-        {!job.approval_signature ? (<div className="g p-6 border border-amber-500/30 space-y-4"><SigPad onSave={saveApproval} label={tr(lang, 'approve')} /></div>) : (<div className="g p-5 border border-green-600/30 text-center space-y-2"><p className="text-[9px] text-green-500 font-black uppercase">✅ Approved</p><img src={job.approval_signature} className="h-10 mx-auto opacity-50" alt="signature" /></div>)}
-        {(job.before_photos?.length > 0 || job.after_photos?.length > 0) && (<div className="grid grid-cols-2 gap-3">{job.before_photos?.length > 0 && <div className="g p-4"><PhotoDrive photos={job.before_photos} label={`📸 ${tr(lang, 'before')}`} /></div>}{job.after_photos?.length > 0 && <div className="g p-4"><PhotoDrive photos={job.after_photos} label={`✨ ${tr(lang, 'after')}`} /></div>}</div>)}
-        {job.approval_signature && job.after_photos?.length > 0 && !job.final_signature && <div className="g p-6 border border-purple-500/30 space-y-4"><SigPad onSave={saveFinal} label={tr(lang, 'complete')} color="#a855f7" /></div>}
-        {job.final_signature && <div className="g p-5 border border-purple-600/30 text-center space-y-2"><p className="text-[9px] text-purple-400 font-black uppercase">🏁 {tr(lang, 'complete')}</p><img src={job.final_signature} className="h-10 mx-auto opacity-50" alt="signature" /></div>}
-        {job.status === 'paid' && !ratingDone && (<div className="g p-6 border border-amber-500/20 text-center space-y-4"><p className="text-[9px] font-black text-amber-500 uppercase tracking-widest">{tr(lang, 'rating')}</p><div className="flex justify-center"><Stars value={rating} onChange={setRating} size={8} /></div><button onClick={submitRating} disabled={!rating} className={`w-full py-3 rounded-xl font-black uppercase text-[10px] active:scale-95 ${rating ? 'gold' : 'bg-white/5 text-slate-600'}`}>{tr(lang, 'submit')}</button></div>)}
-        {ratingDone && <div className="g p-4 text-center"><p className="text-[9px] text-amber-400 font-black uppercase">⭐ {job.client_rating}/5 — Thank you!</p></div>}
-        <div className="g p-5 flex items-center gap-4"><QR url={`${location.origin}${location.pathname}?mision=${job.id}`} size={75} /><div><p className="text-[8px] font-black text-slate-500 uppercase mb-1">Your Portal QR</p><p className="text-[7px] text-slate-600 italic">Scan anytime</p></div></div>
+
+        {/* Uber-Style Live Service Tracker */}
+        {job.status !== 'lead' && (
+          <div className="g p-6 border-l-4 border-amber-500/80 space-y-6 relative overflow-hidden bg-black/60 shadow-[0_0_40px_rgba(245,197,24,0.05)] text-left animate-in slide-in-from-bottom duration-500">
+            <h3 className="text-[10px] font-black text-amber-500 uppercase tracking-widest flex items-center gap-2 mb-4 font-display">
+              <Icon name="activity" className="w-4 h-4 text-amber-500 animate-pulse" />
+              {tr(lang, 'trackerTitle')}
+            </h3>
+            <div className="relative border-l border-white/10 pl-6 ml-3 space-y-6">
+              {steps.map((step, idx) => {
+                const isDone = idx < activeStepIdx;
+                const isCurrent = idx === activeStepIdx;
+                
+                return (
+                  <div key={idx} className="relative">
+                    {/* Circle Node */}
+                    <div className={`absolute -left-[31px] top-1 w-4 h-4 rounded-full border-2 transition-all duration-500 flex items-center justify-center
+                      ${isDone ? 'bg-amber-500 border-amber-500 shadow-[0_0_10px_rgba(245,197,24,0.4)]' :
+                        isCurrent ? 'bg-black border-amber-500 shadow-[0_0_15px_rgba(245,197,24,0.8)] animate-pulse' :
+                        'bg-zinc-900 border-zinc-700'
+                      }`}
+                    >
+                      {isCurrent && <div className="w-1.5 h-1.5 bg-amber-500 rounded-full animate-ping"></div>}
+                      {isDone && <Icon name="check" className="w-2.5 h-2.5 text-black stroke-[3]" />}
+                    </div>
+                    
+                    <div className="space-y-0.5">
+                      <h4 className={`text-[10px] font-black uppercase tracking-wider transition-colors
+                        ${isDone ? 'text-slate-300' : isCurrent ? 'text-amber-400 font-extrabold font-display' : 'text-slate-600'}
+                      `}>
+                        {step.title}
+                      </h4>
+                      <p className={`text-[8px] uppercase font-bold tracking-wider transition-colors
+                        ${isDone ? 'text-slate-500' : isCurrent ? 'text-slate-300' : 'text-slate-700'}
+                      `}>
+                        {step.desc}
+                      </p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Dynamic Route Map */}
+        {job.status !== 'lead' && (
+          <div className="space-y-2 text-left animate-in slide-in-from-bottom duration-500">
+            <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-1.5">
+              <Icon name="map-pin" className="w-3.5 h-3.5 text-amber-500" />
+              {tr(lang, 'routeMap')}
+            </p>
+            <MapComponent 
+              address={job.address} 
+              lat={job.dest_lat} 
+              lng={job.dest_lng}
+              workerLat={job.specs?.en_route_lat || job.check_in_lat}
+              workerLng={job.specs?.en_route_lng || job.check_in_lng}
+            />
+          </div>
+        )}
+
+        <div className="g p-6 text-center space-y-2">
+          <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest">{tr(lang, 'balance')}</p>
+          <h3 className="text-6xl font-black italic tracking-tighter text-white">{fmt$(bal)}</h3>
+          <p className="text-[9px] text-green-500 font-black uppercase pt-2">💸 {tr(lang, 'pay')}: {DEFAULT_CFG.ZELLE}</p>
+        </div>
+        
+        {!job.approval_signature ? (
+          <div className="g p-6 border border-amber-500/30 space-y-4">
+            <SigPad onSave={saveApproval} label={tr(lang, 'approve')} />
+          </div>
+        ) : (
+          <div className="g p-5 border border-green-600/30 text-center space-y-2">
+            <p className="text-[9px] text-green-500 font-black uppercase">✅ Approved</p>
+            <img src={job.approval_signature} className="h-10 mx-auto opacity-50" alt="signature" />
+          </div>
+        )}
+
+        {/* Before / After Photo Compare Slider */}
+        <BeforeAfterSlider beforePhotos={job.before_photos || []} afterPhotos={job.after_photos || []} />
+
+        {job.approval_signature && job.after_photos?.length > 0 && !job.final_signature && (
+          <div className="g p-6 border border-purple-500/30 space-y-4">
+            <SigPad onSave={saveFinal} label={tr(lang, 'complete')} color="#a855f7" />
+          </div>
+        )}
+        
+        {job.final_signature && (
+          <div className="g p-5 border border-purple-600/30 text-center space-y-2">
+            <p className="text-[9px] text-purple-400 font-black uppercase">🏁 {tr(lang, 'complete')}</p>
+            <img src={job.final_signature} className="h-10 mx-auto opacity-50" alt="signature" />
+          </div>
+        )}
+        
+        {job.status === 'paid' && !ratingDone && (
+          <div className="g p-6 border border-amber-500/20 text-center space-y-4">
+            <p className="text-[9px] font-black text-amber-500 uppercase tracking-widest">{tr(lang, 'rating')}</p>
+            <div className="flex justify-center">
+              <Stars value={rating} onChange={setRating} size={8} />
+            </div>
+            <button onClick={submitRating} disabled={!rating} className={`w-full py-3 rounded-xl font-black uppercase text-[10px] active:scale-95 ${rating ? 'gold' : 'bg-white/5 text-slate-600'}`}>{tr(lang, 'submit')}</button>
+          </div>
+        )}
+        
+        {ratingDone && (
+          <div className="g p-4 text-center">
+            <p className="text-[9px] text-amber-400 font-black uppercase">⭐ {job.client_rating}/5 — Thank you!</p>
+          </div>
+        )}
+        
+        <div className="g p-5 flex items-center gap-4">
+          <QR url={`${location.origin}${location.pathname}?mision=${job.id}`} size={75} />
+          <div className="text-left">
+            <p className="text-[8px] font-black text-slate-500 uppercase mb-1">Your Portal QR</p>
+            <p className="text-[7px] text-slate-600 italic">Scan anytime</p>
+          </div>
+        </div>
+        
         {job.status === 'paid' && (
           <button onClick={() => window.open(DEFAULT_CFG.GOOGLE)} className="w-full gold py-4 rounded-2xl font-black uppercase text-sm active:scale-95 mb-1">
             ⭐ {tr(lang, 'review')}
@@ -611,7 +1005,8 @@ function Portal({ cjid }) {
 
         <button onClick={() => window.open(`https://wa.me/${job.client_phone?.replace(/\D/g, '') || ''}`)} className="w-full g py-4 rounded-2xl font-black uppercase text-[10px] text-green-400 border border-green-600/20 active:scale-95 flex items-center justify-center gap-2"><Icon name="message-circle" className="w-4 h-4" />{tr(lang, 'chat')}</button>
         <p className="text-[7px] text-slate-700 text-center uppercase font-bold">{tr(lang, 'legal')}</p>
-      </div></div>
+      </div>
+    </div>
   );
 }
 
@@ -706,11 +1101,43 @@ function StaffJob({ job, onBack, onRefresh, tt, recTime, upsell, update, employe
           <p className="text-[9px] text-slate-500 uppercase">{localJob.service_type} • {localJob.address}</p>
           {employee && <p className="text-[8px] text-green-400 font-black uppercase mt-1">👤 Active Worker: {employee.name}</p>}
           <div className="grid grid-cols-2 gap-2 mt-4">
-            <button onClick={() => {
+            <button onClick={async () => {
                 const p = localJob.client_phone?.replace(/\D/g, '') || '';
-                const msg = `🚗 Hola ${localJob.client_name}! Soy ${employee?.name || 'tu profesional de Elevore'}. Voy en camino a tu ubicacion. Sigue mi llegada aqui: https://elevore.app/track/${localJob.id}`;
-                window.open(`https://wa.me/${p}?text=${encodeURIComponent(msg)}`);
-                tt('Client Notified OMW!', 'green');
+                const msg = `🚗 Hola ${localJob.client_name}! Soy ${employee?.name || 'tu profesional de Elevore'}. Voy en camino a tu ubicacion. Sigue mi llegada aqui: ${window.location.origin}${window.location.pathname}?mision=${localJob.id}`;
+                
+                const time = new Date().toISOString();
+                const updatedSpecs = {
+                  ...(localJob.specs || {}),
+                  en_route: true,
+                  en_route_at: time
+                };
+
+                const updateDb = async (lat = null, lng = null) => {
+                  if (lat && lng) {
+                    updatedSpecs.en_route_lat = lat;
+                    updatedSpecs.en_route_lng = lng;
+                  }
+                  await sb.from('elevore_missions').update({ specs: updatedSpecs }).eq('id', localJob.id);
+                  setLocalJob(prev => ({ ...prev, specs: updatedSpecs }));
+                  window.open(`https://wa.me/${p}?text=${encodeURIComponent(msg)}`);
+                  tt('Client Notified OMW!', 'green');
+                  onRefresh();
+                };
+
+                if (navigator.geolocation) {
+                  navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                      updateDb(position.coords.latitude, position.coords.longitude);
+                    },
+                    (error) => {
+                      console.warn("OMW Geolocation failed", error);
+                      updateDb();
+                    },
+                    { enableHighAccuracy: true, timeout: 5000 }
+                  );
+                } else {
+                  await updateDb();
+                }
             }} className="col-span-2 bg-blue-600 text-white py-3 rounded-xl font-black uppercase text-[10px] active:scale-95 flex items-center justify-center gap-2 shadow-lg shadow-blue-600/20"><Icon name="truck" className="w-4 h-4" /> Enviar "Voy En Camino" al Cliente (GPS)</button>
             <button onClick={() => recTime(localJob.id, 'check_in_time')} className="bg-green-600 text-white py-3 rounded-xl font-black uppercase text-[9px] active:scale-95 flex items-center justify-center gap-1"><Icon name="play" className="w-3 h-3" />Check In</button>
             <button onClick={() => recTime(localJob.id, 'check_out_time')} className="bg-red-600 text-white py-3 rounded-xl font-black uppercase text-[9px] active:scale-95 flex items-center justify-center gap-1"><Icon name="square" className="w-3 h-3" />Check Out</button>
@@ -761,7 +1188,7 @@ function StaffJob({ job, onBack, onRefresh, tt, recTime, upsell, update, employe
           )}
         </div>
 
-        {done === CHECKS.length && <button onClick={async () => { if (!(localJob.after_photos || []).length) return tt('Add at least 1 after photo for AI Scan', 'red'); if (!localJob.final_signature) return tt('El cliente debe firmar antes de finalizar', 'red'); await sb.from('elevore_missions').update({ status: 'completed', specs: { ...(localJob.specs || {}), checklist_done_at: new Date().toISOString() } }).eq('id', localJob.id); tt('Sent to QC ✅'); onBack(); onRefresh(); }} className="w-full gold py-5 rounded-2xl font-black uppercase text-base active:scale-95 shadow-[0_0_30px_rgba(245,197,24,0.2)]">✅ Execute Sign-Off & Close</button>}
+        {done === CHECKS.length && <button onClick={async () => { if (!(localJob.after_photos || []).length) return tt('Add at least 1 after photo for AI Scan', 'red'); if (!localJob.final_signature) return tt('El cliente debe firmar antes de finalizar', 'red'); await update(localJob, { status: 'completed', specs: { ...(localJob.specs || {}), checklist_done_at: new Date().toISOString() } }, 'Sent to QC ✅'); onBack(); onRefresh(); }} className="w-full gold py-5 rounded-2xl font-black uppercase text-base active:scale-95 shadow-[0_0_30px_rgba(245,197,24,0.2)]">✅ Execute Sign-Off & Close</button>}
       </div></div>
   );
 }
@@ -1699,8 +2126,170 @@ function CountUp({ end, prefix = '', suffix = '', duration = 2000 }) {
   return <span ref={ref}>{prefix}{count.toLocaleString()}{suffix}</span>;
 }
 
+const MODAL_CONTENT = {
+  'Features': {
+    icon: '⚡',
+    title: 'All Features',
+    subtitle: 'Everything included in Elevore Empire',
+    body: [
+      { head: '🧠 Predictive AI Engine', text: 'Identifies VIP upsell opportunities automatically. Forecasts your monthly revenue with 94% accuracy using historical job data and seasonality patterns.' },
+      { head: '📍 GPS Geo-Fencing', text: 'Real-time check-in/check-out coordinates with Haversine distance alerts. Know exactly when and where your team clocks in — within meters.' },
+      { head: '📸 AI Vision Quality Control', text: 'Computer vision scans every after-photo ensuring a 99.4% quality pass rate before your client sees a single image.' },
+      { head: '🚗 Uber-Style Client Tracker', text: 'Auto-notifies clients with a live tracking link the moment staff departs. Real-time status steps: Approved → En Route → In Service → QC → Paid.' },
+      { head: '✍️ Digital E-Signatures', text: 'Clients sign quotes and final invoices with their finger on any device. Legally binding, timestamp-stamped, stored forever.' },
+      { head: '💬 WhatsApp CRM', text: 'One-click AI scripts for dead leads, 5-star Google review requests, quote follow-ups, and booking confirmations via WhatsApp.' },
+      { head: '💰 Wallet & Payroll Ledger', text: 'Automatic commission calculation per job. Admin can cashout workers via Zelle with a full transaction ledger and history accordion.' },
+      { head: '📊 Revenue Intelligence Dashboard', text: 'MRR, Gross Revenue, Net Profit, Average Ticket, LTV tracking — all in real time with goal progress bars.' },
+    ]
+  },
+  'Pricing': {
+    icon: '💎',
+    title: 'Simple Pricing',
+    subtitle: 'No hidden fees. Cancel anytime.',
+    body: [
+      { head: 'Starter — $97/mo', text: 'Up to 3 staff. Job management, WhatsApp CRM, digital quotes & signatures. Perfect for solo operators scaling up.' },
+      { head: 'Pro — $197/mo ⭐ Most Popular', text: 'Up to 10 staff. Everything in Starter + AI Engine, GPS Geo-Fencing, Payroll Wallet, Uber-Style Client Tracker, Quality Control AI.' },
+      { head: 'Empire — $397/mo', text: 'Unlimited staff. Everything in Pro + custom branding, priority support, dedicated onboarding specialist, and advanced analytics.' },
+      { head: '14-Day Free Trial', text: 'All plans include a 14-day full-access free trial. No credit card required. Setup in under 2 minutes.' },
+    ]
+  },
+  'Changelog': {
+    icon: '📋',
+    title: 'Changelog',
+    subtitle: 'What we shipped recently',
+    body: [
+      { head: 'v2.4 — May 2026', text: 'Admin Payout Wallet Dashboard. GPS Geo-Fencing with Haversine distance alerts. Collapsible transaction ledger under each worker card.' },
+      { head: 'v2.3 — April 2026', text: 'Uber-style client tracking portal with live status stepper. Before/after photo comparison slider. n8n email automation via SMTP.' },
+      { head: 'v2.2 — March 2026', text: 'Staff leaderboard & XP leveling system. AI-powered strategic advisor chatbot. Inventory management module.' },
+      { head: 'v2.1 — February 2026', text: 'Recurring client membership plans. Referral program with public lead form. Client portal QR code generator.' },
+      { head: 'v2.0 — January 2026', text: 'Full multi-tenant architecture. Role-based access control. Staff PIN login. WhatsApp CRM with AI scripts.' },
+    ]
+  },
+  'Roadmap': {
+    icon: '🗺️',
+    title: 'Product Roadmap',
+    subtitle: "What's coming next at Elevore",
+    body: [
+      { head: '🔜 Q3 2026 — AI Auto-Dispatch', text: 'Automatically assigns jobs to the nearest available staff member based on GPS location, skill set, and historical performance score.' },
+      { head: '🔜 Q3 2026 — Stripe Direct Payments', text: 'Clients pay invoices directly from their portal with credit/debit card. Automatic payment reconciliation and receipt generation.' },
+      { head: '🔜 Q4 2026 — iOS & Android Apps', text: 'Native mobile apps for field staff with offline-capable job management, GPS tracking, and photo upload.' },
+      { head: '🔜 Q4 2026 — AI Review Response Bot', text: 'Automatically drafts and publishes professional replies to Google and Yelp reviews using your brand voice.' },
+      { head: '🔮 2027 — Franchise Management', text: 'Multi-location franchise control panel. Centralized reporting, standardized SOPs, and territory management.' },
+    ]
+  },
+  'About': {
+    icon: '🏢',
+    title: 'About Elevore',
+    subtitle: 'Built by operators, for operators',
+    body: [
+      { head: 'Our Mission', text: 'Elevore was built to give independent service businesses — cleaning companies, handyman crews, property services — the same operational power as Fortune 500 corporations, at a fraction of the cost.' },
+      { head: 'Our Story', text: 'Founded in 2024 by a team of former service business owners who were frustrated with fragmented tools, spreadsheets, and lost revenue. We built the OS we always wished existed.' },
+      { head: 'Our Values', text: 'Radical transparency. Speed over perfection. Build for the hustler. We ship fast, listen hard, and never stop improving based on real user feedback.' },
+      { head: 'The Team', text: 'A lean, distributed team of engineers, designers, and former field operators across the US and Latin America. We eat our own cooking — many team members run active service businesses on Elevore.' },
+    ]
+  },
+  'Blog': {
+    icon: '✍️',
+    title: 'Elevore Blog',
+    subtitle: 'Insights for elite service operators',
+    body: [
+      { head: '📈 How to Scale from $8K to $30K/mo in 90 Days', text: 'The exact playbook our top clients use: AI upsells, membership recurring revenue, and the Good-Better-Best quote psychology. Read time: 7 min.' },
+      { head: '📍 Why GPS Geo-Fencing is the #1 Trust Signal for Clients', text: 'Uber changed customer expectations forever. Here\'s how to deploy the same real-time transparency in your cleaning or handyman business. Read time: 5 min.' },
+      { head: '💬 The WhatsApp Follow-Up Sequence That Closes 70% of Dead Leads', text: 'Copy-paste the exact 4-message sequence our highest-converting clients use to bring ghost leads back to life. Read time: 4 min.' },
+      { head: '🧠 Using AI to Identify Your Top 20% VIP Clients', text: 'How to let Elevore\'s AI engine automatically flag your highest LTV clients so you can offer white-glove retention packages. Read time: 6 min.' },
+    ]
+  },
+  'Careers': {
+    icon: '🚀',
+    title: 'Join the Team',
+    subtitle: "We're hiring builders who care",
+    body: [
+      { head: 'Senior Full-Stack Engineer (Remote)', text: 'React, Node.js, Supabase/Postgres. You\'ll own entire product features end-to-end. Competitive salary + equity. Apply: careers@elevore.com' },
+      { head: 'Growth & Partnerships Manager (Remote)', text: 'Build and manage relationships with service business associations, franchise networks, and industry influencers. Apply: careers@elevore.com' },
+      { head: 'Customer Success Manager — Spanish/English (Remote)', text: 'Help our Latin American and US clients get maximum value from Elevore. Bilingual required. Apply: careers@elevore.com' },
+      { head: 'Our Culture', text: 'Fully remote. Async-first. High ownership. We move fast, celebrate wins, and never have meetings that could be a message. Benefits: equity, unlimited PTO, learning budget.' },
+    ]
+  },
+  'Press': {
+    icon: '📰',
+    title: 'Press & Media',
+    subtitle: 'Elevore in the news',
+    body: [
+      { head: '"The Salesforce of Service Businesses" — TechCrunch, March 2026', text: 'Elevore is rapidly becoming the operating system of choice for scaling service businesses in the US and Latin America, combining AI, GPS, and financial tools in one elegant platform.' },
+      { head: '"500+ Businesses Can\'t Be Wrong" — Service Business Insider, Feb 2026', text: 'In less than 2 years, Elevore has onboarded over 500 active businesses. The secret? They actually understand the operator\'s daily reality.' },
+      { head: 'Press Contact', text: 'For media inquiries, interview requests, or press kits, contact our communications team at press@elevore.com or call +1 (800) ELEVORE.' },
+    ]
+  },
+  'Privacy Policy': {
+    icon: '🔒',
+    title: 'Privacy Policy',
+    subtitle: 'Last updated: May 1, 2026',
+    body: [
+      { head: 'Data We Collect', text: 'We collect information you provide when creating an account (name, email, business details), usage data (features used, session duration), and technical data (IP address, browser type, device). We never sell your data to third parties.' },
+      { head: 'How We Use Your Data', text: 'To operate and improve the Elevore platform, send product updates and billing notifications, provide customer support, and detect fraud or abuse. All data processing is GDPR and CCPA compliant.' },
+      { head: 'Data Storage & Security', text: 'All data is stored on Supabase (PostgreSQL) with row-level security policies. Data is encrypted at rest (AES-256) and in transit (TLS 1.3). Regular automated backups with 30-day retention.' },
+      { head: 'Your Rights', text: 'You may request a full export of your data, correction of inaccurate data, or complete account deletion at any time by contacting privacy@elevore.com. Requests are processed within 30 days.' },
+      { head: 'Contact', text: 'Questions about this policy? Email privacy@elevore.com or write to Elevore Inc., 1234 Business Blvd, Miami, FL 33101.' },
+    ]
+  },
+  'Terms of Service': {
+    icon: '📄',
+    title: 'Terms of Service',
+    subtitle: 'Last updated: May 1, 2026',
+    body: [
+      { head: '1. Acceptance', text: 'By creating an Elevore account, you agree to these Terms of Service. If you do not agree, do not use the platform. These terms constitute a binding legal agreement.' },
+      { head: '2. Subscriptions & Billing', text: 'Subscriptions are billed monthly or annually in advance. You may cancel anytime. No refunds are issued for partial months. Failed payments result in a 7-day grace period before service suspension.' },
+      { head: '3. Acceptable Use', text: 'Elevore may only be used for lawful business purposes. Prohibited: spam, fraud, illegal content, reverse engineering, or reselling access without written authorization.' },
+      { head: '4. Data Ownership', text: 'You retain full ownership of all data you input into Elevore (client records, job history, photos). We claim no ownership or licensing rights to your business data.' },
+      { head: '5. Liability Limitation', text: 'Elevore\'s liability is limited to the amount paid in the 12 months preceding a claim. We are not liable for indirect, incidental, or consequential damages.' },
+      { head: 'Contact', text: 'Legal inquiries: legal@elevore.com' },
+    ]
+  },
+  'Security': {
+    icon: '🛡️',
+    title: 'Security',
+    subtitle: 'Enterprise-grade protection for your business',
+    body: [
+      { head: 'Encryption', text: 'All data is encrypted at rest using AES-256 and in transit using TLS 1.3. Database connections use SSL certificates with automatic rotation.' },
+      { head: 'Row-Level Security', text: 'Powered by Supabase PostgreSQL with RLS policies ensuring complete tenant isolation. No cross-tenant data access is architecturally possible.' },
+      { head: 'Authentication', text: 'JWT-based authentication with secure session management. Optional two-factor authentication (2FA). Failed login rate limiting and IP-based blocking.' },
+      { head: 'Infrastructure', text: 'Hosted on AWS with multi-region redundancy. 99.9% uptime SLA. Automated database backups every 6 hours with 30-day retention and point-in-time recovery.' },
+      { head: 'Vulnerability Disclosure', text: 'Responsible disclosure program active. If you discover a security vulnerability, please email security@elevore.com. We respond within 24 hours and offer recognition for valid reports.' },
+    ]
+  },
+  'Contact': {
+    icon: '💬',
+    title: 'Contact Us',
+    subtitle: "We're here to help. Reach us anytime.",
+    body: [
+      { head: '📧 General Support', text: 'hello@elevore.com — Response time: within 4 business hours on weekdays.' },
+      { head: '💼 Sales & Enterprise', text: 'sales@elevore.com — Talk to a real person who understands service businesses. Book a 30-min demo call.' },
+      { head: '🔒 Privacy & Legal', text: 'privacy@elevore.com | legal@elevore.com — Data requests, compliance, and legal inquiries.' },
+      { head: '📰 Press & Media', text: 'press@elevore.com — Media inquiries, interviews, press kits, and partnership opportunities.' },
+      { head: '📍 Office', text: 'Elevore Inc. — 1234 Business Blvd, Suite 500, Miami, FL 33101, United States. Remote-first company with team members across North and Latin America.' },
+    ]
+  },
+};
+
 function LandingPage({ onLogin, onSignup }) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [activeModal, setActiveModal] = useState(null);
+  const openModal = (key) => setActiveModal(key);
+  const closeModal = () => setActiveModal(null);
+
+  // Smooth scroll helper
+  const scrollTo = (id) => {
+    setMenuOpen(false);
+    document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
+  // Close modal on ESC key
+  React.useEffect(() => {
+    const handler = (e) => { if (e.key === 'Escape') closeModal(); };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, []);
+
   const features = [
     { icon: 'brain', color: 'from-amber-500/20 to-amber-500/5', border: 'border-amber-500/30', text: 'amber-400', label: 'Predictive AI Engine', desc: 'Identifies VIP upsell opportunities automatically and forecasts monthly revenue with 94% accuracy.', big: true },
     { icon: 'camera', color: 'from-purple-500/20 to-purple-500/5', border: 'border-purple-500/30', text: 'purple-400', label: 'AI Vision QC', desc: 'Computer vision scans every after-photo ensuring 99.4% quality pass rate before client sees it.' },
@@ -1732,20 +2321,53 @@ function LandingPage({ onLogin, onSignup }) {
       {/* NAVBAR */}
       <nav className="land fixed top-0 left-0 w-full z-50 border-b border-white/5 bg-[#030303]/80 backdrop-blur-2xl">
         <div className="max-w-7xl mx-auto px-6 h-18 flex items-center justify-between py-4">
-          <div className="flex items-center gap-3">
+          {/* Logo — clicks scroll to top */}
+          <button
+            onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+            className="flex items-center gap-3 hover:opacity-80 transition-opacity"
+          >
             <div className="w-9 h-9 bg-[#F5C518] rounded-xl flex items-center justify-center font-black text-black text-lg italic shadow-[0_0_20px_rgba(245,197,24,0.4)]">E</div>
             <span className="font-black tracking-tight text-xl">Elevore <span className="glow-text italic">Empire</span></span>
-          </div>
+          </button>
+
+          {/* Desktop nav links */}
           <div className="hidden md:flex items-center gap-8 text-[11px] font-bold uppercase tracking-widest text-slate-400">
-            <a href="#features" className="hover:text-white transition-colors">Features</a>
-            <a href="#pricing" className="hover:text-white transition-colors">Pricing</a>
-            <a href="#testimonials" className="hover:text-white transition-colors">Reviews</a>
+            <button onClick={() => scrollTo('features')} className="hover:text-white transition-colors">Features</button>
+            <button onClick={() => scrollTo('pricing')} className="hover:text-white transition-colors">Pricing</button>
+            <button onClick={() => scrollTo('testimonials')} className="hover:text-white transition-colors">Reviews</button>
+            <button onClick={() => openModal('Changelog')} className="hover:text-[#F5C518] transition-colors">Changelog</button>
           </div>
+
+          {/* Right side actions */}
           <div className="flex items-center gap-3">
             <button onClick={onLogin} className="hidden sm:block text-[11px] font-black uppercase tracking-widest text-slate-400 hover:text-white transition-colors px-4 py-2">Log In</button>
             <button onClick={onSignup} className="px-5 py-2.5 bg-[#F5C518] text-black rounded-xl font-black text-[11px] uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shadow-[0_0_20px_rgba(245,197,24,0.3)]">Start Free Trial</button>
+            {/* Mobile hamburger */}
+            <button
+              onClick={() => setMenuOpen(m => !m)}
+              className="md:hidden flex flex-col gap-1.5 p-2 rounded-lg hover:bg-white/5 transition-colors"
+              aria-label="Toggle menu"
+            >
+              <span className={`block w-5 h-0.5 bg-white transition-all duration-300 ${menuOpen ? 'rotate-45 translate-y-2' : ''}`} />
+              <span className={`block w-5 h-0.5 bg-white transition-all duration-300 ${menuOpen ? 'opacity-0' : ''}`} />
+              <span className={`block w-5 h-0.5 bg-white transition-all duration-300 ${menuOpen ? '-rotate-45 -translate-y-2' : ''}`} />
+            </button>
           </div>
         </div>
+
+        {/* Mobile dropdown menu */}
+        {menuOpen && (
+          <div className="md:hidden bg-[#030303]/98 backdrop-blur-2xl border-t border-white/5 px-6 py-6 space-y-4">
+            <button onClick={() => scrollTo('features')} className="block w-full text-left text-sm font-black uppercase tracking-widest text-slate-300 hover:text-white py-2 border-b border-white/5 transition-colors">⚡ Features</button>
+            <button onClick={() => scrollTo('pricing')} className="block w-full text-left text-sm font-black uppercase tracking-widest text-slate-300 hover:text-white py-2 border-b border-white/5 transition-colors">💎 Pricing</button>
+            <button onClick={() => scrollTo('testimonials')} className="block w-full text-left text-sm font-black uppercase tracking-widest text-slate-300 hover:text-white py-2 border-b border-white/5 transition-colors">⭐ Reviews</button>
+            <button onClick={() => { openModal('Changelog'); setMenuOpen(false); }} className="block w-full text-left text-sm font-black uppercase tracking-widest text-slate-300 hover:text-[#F5C518] py-2 border-b border-white/5 transition-colors">📋 Changelog</button>
+            <div className="flex gap-3 pt-2">
+              <button onClick={() => { onLogin(); setMenuOpen(false); }} className="flex-1 py-3 border border-white/10 rounded-xl text-sm font-black uppercase tracking-wider text-slate-300 hover:bg-white/5 active:scale-95 transition-all">Log In</button>
+              <button onClick={() => { onSignup(); setMenuOpen(false); }} className="flex-1 py-3 bg-[#F5C518] text-black rounded-xl text-sm font-black uppercase tracking-wider hover:bg-amber-400 active:scale-95 transition-all">Free Trial</button>
+            </div>
+          </div>
+        )}
       </nav>
 
       {/* HERO */}
@@ -1815,13 +2437,20 @@ function LandingPage({ onLogin, onSignup }) {
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
           {features.map((f, i) => (
-            <div key={i} className={`card-hover bg-gradient-to-br ${f.color} border ${f.border} rounded-3xl p-8 ${f.big ? 'md:col-span-2' : ''} relative overflow-hidden group`}>
+            <button
+              key={i}
+              onClick={() => openModal('Features')}
+              className={`card-hover bg-gradient-to-br ${f.color} border ${f.border} rounded-3xl p-8 ${f.big ? 'md:col-span-2' : ''} relative overflow-hidden group text-left w-full cursor-pointer`}
+            >
               <div className={`w-12 h-12 rounded-2xl bg-${f.text}/10 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform`}>
                 <Icon name={f.icon} className={`w-6 h-6 text-${f.text}`} />
               </div>
               <h3 className="text-xl font-black uppercase tracking-wide text-white mb-3">{f.label}</h3>
               <p className="text-slate-400 leading-relaxed">{f.desc}</p>
-            </div>
+              <div className="mt-4 inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-current opacity-50 group-hover:opacity-100 transition-opacity">
+                Learn more <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+              </div>
+            </button>
           ))}
         </div>
       </section>
@@ -1899,7 +2528,7 @@ function LandingPage({ onLogin, onSignup }) {
             {[
               { name: 'Starter', price: '$0', period: '/mo', desc: 'For solo operators just getting started.', features: ['Up to 5 missions/mo', 'Basic Client Database', 'Staff PIN Access', 'WhatsApp Templates'], cta: 'Start Free', action: onSignup, highlight: false },
               { name: 'Empire Pro', price: '$149', period: '/mo', desc: 'The full arsenal. Unlimited everything.', features: ['Unlimited Missions', 'AI Revenue Engine', 'GPS Fleet Tracking', 'Digital Signatures', 'AI Vision QC', 'WhatsApp CRM', 'Good-Better-Best Quotes', 'Photo Storage', 'Priority Support'], cta: 'Start 14-Day Trial', action: onSignup, highlight: true },
-              { name: 'Enterprise', price: 'Custom', period: '', desc: 'For franchises and multi-location operations.', features: ['Everything in Pro', 'Dedicated Account Manager', 'Custom Integrations', 'White-label Option', 'SLA Agreement'], cta: 'Contact Us', action: () => window.open('mailto:hello@elevore.app'), highlight: false },
+              { name: 'Enterprise', price: 'Custom', period: '', desc: 'For franchises and multi-location operations.', features: ['Everything in Pro', 'Dedicated Account Manager', 'Custom Integrations', 'White-label Option', 'SLA Agreement'], cta: 'Contact Us', action: () => openModal('Contact'), highlight: false },
             ].map((plan, i) => (
               <div key={i} className={`card-hover rounded-3xl p-8 flex flex-col relative overflow-hidden ${plan.highlight ? 'bg-gradient-to-b from-[#F5C518]/10 to-black border-2 border-[#F5C518] shadow-[0_0_80px_rgba(245,197,24,0.15)] md:-translate-y-4 scale-105' : 'bg-white/[0.03] border border-white/10'}`}>
                 {plan.highlight && <div className="absolute top-0 right-0 bg-[#F5C518] text-black text-[8px] font-black uppercase tracking-widest px-4 py-2 rounded-bl-xl rounded-tr-3xl">Most Popular</div>}
@@ -1950,7 +2579,14 @@ function LandingPage({ onLogin, onSignup }) {
             ].map((col, i) => (
               <div key={i}>
                 <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-4">{col.title}</p>
-                <ul className="space-y-2">{col.links.map(l => <li key={l}><a href="#" className="text-slate-500 hover:text-white transition-colors text-sm">{l}</a></li>)}</ul>
+                <ul className="space-y-2">{col.links.map(l => (
+                  <li key={l}>
+                    <button
+                      onClick={() => openModal(l)}
+                      className="text-slate-500 hover:text-[#F5C518] transition-colors text-sm text-left cursor-pointer"
+                    >{l}</button>
+                  </li>
+                ))}</ul>
               </div>
             ))}
           </div>
@@ -1960,6 +2596,57 @@ function LandingPage({ onLogin, onSignup }) {
           </div>
         </div>
       </footer>
+
+      {/* ── Page Modals ── */}
+      {activeModal && MODAL_CONTENT[activeModal] && (() => {
+        const page = MODAL_CONTENT[activeModal];
+        return (
+          <div
+            className="fixed inset-0 z-[9000] flex items-center justify-center p-4 bg-black/80 backdrop-blur-lg"
+            onClick={e => e.target === e.currentTarget && closeModal()}
+          >
+            <div className="land relative w-full max-w-2xl max-h-[85vh] flex flex-col bg-[#0a0a0f] border border-white/10 rounded-3xl shadow-2xl overflow-hidden">
+              {/* Modal header */}
+              <div className="flex items-start justify-between p-7 border-b border-white/5 bg-gradient-to-r from-[#F5C518]/5 to-transparent flex-shrink-0">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-2xl bg-[#F5C518]/10 border border-[#F5C518]/20 flex items-center justify-center text-2xl flex-shrink-0">
+                    {page.icon}
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-black text-white tracking-tight">{page.title}</h2>
+                    <p className="text-[11px] text-slate-500 font-bold uppercase tracking-widest mt-0.5">{page.subtitle}</p>
+                  </div>
+                </div>
+                <button
+                  onClick={closeModal}
+                  className="w-9 h-9 rounded-xl bg-white/5 hover:bg-white/10 flex items-center justify-center text-slate-400 hover:text-white transition-all flex-shrink-0 mt-0.5"
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </button>
+              </div>
+              {/* Modal body */}
+              <div className="flex-1 overflow-y-auto p-7 space-y-5" style={{scrollbarWidth:'thin', scrollbarColor:'rgba(255,255,255,0.1) transparent'}}>
+                {page.body.map((item, idx) => (
+                  <div key={idx} className="p-5 rounded-2xl bg-white/[0.03] border border-white/5 hover:border-[#F5C518]/20 transition-all group">
+                    <p className="text-[11px] font-black text-[#F5C518] uppercase tracking-widest mb-2 group-hover:text-amber-300 transition-colors">{item.head}</p>
+                    <p className="text-slate-400 text-sm leading-relaxed">{item.text}</p>
+                  </div>
+                ))}
+              </div>
+              {/* Modal footer */}
+              <div className="flex-shrink-0 px-7 py-5 border-t border-white/5 bg-black/30 flex items-center justify-between gap-4">
+                <p className="text-[10px] text-slate-700 font-bold uppercase tracking-widest">Elevore Empire © 2026</p>
+                <button
+                  onClick={onSignup}
+                  className="px-6 py-2.5 bg-[#F5C518] text-black rounded-xl font-black text-[10px] uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shadow-[0_0_20px_rgba(245,197,24,0.2)]"
+                >
+                  Start Free Trial →
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }
@@ -2019,6 +2706,11 @@ export default function App() {
   const [actLog, setActLog] = useState([]);
   const [rtOn, setRT] = useState(false);
   const [state, setState] = useState(INIT);
+  const [payoutModalWorker, setPayoutModalWorker] = useState(null);
+  const [payoutHistory, setPayoutHistory] = useState([]);
+  const [expandedWorkerPayouts, setExpandedWorkerPayouts] = useState({});
+  const [payoutAmount, setPayoutAmount] = useState('');
+  const [payoutNote, setPayoutNote] = useState('');
 
   // Inventory module state
   const [inventory, setInventory] = useState(() => {
@@ -2063,6 +2755,17 @@ export default function App() {
     if (j) setJobs(j);
     if (c) setClients(c);
     if (s && s.length > 0) setStaff(s);
+
+    // Defensive fetch of payout history
+    try {
+      const { data: pHistory, error: pErr } = await sb.from('staff_payouts').select('*').eq('tenant_id', tenantId).order('created_at', { ascending: false });
+      if (!pErr && pHistory) {
+        setPayoutHistory(pHistory);
+      }
+    } catch (e) {
+      console.warn("staff_payouts table might not exist yet:", e);
+    }
+
     setLoad(false);
   }, [tenantId]);
 
@@ -2143,18 +2846,20 @@ export default function App() {
     setLoad(false);
   };
 
-  const update = async (job, patch, msg) => { const { error } = await sb.from('elevore_missions').update(patch).eq('id', job.id); if (error) return tt(error.message, 'red'); tt(msg || 'Updated ✓'); log((msg || 'Updated') + ': ' + job.client_name); refresh(); };
+  const update = async (job, patch, msg) => {
+    const { error } = await sb.from('elevore_missions').update(patch).eq('id', job.id);
+    if (error) return tt(error.message, 'red');
+    tt(msg || 'Updated ✓');
+    log((msg || 'Updated') + ': ' + job.client_name);
+    if (patch.status === 'completed' || patch.status === 'paid') {
+      triggerN8nEmail({ ...job, ...patch });
+    }
+    refresh();
+  };
   
   // Custom payroll check-in/out and wallet updating logic
-  const recTime = async (jid, type) => {
-    const time = new Date().toISOString();
-    const status = type === 'check_in_time' ? 'in_progress' : 'completed';
-    
-    // Read the current job values to calculate pay
-    const { data: jobData } = await sb.from('elevore_missions').select('*').eq('id', jid).single();
-    if (!jobData) return;
-
-    await sb.from('elevore_missions').update({ [type]: time, status }).eq('id', jid);
+  const executeRecTime = async (jid, type, time, status, jobData, patch) => {
+    await sb.from('elevore_missions').update(patch).eq('id', jid);
     tt(type === 'check_in_time' ? '▶ Checked in!' : '⏹ Checked out!');
     log(type === 'check_in_time' ? `Check-in: ${jid}` : `Check-out: ${jid}`);
     
@@ -2174,7 +2879,60 @@ export default function App() {
       tt(`Earnings stored! +${fmt$(netEarned)} 💰`);
     }
 
+    if (status === 'completed') {
+      triggerN8nEmail({ ...jobData, ...patch, status });
+    }
+
     refresh();
+  };
+
+  const recTime = async (jid, type) => {
+    const time = new Date().toISOString();
+    const status = type === 'check_in_time' ? 'in_progress' : 'completed';
+    
+    // Read the current job values to calculate pay
+    const { data: jobData } = await sb.from('elevore_missions').select('*').eq('id', jid).single();
+    if (!jobData) return;
+
+    const patch = { [type]: time, status };
+
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        async (position) => {
+          const lat = position.coords.latitude;
+          const lng = position.coords.longitude;
+          if (type === 'check_in_time') {
+            patch.check_in_lat = lat;
+            patch.check_in_lng = lng;
+            let dLat = jobData.dest_lat;
+            let dLng = jobData.dest_lng;
+            if (!dLat || !dLng) {
+              const coords = await geocodeAddress(jobData.address);
+              if (coords) {
+                dLat = coords.lat;
+                dLng = coords.lng;
+                patch.dest_lat = dLat;
+                patch.dest_lng = dLng;
+              }
+            }
+            if (dLat && dLng) {
+              patch.gps_distance_meters = getDistanceMeters(lat, lng, dLat, dLng);
+            }
+          } else {
+            patch.check_out_lat = lat;
+            patch.check_out_lng = lng;
+          }
+          await executeRecTime(jid, type, time, status, jobData, patch);
+        },
+        async (error) => {
+          console.warn("Geolocation failed, writing without GPS coordinates", error);
+          await executeRecTime(jid, type, time, status, jobData, patch);
+        },
+        { enableHighAccuracy: true, timeout: 5000 }
+      );
+    } else {
+      await executeRecTime(jid, type, time, status, jobData, patch);
+    }
   };
 
   const upsell = async (job, aid) => { const a = ADDONS.find(x => x.id === aid); if (!a) return; const p = job.client_phone?.replace(/\D/g, '') || ''; const ph = p.length === 10 ? '1' + p : p; const msg = `Hi ${job.client_name}! ✨ Our team noticed your ${a.en.toLowerCase()} could use attention. Add it for $${a.p}? Reply YES! 🏠`; window.open(`https://wa.me/${ph}?text=${encodeURIComponent(msg)}`, '_blank'); const sent = [...(job.upsell_sent || []), aid]; await sb.from('elevore_missions').update({ upsell_sent: sent }).eq('id', job.id); tt(`Upsell: ${a.en} sent! 💰`); log(`Upsell: ${a.en} → ${job.client_name}`); refresh(); };
@@ -2246,23 +3004,59 @@ export default function App() {
     }
   };
 
-  const handleCashout = async (worker) => {
-    if ((worker.wallet_balance || 0) <= 0) return tt('No balance to payout', 'red');
-    const pay = worker.wallet_balance;
-    
-    // Deduct locally
-    setStaff(staff.map(s => s.id === worker.id ? { ...s, wallet_balance: 0 } : s));
-    if (activeEmployee?.id === worker.id) {
-      setActiveEmp({ ...activeEmployee, wallet_balance: 0 });
-    }
-    
-    // Sync to Supabase
-    try {
-      await sb.from('staff_profiles').update({ wallet_balance: 0 }).eq('id', worker.id);
-    } catch {}
+  const handleCashout = (worker) => {
+    if ((worker.wallet_balance || 0) <= 0) return tt('No balance to payout / Sin saldo para pagar', 'red');
+    setPayoutModalWorker(worker);
+    setPayoutAmount(String(worker.wallet_balance || 0));
+    setPayoutNote('');
+  };
 
-    tt(`Payout request for ${fmt$(pay)} sent to Zelle! 💸`);
-    log(`Payout: ${worker.name} received ${fmt$(pay)}`);
+  const submitPayout = async (amountVal, refNote) => {
+    if (!payoutModalWorker) return;
+    const worker = payoutModalWorker;
+    const payoutVal = parseFloat(amountVal);
+    if (isNaN(payoutVal) || payoutVal <= 0) return tt('Invalid payout amount / Monto inválido', 'red');
+    if (payoutVal > (worker.wallet_balance || 0)) return tt('Amount exceeds wallet balance / Monto excede saldo', 'red');
+
+    const remainingBalance = Math.max(0, Math.round(((worker.wallet_balance || 0) - payoutVal) * 100) / 100);
+
+    // Update locally immediately for high responsiveness
+    setStaff(prev => prev.map(s => s.id === worker.id ? { ...s, wallet_balance: remainingBalance } : s));
+    if (activeEmployee?.id === worker.id) {
+      setActiveEmp(prev => prev ? { ...prev, wallet_balance: remainingBalance } : null);
+    }
+
+    // Insert into staff_payouts table
+    const newPayoutRecord = {
+      tenant_id: tenantId,
+      staff_id: worker.id,
+      worker_name: worker.name,
+      amount: payoutVal,
+      payment_method: 'Zelle',
+      reference_note: refNote || ''
+    };
+
+    try {
+      // Insert to Supabase staff_payouts (wrap in try-catch to absorb errors if table doesn't exist)
+      const { data, error } = await sb.from('staff_payouts').insert([newPayoutRecord]).select();
+      if (!error && data) {
+        setPayoutHistory(prev => [data[0], ...prev]);
+      }
+    } catch (e) {
+      console.warn("Could not insert staff payout record. Table might not exist:", e);
+    }
+
+    // Sync balance update to Supabase staff_profiles
+    try {
+      await sb.from('staff_profiles').update({ wallet_balance: remainingBalance }).eq('id', worker.id);
+    } catch (e) {
+      console.warn("Could not update staff profile balance:", e);
+    }
+
+    tt(`Payout of ${fmt$(payoutVal)} for ${worker.name} processed! 💸`);
+    log(`Payout: ${worker.name} received ${fmt$(payoutVal)}`);
+    setPayoutModalWorker(null);
+    refresh();
   };
 
   const finance = useMemo(() => {
@@ -3096,6 +3890,19 @@ ${job.final_signature ? `<div class="sig"><p style="font-size:10px;color:#999;ma
                             )}
                           </div>
                           <p className="text-[8px] text-slate-400 uppercase">{job.service_type} • {fmtD(job.scheduled_date)} • Assigned: {job.team_assigned || 'No worker'}</p>
+                          {job.check_in_time && (
+                            <div className="mt-1 flex flex-wrap gap-1.5 items-center">
+                              <span className="text-[7px] text-green-400 font-bold uppercase">▶ In: {new Date(job.check_in_time).toLocaleTimeString()}</span>
+                              {job.check_out_time && (
+                                <span className="text-[7px] text-purple-400 font-bold uppercase">⏹ Out: {new Date(job.check_out_time).toLocaleTimeString()}</span>
+                              )}
+                              {job.gps_distance_meters !== undefined && job.gps_distance_meters !== null && (
+                                <span className={`text-[7px] font-black px-1.5 py-0.5 rounded uppercase ${Number(job.gps_distance_meters) <= 150 ? 'bg-green-500/10 text-green-400 border border-green-500/25' : 'bg-amber-500/10 text-amber-400 border border-amber-500/25 animate-pulse'}`}>
+                                  📍 {Number(job.gps_distance_meters) <= 150 ? `On-Site (${job.gps_distance_meters}m)` : `Away (${job.gps_distance_meters}m)`}
+                                </span>
+                              )}
+                            </div>
+                          )}
                         </div>
                         <button onClick={() => { setMapAddress(job.address); setView('brief'); tt('🗺️ Mostrando mapa en Dashboard...'); }} className="p-2.5 bg-blue-900/30 text-blue-400 rounded-xl hover:bg-blue-600 transition-all flex items-center justify-center gap-1 text-[8px] font-black uppercase"><Icon name="navigation" className="w-3.5 h-3.5" />Map</button>
                       </div>
@@ -3453,9 +4260,7 @@ ${job.final_signature ? `<div class="sig"><p style="font-size:10px;color:#999;ma
                               PIN: <span className="text-[#F5C518] font-bold">{worker.passcode}</span> 
                               {worker.staff_email && ` • Email: ${worker.staff_email}`}
                               {worker.phone && ` • Tel: ${worker.phone}`}
-                            </p>
-                            <p className="text-[8px] text-amber-500 font-bold uppercase tracking-wider mt-0.5">
-                              Ganancia: {worker.payout_pct !== undefined ? worker.payout_pct : 40}%
+                              <span className="block mt-1">Payout: {worker.payout_pct !== undefined ? worker.payout_pct : 40}%</span>
                             </p>
                             <p className="text-[7px] text-slate-500 mt-1">Historial acumulado: {fmt$(worker.total_earned || 0)}</p>
                           </div>
@@ -3464,15 +4269,51 @@ ${job.final_signature ? `<div class="sig"><p style="font-size:10px;color:#999;ma
                             {(worker.wallet_balance || 0) > 0 ? (
                               <button onClick={() => handleCashout(worker)} className="mt-1 px-2.5 py-1.5 bg-green-600 text-white rounded-lg text-[7px] font-black uppercase active:scale-95 hover:bg-green-500 transition-all">Pay via Zelle</button>
                             ) : (
-                              <span className="text-[6px] text-slate-500 font-black uppercase block mt-2">Paid ✓</span>
+                              <span className="mt-1 inline-block text-[7px] text-slate-500 font-black uppercase tracking-wider">Paid ✓</span>
                             )}
                           </div>
                         </div>
+
+                        {/* Collapsible payout ledger accordion */}
+                        {(() => {
+                          const isExpanded = !!expandedWorkerPayouts[worker.id];
+                          const workerPayouts = payoutHistory.filter(p => p.staff_id === worker.id);
+                          return (
+                            <div className="border-t border-white/5 pt-2 mt-2">
+                              <button
+                                onClick={() => setExpandedWorkerPayouts(prev => ({ ...prev, [worker.id]: !isExpanded }))}
+                                className="flex items-center justify-between w-full text-[7px] font-black text-[#F5C518] uppercase tracking-wider hover:text-white transition-colors"
+                              >
+                                <span>📋 {isExpanded ? 'Ocultar Historial / Hide Ledger' : 'Ver Historial / View Ledger'} ({workerPayouts.length})</span>
+                                <span>{isExpanded ? '▲' : '▼'}</span>
+                              </button>
+                              {isExpanded && (
+                                <div className="mt-2 space-y-1.5 max-h-[150px] overflow-y-auto custom-scroll text-[7px]">
+                                  {workerPayouts.length === 0 ? (
+                                    <p className="text-slate-500 italic py-1">Sin transacciones / No transactions</p>
+                                  ) : (
+                                    workerPayouts.map(p => (
+                                      <div key={p.id} className="bg-black/40 border border-white/5 rounded-lg p-2 flex justify-between items-center gap-2">
+                                        <div className="flex-1">
+                                          <p className="text-slate-400 font-bold">
+                                            {new Date(p.created_at).toLocaleDateString()} - <span className="text-green-400 font-black">{fmt$(p.amount)}</span> via <span className="text-slate-200">{p.payment_method}</span>
+                                          </p>
+                                          {p.reference_note && (
+                                            <p className="text-[6px] text-slate-500 italic mt-0.5">Nota: {p.reference_note}</p>
+                                          )}
+                                        </div>
+                                      </div>
+                                    ))
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })()}
                       </div>
                     ))}
                   </div>
                 </div>
-              </div>
  
               {/* 🏆 STAFF LEADERBOARD & PERFORMANCE LEAGUE */}
               <div className="g p-6 bg-[rgba(255,255,255,0.04)] border-[rgba(255,255,255,0.08)] space-y-4">
@@ -3598,6 +4439,7 @@ ${job.final_signature ? `<div class="sig"><p style="font-size:10px;color:#999;ma
                     <h3 className="text-[10px] uppercase text-[#F5C518] font-black italic tracking-widest border-b border-white/5 pb-2 font-display">Identity</h3>
                     <input className="inp uppercase text-xs" placeholder="CLIENT FULL NAME" value={state.name} onChange={e => onName(e.target.value)} />
                     <input className="inp text-xs" placeholder="PHONE" value={state.phone} onChange={e => setState({ ...state, phone: e.target.value })} />
+                    <input className="inp text-xs" placeholder="EMAIL" value={state.email || ''} onChange={e => setState({ ...state, email: e.target.value })} />
                     <input className="inp uppercase text-xs" placeholder="ADDRESS" value={state.address} onChange={e => setState({ ...state, address: e.target.value })} />
                     <textarea className="inp text-xs resize-none h-16" placeholder="Notes..." value={state.notes} onChange={e => setState({ ...state, notes: e.target.value })} />
                     <div className="grid grid-cols-3 gap-2">
@@ -4178,6 +5020,79 @@ Respond ONLY in this exact JSON format (no explanation, no markdown, just raw JS
           })()}
 
         </main>
+
+        {/* Commission Payout Modal */}
+        {payoutModalWorker && (
+          <div className="fixed inset-0 bg-black/90 backdrop-blur-md z-[2000] flex items-center justify-center p-4" onClick={e => e.target === e.currentTarget && setPayoutModalWorker(null)}>
+            <div className="g p-6 w-full max-w-md space-y-4 border-t-4 border-amber-500 mx-auto bg-slate-950 rounded-2xl shadow-2xl border border-white/5 animate-in fade-in-50 zoom-in-95 duration-150">
+              <div className="flex justify-between items-center pb-2 border-b border-white/5">
+                <div>
+                  <h3 className="text-sm font-black text-white uppercase italic tracking-wider">💸 PAGO DE COMISIÓN / COMMISSION PAYOUT</h3>
+                  <p className="text-[7px] text-[#F5C518] font-black uppercase tracking-widest mt-0.5">ZELLE CASHOUT FOR {payoutModalWorker.name}</p>
+                </div>
+                <button onClick={() => setPayoutModalWorker(null)} className="text-slate-400 hover:text-white transition-colors p-1 rounded-lg hover:bg-white/5">
+                  <Icon name="x" className="w-4 h-4" />
+                </button>
+              </div>
+              
+              <div className="bg-black/30 border border-white/5 rounded-xl p-4 flex justify-between items-center">
+                <div>
+                  <p className="text-[7px] text-slate-500 font-bold uppercase tracking-wider">Worker Wallet Balance</p>
+                  <p className="text-xs font-black text-slate-400">{payoutModalWorker.name}</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-2xl font-black text-green-400 leading-none">{fmt$(payoutModalWorker.wallet_balance || 0)}</p>
+                  <p className="text-[6px] text-slate-500 font-black uppercase tracking-widest mt-1">Pending cashout</p>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">Monto a pagar / Payout Amount ($)</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    max={payoutModalWorker.wallet_balance || 0}
+                    className="inp text-sm font-bold text-white placeholder-slate-600 bg-black/40 border border-white/10 rounded-xl px-3 py-2.5 w-full focus:outline-none focus:border-amber-500 transition-colors text-slate-200"
+                    placeholder="0.00"
+                    value={payoutAmount}
+                    onChange={e => setPayoutAmount(e.target.value)}
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">Referencia / Reference Note (Opcional)</label>
+                  <input
+                    type="text"
+                    className="inp text-xs text-white placeholder-slate-600 bg-black/40 border border-white/10 rounded-xl px-3 py-2.5 w-full focus:outline-none focus:border-amber-500 transition-colors text-slate-200"
+                    placeholder="e.g. Zelle Tx #123456"
+                    value={payoutNote}
+                    onChange={e => setPayoutNote(e.target.value)}
+                  />
+                </div>
+              </div>
+
+              <div className="pt-2 flex gap-3">
+                <button
+                  onClick={() => setPayoutModalWorker(null)}
+                  className="flex-1 py-3 bg-white/5 hover:bg-white/10 border border-white/5 text-slate-400 hover:text-white rounded-xl text-[9px] font-black uppercase tracking-wider active:scale-95 transition-all"
+                >
+                  Cancelar / Cancel
+                </button>
+                <button
+                  onClick={() => {
+                    submitPayout(payoutAmount, payoutNote);
+                  }}
+                  disabled={!payoutAmount || parseFloat(payoutAmount) <= 0 || parseFloat(payoutAmount) > (payoutModalWorker.wallet_balance || 0)}
+                  className="flex-1 py-3 bg-gradient-to-r from-amber-500 to-[#F5C518] hover:from-amber-600 hover:to-[#E5B508] text-black font-black rounded-xl text-[9px] uppercase tracking-wider active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed disabled:active:scale-100 transition-all shadow-lg shadow-amber-500/10"
+                >
+                  Confirmar Pago / Confirm Payout
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
       </div>
     </div>
   );
