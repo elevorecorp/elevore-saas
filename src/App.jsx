@@ -776,7 +776,11 @@ function AIAdvisor({ jobs, clients, staff, isStaff, activeUser, onClose, tt, onO
 
   // Local settings for LLM provider
   const [aiProvider, setAiProvider] = useState(() => localStorage.getItem('elevore_ai_provider') || 'gemini');
-  const [ollamaUrl, setOllamaUrl] = useState(() => localStorage.getItem('elevore_ollama_url') || 'http://localhost:11434');
+  const [ollamaUrl, setOllamaUrl] = useState(() => {
+    const saved = localStorage.getItem('elevore_ollama_url');
+    if (saved === 'http://localhost:11434') return 'http://127.0.0.1:11434';
+    return saved || 'http://127.0.0.1:11434';
+  });
   const [ollamaModel, setOllamaModel] = useState(() => localStorage.getItem('elevore_ollama_model') || 'llama3');
   const [showSettings, setShowSettings] = useState(false);
   const [connStatus, setConnStatus] = useState('idle'); // idle, testing, connected, error
@@ -1119,7 +1123,7 @@ Habla en español. Sé directo, estratégico y orientado a resultados. Si el CEO
                     <input
                       value={ollamaUrl}
                       onChange={e => { setOllamaUrl(e.target.value); setConnStatus('idle'); }}
-                      placeholder="http://localhost:11434"
+                      placeholder="http://127.0.0.1:11434"
                       className="inp text-[10px] py-1.5"
                     />
                   </div>
@@ -3706,7 +3710,8 @@ Respond ONLY in this exact JSON format (no explanation, no markdown, just raw JS
 {"good":{"price":120,"label":"Standard Service","description":"Basic clean, meets expectations"},"better":{"price":160,"label":"Premium Service","description":"Deep attention to detail, priority scheduling"},"best":{"price":210,"label":"VIP Elite","description":"Full white-glove treatment, same-day, satisfaction guarantee"},"insight":"One sentence about Orlando market conditions for this service."}`;
 
                     const provider = localStorage.getItem('elevore_ai_provider') || 'gemini';
-                    const ollamaUrl = localStorage.getItem('elevore_ollama_url') || 'http://localhost:11434';
+                    let ollamaUrl = localStorage.getItem('elevore_ollama_url') || 'http://127.0.0.1:11434';
+                    if (ollamaUrl === 'http://localhost:11434') ollamaUrl = 'http://127.0.0.1:11434';
                     const ollamaModel = localStorage.getItem('elevore_ollama_model') || 'llama3';
 
                     const controller = new AbortController();
