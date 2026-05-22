@@ -929,7 +929,8 @@ Eres un asesor de negocios de élite con experiencia en:
 Habla en español. Sé directo, estratégico y orientado a resultados. Si el CEO pide algo que requiere datos que no tienes, trabaja con lo que hay y ofrece una solución accionable.`;
 
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 20000); // 20-second connection timeout
+    const timeoutDuration = aiProvider === 'ollama' ? 90000 : 20000; // 90s for local Ollama, 20s for Gemini Cloud
+    const timeoutId = setTimeout(() => controller.abort(), timeoutDuration);
 
     try {
       if (aiProvider === 'gemini') {
@@ -3715,7 +3716,8 @@ Respond ONLY in this exact JSON format (no explanation, no markdown, just raw JS
                     const ollamaModel = localStorage.getItem('elevore_ollama_model') || 'llama3';
 
                     const controller = new AbortController();
-                    const timeoutId = setTimeout(() => controller.abort(), 15000); // 15s timeout
+                    const timeoutDuration = provider === 'ollama' ? 90000 : 15000; // 90s for local Ollama, 15s for Gemini Cloud
+                    const timeoutId = setTimeout(() => controller.abort(), timeoutDuration);
 
                     try {
                       let raw = '';
