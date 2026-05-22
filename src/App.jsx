@@ -1201,23 +1201,18 @@ function AIAdvisor({ jobs, clients, staff, isStaff, activeUser, onClose, tt, onO
     ? `¡Hola ${activeUser}! Soy tu **Manual de Operaciones con IA**. Estoy aquí para ayudarte en tu trabajo de campo. 🛠️ Pregúntame cómo limpiar orificios, parchar drywall, remover manchas de alfombras, o cómo actuar frente a un cliente difícil.`
     : `¡Hola ${activeUser}! Soy tu **Asesor de IA Elevore**. Estoy conectado a tu base de datos en tiempo real. 📊 ¿En qué puedo ayudarte hoy?`;
 
-  // Local settings for LLM provider
-  const [aiProvider, setAiProvider] = useState(() => localStorage.getItem('elevore_ai_provider') || 'gemini');
+  // Local settings for LLM provider (Ollama only)
+  const [aiProvider] = useState('ollama');
   const [ollamaUrl, setOllamaUrl] = useState(() => {
     const saved = localStorage.getItem('elevore_ollama_url');
     if (saved === 'http://localhost:11434') return 'http://127.0.0.1:11434';
     return saved || 'http://127.0.0.1:11434';
   });
   const [ollamaModel, setOllamaModel] = useState(() => localStorage.getItem('elevore_ollama_model') || 'llama3');
-  const [openaiApiKey, setOpenaiApiKey] = useState(() => localStorage.getItem('elevore_openai_api_key') || '');
   const [showSettings, setShowSettings] = useState(false);
   const [connStatus, setConnStatus] = useState('idle'); // idle, testing, connected, error
 
   // Save AI Provider details
-  useEffect(() => {
-    localStorage.setItem('elevore_ai_provider', aiProvider);
-  }, [aiProvider]);
-
   useEffect(() => {
     localStorage.setItem('elevore_ollama_url', ollamaUrl);
   }, [ollamaUrl]);
@@ -1225,10 +1220,6 @@ function AIAdvisor({ jobs, clients, staff, isStaff, activeUser, onClose, tt, onO
   useEffect(() => {
     localStorage.setItem('elevore_ollama_model', ollamaModel);
   }, [ollamaModel]);
-
-  useEffect(() => {
-    localStorage.setItem('elevore_openai_api_key', openaiApiKey);
-  }, [openaiApiKey]);
 
   // Load chat memory from LocalStorage
   const storageKey = `elevore_chat_history_${isStaff ? 'staff' : 'admin'}`;
@@ -1278,80 +1269,32 @@ function AIAdvisor({ jobs, clients, staff, isStaff, activeUser, onClose, tt, onO
   // Health check for active provider
   const testConnection = async () => {
     setConnStatus('testing');
-    if (aiProvider === 'gemini') {
-      const key = import.meta.env.VITE_GEMINI_KEY;
-      if (!key) {
-        setConnStatus('error');
-        tt('Falta la API Key de Gemini en las variables de entorno', 'red');
-      } else {
-        setConnStatus('connected');
-        tt('Conexión con Gemini lista', 'green');
-      }
-    } else if (aiProvider === 'openai') {
-      const key = import.meta.env.VITE_OPENAI_API_KEY || openaiApiKey;
-      if (!key) {
-        setConnStatus('error');
-        tt('Falta la API Key de OpenAI. Configúrala en Ajustes.', 'red');
-      } else {
-        const controller = new AbortController();
-        const id = setTimeout(() => controller.abort(), 4000);
-        try {
-          const res = await fetch('https://api.openai.com/v1/chat/completions', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${key}`
-            },
-            body: JSON.stringify({
-              model: 'gpt-4o-mini',
-              messages: [{ role: 'user', content: 'Ping' }],
-              max_tokens: 5
-            }),
-            signal: controller.signal
-          });
-          clearTimeout(id);
-          if (res.ok) {
-            setConnStatus('connected');
-            tt('Conexión con OpenAI (GPT-4o-mini) exitosa', 'green');
-          } else {
-            const err = await res.json().catch(() => ({}));
-            setConnStatus('error');
-            tt(`OpenAI rechazó la conexión: ${err.error?.message || 'Error de autenticación'}`, 'red');
-          }
-        } catch (e) {
-          clearTimeout(id);
-          setConnStatus('error');
-          tt('Error de red al conectar con OpenAI.', 'red');
-        }
-      }
-    } else {
-      const controller = new AbortController();
-      const id = setTimeout(() => controller.abort(), 4000);
-      try {
-        const res = await fetch(`${ollamaUrl}/api/tags`, { signal: controller.signal });
-        clearTimeout(id);
-        if (res.ok) {
-          const data = await res.json();
-          const hasModel = data.models?.some(m => 
-            m.name.toLowerCase().includes(ollamaModel.toLowerCase()) || 
-            m.model.toLowerCase().includes(ollamaModel.toLowerCase())
-          );
-          if (hasModel) {
-            setConnStatus('connected');
-            tt(`Conectado a Ollama exitosamente (Modelo: ${ollamaModel})`, 'green');
-          } else {
-            setConnStatus('connected');
-            tt(`Ollama responde, pero el modelo "${ollamaModel}" no parece estar descargado. Corre 'ollama run ${ollamaModel}'`, 'amber');
-          }
+    const controller = new AbortController();
+    const id = setTimeout(() => controller.abort(), 4000);
+    try {
+      const res = await fetch(`${ollamaUrl}/api/tags`, { signal: controller.signal });
+      clearTimeout(id);
+      if (res.ok) {
+        const data = await res.json();
+        const hasModel = data.models?.some(m => 
+          m.name.toLowerCase().includes(ollamaModel.toLowerCase()) || 
+          m.model.toLowerCase().includes(ollamaModel.toLowerCase())
+        );
+        if (hasModel) {
+          setConnStatus('connected');
+          tt(`Conectado a Ollama exitosamente (Modelo: ${ollamaModel})`, 'green');
         } else {
-          setConnStatus('error');
-          tt('Error al conectar con Ollama', 'red');
+          setConnStatus('connected');
+          tt(`Ollama responde, pero el modelo "${ollamaModel}" no parece estar descargado. Corre 'ollama run ${ollamaModel}'`, 'amber');
         }
-      } catch (e) {
-        clearTimeout(id);
+      } else {
         setConnStatus('error');
-        tt('No se pudo conectar a Ollama. Asegúrate de ejecutar: $env:OLLAMA_ORIGINS="*" ; ollama run ' + ollamaModel, 'red');
+        tt('Error al conectar con Ollama', 'red');
       }
+    } catch (e) {
+      clearTimeout(id);
+      setConnStatus('error');
+      tt('No se pudo conectar a Ollama. Asegúrate de ejecutar: $env:OLLAMA_ORIGINS="*" ; ollama run ' + ollamaModel, 'red');
     }
   };
 
@@ -1398,147 +1341,41 @@ Eres un asesor de negocios de élite con experiencia en:
 Habla en español. Sé directo, estratégico y orientado a resultados. Si el CEO pide algo que requiere datos que no tienes, trabaja con lo que hay y ofrece una solución accionable.`;
 
     const controller = new AbortController();
-    const timeoutDuration = aiProvider === 'ollama' ? 90000 : 20000; // 90s for local Ollama, 20s for Gemini Cloud
+    const timeoutDuration = 90000; // 90s for local Ollama
     const timeoutId = setTimeout(() => controller.abort(), timeoutDuration);
 
     try {
-      if (aiProvider === 'gemini') {
-        const payload = {
-          contents: [
-            { role: 'user', parts: [{ text: systemPrompt + '\n\n--- INICIO DEL CHAT ---' }] },
-            { role: 'model', parts: [{ text: isStaff
-              ? `Hola ${activeUser}! Soy tu guía de operaciones de campo. Estoy aquí para ayudarte en tiempo real. ¿Qué necesitas?`
-              : `Hola ${activeUser}! Sistema de IA Elevore activo. Tengo acceso completo a tus métricas en tiempo real. ¿Qué analizamos?`
-            }]},
-            // Inject conversation history (last 8 messages for context window)
+      // --- OLLAMA LOCAL AI CALL ---
+      const res = await fetch(`${ollamaUrl}/api/chat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: ollamaModel,
+          messages: [
+            { role: 'system', content: systemPrompt },
             ...messages.slice(-8).map(m => ({
-              role: m.from === 'user' ? 'user' : 'model',
-              parts: [{ text: m.text }]
+              role: m.from === 'user' ? 'user' : 'assistant',
+              content: m.text
             })),
-            { role: 'user', parts: [{ text: userMessage }] }
+            { role: 'user', content: userMessage }
           ],
-          generationConfig: {
-            temperature: 0.7,
-            maxOutputTokens: 600,
-            topK: 40,
-            topP: 0.95
-          },
-          safetySettings: [
-            { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
-            { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_NONE' }
-          ]
-        };
+          stream: false
+        }),
+        signal: controller.signal
+      });
 
-        const GEMINI_KEY = import.meta.env.VITE_GEMINI_KEY;
-        if (!GEMINI_KEY) {
-          clearTimeout(timeoutId);
-          return '⚠️ Error: No se pudo conectar a la IA. La clave de API de Gemini no está configurada en Vercel/.env.';
-        }
+      clearTimeout(timeoutId);
 
-        const res = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_KEY}`,
-          { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload), signal: controller.signal }
-        );
-
-        clearTimeout(timeoutId);
-
-        if (!res.ok) {
-          const errBody = await res.json().catch(() => ({}));
-          const errMsg = errBody?.error?.message || `HTTP ${res.status}`;
-          if (res.status === 429 || errMsg.toLowerCase().includes('quota')) {
-            return '⚠️ Has agotado la cuota de la IA. Si es una clave nueva, por favor revisa que tengas habilitada la cuota del modelo o intenta en unos minutos.';
-          }
-          return `⚠️ Error de Conexión IA: ${errMsg}`;
-        }
-
-        const data = await res.json();
-        const candidate = data?.candidates?.[0];
-        if (!candidate) {
-          const blockReason = data?.promptFeedback?.blockReason;
-          return blockReason
-            ? `⚠️ Consulta bloqueada por filtro de seguridad (${blockReason}). Reformula tu pregunta.`
-            : 'Lo siento, no recibí respuesta de la IA. Intenta de nuevo.';
-        }
-        if (candidate.finishReason === 'SAFETY') {
-          return '⚠️ La respuesta fue bloqueada por filtros de seguridad. Intenta reformular tu pregunta.';
-        }
-        return candidate?.content?.parts?.[0]?.text || 'Lo siento, no pude generar una respuesta. Intenta de nuevo.';
-      } else if (aiProvider === 'openai') {
-        const OPENAI_KEY = import.meta.env.VITE_OPENAI_API_KEY || openaiApiKey;
-        if (!OPENAI_KEY) {
-          clearTimeout(timeoutId);
-          return '⚠️ Error: No se pudo conectar a la IA. La clave de API de OpenAI no está configurada. Abre Ajustes en el chat para guardarla.';
-        }
-
-        const res = await fetch('https://api.openai.com/v1/chat/completions', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${OPENAI_KEY}`
-          },
-          body: JSON.stringify({
-            model: 'gpt-4o-mini',
-            messages: [
-              { role: 'system', content: systemPrompt },
-              { role: 'assistant', content: isStaff
-                ? `Hola ${activeUser}! Soy tu guía de operaciones de campo. Estoy aquí para ayudarte en tiempo real. ¿Qué necesitas?`
-                : `Hola ${activeUser}! Sistema de IA Elevore activo. Tengo acceso completo a tus métricas en tiempo real. ¿Qué analizamos?`
-              },
-              ...messages.slice(-8).map(m => ({
-                role: m.from === 'user' ? 'user' : 'assistant',
-                content: m.text
-              })),
-              { role: 'user', content: userMessage }
-            ],
-            temperature: 0.7,
-            max_tokens: 600
-          }),
-          signal: controller.signal
-        });
-
-        clearTimeout(timeoutId);
-
-        if (!res.ok) {
-          const errBody = await res.json().catch(() => ({}));
-          const errMsg = errBody?.error?.message || `HTTP ${res.status}`;
-          return `⚠️ Error de Conexión OpenAI: ${errMsg}`;
-        }
-
-        const data = await res.json();
-        return data.choices?.[0]?.message?.content || 'Lo siento, no recibí respuesta de OpenAI. Intenta de nuevo.';
-      } else {
-        // --- OLLAMA LOCAL AI CALL ---
-        const res = await fetch(`${ollamaUrl}/api/chat`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            model: ollamaModel,
-            messages: [
-              { role: 'system', content: systemPrompt },
-              ...messages.slice(-8).map(m => ({
-                role: m.from === 'user' ? 'user' : 'assistant',
-                content: m.text
-              })),
-              { role: 'user', content: userMessage }
-            ],
-            stream: false
-          }),
-          signal: controller.signal
-        });
-
-        clearTimeout(timeoutId);
-
-        if (!res.ok) {
-          return `⚠️ Error de Conexión a Ollama local: HTTP ${res.status}`;
-        }
-
-        const data = await res.json();
-        return data.message?.content || 'Lo siento, Ollama no devolvió ningún contenido. Verifica la configuración de tu modelo.';
+      if (!res.ok) {
+        return `⚠️ Error de Conexión a Ollama local: HTTP ${res.status}`;
       }
+
+      const data = await res.json();
+      return data.message?.content || 'Lo siento, Ollama no devolvió ningún contenido. Verifica la configuración de tu modelo.';
     } catch (err) {
       clearTimeout(timeoutId);
       if (err.name === 'AbortError') {
-        return `⚠️ Tiempo de espera agotado (20 segundos). Si estás usando la IA Local, asegúrate de que Ollama está activo (ejecuta 'ollama run ${ollamaModel}') y responde rápido.`;
+        return `⚠️ Tiempo de espera agotado (90 segundos). Asegúrate de que Ollama está activo (ejecuta 'ollama run ${ollamaModel}') y responde rápido.`;
       }
       return `⚠️ Error de conexión: ${err.message || 'Verifica tu red o si Ollama local tiene CORS habilitado (OLLAMA_ORIGINS="*").'}`;
     }
@@ -1582,7 +1419,7 @@ Habla en español. Sé directo, estratégico y orientado a resultados. Si el CEO
                   {isStaff ? 'Elevore Field Operations Guide' : 'Elevore AI Command'}
                 </p>
                 <span className="text-[6px] bg-white/10 text-slate-400 px-1 py-0.5 rounded uppercase font-bold">
-                  {aiProvider === 'gemini' ? 'Gemini 2.5' : aiProvider === 'openai' ? 'OpenAI: GPT-4o-mini' : `Ollama: ${ollamaModel}`}
+                  {`Ollama: ${ollamaModel}`}
                 </span>
               </div>
               <p className="text-[7px] text-slate-500 uppercase mt-0.5">
@@ -1610,83 +1447,37 @@ Habla en español. Sé directo, estratégico y orientado a resultados. Si el CEO
               <button onClick={() => setShowSettings(false)} className="text-slate-500 hover:text-white text-[9px] font-bold uppercase">Cerrar</button>
             </div>
             
-            <div className="space-y-1.5">
-              <label className="text-[8px] font-bold text-slate-400 uppercase block">Proveedor de IA</label>
-              <div className="grid grid-cols-3 gap-1.5">
-                <button
-                  onClick={() => { setAiProvider('gemini'); setConnStatus('idle'); }}
-                  className={`py-2 rounded-xl text-[7px] font-black uppercase border transition-all text-center ${aiProvider === 'gemini' ? 'bg-[#F5C518] text-black border-[#F5C518]' : 'bg-white/5 border-white/5 text-slate-400'}`}
-                >
-                  ☁️ Gemini
-                </button>
-                <button
-                  onClick={() => { setAiProvider('openai'); setConnStatus('idle'); }}
-                  className={`py-2 rounded-xl text-[7px] font-black uppercase border transition-all text-center ${aiProvider === 'openai' ? 'bg-[#F5C518] text-black border-[#F5C518]' : 'bg-white/5 border-white/5 text-slate-400'}`}
-                >
-                  🧠 OpenAI
-                </button>
-                <button
-                  onClick={() => { setAiProvider('ollama'); setConnStatus('idle'); }}
-                  className={`py-2 rounded-xl text-[7px] font-black uppercase border transition-all text-center ${aiProvider === 'ollama' ? 'bg-[#F5C518] text-black border-[#F5C518]' : 'bg-white/5 border-white/5 text-slate-400'}`}
-                >
-                  💻 Ollama
-                </button>
-              </div>
-            </div>
-
-            {aiProvider === 'openai' && (
-              <div className="space-y-2.5 animate-in fade-in duration-200">
+            <div className="space-y-2.5 animate-in fade-in duration-200">
+              <div className="grid grid-cols-2 gap-2">
                 <div className="space-y-1">
-                  <div className="flex justify-between items-center">
-                    <label className="text-[7px] font-bold text-slate-400 uppercase block">Clave API de OpenAI</label>
-                    {import.meta.env.VITE_OPENAI_API_KEY && (
-                      <span className="text-[6px] text-green-400 uppercase font-black">✓ Detectada en Env</span>
-                    )}
-                  </div>
+                  <label className="text-[7px] font-bold text-slate-400 uppercase block">Host de Ollama</label>
                   <input
-                    type="password"
-                    value={openaiApiKey}
-                    onChange={e => { setOpenaiApiKey(e.target.value); setConnStatus('idle'); }}
-                    placeholder={import.meta.env.VITE_OPENAI_API_KEY ? "•••••••••••••••• (Usando Env)" : "sk-proj-..."}
+                    value={ollamaUrl}
+                    onChange={e => { setOllamaUrl(e.target.value); setConnStatus('idle'); }}
+                    placeholder="http://127.0.0.1:11434"
+                    className="inp text-[10px] py-1.5"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[7px] font-bold text-slate-400 uppercase block">Modelo local</label>
+                  <input
+                    value={ollamaModel}
+                    onChange={e => { setOllamaModel(e.target.value); setConnStatus('idle'); }}
+                    placeholder="llama3"
                     className="inp text-[10px] py-1.5"
                   />
                 </div>
               </div>
-            )}
-
-            {aiProvider === 'ollama' && (
-              <div className="space-y-2.5 animate-in fade-in duration-200">
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="space-y-1">
-                    <label className="text-[7px] font-bold text-slate-400 uppercase block">Host de Ollama</label>
-                    <input
-                      value={ollamaUrl}
-                      onChange={e => { setOllamaUrl(e.target.value); setConnStatus('idle'); }}
-                      placeholder="http://127.0.0.1:11434"
-                      className="inp text-[10px] py-1.5"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-[7px] font-bold text-slate-400 uppercase block">Modelo local</label>
-                    <input
-                      value={ollamaModel}
-                      onChange={e => { setOllamaModel(e.target.value); setConnStatus('idle'); }}
-                      placeholder="llama3"
-                      className="inp text-[10px] py-1.5"
-                    />
-                  </div>
-                </div>
-                <div className="p-2 rounded-xl bg-black/40 border border-white/5 space-y-1">
-                  <p className="text-[7px] text-[#F5C518] uppercase font-bold">Instrucciones para IA Local:</p>
-                  <p className="text-[7px] text-slate-400 leading-normal uppercase">
-                    1. Abre tu terminal y ejecuta:
-                  </p>
-                  <code className="block bg-black p-1.5 rounded text-[7px] font-mono text-green-400 break-all select-all">
-                    $env:OLLAMA_ORIGINS="*" ; ollama run {ollamaModel || 'llama3'}
-                  </code>
-                </div>
+              <div className="p-2 rounded-xl bg-black/40 border border-white/5 space-y-1">
+                <p className="text-[7px] text-[#F5C518] uppercase font-bold">Instrucciones para IA Local:</p>
+                <p className="text-[7px] text-slate-400 leading-normal uppercase">
+                  1. Abre tu terminal y ejecuta:
+                </p>
+                <code className="block bg-black p-1.5 rounded text-[7px] font-mono text-green-400 break-all select-all">
+                  $env:OLLAMA_ORIGINS="*" ; ollama run {ollamaModel || 'llama3'}
+                </code>
               </div>
-            )}
+            </div>
 
             <div className="flex gap-2 pt-1">
               <button
