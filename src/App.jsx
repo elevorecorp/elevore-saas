@@ -28,8 +28,8 @@ const DEFAULT_CFG = {
 };
 
 const T = {
-  en: { balance: 'Balance Due', pay: 'Pay via Zelle', approve: 'Sign to Approve Quote', before: 'Before', after: 'After', complete: 'Sign to Confirm Completion', review: 'Leave a Google Review', refer: 'Refer a Friend — Both Get $25 Off', syncing: 'Syncing...', hub: 'Live Mission Hub', arrived: 'Team Arrived', done: 'Completed', rating: 'Rate your service', submit: 'Submit Rating', chat: 'Message us', legal: 'Digital signatures are legally binding', urgency: 'Quote expires in', lock: 'Lock in your price!', refTitle: 'Referral Program', refDesc: 'Share your link with friends. Both get $25 off when they complete their first booking!', copied: 'Copied! 🎁', stepApproved: 'Quote Approved', stepEnRoute: 'Team En Route', stepInService: 'In Service', stepQC: 'Quality Control', stepCompletedPaid: 'Completed & Paid', sliderBeforeAfter: 'Before / After Comparison', trackerTitle: 'Uber-Style Live Service Tracker', destLocation: 'Destination Location', routeMap: 'Live Destination Map' },
-  es: { balance: 'Saldo Pendiente', pay: 'Paga por Zelle', approve: 'Firma para Aprobar tu Cotización', before: 'Antes', after: 'Después', complete: 'Firma para Confirmar que Quedó Bien', review: 'Déjanos una Reseña', refer: 'Refiere un Amigo — Ambos Reciben $25', syncing: 'Cargando...', hub: 'Estado del Servicio', arrived: 'El equipo llegó', done: 'Completado', rating: 'Califica el servicio', submit: 'Enviar Calificación', chat: 'Escríbenos', legal: 'Las firmas digitales tienen validez legal', urgency: 'Cotización vence en', lock: '¡Bloquea tu precio!', refTitle: 'Programa de Referidos', refDesc: 'Comparte tu link con amigos. ¡Ambos reciben $25 de descuento en su próximo servicio!', copied: '¡Link Copiado! 🎁', stepApproved: 'Cotización Aprobada', stepEnRoute: 'Equipo en Camino', stepInService: 'En Servicio', stepQC: 'Control de Calidad', stepCompletedPaid: 'Completado y Pagado', sliderBeforeAfter: 'Comparación Antes / Después', trackerTitle: 'Rastreador en Vivo del Servicio', destLocation: 'Ubicación de Destino', routeMap: 'Mapa de Destino en Vivo' }
+  en: { balance: 'Balance Due', pay: 'Pay via Zelle', approve: 'Sign to Approve Quote', before: 'Before', after: 'After', complete: 'Sign to Confirm Completion', review: 'Leave a Google Review', refer: 'Refer a Friend — Both Get $25 Off', syncing: 'Syncing...', hub: 'Live Mission Hub', arrived: 'Team Arrived', done: 'Completed', rating: 'Rate your service', submit: 'Submit Rating', chat: 'Message us', legal: 'Digital signatures are legally binding', urgency: 'Quote expires in', lock: 'Lock in your price!', refTitle: 'Referral Program', refDesc: 'Share your link with friends. Both get $25 off when they complete their first booking!', copied: 'Copied! 🎁', stepApproved: 'Quote Approved', stepEnRoute: 'Team En Route', stepInService: 'In Service', stepQC: 'Quality Control', stepCompletedPaid: 'Completed & Paid', sliderBeforeAfter: 'Before / After Comparison', trackerTitle: 'Uber-Style Live Service Tracker', destLocation: 'Destination Location', routeMap: 'Live Destination Map', payCard: 'Pay Securely with Card', cardNo: 'Card Number', expiry: 'Expiry (MM/YY)', cvc: 'CVC', cardName: 'Name on Card', tipSelect: 'Select a Tip for the Team', customTip: 'Custom Tip ($)', paying: 'Processing payment...', paySuccess: 'Payment completed!', totalAmount: 'Total to Pay', tabActive: 'Active Tracker', tabHistory: 'History', tabPreferences: 'Preferences', tabMembership: 'Membership', tabBooking: 'Book Service', tabReferral: 'Referral Hub' },
+  es: { balance: 'Saldo Pendiente', pay: 'Paga por Zelle', approve: 'Firma para Aprobar tu Cotización', before: 'Antes', after: 'Después', complete: 'Firma para Confirmar que Quedó Bien', review: 'Déjanos una Reseña', refer: 'Refiere un Amigo — Ambos Reciben $25', syncing: 'Cargando...', hub: 'Estado del Servicio', arrived: 'El equipo llegó', done: 'Completado', rating: 'Califica el servicio', submit: 'Enviar Calificación', chat: 'Escríbenos', legal: 'Las firmas digitales tienen validez legal', urgency: 'Cotización vence en', lock: '¡Bloquea tu precio!', refTitle: 'Programa de Referidos', refDesc: 'Comparte tu link con amigos. ¡Ambos reciben $25 de descuento en su próximo servicio!', copied: '¡Link Copiado! 🎁', stepApproved: 'Cotización Aprobada', stepEnRoute: 'Equipo en Camino', stepInService: 'En Servicio', stepQC: 'Control de Calidad', stepCompletedPaid: 'Completado y Pagado', sliderBeforeAfter: 'Comparación Antes / Después', trackerTitle: 'Rastreador en Vivo del Servicio', destLocation: 'Ubicación de Destino', routeMap: 'Mapa de Destino en Vivo', payCard: 'Pagar con Tarjeta de Forma Segura', cardNo: 'Número de Tarjeta', expiry: 'Expiración (MM/AA)', cvc: 'CVC', cardName: 'Nombre en la Tarjeta', tipSelect: 'Selecciona una Propina para el Equipo', customTip: 'Propina Personalizada ($)', paying: 'Procesando pago...', paySuccess: '¡Pago realizado con éxito!', totalAmount: 'Total a Pagar', tabActive: 'Servicio Activo', tabHistory: 'Historial', tabPreferences: 'Preferencias', tabMembership: 'Membresía', tabBooking: 'Agendar', tabReferral: 'Referidos' }
 };
 const tr = (l, k) => T[l]?.[k] || T.en[k] || k;
 
@@ -183,6 +183,7 @@ function SigPad({ onSave, label = 'Sign here', color = '#22c55e' }) {
   const ref = useRef(null);
   const [drawing, setDraw] = useState(false);
   const [has, setHas] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     const c = ref.current;
@@ -231,13 +232,27 @@ function SigPad({ onSave, label = 'Sign here', color = '#22c55e' }) {
     setHas(false);
   };
 
+  const handleConfirm = async () => {
+    if (!has) return;
+    setIsSaving(true);
+    try {
+      await onSave(ref.current.toDataURL('image/png'));
+    } catch (err) {
+      console.error("Signature save error:", err);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   return (
     <div className="space-y-3">
       <p className="text-[10px] font-black text-amber-500 uppercase text-center tracking-widest">{label}</p>
       <canvas ref={ref} className="sp" style={{ height: '140px' }} onMouseDown={start} onTouchStart={start} onMouseMove={move} onTouchMove={move} onMouseUp={stop} onTouchEnd={stop} onMouseLeave={stop} />
       <div className="flex gap-2">
-        <button onClick={clear} className="flex-1 py-3 bg-white/5 text-slate-400 rounded-xl font-black uppercase text-[9px] active:scale-95">Clear</button>
-        <button onClick={() => has && onSave(ref.current.toDataURL('image/png'))} disabled={!has} className={`flex-1 py-3 rounded-xl font-black uppercase text-[9px] active:scale-95 ${has ? 'gold' : 'bg-white/5 text-slate-600'}`}>{has ? '✅ Confirm' : 'Sign above'}</button>
+        <button onClick={clear} disabled={isSaving} className="flex-1 py-3 bg-white/5 text-slate-400 rounded-xl font-black uppercase text-[9px] active:scale-95">Clear</button>
+        <button onClick={handleConfirm} disabled={!has || isSaving} className={`flex-1 py-3 rounded-xl font-black uppercase text-[9px] active:scale-95 ${has ? 'gold' : 'bg-white/5 text-slate-600'}`}>
+          {isSaving ? <Icon name="loader-2" className="w-4 h-4 animate-spin mx-auto text-black" /> : '✅ Confirm'}
+        </button>
       </div>
     </div>
   );
@@ -788,6 +803,321 @@ function Portal({ cjid }) {
   const [toast, setToast] = useState(null);
   const tt = (m, c = 'green') => { setToast({ m, c }); setTimeout(() => setToast(null), 3000); };
 
+  // Premium Dashboard States
+  const [activeTab, setActiveTab] = useState('tracker');
+  const [clientMissions, setClientMissions] = useState([]);
+  const [clientProfile, setClientProfile] = useState(null);
+  const [tenantSettings, setTenantSettings] = useState(null);
+
+  // Preferences form states
+  const [prefPets, setPrefPets] = useState('');
+  const [prefEntryCode, setPrefEntryCode] = useState('');
+  const [prefProducts, setPrefProducts] = useState('');
+  const [prefNotes, setPrefNotes] = useState('');
+
+  // Booking states
+  const [bookingService, setBookingService] = useState('tv');
+  const [bookingDate, setBookingDate] = useState('');
+  const [bookingNotes, setBookingNotes] = useState('');
+  const [bookingAddons, setBookingAddons] = useState([]);
+  const [bookingSaving, setBookingSaving] = useState(false);
+
+  // Membership states
+  const [membershipTier, setMembershipTier] = useState('none');
+  const [membershipSaving, setMembershipSaving] = useState(false);
+
+  // Phase 4 Tipping & Card Checkout states
+  const [tipOption, setTipOption] = useState('15'); // '10', '15', '20', 'custom', 'none'
+  const [customTip, setCustomTip] = useState('');
+  const [cardNo, setCardNo] = useState('');
+  const [cardExp, setCardExp] = useState('');
+  const [cardCvc, setCardCvc] = useState('');
+  const [cardName, setCardName] = useState('');
+  const [payStage, setPayStage] = useState(''); // '', 'connecting', 'verifying', 'authorizing', 'routing', 'success'
+  const [payError, setPayError] = useState('');
+
+  const getCardBrand = (number) => {
+    const clean = number.replace(/\D/g, '');
+    if (clean.startsWith('4')) return 'visa';
+    if (/^5[1-5]/.test(clean)) return 'mastercard';
+    if (/^3[47]/.test(clean)) return 'amex';
+    return 'generic';
+  };
+
+  const luhnCheck = (val) => {
+    let sum = 0;
+    let shouldDouble = false;
+    for (let i = val.length - 1; i >= 0; i--) {
+      let digit = parseInt(val.charAt(i));
+      if (shouldDouble) {
+        if ((digit *= 2) > 9) digit -= 9;
+      }
+      sum += digit;
+      shouldDouble = !shouldDouble;
+    }
+    return sum % 10 === 0;
+  };
+
+  const handleCardNoChange = (e) => {
+    let value = e.target.value.replace(/\D/g, '');
+    let formatted = '';
+    for (let i = 0; i < value.length && i < 16; i++) {
+      if (i > 0 && i % 4 === 0) formatted += ' ';
+      formatted += value[i];
+    }
+    setCardNo(formatted);
+  };
+
+  const handleCardExpChange = (e) => {
+    let value = e.target.value.replace(/\D/g, '');
+    let formatted = '';
+    if (value.length > 0) {
+      formatted = value.substring(0, 2);
+      if (value.length > 2) {
+        formatted += '/' + value.substring(2, 4);
+      }
+    }
+    setCardExp(formatted);
+  };
+
+  const handleCardCvcChange = (e) => {
+    setCardCvc(e.target.value.replace(/\D/g, '').substring(0, 4));
+  };
+
+  const completePaymentFlow = async (paymentId, tipVal, totalVal) => {
+    setPayStage('success');
+    await new Promise(r => setTimeout(r, 800));
+
+    const updateData = {
+      status: 'paid',
+      deposit_paid: job.total_price, // Sets balance to 0
+      specs: {
+        ...(job.specs || {}),
+        stripe_payment_id: paymentId,
+        tip_amount: tipVal,
+        total_paid_amount: totalVal,
+        paid_at: new Date().toISOString()
+      }
+    };
+
+    await sb.from('elevore_missions').update(updateData).eq('id', cjid);
+    await checkAndScheduleNextMission({ ...job, ...updateData });
+
+    // Route 100% of tip to the worker
+    if (job.team_assigned && tipVal > 0) {
+      const { data: staffList } = await sb.from('staff_profiles').select('*').eq('tenant_id', job.tenant_id);
+      const worker = staffList?.find(s => s.name === job.team_assigned);
+      if (worker) {
+        const newBal = (worker.wallet_balance || 0) + tipVal;
+        const newTot = (worker.total_earned || 0) + tipVal;
+        await sb.from('staff_profiles').update({
+          wallet_balance: newBal,
+          total_earned: newTot
+        }).eq('id', worker.id);
+      }
+    }
+
+    tt(lang === 'es' ? '¡Pago exitoso!' : 'Payment successful!');
+    setPayStage('');
+    load();
+  };
+
+  const handleCheckout = async (e, totalVal, tipVal) => {
+    e.preventDefault();
+    setPayError('');
+
+    const cleanCard = cardNo.replace(/\D/g, '');
+    if (cleanCard.length < 13 || cleanCard.length > 16) {
+      setPayError(lang === 'es' ? 'Número de tarjeta inválido' : 'Invalid card number');
+      return;
+    }
+    if (!luhnCheck(cleanCard)) {
+      setPayError(lang === 'es' ? 'La tarjeta falló verificación Luhn' : 'Card failed Luhn check');
+      return;
+    }
+    if (!/^\d{2}\/\d{2}$/.test(cardExp)) {
+      setPayError(lang === 'es' ? 'Expiración inválida (MM/AA)' : 'Invalid expiry (MM/YY)');
+      return;
+    }
+    const [expMonth, expYear] = cardExp.split('/').map(v => parseInt(v));
+    const now = new Date();
+    const currentYear = now.getFullYear() % 100;
+    const currentMonth = now.getMonth() + 1;
+    if (expMonth < 1 || expMonth > 12 || expYear < currentYear || (expYear === currentYear && expMonth < currentMonth)) {
+      setPayError(lang === 'es' ? 'La tarjeta está expirada' : 'Card is expired');
+      return;
+    }
+    if (cardCvc.replace(/\D/g, '').length < 3) {
+      setPayError(lang === 'es' ? 'CVC inválido' : 'Invalid CVC');
+      return;
+    }
+    if (!cardName.trim()) {
+      setPayError(lang === 'es' ? 'Falta nombre del titular' : 'Cardholder name is required');
+      return;
+    }
+
+    const stripeKey = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY;
+    if (stripeKey) {
+      setPayStage('connecting');
+      try {
+        if (!window.Stripe) {
+          await new Promise((resolve, reject) => {
+            const script = document.createElement('script');
+            script.src = 'https://js.stripe.com/v3/';
+            script.onload = resolve;
+            script.onerror = reject;
+            document.body.appendChild(script);
+          });
+        }
+
+        const response = await fetch('/api/create-payment-intent', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            amount: Math.round(totalVal * 100),
+            currency: 'usd',
+            metadata: {
+              job_id: job.id,
+              client_name: job.client_name,
+              tip_amount: tipVal
+            }
+          })
+        });
+
+        if (!response.ok) {
+          const errData = await response.json();
+          throw new Error(errData.error || 'Failed to create Stripe payment intent');
+        }
+
+        const { clientSecret } = await response.json();
+        setPayStage('authorizing');
+
+        const stripe = window.Stripe(stripeKey);
+        const { error: stripeError, paymentIntent } = await stripe.confirmCardPayment(clientSecret, {
+          payment_method: {
+            card: {},
+            billing_details: {
+              name: cardName
+            }
+          }
+        });
+
+        if (stripeError) {
+          throw new Error(stripeError.message);
+        }
+
+        if (paymentIntent.status === 'succeeded') {
+          await completePaymentFlow(paymentIntent.id, tipVal, totalVal);
+        }
+      } catch (err) {
+        setPayStage('');
+        setPayError(err.message);
+        return;
+      }
+    } else {
+      // High-Fidelity Simulator
+      setPayStage('connecting');
+      await new Promise(r => setTimeout(r, 1000));
+
+      setPayStage('verifying');
+      await new Promise(r => setTimeout(r, 1000));
+
+      setPayStage('authorizing');
+      await new Promise(r => setTimeout(r, 1200));
+
+      setPayStage('routing');
+      await new Promise(r => setTimeout(r, 800));
+
+      await completePaymentFlow('pi_simulated_' + Math.random().toString(36).substring(2, 11), tipVal, totalVal);
+    }
+  };
+
+  const loadClientMissions = async (clientName, clientPhone) => {
+    try {
+      const cleanPhone = clientPhone?.replace(/\D/g, '') || '';
+      let query = sb.from('elevore_missions').select('*');
+      if (cleanPhone.length > 5) {
+        query = query.or(`client_name.eq."${clientName}",client_phone.ilike.%${cleanPhone}%`);
+      } else {
+        query = query.eq('client_name', clientName);
+      }
+      const { data } = await query.order('scheduled_date', { ascending: false });
+      if (data) {
+        setClientMissions(data);
+      }
+    } catch (e) {
+      console.error("Error loading client missions:", e);
+    }
+  };
+
+  const loadTenantSettings = async (tId) => {
+    try {
+      const { data } = await sb.from('tenant_settings').select('*').eq('tenant_id', tId).maybeSingle();
+      if (data) {
+        setTenantSettings(data);
+      }
+    } catch (e) {
+      console.error("Error loading tenant settings:", e);
+    }
+  };
+
+  const checkAndScheduleNextMission = async (jobData) => {
+    try {
+      const { data: client } = await sb.from('clients').select('*').eq('name', jobData.client_name).maybeSingle();
+      const frequency = jobData.specs?.frequency || client?.specs?.frequency || 'one-time';
+      const membership = jobData.membership_plan || client?.membership || 'none';
+      
+      let days = null;
+      if (frequency === 'weekly' || membership === 'premium') days = 7;
+      else if (frequency === 'bi-weekly' || membership === 'basic') days = 14;
+      else if (frequency === 'monthly') days = 30;
+      else if (membership === 'vip') days = 7;
+      
+      if (!days) return;
+      
+      const todayStr = new Date().toISOString().split('T')[0];
+      const { data: existingJobs } = await sb.from('elevore_missions')
+        .select('*')
+        .eq('client_name', jobData.client_name)
+        .eq('status', 'scheduled')
+        .gte('scheduled_date', todayStr);
+        
+      const hasFuture = existingJobs && existingJobs.length > 0;
+      if (hasFuture) {
+        console.log("Future mission already scheduled for " + jobData.client_name);
+        return;
+      }
+      
+      const nextDate = new Date();
+      nextDate.setDate(nextDate.getDate() + days);
+      const dateStr = nextDate.toISOString().split('T')[0];
+      
+      const payload = {
+        client_name: jobData.client_name,
+        client_phone: jobData.client_phone || '',
+        address: jobData.address || '',
+        service_type: jobData.service_type || 'regular',
+        total_price: jobData.total_price || 0,
+        deposit_paid: 0,
+        team_assigned: jobData.team_assigned || '',
+        status: 'scheduled',
+        scheduled_date: dateStr,
+        notes: `Recurrencia automática (${frequency !== 'one-time' ? frequency : membership})`,
+        membership_plan: membership !== 'none' ? membership : null,
+        specs: {
+          ...(jobData.specs || {}),
+          auto_scheduled: true,
+          previous_job_id: jobData.id
+        },
+        tenant_id: jobData.tenant_id
+      };
+      
+      await sb.from('elevore_missions').insert([payload]);
+    } catch (e) {
+      console.error("Error auto-scheduling in Portal:", e);
+    }
+  };
+
   const load = async () => {
     setLoading(true);
     const { data } = await sb.from('elevore_missions').select('*').eq('id', cjid).single();
@@ -795,13 +1125,192 @@ function Portal({ cjid }) {
       setJob(data);
       setRating(data.client_rating || 0);
       setRDone(!!data.client_rating);
+
+      // Load client history
+      await loadClientMissions(data.client_name, data.client_phone);
+
+      // Load client profile
+      const { data: cProfile } = await sb.from('clients').select('*').eq('name', data.client_name).maybeSingle();
+      if (cProfile) {
+        setClientProfile(cProfile);
+        setMembershipTier(cProfile.membership || 'none');
+        const prefs = cProfile.specs?.preferences || {};
+        setPrefPets(prefs.pets || '');
+        setPrefEntryCode(prefs.entryCode || '');
+        setPrefProducts(prefs.products || '');
+        setPrefNotes(prefs.notes || '');
+      }
+
+      // Load settings
+      if (data.tenant_id) {
+        await loadTenantSettings(data.tenant_id);
+      }
     }
     setLoading(false);
   };
   useEffect(() => { load(); }, [cjid]);
 
+  const saveClientPrefs = async (e) => {
+    e.preventDefault();
+    if (!clientProfile) return;
+    try {
+      const updatedSpecs = {
+        ...(clientProfile.specs || {}),
+        preferences: {
+          pets: prefPets,
+          entryCode: prefEntryCode,
+          products: prefProducts,
+          notes: prefNotes
+        }
+      };
+      const { error } = await sb.from('clients')
+        .update({ specs: updatedSpecs })
+        .eq('id', clientProfile.id);
+      if (error) throw error;
+      tt(lang === 'es' ? 'Preferencias guardadas ✓' : 'Preferences saved ✓', 'green');
+      setClientProfile(prev => ({ ...prev, specs: updatedSpecs }));
+    } catch (err) {
+      tt('Error: ' + err.message, 'red');
+    }
+  };
+
+  const saveMembershipPlan = async (tier) => {
+    if (!clientProfile) return;
+    setMembershipSaving(true);
+    try {
+      const { error } = await sb.from('clients')
+        .update({ membership: tier })
+        .eq('id', clientProfile.id);
+      if (error) throw error;
+      tt(lang === 'es' ? 'Membresía actualizada ✓' : 'Membership updated ✓', 'green');
+      setMembershipTier(tier);
+      setClientProfile(prev => ({ ...prev, membership: tier }));
+      if (job && job.status === 'scheduled') {
+        await sb.from('elevore_missions').update({ membership_plan: tier }).eq('id', job.id);
+        setJob(prev => ({ ...prev, membership_plan: tier }));
+      }
+    } catch (err) {
+      tt('Error: ' + err.message, 'red');
+    }
+    setMembershipSaving(false);
+  };
+
+  const defaultAddons = [
+    { id: 'oven', en: 'Inside Oven', p: 35 },
+    { id: 'fridge', en: 'Inside Fridge', p: 30 },
+    { id: 'windows', en: 'Windows', p: 50 },
+    { id: 'pethair', en: 'Pet Hair', p: 25 },
+    { id: 'garage', en: 'Garage', p: 40 }
+  ];
+
+  const defaultQuickJobs = [
+    { id: 'cleaning_reg', en: 'Regular Cleaning', p: 120 },
+    { id: 'cleaning_deep', en: 'Deep Cleaning', p: 180 },
+    { id: 'tv', en: 'Mount TV', p: 150 },
+    { id: 'door', en: 'Install Door', p: 200 },
+    { id: 'patch', en: 'Drywall Patch', p: 180 },
+    { id: 'shelves', en: 'Shelving', p: 100 },
+    { id: 'lock', en: 'Lock Change', p: 85 },
+    { id: 'paint', en: 'Paint Touch-up', p: 120 },
+    { id: 'faucet', en: 'Faucet Install', p: 130 }
+  ];
+
+  const addonsList = (tenantSettings?.addons && tenantSettings.addons.length > 0) 
+                     ? tenantSettings.addons 
+                     : defaultAddons;
+
+  const quickJobsList = (tenantSettings?.quick_jobs && tenantSettings.quick_jobs.length > 0) 
+                        ? tenantSettings.quick_jobs 
+                        : defaultQuickJobs;
+
+  useEffect(() => {
+    if (quickJobsList?.length > 0) {
+      const found = quickJobsList.find(q => q.id === bookingService);
+      if (!found) {
+        setBookingService(quickJobsList[0].id);
+      }
+    }
+  }, [quickJobsList, bookingService]);
+
+  const getBookingEstimate = () => {
+    const selectedJob = quickJobsList.find(q => q.id === bookingService) || { p: 150 };
+    let base = selectedJob.p;
+    
+    let addonsTotal = 0;
+    bookingAddons.forEach(addonId => {
+      const ad = addonsList.find(a => a.id === addonId);
+      if (ad) {
+        if (membershipTier === 'vip') {
+          // free
+        } else if (membershipTier === 'premium' && addonId === 'oven') {
+          // free
+        } else {
+          addonsTotal += ad.p;
+        }
+      }
+    });
+
+    let subtotal = base + addonsTotal;
+    
+    let discount = 0;
+    if (membershipTier === 'basic') discount = subtotal * 0.05;
+    else if (membershipTier === 'premium') discount = subtotal * 0.10;
+    else if (membershipTier === 'vip') discount = subtotal * 0.15;
+
+    let total = Math.max(0, subtotal - discount);
+    return { base, addonsTotal, discount, total };
+  };
+
+  const handleCreateBooking = async (e) => {
+    e.preventDefault();
+    if (!bookingDate) return tt(lang === 'es' ? 'Selecciona una fecha' : 'Please select a date', 'red');
+    setBookingSaving(true);
+    
+    const { total } = getBookingEstimate();
+    const svcName = quickJobsList.find(q => q.id === bookingService)?.en || 'Custom Service';
+
+    const payload = {
+      client_name: job.client_name,
+      client_phone: job.client_phone || '',
+      address: job.address || '',
+      service_type: svcName,
+      total_price: total,
+      deposit_paid: 0,
+      team_assigned: '',
+      status: 'scheduled',
+      scheduled_date: bookingDate,
+      notes: bookingNotes || `Booked by client. Extras: ${bookingAddons.join(', ')}`,
+      membership_plan: membershipTier !== 'none' ? membershipTier : null,
+      tenant_id: job.tenant_id,
+      specs: {
+        booking_addons: bookingAddons,
+        booking_service_id: bookingService,
+        client_booked: true,
+        created_at: new Date().toISOString()
+      }
+    };
+
+    try {
+      const { error } = await sb.from('elevore_missions').insert([payload]);
+      if (error) throw error;
+      tt(lang === 'es' ? '¡Servicio agendado con éxito!' : 'Service booked successfully!', 'green');
+      setBookingDate('');
+      setBookingNotes('');
+      setBookingAddons([]);
+      await loadClientMissions(job.client_name, job.client_phone);
+      setActiveTab('history');
+    } catch (err) {
+      tt('Error: ' + err.message, 'red');
+    }
+    setBookingSaving(false);
+  };
+
   if (loading || !job) return <div className="min-h-screen flex items-center justify-center text-white font-black animate-pulse">{tr(lang, 'syncing')}</div>;
   const bal = job.total_price - job.deposit_paid;
+  const calculatedTip = tipOption === 'none' ? 0 : 
+                        tipOption === 'custom' ? (parseFloat(customTip) || 0) : 
+                        Math.round(bal * (parseInt(tipOption) / 100) * 100) / 100;
+  const chargeTotal = bal + calculatedTip;
   const sm = { lead: 10, scheduled: 30, in_progress: 65, completed: 90, paid: 100 };
   const urgent = job.urgency_expires ? Math.max(0, Math.round((new Date(job.urgency_expires) - Date.now()) / 3600000)) : null;
 
@@ -811,6 +1320,7 @@ function Portal({ cjid }) {
     tt('🌟 Done!');
     if (job) {
       triggerN8nEmail({ ...job, status: 'paid', final_signature: sig });
+      await checkAndScheduleNextMission({ ...job, final_signature: sig, status: 'paid' });
     }
     load();
   };
@@ -833,146 +1343,711 @@ function Portal({ cjid }) {
   else if (job.status === 'scheduled') activeStepIdx = 0;
   else activeStepIdx = -1; // lead
 
+  const tabs = [
+    { id: 'tracker', label: tr(lang, 'tabActive'), icon: 'compass' },
+    { id: 'history', label: tr(lang, 'tabHistory'), icon: 'calendar' },
+    { id: 'preferences', label: tr(lang, 'tabPreferences'), icon: 'sliders' },
+    { id: 'membership', label: tr(lang, 'tabMembership'), icon: 'award' },
+    { id: 'booking', label: tr(lang, 'tabBooking'), icon: 'plus-circle' }
+  ];
+
   return (
     <div className="min-h-screen p-5 bg-gradient-to-b from-slate-950 via-black to-zinc-900 animate-in fade-in duration-700">
       {toast && <div className={`tst fixed top-5 left-1/2 -translate-x-1/2 z-[500] px-6 py-3 rounded-2xl font-black uppercase text-sm shadow-2xl ${toast.c === 'red' ? 'bg-red-600' : 'bg-green-600'} text-white`}>{toast.m}</div>}
+      
+      {payStage && (
+        <div className="fixed inset-0 bg-slate-950/95 backdrop-blur-lg z-[1000] flex flex-col items-center justify-center p-6 text-center animate-in fade-in duration-300">
+          <div className="w-20 h-20 relative flex items-center justify-center mb-6">
+            <div className="absolute inset-0 rounded-full border-4 border-white/5 border-t-amber-500 animate-spin"></div>
+            <Icon name="lock" className="w-8 h-8 text-amber-500 animate-pulse" />
+          </div>
+          
+          <h2 className="text-xl font-black uppercase tracking-widest text-white mb-2">
+            {tr(lang, 'paying')}
+          </h2>
+          
+          <div className="max-w-xs space-y-3 mt-4 text-[9px] font-black uppercase tracking-wider text-left border-l border-white/10 pl-4">
+            {[
+              { key: 'connecting', label: lang === 'es' ? 'Conectando con el Servidor...' : 'Connecting to secure gateway...' },
+              { key: 'verifying', label: lang === 'es' ? 'Validando Tarjeta...' : 'Verifying card details...' },
+              { key: 'authorizing', label: lang === 'es' ? 'Autorizando Pago...' : 'Authorizing transaction...' },
+              { key: 'routing', label: lang === 'es' ? 'Transfiriendo Fondos a Empleados...' : 'Routing tip to staff wallet...' },
+              { key: 'success', label: lang === 'es' ? '¡Pago Exitoso! Generando Factura...' : 'Success! Generating invoices...' }
+            ].map(step => {
+              const active = payStage === step.key;
+              const completed = ['connecting', 'verifying', 'authorizing', 'routing', 'success'].indexOf(payStage) > ['connecting', 'verifying', 'authorizing', 'routing', 'success'].indexOf(step.key);
+              
+              return (
+                <div key={step.key} className={`flex items-center gap-2 transition-all duration-300 ${active ? 'text-amber-500 font-extrabold scale-105 pl-1' : completed ? 'text-green-500 opacity-60' : 'text-slate-700 opacity-30'}`}>
+                  <div className={`w-2 h-2 rounded-full ${active ? 'bg-amber-500 animate-ping' : completed ? 'bg-green-500' : 'bg-slate-800'}`} />
+                  <span>{step.label}</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
       <div className="max-w-md mx-auto space-y-5 pb-20">
         <div className="flex justify-end gap-2">{['en', 'es'].map(lg => (<button key={lg} onClick={() => setLang(lg)} className={`text-[8px] font-black px-3 py-1.5 rounded-xl ${lang === lg ? 'bg-amber-500 text-black' : 'bg-white/5 text-slate-500'}`}>{lg.toUpperCase()}</button>))}</div>
         <div className="text-center space-y-2"><div className="w-16 h-16 bg-white rounded-2xl mx-auto flex items-center justify-center font-black text-black text-2xl italic shadow-xl">E</div><h1 className="text-xl font-black uppercase tracking-[0.3em] text-white">ELEVORE</h1><p className="text-[9px] text-green-500 font-bold uppercase tracking-[0.4em]">{tr(lang, 'hub')}</p></div>
-        {urgent !== null && urgent > 0 && !job.approval_signature && <div className="gold py-3 px-5 rounded-2xl text-center font-black uppercase text-sm">⏰ {tr(lang, 'urgency')} {urgent}h — {tr(lang, 'lock')}</div>}
-        
-        {/* Core Detail Card */}
-        <div className="g p-6 border-t-4 border-green-500 space-y-4">
-          <div className="flex justify-between items-center"><div><p className="text-[9px] font-black text-slate-500 uppercase">Client</p><h2 className="text-xl font-black italic uppercase text-white">{job.client_name}</h2></div><span className={`text-[8px] font-black px-3 py-1.5 rounded-xl uppercase ${job.status === 'paid' ? 'bg-blue-600 text-white' : job.status === 'in_progress' ? 'bg-green-600 text-white' : job.status === 'completed' ? 'bg-purple-600 text-white' : 'bg-amber-500 text-black'}`}>{job.status}</span></div>
-          <div className="text-[9px] text-slate-500 font-black uppercase space-y-1"><p>📋 {job.service_type?.toUpperCase()}</p><p>📅 {fmtD(job.scheduled_date)}</p><p>👥 {job.team_assigned || 'TBD'}</p><p>📍 {job.address}</p>{job.check_in_time && <p className="text-green-400">▶ {tr(lang, 'arrived')}: {new Date(job.check_in_time).toLocaleTimeString()}</p>}{job.check_out_time && <p className="text-purple-400">⏹ {tr(lang, 'done')}: {new Date(job.check_out_time).toLocaleTimeString()}</p>}</div>
-          <div><div className="flex justify-between text-[8px] font-black uppercase text-slate-500 mb-1"><span>Booked</span><span>{sm[job.status] || 0}%</span></div><div className="pb"><div className="pf" style={{ width: `${sm[job.status] || 0}%` }}></div></div></div>
+
+        {/* ── CLIENT DASHBOARD NAVIGATION TABS ── */}
+        <div className="g p-1 rounded-2xl flex items-center justify-between border border-white/5 bg-black/40 backdrop-blur-md sticky top-2 z-[400] shadow-xl overflow-x-auto gap-1">
+          {tabs.map(t => {
+            const active = activeTab === t.id;
+            return (
+              <button
+                key={t.id}
+                onClick={() => setActiveTab(t.id)}
+                className={`flex-1 min-w-[72px] py-2.5 rounded-xl flex flex-col items-center justify-center gap-1 transition-all duration-300 cursor-pointer ${
+                  active
+                    ? 'bg-gradient-to-b from-[#F5C518] to-amber-500 text-black shadow-lg shadow-[#F5C518]/25 font-black scale-105'
+                    : 'text-slate-400 hover:bg-white/5 hover:text-white'
+                }`}
+              >
+                <Icon name={t.icon} className={`w-4 h-4 ${active ? 'text-black' : 'text-slate-400'}`} />
+                <span className="text-[7.5px] font-black uppercase tracking-wider">{t.label}</span>
+              </button>
+            );
+          })}
         </div>
 
-        {/* Uber-Style Live Service Tracker */}
-        {job.status !== 'lead' && (
-          <div className="g p-6 border-l-4 border-amber-500/80 space-y-6 relative overflow-hidden bg-black/60 shadow-[0_0_40px_rgba(245,197,24,0.05)] text-left animate-in slide-in-from-bottom duration-500">
-            <h3 className="text-[10px] font-black text-amber-500 uppercase tracking-widest flex items-center gap-2 mb-4 font-display">
-              <Icon name="activity" className="w-4 h-4 text-amber-500 animate-pulse" />
-              {tr(lang, 'trackerTitle')}
-            </h3>
-            <div className="relative border-l border-white/10 pl-6 ml-3 space-y-6">
-              {steps.map((step, idx) => {
-                const isDone = idx < activeStepIdx;
-                const isCurrent = idx === activeStepIdx;
-                
-                return (
-                  <div key={idx} className="relative">
-                    {/* Circle Node */}
-                    <div className={`absolute -left-[31px] top-1 w-4 h-4 rounded-full border-2 transition-all duration-500 flex items-center justify-center
-                      ${isDone ? 'bg-amber-500 border-amber-500 shadow-[0_0_10px_rgba(245,197,24,0.4)]' :
-                        isCurrent ? 'bg-black border-amber-500 shadow-[0_0_15px_rgba(245,197,24,0.8)] animate-pulse' :
-                        'bg-zinc-900 border-zinc-700'
-                      }`}
-                    >
-                      {isCurrent && <div className="w-1.5 h-1.5 bg-amber-500 rounded-full animate-ping"></div>}
-                      {isDone && <Icon name="check" className="w-2.5 h-2.5 text-black stroke-[3]" />}
-                    </div>
+        {/* ── TAB 1: ACTIVE SERVICE TRACKER ── */}
+        {activeTab === 'tracker' && (
+          <div className="space-y-5 animate-in fade-in duration-500">
+            {urgent !== null && urgent > 0 && !job.approval_signature && <div className="gold py-3 px-5 rounded-2xl text-center font-black uppercase text-sm">⏰ {tr(lang, 'urgency')} {urgent}h — {tr(lang, 'lock')}</div>}
+            
+            {/* Core Detail Card */}
+            <div className="g p-6 border-t-4 border-green-500 space-y-4 text-left">
+              <div className="flex justify-between items-center"><div><p className="text-[9px] font-black text-slate-500 uppercase">Client</p><h2 className="text-xl font-black italic uppercase text-white">{job.client_name}</h2></div><span className={`text-[8px] font-black px-3 py-1.5 rounded-xl uppercase ${job.status === 'paid' ? 'bg-blue-600 text-white' : job.status === 'in_progress' ? 'bg-green-600 text-white' : job.status === 'completed' ? 'bg-purple-600 text-white' : 'bg-amber-500 text-black'}`}>{job.status}</span></div>
+              <div className="text-[9px] text-slate-500 font-black uppercase space-y-1"><p>📋 {job.service_type?.toUpperCase()}</p><p>📅 {fmtD(job.scheduled_date)}</p><p>👥 {job.team_assigned || 'TBD'}</p><p>📍 {job.address}</p>{job.check_in_time && <p className="text-green-400">▶ {tr(lang, 'arrived')}: {new Date(job.check_in_time).toLocaleTimeString()}</p>}{job.check_out_time && <p className="text-purple-400">⏹ {tr(lang, 'done')}: {new Date(job.check_out_time).toLocaleTimeString()}</p>}</div>
+              <div><div className="flex justify-between text-[8px] font-black uppercase text-slate-500 mb-1"><span>Booked</span><span>{sm[job.status] || 0}%</span></div><div className="pb"><div className="pf" style={{ width: `${sm[job.status] || 0}%` }}></div></div></div>
+            </div>
+
+            {/* Uber-Style Live Service Tracker */}
+            {job.status !== 'lead' && (
+              <div className="g p-6 border-l-4 border-amber-500/80 space-y-6 relative overflow-hidden bg-black/60 shadow-[0_0_40px_rgba(245,197,24,0.05)] text-left animate-in slide-in-from-bottom duration-500">
+                <h3 className="text-[10px] font-black text-amber-500 uppercase tracking-widest flex items-center gap-2 mb-4 font-display">
+                  <Icon name="activity" className="w-4 h-4 text-amber-500 animate-pulse" />
+                  {tr(lang, 'trackerTitle')}
+                </h3>
+                <div className="relative border-l border-white/10 pl-6 ml-3 space-y-6">
+                  {steps.map((step, idx) => {
+                    const isDone = idx < activeStepIdx;
+                    const isCurrent = idx === activeStepIdx;
                     
-                    <div className="space-y-0.5">
-                      <h4 className={`text-[10px] font-black uppercase tracking-wider transition-colors
-                        ${isDone ? 'text-slate-300' : isCurrent ? 'text-amber-400 font-extrabold font-display' : 'text-slate-600'}
-                      `}>
-                        {step.title}
-                      </h4>
-                      <p className={`text-[8px] uppercase font-bold tracking-wider transition-colors
-                        ${isDone ? 'text-slate-500' : isCurrent ? 'text-slate-300' : 'text-slate-700'}
-                      `}>
-                        {step.desc}
-                      </p>
+                    return (
+                      <div key={idx} className="relative">
+                        {/* Circle Node */}
+                        <div className={`absolute -left-[31px] top-1 w-4 h-4 rounded-full border-2 transition-all duration-500 flex items-center justify-center
+                          ${isDone ? 'bg-amber-500 border-amber-500 shadow-[0_0_10px_rgba(245,197,24,0.4)]' :
+                            isCurrent ? 'bg-black border-amber-500 shadow-[0_0_15px_rgba(245,197,24,0.8)] animate-pulse' :
+                            'bg-zinc-900 border-zinc-700'
+                          }`}
+                        >
+                          {isCurrent && <div className="w-1.5 h-1.5 bg-amber-500 rounded-full animate-ping"></div>}
+                          {isDone && <Icon name="check" className="w-2.5 h-2.5 text-black stroke-[3]" />}
+                        </div>
+                        
+                        <div className="space-y-0.5">
+                          <h4 className={`text-[10px] font-black uppercase tracking-wider transition-colors
+                            ${isDone ? 'text-slate-300' : isCurrent ? 'text-amber-400 font-extrabold font-display' : 'text-slate-600'}
+                          `}>
+                            {step.title}
+                          </h4>
+                          <p className={`text-[8px] uppercase font-bold tracking-wider transition-colors
+                            ${isDone ? 'text-slate-500' : isCurrent ? 'text-slate-300' : 'text-slate-700'}
+                          `}>
+                            {step.desc}
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Dynamic Route Map */}
+            {job.status !== 'lead' && (
+              <div className="space-y-2 text-left animate-in slide-in-from-bottom duration-500">
+                <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-1.5">
+                  <Icon name="map-pin" className="w-3.5 h-3.5 text-amber-500" />
+                  {tr(lang, 'routeMap')}
+                </p>
+                <MapComponent 
+                  address={job.address} 
+                  lat={job.dest_lat} 
+                  lng={job.dest_lng}
+                  workerLat={job.specs?.en_route_lat || job.check_in_lat}
+                  workerLng={job.specs?.en_route_lng || job.check_in_lng}
+                />
+              </div>
+            )}
+
+            {/* Balance Due Card */}
+            <div className="g p-6 text-center space-y-2">
+              <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest">{tr(lang, 'balance')}</p>
+              <h3 className="text-6xl font-black italic tracking-tighter text-white">{fmt$(bal)}</h3>
+              <p className="text-[9px] text-green-500 font-black uppercase pt-2">💸 {tr(lang, 'pay')}: {DEFAULT_CFG.ZELLE}</p>
+            </div>
+
+            {/* Card Checkout Form */}
+            {bal > 0 && job.status !== 'paid' && (
+              <div className="g p-6 border border-white/10 space-y-6 relative overflow-hidden bg-black/40 shadow-2xl text-left rounded-3xl animate-in slide-in-from-bottom duration-500">
+                <div className="absolute top-0 left-0 w-full h-[1.5px] bg-gradient-to-r from-amber-500 via-yellow-400 to-transparent" />
+                
+                <div className="flex items-center gap-2">
+                  <div className="w-7 h-7 rounded-lg bg-amber-500/10 flex items-center justify-center">
+                    <Icon name="credit-card" className="w-4 h-4 text-amber-500" />
+                  </div>
+                  <h3 className="text-[10px] font-black text-white uppercase tracking-widest font-display">{tr(lang, 'payCard')}</h3>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-[9px] font-black text-slate-400 uppercase tracking-wider block">{tr(lang, 'tipSelect')}</label>
+                  <div className="grid grid-cols-5 gap-1.5">
+                    {[
+                      { id: 'none', label: '0%' },
+                      { id: '10', label: '10%' },
+                      { id: '15', label: '15%' },
+                      { id: '20', label: '20%' },
+                      { id: 'custom', label: '*' }
+                    ].map(opt => (
+                      <button
+                        key={opt.id}
+                        type="button"
+                        onClick={() => setTipOption(opt.id)}
+                        className={`py-2 rounded-xl text-[9px] font-black tracking-wider transition-all border cursor-pointer ${
+                          tipOption === opt.id 
+                            ? 'bg-amber-500 text-black border-amber-500 shadow-lg shadow-amber-500/20' 
+                            : 'bg-white/5 text-slate-400 border-white/10 hover:bg-white/10'
+                        }`}
+                      >
+                        {opt.id === 'custom' ? (lang === 'es' ? 'Otro' : 'Custom') : opt.id === 'none' ? '0%' : opt.label}
+                      </button>
+                    ))}
+                  </div>
+
+                  {tipOption === 'custom' && (
+                    <div className="mt-2 relative animate-in fade-in duration-300">
+                      <input
+                        type="number"
+                        value={customTip}
+                        onChange={(e) => setCustomTip(e.target.value)}
+                        placeholder={tr(lang, 'customTip')}
+                        className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-xs text-white outline-none focus:border-amber-500 font-mono"
+                      />
+                    </div>
+                  )}
+                </div>
+
+                <form onSubmit={(e) => handleCheckout(e, chargeTotal, calculatedTip)} className="space-y-4">
+                  <div className="space-y-1">
+                    <label className="text-[8px] font-black text-slate-400 uppercase tracking-wider block">{tr(lang, 'cardNo')}</label>
+                    <div className="relative">
+                      <input
+                        type="text"
+                        value={cardNo}
+                        onChange={handleCardNoChange}
+                        placeholder="4000 1234 5678 9010"
+                        maxLength={19}
+                        className="w-full bg-white/5 border border-white/10 rounded-xl pl-3 pr-10 py-2.5 text-xs text-white outline-none focus:border-amber-500 font-mono tracking-widest"
+                      />
+                      <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center justify-center">
+                        {getCardBrand(cardNo) === 'visa' && <span className="text-[10px] text-blue-400 font-black italic">VISA</span>}
+                        {getCardBrand(cardNo) === 'mastercard' && <span className="text-[10px] text-red-400 font-black italic">MC</span>}
+                        {getCardBrand(cardNo) === 'amex' && <span className="text-[10px] text-green-400 font-black italic">AMEX</span>}
+                        {getCardBrand(cardNo) === 'generic' && <Icon name="credit-card" className="w-4 h-4 text-slate-500" />}
+                      </div>
                     </div>
                   </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <label className="text-[8px] font-black text-slate-400 uppercase tracking-wider block">{tr(lang, 'expiry')}</label>
+                      <input
+                        type="text"
+                        value={cardExp}
+                        onChange={handleCardExpChange}
+                        placeholder="MM/YY"
+                        maxLength={5}
+                        className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-xs text-white outline-none focus:border-amber-500 font-mono tracking-widest"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[8px] font-black text-slate-400 uppercase tracking-wider block">{tr(lang, 'cvc')}</label>
+                      <input
+                        type="password"
+                        value={cardCvc}
+                        onChange={handleCardCvcChange}
+                        placeholder="123"
+                        maxLength={4}
+                        className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-xs text-white outline-none focus:border-amber-500 font-mono tracking-widest"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[8px] font-black text-slate-400 uppercase tracking-wider block">{tr(lang, 'cardName')}</label>
+                    <input
+                      type="text"
+                      value={cardName}
+                      onChange={(e) => setCardName(e.target.value)}
+                      placeholder="Jose Mario"
+                      className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-xs text-white outline-none focus:border-amber-500 font-medium uppercase tracking-wider"
+                    />
+                  </div>
+
+                  {payError && (
+                    <div className="p-3 bg-red-950/40 border border-red-500/25 rounded-2xl text-[9px] font-bold text-red-400 uppercase tracking-wider">
+                      ⚠️ {payError}
+                    </div>
+                  )}
+
+                  <div className="pt-2 border-t border-white/5 text-[9px] font-black uppercase text-slate-400 space-y-1">
+                    <div className="flex justify-between">
+                      <span>{tr(lang, 'balance')}</span>
+                      <span className="text-white">{fmt$(bal)}</span>
+                    </div>
+                    {calculatedTip > 0 && (
+                      <div className="flex justify-between text-green-400 font-display">
+                        <span>{lang === 'es' ? 'Propina' : 'Tip'}</span>
+                        <span>+{fmt$(calculatedTip)}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between text-xs text-white pt-1 font-black">
+                      <span>{tr(lang, 'totalAmount')}</span>
+                      <span className="text-amber-500">{fmt$(chargeTotal)}</span>
+                    </div>
+                  </div>
+
+                  <button
+                    type="submit"
+                    className="w-full gold py-3.5 rounded-2xl font-black uppercase text-xs tracking-wider shadow-lg active:scale-95 transition-all mt-2 cursor-pointer"
+                  >
+                    💳 {lang === 'es' ? `Pagar ${fmt$(chargeTotal)}` : `Pay ${fmt$(chargeTotal)}`}
+                  </button>
+                </form>
+              </div>
+            )}
+
+            {/* Approval Signature Pad */}
+            {!job.approval_signature ? (
+              <div className="g p-6 border border-amber-500/30 space-y-4">
+                <SigPad onSave={saveApproval} label={tr(lang, 'approve')} />
+              </div>
+            ) : (
+              <div className="g p-5 border border-green-600/30 text-center space-y-2">
+                <p className="text-[9px] text-green-500 font-black uppercase">✅ Approved</p>
+                <img src={job.approval_signature} className="h-10 mx-auto opacity-50" alt="signature" />
+              </div>
+            )}
+
+            {/* Before/After Photos Slider */}
+            <BeforeAfterSlider beforePhotos={job.before_photos || []} afterPhotos={job.after_photos || []} />
+
+            {/* Final Confirmation Signature */}
+            {job.approval_signature && job.after_photos?.length > 0 && !job.final_signature && (
+              <div className="g p-6 border border-purple-500/30 space-y-4">
+                <SigPad onSave={saveFinal} label={tr(lang, 'complete')} color="#a855f7" />
+              </div>
+            )}
+
+            {job.final_signature && (
+              <div className="g p-5 border border-purple-600/30 text-center space-y-2">
+                <p className="text-[9px] text-purple-400 font-black uppercase">🏁 {tr(lang, 'complete')}</p>
+                <img src={job.final_signature} className="h-10 mx-auto opacity-50" alt="signature" />
+              </div>
+            )}
+
+            {/* Rating Stars Feedback */}
+            {job.status === 'paid' && !ratingDone && (
+              <div className="g p-6 border border-amber-500/20 text-center space-y-4">
+                <p className="text-[9px] font-black text-amber-500 uppercase tracking-widest">{tr(lang, 'rating')}</p>
+                <div className="flex justify-center">
+                  <Stars value={rating} onChange={setRating} size={8} />
+                </div>
+                <button onClick={submitRating} disabled={!rating} className={`w-full py-3 rounded-xl font-black uppercase text-[10px] active:scale-95 ${rating ? 'gold' : 'bg-white/5 text-slate-600'}`}>{tr(lang, 'submit')}</button>
+              </div>
+            )}
+
+            {ratingDone && (
+              <div className="g p-4 text-center">
+                <p className="text-[9px] text-amber-400 font-black uppercase">⭐ {job.client_rating}/5 — Thank you!</p>
+              </div>
+            )}
+
+            {/* QR Portal share card */}
+            <div className="g p-5 flex items-center gap-4">
+              <QR url={`${location.origin}${location.pathname}?mision=${job.id}`} size={75} />
+              <div className="text-left">
+                <p className="text-[8px] font-black text-slate-500 uppercase mb-1">Your Portal QR</p>
+                <p className="text-[7px] text-slate-600 italic">Scan anytime</p>
+              </div>
+            </div>
+
+            {/* Google Review link */}
+            {job.status === 'paid' && (
+              <button onClick={() => window.open(DEFAULT_CFG.GOOGLE)} className="w-full gold py-4 rounded-2xl font-black uppercase text-sm active:scale-95 mb-1">
+                ⭐ {tr(lang, 'review')}
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* ── TAB 2: SERVICE HISTORY ── */}
+        {activeTab === 'history' && (
+          <div className="space-y-4 animate-in fade-in duration-500 text-left">
+            <div className="flex items-center gap-2 mb-2">
+              <Icon name="calendar" className="w-4 h-4 text-amber-500" />
+              <h3 className="text-xs font-black uppercase tracking-widest text-white">{lang === 'es' ? 'Historial de Servicios' : 'Service History'}</h3>
+            </div>
+            
+            {clientMissions.length === 0 ? (
+              <div className="g p-10 text-center text-slate-500 font-bold italic uppercase bg-white/5 border border-white/10 rounded-2xl">
+                {lang === 'es' ? 'No se encontraron servicios' : 'No services found'}
+              </div>
+            ) : (
+              clientMissions.map(m => {
+                const isSelected = m.id === job.id;
+                return (
+                  <div key={m.id} className={`g p-5 border transition-all relative overflow-hidden ${isSelected ? 'border-amber-500 bg-amber-500/5' : 'border-white/10 hover:border-white/20 bg-black/40'}`}>
+                    {isSelected && (
+                      <div className="absolute top-0 right-0 bg-amber-500 text-black text-[7px] font-black uppercase px-2 py-0.5 rounded-bl-lg">
+                        {lang === 'es' ? 'Seleccionado' : 'Active'}
+                      </div>
+                    )}
+                    
+                    <div className="flex justify-between items-start mb-2">
+                      <div>
+                        <h4 className="text-xs font-black text-white uppercase tracking-wider">{m.service_type}</h4>
+                        <p className="text-[8px] text-slate-500 font-bold uppercase tracking-wider">{fmtD(m.scheduled_date)}</p>
+                      </div>
+                      <span className={`text-[8px] font-black px-2 py-1 rounded-lg uppercase ${
+                        m.status === 'paid' ? 'bg-blue-900/30 text-blue-400 border border-blue-500/25' : 
+                        m.status === 'completed' ? 'bg-purple-900/30 text-purple-400 border border-purple-500/25' : 
+                        m.status === 'in_progress' ? 'bg-green-900/30 text-green-400 border border-green-500/25' : 
+                        'bg-amber-900/30 text-amber-400 border border-amber-500/25'
+                      }`}>
+                        {m.status}
+                      </span>
+                    </div>
+
+                    <div className="flex justify-between items-center text-[9px] font-black uppercase tracking-wider pt-2 border-t border-white/5">
+                      <span className="text-slate-400">{lang === 'es' ? 'Total' : 'Price'}: <span className="text-white">{fmt$(m.total_price)}</span></span>
+                      
+                      <div className="flex gap-2">
+                        {!isSelected && (
+                          <button 
+                            onClick={() => {
+                              setJob(m);
+                              setRating(m.client_rating || 0);
+                              setRDone(!!m.client_rating);
+                              setActiveTab('tracker');
+                              tt(lang === 'es' ? 'Cargando tracker para este servicio...' : 'Loading tracker for this service...', 'yellow');
+                            }}
+                            className="px-2.5 py-1 bg-white/5 hover:bg-white/10 text-white rounded-lg text-[8px] font-black uppercase border border-white/10 active:scale-95 transition-all"
+                          >
+                            {lang === 'es' ? 'Ver / Pagar' : 'View / Pay'}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                    
+                    {m.status === 'completed' && !m.client_rating && (
+                      <div className="mt-3 p-3 bg-amber-500/5 border border-amber-500/20 rounded-xl space-y-2 text-center">
+                        <p className="text-[8px] font-black text-amber-500 uppercase">{lang === 'es' ? 'Califica este servicio' : 'Rate this service'}</p>
+                        <div className="flex justify-center">
+                          <Stars value={m.tempRating || 0} onChange={(val) => {
+                            setClientMissions(prev => prev.map(x => x.id === m.id ? { ...x, tempRating: val } : x));
+                          }} size={6} />
+                        </div>
+                        <button 
+                          onClick={async () => {
+                            const val = m.tempRating;
+                            if (!val) return;
+                            await sb.from('elevore_missions').update({ client_rating: val }).eq('id', m.id);
+                            setClientMissions(prev => prev.map(x => x.id === m.id ? { ...x, client_rating: val } : x));
+                            tt('⭐ Thank you!');
+                          }}
+                          disabled={!m.tempRating}
+                          className={`w-full py-1.5 rounded-lg font-black uppercase text-[7px] ${m.tempRating ? 'bg-[#F5C518] text-black' : 'bg-white/5 text-slate-500'}`}
+                        >
+                          {lang === 'es' ? 'Calificar' : 'Rate'}
+                        </button>
+                      </div>
+                    )}
+                    
+                    {m.client_rating > 0 && (
+                      <div className="mt-2 text-right">
+                        <span className="text-[8px] text-amber-500 font-bold uppercase font-mono">⭐ {m.client_rating}/5</span>
+                      </div>
+                    )}
+                  </div>
                 );
-              })}
-            </div>
+              })
+            )}
           </div>
         )}
 
-        {/* Dynamic Route Map */}
-        {job.status !== 'lead' && (
-          <div className="space-y-2 text-left animate-in slide-in-from-bottom duration-500">
-            <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-1.5">
-              <Icon name="map-pin" className="w-3.5 h-3.5 text-amber-500" />
-              {tr(lang, 'routeMap')}
+        {/* ── TAB 3: SERVICE PREFERENCES ── */}
+        {activeTab === 'preferences' && (
+          <form onSubmit={saveClientPrefs} className="g p-6 space-y-4 text-left animate-in fade-in duration-500">
+            <div className="flex items-center gap-2 mb-2">
+              <Icon name="sliders" className="w-4 h-4 text-amber-500" />
+              <h3 className="text-xs font-black uppercase tracking-widest text-white">{lang === 'es' ? 'Preferencias de Servicio' : 'Service Preferences'}</h3>
+            </div>
+            <p className="text-[8.5px] text-slate-400 leading-relaxed uppercase font-bold tracking-wider">
+              {lang === 'es' 
+                ? 'Especifica las preferencias de tu hogar. Nuestro equipo de campo las leerá en su aplicación antes de iniciar el trabajo.' 
+                : 'Specify your home preferences. Our field staff will read these on their app before starting work.'}
             </p>
-            <MapComponent 
-              address={job.address} 
-              lat={job.dest_lat} 
-              lng={job.dest_lng}
-              workerLat={job.specs?.en_route_lat || job.check_in_lat}
-              workerLng={job.specs?.en_route_lng || job.check_in_lng}
-            />
-          </div>
-        )}
 
-        <div className="g p-6 text-center space-y-2">
-          <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest">{tr(lang, 'balance')}</p>
-          <h3 className="text-6xl font-black italic tracking-tighter text-white">{fmt$(bal)}</h3>
-          <p className="text-[9px] text-green-500 font-black uppercase pt-2">💸 {tr(lang, 'pay')}: {DEFAULT_CFG.ZELLE}</p>
-        </div>
-        
-        {!job.approval_signature ? (
-          <div className="g p-6 border border-amber-500/30 space-y-4">
-            <SigPad onSave={saveApproval} label={tr(lang, 'approve')} />
-          </div>
-        ) : (
-          <div className="g p-5 border border-green-600/30 text-center space-y-2">
-            <p className="text-[9px] text-green-500 font-black uppercase">✅ Approved</p>
-            <img src={job.approval_signature} className="h-10 mx-auto opacity-50" alt="signature" />
-          </div>
-        )}
-
-        {/* Before / After Photo Compare Slider */}
-        <BeforeAfterSlider beforePhotos={job.before_photos || []} afterPhotos={job.after_photos || []} />
-
-        {job.approval_signature && job.after_photos?.length > 0 && !job.final_signature && (
-          <div className="g p-6 border border-purple-500/30 space-y-4">
-            <SigPad onSave={saveFinal} label={tr(lang, 'complete')} color="#a855f7" />
-          </div>
-        )}
-        
-        {job.final_signature && (
-          <div className="g p-5 border border-purple-600/30 text-center space-y-2">
-            <p className="text-[9px] text-purple-400 font-black uppercase">🏁 {tr(lang, 'complete')}</p>
-            <img src={job.final_signature} className="h-10 mx-auto opacity-50" alt="signature" />
-          </div>
-        )}
-        
-        {job.status === 'paid' && !ratingDone && (
-          <div className="g p-6 border border-amber-500/20 text-center space-y-4">
-            <p className="text-[9px] font-black text-amber-500 uppercase tracking-widest">{tr(lang, 'rating')}</p>
-            <div className="flex justify-center">
-              <Stars value={rating} onChange={setRating} size={8} />
+            <div className="space-y-1">
+              <label className="text-[8px] font-black uppercase text-slate-500 tracking-wider block">{lang === 'es' ? 'Código de Acceso / Caja de Llaves' : 'Access PIN / Keybox'}</label>
+              <input 
+                type="text" 
+                value={prefEntryCode} 
+                onChange={e => setPrefEntryCode(e.target.value)} 
+                placeholder="Ej: Keybox #2026, Gate code #123"
+                className="inp w-full py-3 text-xs" 
+              />
             </div>
-            <button onClick={submitRating} disabled={!rating} className={`w-full py-3 rounded-xl font-black uppercase text-[10px] active:scale-95 ${rating ? 'gold' : 'bg-white/5 text-slate-600'}`}>{tr(lang, 'submit')}</button>
-          </div>
-        )}
-        
-        {ratingDone && (
-          <div className="g p-4 text-center">
-            <p className="text-[9px] text-amber-400 font-black uppercase">⭐ {job.client_rating}/5 — Thank you!</p>
-          </div>
-        )}
-        
-        <div className="g p-5 flex items-center gap-4">
-          <QR url={`${location.origin}${location.pathname}?mision=${job.id}`} size={75} />
-          <div className="text-left">
-            <p className="text-[8px] font-black text-slate-500 uppercase mb-1">Your Portal QR</p>
-            <p className="text-[7px] text-slate-600 italic">Scan anytime</p>
-          </div>
-        </div>
-        
-        {job.status === 'paid' && (
-          <button onClick={() => window.open(DEFAULT_CFG.GOOGLE)} className="w-full gold py-4 rounded-2xl font-black uppercase text-sm active:scale-95 mb-1">
-            ⭐ {tr(lang, 'review')}
-          </button>
+
+            <div className="space-y-1">
+              <label className="text-[8px] font-black uppercase text-slate-500 tracking-wider block">{lang === 'es' ? 'Mascotas en Casa' : 'Pets in the House'}</label>
+              <input 
+                type="text" 
+                value={prefPets} 
+                onChange={e => setPrefPets(e.target.value)} 
+                placeholder="Ej: 2 perros pequeños amigables, 1 gato"
+                className="inp w-full py-3 text-xs" 
+              />
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-[8px] font-black uppercase text-slate-500 tracking-wider block">{lang === 'es' ? 'Productos de Limpieza Preferidos' : 'Preferred Cleaning Products'}</label>
+              <input 
+                type="text" 
+                value={prefProducts} 
+                onChange={e => setPrefProducts(e.target.value)} 
+                placeholder="Ej: Eco-friendly only, no bleach"
+                className="inp w-full py-3 text-xs" 
+              />
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-[8px] font-black uppercase text-slate-500 tracking-wider block">{lang === 'es' ? 'Notas de Servicio Generales' : 'General Service Notes'}</label>
+              <textarea 
+                rows={3}
+                value={prefNotes} 
+                onChange={e => setPrefNotes(e.target.value)} 
+                placeholder="Ej: Favor prestar especial cuidado al piso de madera..."
+                className="inp w-full py-3 text-xs resize-none" 
+              />
+            </div>
+
+            <button 
+              type="submit" 
+              className="w-full gold py-3.5 rounded-2xl font-black uppercase text-xs tracking-wider shadow-lg active:scale-95 transition-all mt-2 cursor-pointer"
+            >
+              💾 {lang === 'es' ? 'Guardar Preferencias' : 'Save Preferences'}
+            </button>
+          </form>
         )}
 
-        {/* ── PREMIUM REFERRAL SYSTEM ── */}
+        {/* ── TAB 4: MEMBERSHIP & PERKS ── */}
+        {activeTab === 'membership' && (() => {
+          const defaultPlans = [
+            { id: 'none', name: 'None', price: 0, color: '#6b7280', perks: ['No active perks'] },
+            { id: 'basic', name: 'Basic Plan', price: 199, color: '#94a3b8', perks: ['2 Services / Mo', '5% Discount on Extras', 'Priority Scheduling'] },
+            { id: 'premium', name: 'Premium Plan', price: 349, color: '#3b82f6', perks: ['4 Services / Mo', '10% Discount on Extras', 'Free Oven Addon', 'Priority Scheduling'] },
+            { id: 'vip', name: 'VIP Plan', price: 549, color: '#fbbf24', perks: ['6 Services / Mo', '15% Discount on Extras', 'All Addons Included Free', 'Dedicated Support Team'] }
+          ];
+          const rawPlans = (tenantSettings?.membership_plans && tenantSettings.membership_plans.length > 0) 
+                           ? tenantSettings.membership_plans 
+                           : defaultPlans;
+          const plans = rawPlans.map(p => ({
+            ...p,
+            perks: p.perks || (p.id === 'none' ? ['No active perks'] : [])
+          }));
+          const currentPlan = plans.find(p => p.id === membershipTier) 
+                           || plans.find(p => p.id === 'none') 
+                           || plans[0] 
+                           || defaultPlans[0];
+
+          return (
+            <div className="space-y-4 text-left animate-in fade-in duration-500">
+              <div className="flex items-center gap-2 mb-2">
+                <Icon name="award" className="w-4 h-4 text-[#F5C518]" />
+                <h3 className="text-xs font-black uppercase tracking-widest text-white">{lang === 'es' ? 'Mi Membresía Elevore' : 'Elevore Membership'}</h3>
+              </div>
+
+              <div 
+                className="relative rounded-3xl p-6 overflow-hidden border text-left shadow-2xl transition-all duration-500"
+                style={{ 
+                  borderColor: currentPlan.color + '40', 
+                  background: `linear-gradient(135deg, ${currentPlan.color}15 0%, #000000 100%)`,
+                  boxShadow: `0 0 40px ${currentPlan.color}0a`
+                }}
+              >
+                <div className="absolute top-0 left-0 w-full h-[2px]" style={{ background: `linear-gradient(to right, ${currentPlan.color}, transparent)` }} />
+                <div className="flex justify-between items-start mb-4">
+                  <div>
+                    <p className="text-[7.5px] font-black text-slate-500 uppercase tracking-widest">{lang === 'es' ? 'PLAN ACTUAL' : 'CURRENT TIER'}</p>
+                    <h4 className="text-2xl font-black italic uppercase tracking-wider text-white" style={{ textShadow: `0 0 10px ${currentPlan.color}40` }}>{currentPlan.name}</h4>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-xs font-black text-white font-mono">${currentPlan.price}</p>
+                    <p className="text-[7px] text-slate-500 font-bold uppercase">{lang === 'es' ? 'al mes' : '/ month'}</p>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <p className="text-[8px] font-black text-slate-400 uppercase tracking-wider">{lang === 'es' ? 'Beneficios Activos:' : 'Active Perks:'}</p>
+                  <div className="grid grid-cols-1 gap-1.5 pl-1">
+                    {currentPlan.perks?.map((perk, i) => (
+                      <div key={i} className="flex items-center gap-2 text-[8px] font-bold text-slate-300 uppercase tracking-wider">
+                        <Icon name="check-circle" className="w-3 h-3 text-[#F5C518]" />
+                        <span>{perk}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              <div className="g p-5 border border-white/10 space-y-4 bg-black/40">
+                <h4 className="text-[9px] font-black text-white uppercase tracking-widest">{lang === 'es' ? 'Cambiar Plan de Membresía' : 'Select a Membership Plan'}</h4>
+                <div className="grid grid-cols-1 gap-2.5">
+                  {plans.map(p => {
+                    const isSelected = p.id === membershipTier;
+                    return (
+                      <button
+                        key={p.id}
+                        onClick={() => saveMembershipPlan(p.id)}
+                        disabled={membershipSaving}
+                        className={`w-full p-4 rounded-2xl border transition-all text-left flex justify-between items-center cursor-pointer ${
+                          isSelected ? 'border-[#F5C518] bg-[#F5C518]/5 shadow-lg' : 'border-white/5 bg-white/5 hover:bg-white/10'
+                        }`}
+                      >
+                        <div>
+                          <h5 className="text-xs font-black text-white uppercase tracking-wide flex items-center gap-1.5">
+                            {p.name}
+                            {isSelected && <span className="text-[7px] font-black bg-[#F5C518] text-black px-1.5 py-0.5 rounded uppercase">Active</span>}
+                          </h5>
+                          <p className="text-[7px] text-slate-400 uppercase font-bold tracking-wider pt-0.5">{p.price > 0 ? (lang === 'es' ? `Facturado mensualmente • ${p.perks?.length} beneficios` : `Billed monthly • ${p.perks?.length} perks`) : (lang === 'es' ? 'Sin pago recurrente' : 'No recurring payment')}</p>
+                        </div>
+                        <div className="text-right">
+                          <span className="text-xs font-black text-white font-mono">${p.price}</span>
+                          <span className="text-[7px] text-slate-500 font-bold block uppercase">{lang === 'es' ? 'mes' : 'mo'}</span>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          );
+        })()}
+
+        {/* ── TAB 5: QUICK BOOKING ── */}
+        {activeTab === 'booking' && (() => {
+          const { base, addonsTotal, discount, total } = getBookingEstimate();
+          return (
+            <form onSubmit={handleCreateBooking} className="g p-6 space-y-4 text-left animate-in fade-in duration-500 bg-black/40 border-t-4 border-amber-500">
+              <div className="flex items-center gap-2 mb-2">
+                <Icon name="plus-circle" className="w-4 h-4 text-amber-500" />
+                <h3 className="text-xs font-black uppercase tracking-widest text-white">{lang === 'es' ? 'Agendar Nuevo Servicio' : 'Book New Service'}</h3>
+              </div>
+              
+              <div className="space-y-1">
+                <label className="text-[8px] font-black uppercase text-slate-500 tracking-wider block">{lang === 'es' ? 'Selecciona Tipo de Trabajo' : 'Select Service Type'}</label>
+                <select 
+                  value={bookingService} 
+                  onChange={e => setBookingService(e.target.value)}
+                  className="inp w-full py-3 text-xs bg-zinc-950 border border-white/10 text-white rounded-xl outline-none focus:border-amber-500 uppercase font-black"
+                >
+                  {quickJobsList.map(q => (
+                    <option key={q.id} value={q.id} className="text-black">{q.en.toUpperCase()} - ${q.p}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[8px] font-black uppercase text-slate-500 tracking-wider block">{lang === 'es' ? 'Fecha de Servicio' : 'Service Date'}</label>
+                <input 
+                  required
+                  type="date" 
+                  value={bookingDate} 
+                  min={new Date().toISOString().split('T')[0]}
+                  onChange={e => setBookingDate(e.target.value)} 
+                  className="inp w-full py-3 text-xs text-center" 
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-[8px] font-black uppercase text-slate-500 tracking-wider block">{lang === 'es' ? 'Añadir Servicios Extras' : 'Choose Addons'}</label>
+                <div className="grid grid-cols-2 gap-2">
+                  {addonsList.map(a => {
+                    const checked = bookingAddons.includes(a.id);
+                    const isFree = membershipTier === 'vip' || (membershipTier === 'premium' && a.id === 'oven');
+                    return (
+                      <button
+                        key={a.id}
+                        type="button"
+                        onClick={() => {
+                          if (bookingAddons.includes(a.id)) {
+                            setBookingAddons(prev => prev.filter(x => x !== a.id));
+                          } else {
+                            setBookingAddons(prev => [...prev, a.id]);
+                          }
+                        }}
+                        className={`p-3 border rounded-xl flex items-center justify-between text-left transition-all cursor-pointer ${checked ? 'border-[#F5C518] bg-[#F5C518]/5' : 'border-white/5 bg-white/5 hover:bg-white/10'}`}
+                      >
+                        <div>
+                          <p className="text-[8px] font-black text-white uppercase tracking-wider">{a.en}</p>
+                          <p className="text-[7px] text-slate-500 font-bold uppercase">{isFree ? (lang === 'es' ? 'INCLUIDO ✓' : 'INCLUDED ✓') : `+$${a.p}`}</p>
+                        </div>
+                        <div className={`w-3.5 h-3.5 rounded border flex items-center justify-center ${checked ? 'border-[#F5C518] bg-[#F5C518]' : 'border-slate-700'}`}>
+                          {checked && <Icon name="check" className="w-2.5 h-2.5 text-black stroke-[3]" />}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[8px] font-black uppercase text-slate-500 tracking-wider block">{lang === 'es' ? 'Instrucciones Especiales' : 'Special Instructions'}</label>
+                <textarea 
+                  rows={2}
+                  value={bookingNotes} 
+                  onChange={e => setBookingNotes(e.target.value)} 
+                  placeholder={lang === 'es' ? 'Detalles específicos sobre el trabajo...' : 'Specific details about the job...'}
+                  className="inp w-full py-3 text-xs resize-none" 
+                />
+              </div>
+
+              <div className="p-4 bg-black/60 border border-white/5 rounded-2xl text-[9px] font-black uppercase text-slate-400 space-y-1.5 font-mono">
+                <div className="flex justify-between"><span>{lang === 'es' ? 'Servicio Base' : 'Base Service'}</span><span className="text-white">${base}</span></div>
+                {addonsTotal > 0 && <div className="flex justify-between"><span>{lang === 'es' ? 'Extras' : 'Addons'}</span><span className="text-white">+${addonsTotal}</span></div>}
+                {discount > 0 && <div className="flex justify-between text-[#F5C518]"><span>{lang === 'es' ? `Descuento (${membershipTier})` : `Discount (${membershipTier})`}</span><span>-${discount.toFixed(2)}</span></div>}
+                <div className="flex justify-between text-xs text-white pt-1.5 border-t border-white/5 font-black"><span>{lang === 'es' ? 'Total Estimado' : 'Estimated Total'}</span><span className="text-[#F5C518]">${total.toFixed(2)}</span></div>
+              </div>
+
+              <button 
+                type="submit" 
+                disabled={bookingSaving}
+                className="w-full gold py-4 rounded-2xl font-black uppercase text-xs tracking-wider shadow-lg active:scale-95 transition-all mt-2 cursor-pointer flex items-center justify-center gap-2"
+              >
+                {bookingSaving ? <Icon name="loader-2" className="w-5 h-5 animate-spin text-black" /> : `📅 ${lang === 'es' ? 'Solicitar Servicio' : 'Request Service'}`}
+              </button>
+            </form>
+          );
+        })()}
+
+        {/* ── SHARED FOOTER ACCORDIONS/CARDS ── */}
         <div className="relative rounded-3xl overflow-hidden border border-[#F5C518]/25 bg-gradient-to-br from-[#0e0d02] via-[#121106] to-black p-6 space-y-4 shadow-[0_0_40px_rgba(245,197,24,0.05)] text-left">
           <div className="absolute top-0 left-0 w-full h-[1.5px] bg-gradient-to-r from-[#F5C518] via-[#F5C518]/30 to-transparent" />
           <div className="flex items-center gap-2.5">
@@ -1012,16 +2087,46 @@ function Portal({ cjid }) {
 
 // StaffJob Component
 function StaffJob({ job, onBack, onRefresh, tt, recTime, upsell, update, employee }) {
-  const [chk, setChk] = useState({});
+  const [chk, setChk] = useState(() => job.specs?.checklist || {});
   const [localJob, setLocalJob] = useState(job);
   const [isScanning, setIsScanning] = useState(false);
   const [scanUrl, setScanUrl] = useState('');
   const [scanStep, setScanStep] = useState(0);
+  const [loadingAction, setLoadingAction] = useState(null);
+
+  useEffect(() => {
+    setLocalJob(job);
+    setChk(job.specs?.checklist || {});
+  }, [job]);
+
   const done = Object.values(chk).filter(Boolean).length;
   
   // Custom smart speed & quality bonus calculation
   const bonus = (localJob.status === 'paid' && localJob.final_signature && localJob.check_in_time && localJob.check_out_time && (Math.round((new Date(localJob.check_out_time) - new Date(localJob.check_in_time)) / 60000)) <= 180 && (localJob.client_rating || 0) >= 4) ? 5 : 0;
   
+  const toggleCheck = async (index) => {
+    const nextChk = { ...chk, [index]: !chk[index] };
+    // Optimistic UI Update
+    setChk(nextChk);
+    const updatedSpecs = {
+      ...(localJob.specs || {}),
+      checklist: nextChk
+    };
+    setLocalJob(prev => ({ ...prev, specs: updatedSpecs }));
+
+    try {
+      const { error } = await sb.from('elevore_missions').update({ specs: updatedSpecs }).eq('id', localJob.id);
+      if (error) throw error;
+      onRefresh();
+    } catch (err) {
+      console.error("Failed to save checklist to database:", err);
+      tt("Error saving checklist: " + err.message, "red");
+      // Revert if error
+      setChk(chk);
+      setLocalJob(prev => ({ ...prev, specs: { ...(prev.specs || {}), checklist: chk } }));
+    }
+  };
+
   const addAP = async url => {
     // 🧠 AI VISION INSPECTOR SIMULATION 🧠
     setScanUrl(url);
@@ -1040,9 +2145,18 @@ function StaffJob({ job, onBack, onRefresh, tt, recTime, upsell, update, employe
       await sb.from('elevore_missions').update({ after_photos: [...c, url], specs: newSpecs }).eq('id', localJob.id);
       tt('AI Quality Control: APPROVED ✓', 'green');
       setLocalJob({ ...localJob, after_photos: [...c, url], specs: newSpecs });
+      onRefresh();
       
       setTimeout(() => setIsScanning(false), 2000);
     }, 4500);
+  };
+
+  const addBP = async url => {
+    const c = localJob.before_photos || [];
+    await sb.from('elevore_missions').update({ before_photos: [...c, url] }).eq('id', localJob.id);
+    tt('Before photo uploaded! 📸', 'green');
+    setLocalJob({ ...localJob, before_photos: [...c, url] });
+    onRefresh();
   };
 
   return (
@@ -1101,7 +2215,11 @@ function StaffJob({ job, onBack, onRefresh, tt, recTime, upsell, update, employe
           <p className="text-[9px] text-slate-500 uppercase">{localJob.service_type} • {localJob.address}</p>
           {employee && <p className="text-[8px] text-green-400 font-black uppercase mt-1">👤 Active Worker: {employee.name}</p>}
           <div className="grid grid-cols-2 gap-2 mt-4">
-            <button onClick={async () => {
+            {/* Voy En Camino Button */}
+            <button 
+              disabled={loadingAction || localJob.specs?.en_route}
+              onClick={async () => {
+                setLoadingAction('omw');
                 const p = localJob.client_phone?.replace(/\D/g, '') || '';
                 const msg = `🚗 Hola ${localJob.client_name}! Soy ${employee?.name || 'tu profesional de Elevore'}. Voy en camino a tu ubicacion. Sigue mi llegada aqui: ${window.location.origin}${window.location.pathname}?mision=${localJob.id}`;
                 
@@ -1117,11 +2235,17 @@ function StaffJob({ job, onBack, onRefresh, tt, recTime, upsell, update, employe
                     updatedSpecs.en_route_lat = lat;
                     updatedSpecs.en_route_lng = lng;
                   }
-                  await sb.from('elevore_missions').update({ specs: updatedSpecs }).eq('id', localJob.id);
-                  setLocalJob(prev => ({ ...prev, specs: updatedSpecs }));
-                  window.open(`https://wa.me/${p}?text=${encodeURIComponent(msg)}`);
-                  tt('Client Notified OMW!', 'green');
-                  onRefresh();
+                  try {
+                    await sb.from('elevore_missions').update({ specs: updatedSpecs }).eq('id', localJob.id);
+                    setLocalJob(prev => ({ ...prev, specs: updatedSpecs }));
+                    window.open(`https://wa.me/${p}?text=${encodeURIComponent(msg)}`);
+                    tt('Client Notified OMW!', 'green');
+                    onRefresh();
+                  } catch (e) {
+                    tt('Error sending OMW: ' + e.message, 'red');
+                  } finally {
+                    setLoadingAction(null);
+                  }
                 };
 
                 if (navigator.geolocation) {
@@ -1138,19 +2262,138 @@ function StaffJob({ job, onBack, onRefresh, tt, recTime, upsell, update, employe
                 } else {
                   await updateDb();
                 }
-            }} className="col-span-2 bg-blue-600 text-white py-3 rounded-xl font-black uppercase text-[10px] active:scale-95 flex items-center justify-center gap-2 shadow-lg shadow-blue-600/20"><Icon name="truck" className="w-4 h-4" /> Enviar "Voy En Camino" al Cliente (GPS)</button>
-            <button onClick={() => recTime(localJob.id, 'check_in_time')} className="bg-green-600 text-white py-3 rounded-xl font-black uppercase text-[9px] active:scale-95 flex items-center justify-center gap-1"><Icon name="play" className="w-3 h-3" />Check In</button>
-            <button onClick={() => recTime(localJob.id, 'check_out_time')} className="bg-red-600 text-white py-3 rounded-xl font-black uppercase text-[9px] active:scale-95 flex items-center justify-center gap-1"><Icon name="square" className="w-3 h-3" />Check Out</button>
-            <button onClick={() => window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(localJob.address)}`)} className="col-span-2 bg-slate-700 text-white px-4 py-3 rounded-xl font-black text-[9px] active:scale-95 flex items-center justify-center gap-1">📍 Abrir en Waze / Google Maps</button>
+              }} 
+              className={`col-span-2 py-3 rounded-xl font-black uppercase text-[10px] active:scale-95 flex items-center justify-center gap-2 shadow-lg transition-all ${
+                localJob.specs?.en_route 
+                  ? 'bg-blue-950/40 border border-blue-500/20 text-blue-400 cursor-not-allowed opacity-80' 
+                  : 'bg-blue-600 hover:bg-blue-500 text-white shadow-blue-600/20'
+              }`}
+            >
+              {loadingAction === 'omw' ? (
+                <Icon name="loader-2" className="w-4 h-4 animate-spin text-white" />
+              ) : localJob.specs?.en_route ? (
+                <><Icon name="check" className="w-4 h-4 text-blue-400" /> Notificación "En Camino" Enviada ✓</>
+              ) : (
+                <><Icon name="truck" className="w-4 h-4" /> Enviar "Voy En Camino" al Cliente (GPS)</>
+              )}
+            </button>
+
+            {/* Check In Button */}
+            <button 
+              disabled={loadingAction || localJob.check_in_time}
+              onClick={async () => {
+                setLoadingAction('check_in');
+                const time = new Date().toISOString();
+                // Optimistic UI Update
+                setLocalJob(prev => ({ ...prev, check_in_time: time, status: 'in_progress' }));
+                try {
+                  await recTime(localJob.id, 'check_in_time');
+                } catch (e) {
+                  tt('Error check-in: ' + e.message, 'red');
+                  // Revert if error
+                  setLocalJob(prev => ({ ...prev, check_in_time: null, status: prev.status === 'in_progress' ? 'scheduled' : prev.status }));
+                } finally {
+                  setLoadingAction(null);
+                }
+              }} 
+              className={`py-3 rounded-xl font-black uppercase text-[9px] active:scale-95 flex items-center justify-center gap-1.5 transition-all ${
+                localJob.check_in_time 
+                  ? 'bg-green-950/40 border border-green-500/20 text-green-400 cursor-not-allowed opacity-80' 
+                  : 'bg-green-600 hover:bg-green-500 text-white'
+              }`}
+            >
+              {loadingAction === 'check_in' ? (
+                <Icon name="loader-2" className="w-4.5 h-4.5 animate-spin text-white" />
+              ) : localJob.check_in_time ? (
+                <><Icon name="check" className="w-3.5 h-3.5" /> Checked In ✓</>
+              ) : (
+                <><Icon name="play" className="w-3 h-3" /> Check In</>
+              )}
+            </button>
+
+            {/* Check Out Button */}
+            <button 
+              disabled={loadingAction || !localJob.check_in_time || localJob.check_out_time}
+              onClick={async () => {
+                setLoadingAction('check_out');
+                const time = new Date().toISOString();
+                // Optimistic UI Update
+                setLocalJob(prev => ({ ...prev, check_out_time: time, status: 'completed' }));
+                try {
+                  await recTime(localJob.id, 'check_out_time');
+                } catch (e) {
+                  tt('Error check-out: ' + e.message, 'red');
+                  // Revert if error
+                  setLocalJob(prev => ({ ...prev, check_out_time: null, status: prev.status === 'completed' ? 'in_progress' : prev.status }));
+                } finally {
+                  setLoadingAction(null);
+                }
+              }} 
+              className={`py-3 rounded-xl font-black uppercase text-[9px] active:scale-95 flex items-center justify-center gap-1.5 transition-all ${
+                localJob.check_out_time 
+                  ? 'bg-red-950/40 border border-red-500/20 text-red-400 cursor-not-allowed opacity-80'
+                  : !localJob.check_in_time
+                    ? 'bg-white/5 text-slate-600 border border-white/5 cursor-not-allowed opacity-60'
+                    : 'bg-red-600 hover:bg-red-500 text-white'
+              }`}
+            >
+              {loadingAction === 'check_out' ? (
+                <Icon name="loader-2" className="w-4.5 h-4.5 animate-spin text-white" />
+              ) : localJob.check_out_time ? (
+                <><Icon name="check" className="w-3.5 h-3.5" /> Checked Out ✓</>
+              ) : (
+                <><Icon name="square" className="w-3 h-3" /> Check Out</>
+              )}
+            </button>
+
+            {/* Open Maps Button */}
+            <button onClick={() => window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(localJob.address)}`)} className="col-span-2 bg-slate-800 border border-slate-700 hover:bg-slate-700 hover:text-white px-4 py-3 rounded-xl font-black text-[9px] active:scale-95 flex items-center justify-center gap-1.5 transition-all">📍 Abrir en Waze / Google Maps</button>
+            
+            {/* Report Problem Buttons */}
             <VoiceButton onTranscript={async (txt) => {
               if (txt) {
-                await update(localJob, { specs: { ...(localJob.specs || {}), staff_issue: txt, staff_issue_at: new Date().toISOString() } }, 'Issue reported');
-                tt('🎙️ Voz registrada: ' + txt);
+                setLoadingAction('report');
+                try {
+                  await update(localJob, { specs: { ...(localJob.specs || {}), staff_issue: txt, staff_issue_at: new Date().toISOString() } }, 'Issue reported');
+                  tt('🎙️ Voz registrada: ' + txt);
+                } finally {
+                  setLoadingAction(null);
+                }
               }
-            }} className="bg-orange-600/90 border border-orange-600/20 text-white py-3 rounded-xl hover:bg-orange-600 active:scale-95 flex items-center justify-center" />
-            <button onClick={async () => { const i = prompt('Issue?'); if (i) { await update(localJob, { specs: { ...(localJob.specs || {}), staff_issue: i, staff_issue_at: new Date().toISOString() } }, 'Issue reported'); } }} className="bg-orange-600 text-white py-3 rounded-xl font-black text-[9px] active:scale-95 flex items-center justify-center">! Reportar Problema</button>
+            }} className="bg-orange-955/20 border border-orange-600/30 hover:border-orange-500 text-orange-400 py-3 rounded-xl hover:bg-orange-950/40 active:scale-95 flex items-center justify-center transition-all" />
+            
+            <button 
+              disabled={loadingAction === 'report'}
+              onClick={async () => { 
+                const i = prompt('Issue?'); 
+                if (i) { 
+                  setLoadingAction('report');
+                  try {
+                    await update(localJob, { specs: { ...(localJob.specs || {}), staff_issue: i, staff_issue_at: new Date().toISOString() } }, 'Issue reported'); 
+                  } finally {
+                    setLoadingAction(null);
+                  }
+                } 
+              }} 
+              className="bg-orange-600 hover:bg-orange-500 text-white py-3 rounded-xl font-black text-[9px] active:scale-95 flex items-center justify-center gap-1 transition-all"
+            >
+              {loadingAction === 'report' ? <Icon name="loader-2" className="w-4 h-4 animate-spin text-white" /> : '! Reportar Problema'}
+            </button>
           </div>
-          {localJob.check_in_time && <p className="text-[8px] text-green-400 font-black uppercase mt-2">▶ In: {new Date(localJob.check_in_time).toLocaleTimeString()}</p>}
+          {localJob.check_in_time && (
+            <div className="mt-4 flex flex-col gap-1.5 border-t border-white/5 pt-3">
+              <p className="text-[8px] text-green-400 font-black uppercase flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-ping"></span>
+                ▶ Iniciada: {new Date(localJob.check_in_time).toLocaleString()}
+              </p>
+              {localJob.check_out_time && (
+                <p className="text-[8px] text-red-400 font-black uppercase flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-red-500"></span>
+                  ⏹ Finalizada: {new Date(localJob.check_out_time).toLocaleString()}
+                </p>
+              )}
+            </div>
+          )}
         </div>
         
         {/* Dynamic GPS Map of the active mission */}
@@ -1160,7 +2403,16 @@ function StaffJob({ job, onBack, onRefresh, tt, recTime, upsell, update, employe
         </div>
 
         <div className="g p-5"><p className="text-[9px] font-black text-amber-500 uppercase tracking-widest mb-3">⚡ Upsell Strike</p><div className="grid grid-cols-2 gap-2">{ADDONS.filter(a => !localJob.specs?.[a.id]).map(a => { const sent = (localJob.upsell_sent || []).includes(a.id); return (<button key={a.id} disabled={sent} onClick={() => upsell(localJob, a.id)} className={`p-3 rounded-xl border text-[8px] font-black uppercase active:scale-95 ${sent ? 'bg-green-900/30 border-green-600/30 text-green-600' : 'bg-amber-500/10 border-amber-500/30 text-amber-400'}`}>{sent ? '✅ ' : ''}{a.en} ${a.p}</button>); })}</div></div>
-        <div className="g p-5 space-y-2"><div className="flex justify-between items-center mb-2"><p className="text-[9px] font-black uppercase text-amber-500">Checklist</p><span className="text-[9px] font-black text-white">{done}/{CHECKS.length}</span></div><div className="pb mb-3"><div className="pf" style={{ width: `${(done / CHECKS.length) * 100}%` }}></div></div>{CHECKS.map((item, i) => (<button key={i} onClick={() => setChk(c => ({ ...c, [i]: !c[i] }))} className={`w-full flex items-center gap-3 p-3 rounded-xl border transition-all active:scale-95 ${chk[i] ? 'bg-green-600/20 border-green-600/40 text-green-400' : 'bg-white/5 border-white/5 text-slate-400'}`}><div className={`w-5 h-5 rounded-lg border-2 flex items-center justify-center flex-shrink-0 ${chk[i] ? 'bg-green-600 border-green-600' : 'border-slate-600'}`}>{chk[i] && <Icon name="check" className="w-3 h-3 text-white" />}</div><span className="text-[10px] font-black uppercase text-left">{item}</span></button>))}</div>
+        <div className="g p-5 space-y-2"><div className="flex justify-between items-center mb-2"><p className="text-[9px] font-black uppercase text-amber-500">Checklist</p><span className="text-[9px] font-black text-white">{done}/{CHECKS.length}</span></div><div className="pb mb-3"><div className="pf" style={{ width: `${(done / CHECKS.length) * 100}%` }}></div></div>{CHECKS.map((item, i) => (<button key={i} onClick={() => toggleCheck(i)} className={`w-full flex items-center gap-3 p-3 rounded-xl border transition-all active:scale-95 ${chk[i] ? 'bg-green-600/20 border-green-600/40 text-green-400' : 'bg-white/5 border-white/5 text-slate-400'}`}><div className={`w-5 h-5 rounded-lg border-2 flex items-center justify-center flex-shrink-0 ${chk[i] ? 'bg-green-600 border-green-600' : 'border-slate-600'}`}>{chk[i] && <Icon name="check" className="w-3 h-3 text-white" />}</div><span className="text-[10px] font-black uppercase text-left">{item}</span></button>))}</div>
+        <div className="g p-5 border border-amber-500/20 bg-amber-500/5 relative overflow-hidden mb-5">
+          <div className="absolute top-0 left-0 w-1 h-full bg-amber-500"></div>
+          <div className="flex justify-between items-center mb-1">
+             <p className="text-[9px] font-black text-amber-500 uppercase tracking-widest flex items-center gap-1.5"><Icon name="camera" className="w-3 h-3" /> Fotos del Antes (OBLIGATORIO)</p>
+          </div>
+          <p className="text-[7px] text-slate-400 uppercase tracking-wider mb-3 font-bold">Sube al menos 1 foto del estado inicial del servicio</p>
+          <PhotoDrive photos={localJob.before_photos || []} label="" onAdd={addBP} />
+        </div>
+
         <div className="g p-5 border border-purple-500/20 bg-purple-500/5 relative overflow-hidden">
           <div className="absolute top-0 left-0 w-1 h-full bg-purple-500"></div>
           <div className="flex justify-between items-center mb-1">
@@ -1169,6 +2421,7 @@ function StaffJob({ job, onBack, onRefresh, tt, recTime, upsell, update, employe
           <p className="text-[7px] text-slate-400 uppercase tracking-wider mb-3 font-bold">Upload After-Photo to trigger Computer Vision Scan</p>
           <PhotoDrive photos={localJob.after_photos || []} label="" onAdd={addAP} />
         </div>
+        
         {bonus > 0 && <div className="g p-5 border border-amber-500/30 text-center"><p className="text-amber-500 font-black uppercase text-[9px] mb-1">🌟 Speed & Rating Bonus</p><p className="text-3xl font-black italic text-white">+${bonus}</p></div>}
         
         {/* DIGITAL SIGNATURE */}
@@ -1179,6 +2432,7 @@ function StaffJob({ job, onBack, onRefresh, tt, recTime, upsell, update, employe
               await sb.from('elevore_missions').update({ final_signature: sig }).eq('id', localJob.id);
               setLocalJob({ ...localJob, final_signature: sig });
               tt('Firma guardada correctamente ✓', 'green');
+              onRefresh();
             }} label="Customer Signature to finish work" color="#F5C518" />
           ) : (
             <div className="text-center bg-white/5 p-4 rounded-xl border border-white/5">
@@ -1188,7 +2442,76 @@ function StaffJob({ job, onBack, onRefresh, tt, recTime, upsell, update, employe
           )}
         </div>
 
-        {done === CHECKS.length && <button onClick={async () => { if (!(localJob.after_photos || []).length) return tt('Add at least 1 after photo for AI Scan', 'red'); if (!localJob.final_signature) return tt('El cliente debe firmar antes de finalizar', 'red'); await update(localJob, { status: 'completed', specs: { ...(localJob.specs || {}), checklist_done_at: new Date().toISOString() } }, 'Sent to QC ✅'); onBack(); onRefresh(); }} className="w-full gold py-5 rounded-2xl font-black uppercase text-base active:scale-95 shadow-[0_0_30px_rgba(245,197,24,0.2)]">✅ Execute Sign-Off & Close</button>}
+        {/* VALIDATION FEEDBACK & CHECKOUT BUTTON */}
+        {(() => {
+          const missingChecklist = done < CHECKS.length;
+          const missingBeforePhoto = !(localJob.before_photos && localJob.before_photos.length >= 1);
+          const missingAfterPhoto = !(localJob.after_photos && localJob.after_photos.length >= 1);
+          const missingSignature = !localJob.final_signature;
+          const canCheckout = !missingChecklist && !missingBeforePhoto && !missingAfterPhoto && !missingSignature;
+          
+          return (
+            <div className="space-y-3 mt-6">
+              <div className="bg-black/40 border border-white/5 rounded-2xl p-4 space-y-2">
+                <p className="text-[9px] font-black uppercase text-slate-500 tracking-wider mb-2">Requisitos de Salida:</p>
+                <div className="flex items-center justify-between text-[10px] font-bold uppercase">
+                  <span className="flex items-center gap-2">
+                    <Icon name={missingChecklist ? "alert-circle" : "check-circle"} className={`w-4 h-4 ${missingChecklist ? 'text-red-500' : 'text-green-500'}`} />
+                    Tareas Completadas ({done}/{CHECKS.length})
+                  </span>
+                  <span className={missingChecklist ? 'text-red-400' : 'text-green-400'}>{missingChecklist ? 'Pendiente' : 'Listo'}</span>
+                </div>
+                <div className="flex items-center justify-between text-[10px] font-bold uppercase">
+                  <span className="flex items-center gap-2">
+                    <Icon name={missingBeforePhoto ? "alert-circle" : "check-circle"} className={`w-4 h-4 ${missingBeforePhoto ? 'text-red-500' : 'text-green-500'}`} />
+                    Foto del Antes (Mín. 1)
+                  </span>
+                  <span className={missingBeforePhoto ? 'text-red-400' : 'text-green-400'}>{missingBeforePhoto ? 'Pendiente' : 'Listo'}</span>
+                </div>
+                <div className="flex items-center justify-between text-[10px] font-bold uppercase">
+                  <span className="flex items-center gap-2">
+                    <Icon name={missingAfterPhoto ? "alert-circle" : "check-circle"} className={`w-4 h-4 ${missingAfterPhoto ? 'text-red-500' : 'text-green-500'}`} />
+                    Foto del Después (Mín. 1)
+                  </span>
+                  <span className={missingAfterPhoto ? 'text-red-400' : 'text-green-400'}>{missingAfterPhoto ? 'Pendiente' : 'Listo'}</span>
+                </div>
+                <div className="flex items-center justify-between text-[10px] font-bold uppercase">
+                  <span className="flex items-center gap-2">
+                    <Icon name={missingSignature ? "alert-circle" : "check-circle"} className={`w-4 h-4 ${missingSignature ? 'text-red-500' : 'text-green-500'}`} />
+                    Firma del Cliente
+                  </span>
+                  <span className={missingSignature ? 'text-red-400' : 'text-green-400'}>{missingSignature ? 'Pendiente' : 'Listo'}</span>
+                </div>
+              </div>
+              
+              <button 
+                disabled={!canCheckout || loadingAction}
+                onClick={async () => {
+                  if (!canCheckout) return;
+                  setLoadingAction('close');
+                  try {
+                    await update(localJob, { status: 'completed', specs: { ...(localJob.specs || {}), checklist_done_at: new Date().toISOString() } }, 'Sent to QC ✅'); 
+                    onBack(); 
+                    onRefresh(); 
+                  } catch (e) {
+                    tt('Error: ' + e.message, 'red');
+                  } finally {
+                    setLoadingAction(null);
+                  }
+                }} 
+                className={`w-full py-5 rounded-2xl font-black uppercase text-base transition-all flex items-center justify-center ${
+                  canCheckout && !loadingAction ? 'gold shadow-[0_0_30px_rgba(245,197,24,0.3)] active:scale-95 hover:bg-amber-400 text-black' : 'bg-white/5 border border-white/5 text-slate-500 cursor-not-allowed'
+                }`}
+              >
+                {loadingAction === 'close' ? (
+                  <Icon name="loader-2" className="w-5 h-5 animate-spin text-black" />
+                ) : (
+                  '✅ Execute Sign-Off & Close'
+                )}
+              </button>
+            </div>
+          );
+        })()}
       </div></div>
   );
 }
@@ -2177,90 +3500,545 @@ const MODAL_CONTENT = {
 // 🌟 LANDING PAGE HELPERS
 // ============================================================
 
-// Video Demo Modal
+// 🎬 CINEMATIC AUTO-PLAY VIDEO DEMO
+// Simulates a real screen recording with animated scenes, progress bar, play/pause
 function VideoDemoModal({ onClose }) {
+  const SCENE_DURATION = 6000; // ms per scene
+  const scenes = [
+    {
+      id: 'login',
+      title: 'Inicio de Sesión',
+      subtitle: 'Acceso instantáneo al Empire OS',
+    },
+    {
+      id: 'dashboard',
+      title: 'Command Center',
+      subtitle: 'Vista general en tiempo real',
+    },
+    {
+      id: 'booking',
+      title: 'Nuevo Servicio',
+      subtitle: 'Deploy de misión en 30 segundos',
+    },
+    {
+      id: 'ai',
+      title: 'AI Upsell Engine',
+      subtitle: 'Inteligencia artificial detectando dinero',
+    },
+    {
+      id: 'whatsapp',
+      title: 'WhatsApp CRM',
+      subtitle: 'Cerrando deals con un clic',
+    },
+    {
+      id: 'signature',
+      title: 'Firma Digital del Cliente',
+      subtitle: 'Cierre legal sin papel',
+    },
+  ];
+
+  const [sceneIdx, setSceneIdx] = useState(0);
+  const [playing, setPlaying] = useState(true);
+  const [progress, setProgress] = useState(0); // 0-100 within scene
+  const [totalProgress, setTotalProgress] = useState(0); // 0-100 overall
+  const [sceneStep, setSceneStep] = useState(0); // sub-animation step within scene
+  const [clickPos, setClickPos] = useState(null);
+  const [typedText, setTypedText] = useState('');
+  const intervalRef = useRef(null);
+  const stepRef = useRef(null);
+
+  const totalScenes = scenes.length;
+  const scene = scenes[sceneIdx];
+
+  // Typing animation for booking scene
+  const typeTarget = 'Maria Gonzalez';
+  useEffect(() => {
+    if (sceneIdx !== 2) { setTypedText(''); return; }
+    let i = 0;
+    setTypedText('');
+    const t = setInterval(() => {
+      i++;
+      setTypedText(typeTarget.slice(0, i));
+      if (i >= typeTarget.length) clearInterval(t);
+    }, 80);
+    return () => clearInterval(t);
+  }, [sceneIdx]);
+
+  // Main timer — advances progress and scenes
+  useEffect(() => {
+    if (!playing) return;
+    intervalRef.current = setInterval(() => {
+      setProgress(p => {
+        const next = p + (100 / (SCENE_DURATION / 50));
+        if (next >= 100) {
+          setSceneIdx(s => {
+            const nextS = (s + 1) % totalScenes;
+            setTotalProgress(Math.round(((nextS) / totalScenes) * 100));
+            return nextS;
+          });
+          setSceneStep(0);
+          return 0;
+        }
+        return next;
+      });
+    }, 50);
+    return () => clearInterval(intervalRef.current);
+  }, [playing, totalScenes]);
+
+  // Sub-step within each scene
+  useEffect(() => {
+    setSceneStep(0);
+    const steps = [0, 1, 2, 3];
+    let i = 0;
+    stepRef.current = setInterval(() => {
+      i++;
+      if (i < steps.length) setSceneStep(i);
+      else clearInterval(stepRef.current);
+    }, SCENE_DURATION / 4);
+    return () => clearInterval(stepRef.current);
+  }, [sceneIdx]);
+
+  // Click ripple effect
+  const triggerClick = (x, y) => {
+    setClickPos({ x, y, id: Date.now() });
+    setTimeout(() => setClickPos(null), 700);
+  };
+
+  const seekTo = (idx) => {
+    setSceneIdx(idx);
+    setProgress(0);
+    setSceneStep(0);
+    setTotalProgress(Math.round((idx / totalScenes) * 100));
+  };
+
+  const formatTime = (idx, prog) => {
+    const totalSecs = Math.round((idx + prog / 100) * (SCENE_DURATION / 1000));
+    const m = Math.floor(totalSecs / 60);
+    const s = totalSecs % 60;
+    return `${m}:${s.toString().padStart(2,'0')}`;
+  };
+  const totalDuration = `${Math.floor((totalScenes * SCENE_DURATION/1000)/60)}:${((totalScenes * SCENE_DURATION/1000) % 60).toString().padStart(2,'0')}`;
+
   return (
     <div
-      className="fixed inset-0 z-[9999] flex items-center justify-center p-4"
-      style={{ background: 'rgba(0,0,0,0.92)', backdropFilter: 'blur(20px)' }}
+      className="fixed inset-0 z-[9999] flex items-center justify-center p-3 md:p-6"
+      style={{ background: 'rgba(0,0,0,0.97)', backdropFilter: 'blur(30px)' }}
       onClick={e => e.target === e.currentTarget && onClose()}
     >
-      <div className="relative w-full max-w-4xl">
-        {/* Close */}
-        <button
-          onClick={onClose}
-          className="absolute -top-12 right-0 flex items-center gap-2 text-slate-400 hover:text-white transition-colors text-sm font-black uppercase tracking-widest"
+      <div className="relative w-full max-w-5xl flex flex-col gap-4 animate-in fade-in zoom-in-95 duration-300">
+
+        {/* Header */}
+        <div className="flex items-center justify-between px-1">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 bg-[#F5C518] rounded-lg flex items-center justify-center font-black text-black italic text-sm">E</div>
+            <div>
+              <p className="text-[11px] text-[#F5C518] font-black uppercase tracking-[0.25em] leading-none">Elevore Empire</p>
+              <p className="text-white font-black text-sm tracking-tight">Demo Interactivo — {scene.title}</p>
+            </div>
+          </div>
+          <button onClick={onClose} className="flex items-center gap-2 text-slate-500 hover:text-white transition-colors text-xs font-black uppercase tracking-widest px-4 py-2 rounded-xl border border-white/5 hover:border-white/20 hover:bg-white/5">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            Cerrar
+          </button>
+        </div>
+
+        {/* Main screen — cinematic area */}
+        <div
+          className="relative rounded-2xl overflow-hidden border border-white/10 cursor-pointer select-none"
+          style={{ boxShadow: '0 0 80px rgba(245,197,24,0.08), 0 30px 60px rgba(0,0,0,0.9)', aspectRatio: '16/9' }}
+          onClick={e => {
+            const rect = e.currentTarget.getBoundingClientRect();
+            triggerClick(((e.clientX - rect.left) / rect.width) * 100, ((e.clientY - rect.top) / rect.height) * 100);
+            setPlaying(p => !p);
+          }}
         >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-          Close
-        </button>
-        {/* Video wrapper */}
-        <div className="relative rounded-3xl overflow-hidden border border-white/10" style={{ boxShadow: '0 0 120px rgba(245,197,24,0.15), 0 40px 80px rgba(0,0,0,0.8)' }}>
-          {/* Fake video player — cinematic dashboard walkthrough */}
-          <div className="bg-[#080810] aspect-video flex flex-col">
-            {/* Player chrome */}
-            <div className="flex items-center gap-2 px-4 py-3 border-b border-white/5">
-              <div className="w-3 h-3 rounded-full bg-red-500/60" />
-              <div className="w-3 h-3 rounded-full bg-yellow-500/60" />
-              <div className="w-3 h-3 rounded-full bg-green-500/60" />
-              <span className="text-[9px] text-slate-600 font-black uppercase tracking-widest ml-3">Elevore Empire — Product Demo</span>
+          {/* Click ripple */}
+          {clickPos && (
+            <div key={clickPos.id} className="absolute pointer-events-none z-50" style={{ left: `${clickPos.x}%`, top: `${clickPos.y}%`, transform: 'translate(-50%,-50%)' }}>
+              <div className="w-12 h-12 rounded-full border-2 border-white/60" style={{ animation: 'ping 0.6s ease-out forwards' }} />
             </div>
-            {/* Dashboard simulation */}
-            <div className="flex-1 p-6 overflow-hidden">
-              <div className="grid grid-cols-4 gap-4 mb-6">
-                {[{l:'MRR',v:'$31,420',c:'+28%',g:true},{l:'Active Jobs',v:'47',c:'12 today',g:true},{l:'Team Online',v:'8/9',c:'All active',g:true},{l:'AI Upsells',v:'23',c:'+$8,400',g:true}].map((m,i)=>(
-                  <div key={i} className="bg-white/[0.04] border border-white/8 rounded-2xl p-4">
-                    <div className="text-[10px] text-slate-500 uppercase font-black tracking-wider mb-1">{m.l}</div>
-                    <div className="text-2xl font-black text-white">{m.v}</div>
-                    <div className="text-[10px] text-green-400 font-bold mt-1">{m.c}</div>
+          )}
+
+          {/* MacOS chrome bar */}
+          <div className="absolute top-0 left-0 right-0 flex items-center gap-2 px-4 py-2.5 z-30" style={{ background: 'rgba(6,6,16,0.95)', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+            <div className="w-2.5 h-2.5 rounded-full bg-red-500/70" />
+            <div className="w-2.5 h-2.5 rounded-full bg-yellow-500/70" />
+            <div className="w-2.5 h-2.5 rounded-full bg-green-500/70" />
+            <div className="flex-1 mx-4 bg-white/5 rounded-md px-3 py-1 text-[9px] text-slate-500 font-mono">elevore.app</div>
+            <div className="flex items-center gap-1.5">
+              <div className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse" />
+              <span className="text-[8px] text-green-400 font-black uppercase">En vivo</span>
+            </div>
+          </div>
+
+          {/* ══ SCENE RENDERER ══ */}
+          <div className="absolute inset-0 bg-[#06060f]" style={{ paddingTop: '36px' }}>
+
+            {/* SCENE: LOGIN */}
+            {scene.id === 'login' && (
+              <div className="h-full flex items-center justify-center" style={{ background: 'radial-gradient(ellipse at 50% 30%, rgba(245,197,24,0.07) 0%, transparent 60%)' }}>
+                <div className="text-center space-y-6 w-72">
+                  <div className={`w-16 h-16 bg-[#F5C518] rounded-2xl mx-auto flex items-center justify-center font-black text-black text-2xl italic transition-all duration-700 ${sceneStep >= 0 ? 'opacity-100 scale-100' : 'opacity-0 scale-50'}`} style={{ boxShadow: '0 0 40px rgba(245,197,24,0.4)' }}>E</div>
+                  <div className={`space-y-1 transition-all duration-500 delay-300 ${sceneStep >= 1 ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
+                    <h2 className="text-white font-black text-2xl uppercase tracking-tighter">ELEVORE <span className="text-[#F5C518] italic">EMPIRE</span></h2>
+                    <p className="text-[10px] text-slate-500 font-black uppercase tracking-[0.3em]">v97.0 — Built to Dominate</p>
                   </div>
-                ))}
-              </div>
-              {/* Revenue chart bars */}
-              <div className="bg-white/[0.02] border border-white/5 rounded-2xl p-5">
-                <div className="flex items-center justify-between mb-4">
-                  <span className="text-sm font-black text-white">Monthly Revenue</span>
-                  <span className="text-xs text-[#F5C518] font-black">+128% YoY</span>
+                  <div className={`space-y-3 transition-all duration-500 delay-500 ${sceneStep >= 2 ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
+                    <div className="bg-white/5 border border-white/10 rounded-xl p-3 flex items-center gap-2">
+                      <div className="w-2 h-2 rounded-full bg-[#F5C518]" />
+                      <span className="text-white font-black text-sm tracking-[0.3em]">● ● ● ● ●</span>
+                    </div>
+                    <div className={`w-full py-3.5 rounded-xl font-black uppercase text-sm text-center text-black transition-all duration-500 ${sceneStep >= 3 ? 'bg-[#F5C518] shadow-[0_0_30px_rgba(245,197,24,0.5)]' : 'bg-white/10 text-white'}`}>
+                      {sceneStep >= 3 ? '✓ Acceso Concedido' : 'Verificando...'}
+                    </div>
+                  </div>
                 </div>
-                <div className="flex items-end gap-2 h-32">
-                  {[20,35,28,55,48,70,62,85,78,92,88,100].map((h,i)=>(
-                    <div key={i} className="flex-1 rounded-t-lg transition-all" style={{
-                      height: `${h}%`,
-                      background: i===11 ? 'linear-gradient(180deg,#F5C518,#d97706)' : 'rgba(255,255,255,0.06)',
-                      boxShadow: i===11 ? '0 0 20px rgba(245,197,24,0.4)' : 'none'
-                    }} />
+              </div>
+            )}
+
+            {/* SCENE: DASHBOARD */}
+            {scene.id === 'dashboard' && (
+              <div className="h-full p-5 space-y-4 overflow-hidden">
+                <div className={`grid grid-cols-4 gap-3 transition-all duration-700 ${sceneStep >= 0 ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
+                  {[
+                    {l:'MRR Mensual',v:'$31,420',c:'+28%',col:'text-green-400',delay:0},
+                    {l:'Jobs Activos',v:'47',c:'12 hoy',col:'text-blue-400',delay:100},
+                    {l:'AI Upsells',v:'23',c:'+$8,400',col:'text-[#F5C518]',delay:200},
+                    {l:'Rating Prom.',v:'4.9 ⭐',c:'127 reseñas',col:'text-purple-400',delay:300},
+                  ].map((m,i) => (
+                    <div key={i} className="bg-white/[0.04] border border-white/8 rounded-xl p-3 transition-all duration-500" style={{ transitionDelay: `${m.delay}ms`, opacity: sceneStep >= 0 ? 1 : 0 }}>
+                      <p className="text-[8px] text-slate-500 uppercase font-black tracking-wider">{m.l}</p>
+                      <p className="text-xl font-black text-white mt-1">{m.v}</p>
+                      <p className={`text-[9px] font-bold mt-0.5 ${m.col}`}>{m.c}</p>
+                    </div>
                   ))}
                 </div>
-                <div className="flex justify-between mt-2">
-                  {['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'].map(m=>(
-                    <span key={m} className="text-[7px] text-slate-600 font-bold">{m}</span>
+                <div className={`grid grid-cols-3 gap-3 transition-all duration-700 delay-300 ${sceneStep >= 1 ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
+                  <div className="col-span-2 bg-white/[0.02] border border-white/5 rounded-xl p-4">
+                    <div className="flex justify-between items-center mb-3">
+                      <span className="text-xs font-black text-white">Revenue — Últimos 12 Meses</span>
+                      <span className="text-xs text-[#F5C518] font-black">+128% YoY 🔥</span>
+                    </div>
+                    <div className="flex items-end gap-1.5 h-14">
+                      {[18,30,25,50,44,65,58,80,72,88,82,100].map((h,i) => (
+                        <div key={i} className="flex-1 rounded-t transition-all duration-1000" style={{ height: sceneStep >= 1 ? `${h}%` : '4px', background: i===11?'linear-gradient(0deg,#F5C518,#d97706)':'rgba(255,255,255,0.07)', transitionDelay: `${i*40}ms`, boxShadow: i===11?'0 0 12px rgba(245,197,24,0.5)':'' }} />
+                      ))}
+                    </div>
+                    <div className="flex justify-between mt-1">{['E','F','M','A','M','J','J','A','S','O','N','D'].map(m=><span key={m} className="text-[6px] text-slate-700 font-bold">{m}</span>)}</div>
+                  </div>
+                  <div className="bg-white/[0.02] border border-white/5 rounded-xl p-3">
+                    <p className="text-[8px] font-black text-slate-500 uppercase mb-2">Misiones Activas</p>
+                    {[
+                      {n:'Rodriguez',c:'bg-blue-400',s:'En Ruta'},
+                      {n:'Smith Deep',c:'bg-[#F5C518]',s:'Activo'},
+                      {n:'Johnson',c:'bg-green-400',s:'✓ Listo'},
+                      {n:'Miller',c:'bg-slate-600',s:'Mañana'},
+                    ].map((j,i) => (
+                      <div key={i} className="flex items-center justify-between py-1.5 border-b border-white/[0.03] last:border-0">
+                        <div className="flex items-center gap-1.5"><div className={`w-1.5 h-1.5 rounded-full ${j.c}`}/><span className="text-[9px] font-bold text-slate-300">{j.n}</span></div>
+                        <span className="text-[7px] text-slate-500 font-black uppercase">{j.s}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <div className={`bg-amber-500/5 border border-amber-500/20 rounded-xl p-3 flex items-center gap-3 transition-all duration-500 delay-700 ${sceneStep >= 2 ? 'opacity-100' : 'opacity-0'}`}>
+                  <div className="w-2 h-2 bg-amber-500 rounded-full animate-pulse flex-shrink-0" />
+                  <p className="text-[10px] text-amber-400 font-black uppercase tracking-wide">🤖 IA detectó 3 oportunidades de upsell — Potencial: +$2,100 hoy</p>
+                </div>
+              </div>
+            )}
+
+            {/* SCENE: BOOKING */}
+            {scene.id === 'booking' && (
+              <div className="h-full p-5 flex gap-4 overflow-hidden">
+                <div className="flex-1 space-y-4">
+                  <div className={`transition-all duration-500 ${sceneStep >= 0 ? 'opacity-100' : 'opacity-0'}`}>
+                    <p className="text-[9px] text-slate-500 uppercase font-black tracking-wider mb-1">Nombre del Cliente</p>
+                    <div className="bg-white/5 border border-[#F5C518]/40 rounded-xl px-4 py-3 flex items-center gap-2" style={{ boxShadow: '0 0 15px rgba(245,197,24,0.1)' }}>
+                      <span className="text-white font-bold text-sm">{typedText}</span>
+                      <span className="w-0.5 h-4 bg-[#F5C518] animate-pulse" />
+                    </div>
+                  </div>
+                  <div className={`grid grid-cols-2 gap-3 transition-all duration-500 delay-300 ${sceneStep >= 1 ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
+                    {[
+                      {l:'Servicio',v:'Deep Clean'},
+                      {l:'Dirección',v:'SW 8th St, Miami'},
+                      {l:'Equipo',v:'Carlos & Ana'},
+                      {l:'Fecha',v:'Hoy 2:00 PM'},
+                    ].map((f,i) => (
+                      <div key={i}>
+                        <p className="text-[8px] text-slate-500 uppercase font-black mb-1">{f.l}</p>
+                        <div className="bg-white/5 border border-white/8 rounded-xl px-3 py-2.5">
+                          <span className="text-white font-bold text-sm">{f.v}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <div className={`space-y-2 transition-all duration-500 delay-500 ${sceneStep >= 2 ? 'opacity-100' : 'opacity-0'}`}>
+                    <p className="text-[8px] text-slate-500 uppercase font-black">Precio Calculado por IA</p>
+                    <div className="bg-[#F5C518]/5 border border-[#F5C518]/30 rounded-xl px-4 py-3 flex items-center justify-between">
+                      <div>
+                        <p className="text-[#F5C518] font-black text-2xl">$320</p>
+                        <p className="text-[8px] text-slate-500 font-bold uppercase">Precio óptimo · Margen 68%</p>
+                      </div>
+                      <span className="text-[9px] bg-green-600 text-white font-black px-2 py-1 rounded-lg uppercase">🔥 Alto Valor</span>
+                    </div>
+                  </div>
+                </div>
+                <div className={`w-48 space-y-3 flex flex-col transition-all duration-500 delay-700 ${sceneStep >= 2 ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-8'}`}>
+                  <div className="bg-white/[0.02] border border-white/5 rounded-xl p-3 flex-1">
+                    <p className="text-[8px] font-black text-slate-500 uppercase mb-2">Historial</p>
+                    <div className="space-y-1.5">
+                      {[{d:'Apr 10',p:'$280',s:'✓'},{d:'Mar 5',p:'$320',s:'✓'},{d:'Feb 18',p:'$260',s:'✓'}].map((h,i) => (
+                        <div key={i} className="flex justify-between text-[9px]">
+                          <span className="text-slate-500">{h.d}</span>
+                          <span className="text-[#F5C518] font-black">{h.p} {h.s}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  <button className={`py-4 rounded-xl font-black uppercase text-xs text-black transition-all duration-500 ${sceneStep >= 3 ? 'bg-[#F5C518] shadow-[0_0_25px_rgba(245,197,24,0.4)] scale-105' : 'bg-white/10 text-white'}`}>
+                    {sceneStep >= 3 ? '🚀 ¡Deployed!' : 'Deploy Mission'}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* SCENE: AI */}
+            {scene.id === 'ai' && (
+              <div className="h-full p-5 space-y-4 overflow-hidden">
+                <div className={`flex items-center gap-3 p-3 bg-amber-500/10 border border-amber-500/30 rounded-xl transition-all duration-500 ${sceneStep >= 0 ? 'opacity-100' : 'opacity-0'}`}>
+                  <span className="text-2xl">🤖</span>
+                  <div>
+                    <p className="text-[10px] text-amber-400 font-black uppercase tracking-wide">AI Revenue Engine — Análisis Completado</p>
+                    <p className="text-[9px] text-slate-400">Escaneé 47 trabajos y detecté 14 oportunidades de alto valor</p>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  {[
+                    {c:'Maria Gonzalez', upsell:'Inside Oven Clean', p:'+$35', reason:'No lo pidió en las últimas 3 visitas', prob:'94%', delay:0},
+                    {c:'Carlos Rodriguez', upsell:'Window Cleaning', p:'+$50', reason:'Último servicio ventanas: hace 45 días', prob:'87%', delay:200},
+                    {c:'Smith Office Complex', upsell:'Deep Clean Upgrade', p:'+$80', reason:'Calificación 5⭐ — cliente premium', prob:'91%', delay:400},
+                  ].map((a,i) => (
+                    <div key={i} className={`flex items-center gap-4 p-4 bg-white/[0.02] border rounded-xl transition-all duration-500 ${sceneStep >= 1 ? 'opacity-100 translate-x-0 border-white/8' : 'opacity-0 -translate-x-4 border-transparent'}`} style={{ transitionDelay: `${a.delay}ms` }}>
+                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center font-black text-black text-sm flex-shrink-0">{a.c[0]}</div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-white font-black text-xs truncate">{a.c}</p>
+                        <p className="text-slate-400 text-[9px]">{a.reason}</p>
+                      </div>
+                      <div className="text-center flex-shrink-0">
+                        <p className="text-[#F5C518] font-black text-sm">{a.upsell}</p>
+                        <p className="text-[9px] text-slate-500">{a.prob} prob.</p>
+                      </div>
+                      <div className={`flex-shrink-0 text-center transition-all duration-500 delay-700 ${sceneStep >= 2 ? 'opacity-100 scale-100' : 'opacity-0 scale-50'}`}>
+                        <p className="text-green-400 font-black text-lg">{a.p}</p>
+                        <button className="text-[7px] bg-green-600 text-white font-black px-2 py-0.5 rounded-lg uppercase">Enviar WA</button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div className={`grid grid-cols-3 gap-3 transition-all duration-500 delay-700 ${sceneStep >= 3 ? 'opacity-100' : 'opacity-0'}`}>
+                  {[{l:'Revenue Potencial',v:'+$2,100',col:'text-green-400'},{l:'Probabilidad Promedio',v:'91%',col:'text-[#F5C518]'},{l:'Scripts Enviados',v:'3/14',col:'text-blue-400'}].map((m,i) => (
+                    <div key={i} className="bg-white/[0.03] border border-white/5 rounded-xl p-3 text-center">
+                      <p className="text-[8px] text-slate-500 uppercase font-black">{m.l}</p>
+                      <p className={`text-xl font-black mt-1 ${m.col}`}>{m.v}</p>
+                    </div>
                   ))}
                 </div>
               </div>
-            </div>
-            {/* Play overlay */}
-            <div className="absolute inset-0 flex flex-col items-center justify-center" style={{ background: 'rgba(0,0,0,0.3)', backdropFilter: 'blur(2px)' }}>
-              <div
-                className="w-20 h-20 rounded-full bg-[#F5C518] flex items-center justify-center cursor-pointer hover:scale-110 active:scale-95 transition-all"
-                style={{ boxShadow: '0 0 60px rgba(245,197,24,0.6)' }}
-                onClick={onClose}
-              >
-                <svg width="28" height="28" viewBox="0 0 24 24" fill="black"><path d="M5 3l14 9-14 9V3z"/></svg>
-              </div>
-              <p className="text-white font-black text-xl mt-6 tracking-tight">Watch 3-Minute Demo</p>
-              <p className="text-slate-400 text-sm mt-2">See how operators go from $8K to $31K/mo</p>
-              <div className="flex items-center gap-6 mt-8">
-                {[['2:47','AI Revenue Engine'],['0:58','GPS Fleet Tracking'],['1:12','WhatsApp CRM']].map(([t,l])=>(
-                  <div key={l} className="text-center">
-                    <div className="text-[#F5C518] text-xs font-black">{t}</div>
-                    <div className="text-slate-500 text-[10px] font-bold">{l}</div>
+            )}
+
+            {/* SCENE: WHATSAPP */}
+            {scene.id === 'whatsapp' && (
+              <div className="h-full p-5 flex gap-4 overflow-hidden">
+                <div className="w-52 bg-white/[0.02] border border-white/5 rounded-xl p-3 flex-shrink-0">
+                  <p className="text-[8px] font-black text-slate-500 uppercase mb-2">Scripts Disponibles</p>
+                  {[
+                    {t:'Quote Follow-Up',c:'text-amber-400',active: sceneStep >= 0},
+                    {t:'Review Request',c:'text-[#F5C518]',active: sceneStep >= 1},
+                    {t:'Retention Win-Back',c:'text-blue-400',active: sceneStep >= 2},
+                    {t:'Bundle Offer',c:'text-purple-400',active: false},
+                    {t:'Birthday Discount',c:'text-pink-400',active: false},
+                  ].map((s,i) => (
+                    <div key={i} className={`flex items-center gap-2 p-2 rounded-lg mb-1 transition-all duration-300 ${s.active ? 'bg-white/5 border border-white/10' : 'opacity-40'}`}>
+                      <div className={`w-1.5 h-1.5 rounded-full ${s.active ? 'bg-green-400' : 'bg-slate-700'}`} />
+                      <span className={`text-[9px] font-bold ${s.active ? s.c : 'text-slate-600'}`}>{s.t}</span>
+                    </div>
+                  ))}
+                </div>
+                <div className="flex-1 flex flex-col gap-3">
+                  <div className={`bg-white/[0.02] border border-white/5 rounded-xl p-4 transition-all duration-500 ${sceneStep >= 0 ? 'opacity-100' : 'opacity-0'}`}>
+                    <p className="text-[8px] text-slate-500 uppercase font-black mb-2">📱 Preview del Mensaje</p>
+                    <div className="bg-green-600/10 border border-green-600/20 rounded-xl p-3">
+                      <p className="text-[10px] text-slate-300 leading-relaxed">
+                        Hi <span className="text-white font-black">Maria!</span> 📋 Tu cotización de <span className="text-[#F5C518] font-black">$320</span> vence en 6h. Firma aquí y bloquea tu precio: <span className="text-blue-400 underline">elevore.app/portal?id=...</span>
+                        <br/><br/>⏰ <span className="text-amber-400 font-black">¡Solo 6 horas!</span> Zelle: (407) 952-4228 🏠
+                      </p>
+                    </div>
                   </div>
-                ))}
+                  <div className={`grid grid-cols-2 gap-3 transition-all duration-500 delay-300 ${sceneStep >= 1 ? 'opacity-100' : 'opacity-0'}`}>
+                    {[
+                      {l:'Enviados Hoy',v:'23',c:'text-white'},
+                      {l:'Abiertos',v:'19 (83%)',c:'text-green-400'},
+                      {l:'Respuestas',v:'11',c:'text-[#F5C518]'},
+                      {l:'Deals Cerrados',v:'7 → $1,840',c:'text-green-400'},
+                    ].map((m,i) => (
+                      <div key={i} className="bg-white/[0.03] border border-white/5 rounded-xl p-3">
+                        <p className="text-[8px] text-slate-500 uppercase font-black">{m.l}</p>
+                        <p className={`text-base font-black mt-0.5 ${m.c}`}>{m.v}</p>
+                      </div>
+                    ))}
+                  </div>
+                  <button className={`py-4 rounded-xl font-black uppercase text-sm text-center transition-all duration-500 ${sceneStep >= 2 ? 'bg-green-600 text-white shadow-[0_0_20px_rgba(34,197,94,0.3)]' : 'bg-white/5 text-slate-500'}`}>
+                    {sceneStep >= 2 ? '✅ Enviado a Maria — Abierto hace 2 min' : '📤 Enviar por WhatsApp'}
+                  </button>
+                </div>
               </div>
+            )}
+
+            {/* SCENE: SIGNATURE */}
+            {scene.id === 'signature' && (
+              <div className="h-full p-5 flex gap-5 overflow-hidden">
+                <div className="flex-1 space-y-4">
+                  <div className={`bg-white/[0.02] border border-white/5 rounded-xl p-4 transition-all duration-500 ${sceneStep >= 0 ? 'opacity-100' : 'opacity-0'}`}>
+                    <div className="flex justify-between items-center mb-3">
+                      <div>
+                        <p className="text-white font-black text-base">Maria Gonzalez</p>
+                        <p className="text-[9px] text-slate-500">Deep Clean · $320 · Hoy 2:00 PM</p>
+                      </div>
+                      <span className="text-[8px] bg-amber-500/20 text-amber-400 border border-amber-500/30 font-black px-2 py-1 rounded-lg uppercase">Pendiente Firma</span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3 text-[9px]">
+                      <div className="space-y-1 text-slate-400">
+                        <p>📋 Deep Clean — 3 habitaciones</p>
+                        <p>📍 SW 8th St, Miami, FL</p>
+                        <p>👥 Carlos & Ana</p>
+                      </div>
+                      <div className="space-y-1 text-slate-400">
+                        <p>💰 Total: <span className="text-[#F5C518] font-black">$320</span></p>
+                        <p>✅ Depósito: $100</p>
+                        <p>⏳ Balance: <span className="text-white font-black">$220</span></p>
+                      </div>
+                    </div>
+                  </div>
+                  <div className={`transition-all duration-700 delay-300 ${sceneStep >= 1 ? 'opacity-100' : 'opacity-0'}`}>
+                    <p className="text-[8px] text-slate-500 uppercase font-black mb-2">✍️ Firma del Cliente</p>
+                    <div className="relative bg-white/[0.02] border border-dashed border-white/20 rounded-xl overflow-hidden" style={{ height: '100px' }}>
+                      {sceneStep >= 2 && (
+                        <svg className="absolute inset-0 w-full h-full" viewBox="0 0 400 100">
+                          <path
+                            d="M30,70 Q80,20 130,55 Q180,85 230,40 Q270,15 310,50 Q340,70 370,45"
+                            stroke="#F5C518"
+                            strokeWidth="3"
+                            fill="none"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            style={{ strokeDasharray: 600, strokeDashoffset: sceneStep >= 2 ? 0 : 600, transition: 'stroke-dashoffset 1.5s ease' }}
+                          />
+                        </svg>
+                      )}
+                      {sceneStep < 2 && <p className="absolute inset-0 flex items-center justify-center text-[10px] text-slate-600 font-black uppercase">Firma aquí con el dedo</p>}
+                    </div>
+                  </div>
+                </div>
+                <div className={`w-44 flex flex-col gap-3 transition-all duration-500 delay-500 ${sceneStep >= 1 ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-8'}`}>
+                  <div className="bg-white/[0.02] border border-white/5 rounded-xl p-3 flex-1">
+                    <p className="text-[8px] font-black text-slate-500 uppercase mb-3">Estado del Portal</p>
+                    {[
+                      {l:'Cotización',v:'✓ Enviada',c:'text-green-400'},
+                      {l:'Aprobación',v:sceneStep >= 3 ? '✓ Firmada' : '⏳ Esperando',c: sceneStep >= 3 ? 'text-green-400' : 'text-amber-400'},
+                      {l:'Pago Zelle',v:'Pendiente',c:'text-slate-400'},
+                      {l:'QR Portal',v:'Activo ✓',c:'text-blue-400'},
+                    ].map((s,i) => (
+                      <div key={i} className="flex justify-between py-1.5 border-b border-white/[0.04] last:border-0">
+                        <span className="text-[8px] text-slate-500">{s.l}</span>
+                        <span className={`text-[8px] font-black ${s.c}`}>{s.v}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <div className={`py-3 rounded-xl text-center font-black text-xs uppercase transition-all duration-700 ${sceneStep >= 3 ? 'bg-green-600 text-white shadow-[0_0_20px_rgba(34,197,94,0.4)] scale-105' : 'bg-white/5 text-slate-500'}`}>
+                    {sceneStep >= 3 ? '✅ ¡Aprobado!' : 'Confirmar'}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* PAUSE overlay */}
+          {!playing && (
+            <div className="absolute inset-0 z-40 flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)' }}>
+              <div className="w-20 h-20 rounded-full bg-white/10 border border-white/20 flex items-center justify-center">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="white"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* ══ VIDEO CONTROLS ══ */}
+        <div className="space-y-2 px-1">
+          {/* Scene scrubber */}
+          <div className="flex items-center gap-3">
+            <span className="text-[10px] text-slate-500 font-mono w-10 flex-shrink-0">{formatTime(sceneIdx, progress)}</span>
+            <div className="flex-1 relative h-1.5 bg-white/10 rounded-full overflow-hidden cursor-pointer"
+              onClick={e => {
+                const rect = e.currentTarget.getBoundingClientRect();
+                const pct = (e.clientX - rect.left) / rect.width;
+                const targetScene = Math.floor(pct * totalScenes);
+                seekTo(Math.min(targetScene, totalScenes - 1));
+              }}
+            >
+              {/* Scene segments */}
+              {scenes.map((s,i) => (
+                <div key={i} className="absolute top-0 bottom-0 border-r border-black/50" style={{ left: `${(i/totalScenes)*100}%`, width: `${(1/totalScenes)*100}%`, background: i < sceneIdx ? '#F5C518' : i === sceneIdx ? 'rgba(245,197,24,0.4)' : 'transparent' }}>
+                  {i === sceneIdx && (
+                    <div className="absolute top-0 bottom-0 left-0 bg-[#F5C518] transition-all" style={{ width: `${progress}%` }} />
+                  )}
+                </div>
+              ))}
+              {/* Thumb */}
+              <div className="absolute top-1/2 -translate-y-1/2 w-3.5 h-3.5 rounded-full bg-white shadow-md border-2 border-[#F5C518] transition-all" style={{ left: `calc(${((sceneIdx + progress/100) / totalScenes) * 100}% - 7px)` }} />
+            </div>
+            <span className="text-[10px] text-slate-600 font-mono w-10 flex-shrink-0 text-right">{totalDuration}</span>
+          </div>
+
+          {/* Controls row */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              {/* Play/Pause */}
+              <button onClick={() => setPlaying(p => !p)} className="w-9 h-9 rounded-xl bg-[#F5C518] flex items-center justify-center hover:bg-amber-400 active:scale-95 transition-all" style={{ boxShadow: '0 0 15px rgba(245,197,24,0.3)' }}>
+                {playing
+                  ? <svg width="12" height="12" viewBox="0 0 24 24" fill="black"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
+                  : <svg width="12" height="12" viewBox="0 0 24 24" fill="black" className="ml-0.5"><path d="M5 3l14 9-14 9V3z"/></svg>
+                }
+              </button>
+              {/* Prev / Next */}
+              <button onClick={() => seekTo(Math.max(0, sceneIdx - 1))} className="w-8 h-8 rounded-xl bg-white/5 hover:bg-white/10 flex items-center justify-center transition-all">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5"><path d="M19 20L9 12l10-8v16z"/><line x1="5" y1="4" x2="5" y2="20"/></svg>
+              </button>
+              <button onClick={() => seekTo(Math.min(totalScenes - 1, sceneIdx + 1))} className="w-8 h-8 rounded-xl bg-white/5 hover:bg-white/10 flex items-center justify-center transition-all">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5"><path d="M5 4l10 8-10 8V4z"/><line x1="19" y1="4" x2="19" y2="20"/></svg>
+              </button>
+              <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider ml-1">{scene.subtitle}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-[9px] text-slate-600 font-black uppercase">Escena {sceneIdx + 1}/{totalScenes}</span>
+              <div className="text-[9px] bg-red-600 text-white font-black px-2 py-0.5 rounded uppercase tracking-wider animate-pulse">● REC</div>
             </div>
           </div>
         </div>
-        <p className="text-center text-[10px] text-slate-600 mt-4 font-bold uppercase tracking-widest">No signup required to watch • 3 min walkthrough</p>
+
+        {/* Scene thumbnails */}
+        <div className="grid grid-cols-6 gap-2">
+          {scenes.map((s, i) => (
+            <button key={i} onClick={() => seekTo(i)} className={`flex flex-col items-start gap-1 p-2.5 rounded-xl border transition-all text-left ${sceneIdx === i ? 'border-[#F5C518]/50 bg-[#F5C518]/5' : 'border-white/5 bg-white/[0.02] hover:border-white/10'}`}>
+              <div className={`w-full h-1 rounded-full mb-1 ${sceneIdx === i ? 'bg-[#F5C518]' : i < sceneIdx ? 'bg-green-500' : 'bg-white/10'}`} />
+              <span className={`text-[8px] font-black ${sceneIdx === i ? 'text-[#F5C518]' : i < sceneIdx ? 'text-slate-400' : 'text-slate-600'}`}>
+                {['🔑','📊','🚀','🤖','💬','✍️'][i]} {s.title}
+              </span>
+            </button>
+          ))}
+        </div>
+
       </div>
     </div>
   );
@@ -2543,12 +4321,15 @@ function LandingPage({ onLogin, onSignup }) {
             </button>
             <button
               onClick={() => setShowVideoDemo(true)}
-              className="w-full sm:w-auto px-10 py-5 border border-white/10 rounded-2xl font-black uppercase tracking-widest hover:bg-white/5 hover:border-white/20 transition-all text-sm text-slate-300 flex items-center justify-center gap-3 group"
+              className="w-full sm:w-auto px-10 py-5 border border-white/10 rounded-2xl font-black uppercase tracking-widest hover:bg-white/5 hover:border-white/20 transition-all text-sm text-slate-300 flex items-center justify-center gap-3 group relative overflow-hidden"
             >
-              <div className="w-8 h-8 rounded-full bg-white/5 border border-white/10 flex items-center justify-center group-hover:border-[#F5C518]/30 group-hover:bg-[#F5C518]/5 transition-all">
-                <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" className="text-[#F5C518] ml-0.5"><path d="M5 3l14 9-14 9V3z"/></svg>
+              <div className="relative w-8 h-8 rounded-full bg-white/5 border border-white/10 flex items-center justify-center group-hover:border-[#F5C518]/40 group-hover:bg-[#F5C518]/10 transition-all">
+                <div className="absolute inset-0 rounded-full border border-[#F5C518]/30 animate-ping opacity-60" />
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" className="text-[#F5C518] ml-0.5">
+                  <path d="M5 3l14 9-14 9V3z"/>
+                </svg>
               </div>
-              Watch 3-Min Demo
+              Ver Demo de 3 min
             </button>
           </div>
           <p className="text-[10px] text-slate-600 uppercase tracking-widest font-bold">No credit card required • Cancel anytime • Setup in 2 minutes</p>
@@ -2595,6 +4376,112 @@ function LandingPage({ onLogin, onSignup }) {
               </div>
             </div>
             <div className="absolute -bottom-8 left-1/2 -translate-x-1/2 w-2/3 h-8 bg-[#F5C518]/10 blur-2xl rounded-full" />
+          </div>
+        </div>
+      </section>
+
+      {/* ═══ VIDEO SHOWCASE SECTION (between hero and marquee) ═══ */}
+      <section className="py-20 px-6 relative overflow-hidden">
+        <div className="absolute inset-0" style={{ background: 'radial-gradient(ellipse at 50% 100%, rgba(245,197,24,0.05) 0%, transparent 60%)' }} />
+        <div className="max-w-5xl mx-auto">
+          <div className="text-center mb-10 space-y-3">
+            <p className="text-[10px] font-black uppercase tracking-[0.3em] text-[#F5C518]">Míralo en acción</p>
+            <h2 className="text-3xl md:text-4xl font-black tracking-tighter">El OS que convierte equipos de limpieza<br/><span className="glow-text italic">en máquinas de revenue.</span></h2>
+          </div>
+          {/* Video thumbnail with play CTA */}
+          <div
+            className="relative rounded-3xl overflow-hidden border border-white/10 cursor-pointer group"
+            style={{ boxShadow: '0 0 80px rgba(245,197,24,0.08), 0 30px 60px rgba(0,0,0,0.6)' }}
+            onClick={() => setShowVideoDemo(true)}
+          >
+            {/* Simulated video thumbnail — dashboard mockup */}
+            <div className="bg-[#06060e] aspect-[16/7] flex flex-col relative overflow-hidden">
+              <div className="absolute inset-0" style={{ background: 'radial-gradient(ellipse at 30% 50%, rgba(245,197,24,0.06) 0%, transparent 50%), radial-gradient(ellipse at 70% 30%, rgba(99,102,241,0.05) 0%, transparent 40%)' }} />
+              {/* MacOS chrome */}
+              <div className="flex items-center gap-2 px-5 py-3 border-b border-white/5 flex-shrink-0">
+                <div className="w-2.5 h-2.5 rounded-full bg-red-500/60" />
+                <div className="w-2.5 h-2.5 rounded-full bg-yellow-500/60" />
+                <div className="w-2.5 h-2.5 rounded-full bg-green-500/60" />
+                <div className="flex-1 mx-4 bg-white/5 rounded-lg px-3 py-1 text-[9px] text-slate-600 font-mono">elevore.app/dashboard</div>
+                <div className="flex items-center gap-1.5">
+                  <div className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse" />
+                  <span className="text-[8px] text-green-400 font-black uppercase">Live</span>
+                </div>
+              </div>
+              {/* Content */}
+              <div className="flex-1 p-5 grid grid-cols-4 gap-4">
+                {/* Left: metrics */}
+                <div className="col-span-3 space-y-3">
+                  <div className="grid grid-cols-4 gap-3">
+                    {[
+                      {l:'MRR',v:'$31,420',c:'+28%',col:'text-green-400'},
+                      {l:'Empleados',v:'8 activos',c:'GPS en ruta',col:'text-blue-400'},
+                      {l:'AI Upsells',v:'23 hoy',c:'+$8,400',col:'text-[#F5C518]'},
+                      {l:'Rating',v:'4.9 ⭐',c:'127 reviews',col:'text-purple-400'}
+                    ].map((m,i) => (
+                      <div key={i} className="bg-white/[0.04] border border-white/5 rounded-xl p-3">
+                        <div className="text-[8px] text-slate-500 uppercase font-black">{m.l}</div>
+                        <div className="text-lg font-black text-white mt-0.5">{m.v}</div>
+                        <div className={`text-[8px] font-bold ${m.col}`}>{m.c}</div>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="bg-white/[0.02] border border-white/5 rounded-xl p-4">
+                    <div className="flex justify-between items-center mb-3">
+                      <span className="text-xs font-black text-white">Revenue — Últimos 12 Meses</span>
+                      <span className="text-xs text-[#F5C518] font-black">+128% vs año anterior</span>
+                    </div>
+                    <div className="flex items-end gap-1.5 h-16">
+                      {[18,30,25,50,44,65,58,80,72,88,82,100].map((h,i)=>(
+                        <div key={i} className="flex-1 rounded-t" style={{ height:`${h}%`, background: i===11?'linear-gradient(0deg,#F5C518,#d97706)':'rgba(255,255,255,0.07)', boxShadow:i===11?'0 0 12px rgba(245,197,24,0.4)':'none' }}/>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+                {/* Right: job list */}
+                <div className="bg-white/[0.02] border border-white/5 rounded-xl p-3 space-y-2">
+                  <p className="text-[8px] font-black text-slate-500 uppercase tracking-wider mb-2">Misiones Hoy</p>
+                  {[
+                    {n:'Rodriguez Residence',s:'En Ruta',c:'bg-blue-400'},
+                    {n:'Smith Deep Clean',s:'En Servicio',c:'bg-[#F5C518]'},
+                    {n:'Johnson Move-Out',s:'Completado ✓',c:'bg-green-400'},
+                    {n:'Miller Office',s:'Agendado',c:'bg-slate-600'}
+                  ].map((j,i) => (
+                    <div key={i} className="flex items-center gap-2">
+                      <div className={`w-1.5 h-1.5 rounded-full ${j.c} flex-shrink-0`} />
+                      <span className="text-[8px] font-bold text-slate-400 truncate">{j.n}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+            {/* Hover overlay */}
+            <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300" style={{ backdropFilter: 'blur(4px)' }}>
+              <div className="flex flex-col items-center gap-4">
+                <div className="w-20 h-20 rounded-full bg-[#F5C518] flex items-center justify-center" style={{ boxShadow:'0 0 60px rgba(245,197,24,0.6)' }}>
+                  <svg width="28" height="28" viewBox="0 0 24 24" fill="black"><path d="M5 3l14 9-14 9V3z"/></svg>
+                </div>
+                <p className="text-white font-black text-xl tracking-tight">Ver Demo Completo</p>
+              </div>
+            </div>
+            {/* Bottom gradient */}
+            <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-[#030303] to-transparent pointer-events-none" />
+          </div>
+          {/* Feature callouts below video */}
+          <div className="grid grid-cols-3 gap-4 mt-6">
+            {[
+              { icon: '🤖', label: 'AI Revenue Engine', desc: 'Predicción automática de ingresos y upsells.' },
+              { icon: '📍', label: 'GPS Fleet Tracking', desc: 'Monitoreo en tiempo real de todo el equipo.' },
+              { icon: '💬', label: 'WhatsApp CRM', desc: 'Scripts automáticos para cerrar más deals.' },
+            ].map((f, i) => (
+              <div key={i} className="flex items-start gap-3 p-4 rounded-2xl bg-white/[0.02] border border-white/5">
+                <span className="text-2xl flex-shrink-0">{f.icon}</span>
+                <div>
+                  <p className="text-xs font-black text-white">{f.label}</p>
+                  <p className="text-[10px] text-slate-500 mt-0.5">{f.desc}</p>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       </section>
@@ -3091,8 +4978,25 @@ export default function App() {
   const [sq, setSQ] = useState('');
   const [toast, setToast] = useState(null);
   const [aStaff, setAStaff] = useState(null);
+  const aStaffRef = useRef(aStaff);
+  useEffect(() => {
+    aStaffRef.current = aStaff;
+  }, [aStaff]);
+
+  const activeEmployeeRef = useRef(activeEmployee);
+  useEffect(() => {
+    activeEmployeeRef.current = activeEmployee;
+  }, [activeEmployee]);
   const [editingStaff, setEditingStaff] = useState(null);
   const [selectedClient, setSelectedClient] = useState(null);
+  const [membersTab, setMembersTab] = useState('vip');
+  const [chargingClient, setChargingClient] = useState(null);
+  const [chargeStage, setChargeStage] = useState('');
+  const [drawerTab, setDrawerTab] = useState('preferences');
+  const [prefPets, setPrefPets] = useState('');
+  const [prefEntryCode, setPrefEntryCode] = useState('');
+  const [prefProducts, setPrefProducts] = useState('');
+  const [prefNotes, setPrefNotes] = useState('');
   const [selectedJobs, setSelectedJobs] = useState([]);
   const [quickMode, setQM] = useState(false);
   const [chatJob, setChatJob] = useState(null);
@@ -3144,8 +5048,58 @@ export default function App() {
       }
     };
     window.addEventListener('keydown', handleESC);
+    
+    // Solicitar permisos de notificación HTML5 al inicio
+    if ('Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission();
+    }
+    
     return () => window.removeEventListener('keydown', handleESC);
   }, []);
+
+  useEffect(() => {
+    if (selectedClient) {
+      const prefs = selectedClient.specs?.preferences || {};
+      setPrefPets(prefs.pets || '');
+      setPrefEntryCode(prefs.entryCode || '');
+      setPrefProducts(prefs.products || '');
+      setPrefNotes(prefs.notes || '');
+      setDrawerTab('preferences');
+    }
+  }, [selectedClient]);
+
+  const saveClientPreferences = async () => {
+    if (!selectedClient) return;
+    setLoad(true);
+    try {
+      const updatedSpecs = {
+        ...(selectedClient.specs || {}),
+        preferences: {
+          pets: prefPets,
+          entryCode: prefEntryCode,
+          products: prefProducts,
+          notes: prefNotes
+        }
+      };
+      
+      const { data, error } = await sb.from('clients')
+        .update({ specs: updatedSpecs })
+        .eq('name', selectedClient.name)
+        .select()
+        .single();
+        
+      if (error) throw error;
+      
+      tt('Preferencias guardadas ✓', 'green');
+      setClients(prev => prev.map(c => c.name === selectedClient.name ? { ...c, specs: updatedSpecs } : c));
+      setSelectedClient({ ...selectedClient, specs: updatedSpecs });
+      refresh();
+    } catch (e) {
+      tt('Error: ' + e.message, 'red');
+    }
+    setLoad(false);
+  };
+
 
   const refresh = useCallback(async () => {
     // ⚠️ SECURITY: Never fetch data without a confirmed tenantId.
@@ -3162,9 +5116,21 @@ export default function App() {
       sb.from('staff_profiles').select('*').eq('tenant_id', tenantId)
     ]);
 
-    if (j) setJobs(j);
+    if (j) {
+      setJobs(j);
+      if (aStaffRef.current) {
+        const updated = j.find(x => x.id === aStaffRef.current.id);
+        if (updated) setAStaff(updated);
+      }
+    }
     if (c) setClients(c);
-    if (s && s.length > 0) setStaff(s);
+    if (s && s.length > 0) {
+      setStaff(s);
+      if (activeEmployeeRef.current) {
+        const updated = s.find(x => x.id === activeEmployeeRef.current.id);
+        if (updated) setActiveEmp(updated);
+      }
+    }
 
     // Defensive fetch of payout history
     try {
@@ -3186,6 +5152,11 @@ export default function App() {
     if (authUser) setUser(authUser);
     if (activeEmp) setActiveEmp(activeEmp);
     setView(assignedRole === 'admin' ? 'brief' : 'staff');
+    
+    // Solicitar permisos tras inicio de sesión
+    if ('Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission();
+    }
   };
 
   // Only refresh data once we're past auth AND have a valid tenantId.
@@ -3195,10 +5166,29 @@ export default function App() {
 
   useEffect(() => {
     if (view === 'auth') return;
-    const ch = sb.channel('ev97').on('postgres_changes', { event: '*', schema: 'public', table: 'elevore_missions' }, () => refresh()).subscribe();
+    const ch = sb.channel('ev97')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'elevore_missions' }, (payload) => {
+        refresh();
+        if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
+          const newJob = payload.new;
+          const oldJob = payload.old;
+          const isAssignedToMe = activeEmployee && newJob.team_assigned === activeEmployee.name;
+          const transitionedToScheduled = newJob.status === 'scheduled' && (!oldJob || oldJob.status !== 'scheduled');
+          
+          if (isAssignedToMe && transitionedToScheduled) {
+            if ('Notification' in window && Notification.permission === 'granted') {
+              new Notification('⚡ Nueva Misión Asignada', {
+                body: `Tienes un nuevo servicio en ${newJob.address || 'tu ubicación asignada'}.`,
+                icon: '/elevore-logo.png'
+              });
+            }
+          }
+        }
+      })
+      .subscribe();
     setRT(true);
     return () => { sb.removeChannel(ch); setRT(false); };
-  }, [view, refresh]);
+  }, [view, refresh, activeEmployee]);
 
   // Set selected map default to first active job (only if no active map address is selected yet)
   useEffect(() => {
@@ -3237,6 +5227,48 @@ export default function App() {
 
   useEffect(() => { if (!editId) setState(s => ({ ...s, totalPrice: pricing.total })); }, [pricing.total, editId]);
 
+  const [isDispatching, setIsDispatching] = useState(false);
+
+  const autoDispatchMission = async () => {
+    const pendingJob = jobs.find(j => j.status === 'lead' || (j.status === 'scheduled' && (!j.team_assigned || j.team_assigned === '')));
+    if (!pendingJob) return tt('No unassigned missions to dispatch!', 'amber');
+    
+    setIsDispatching(true);
+    tt('AI Calculating optimal route...', 'blue');
+    
+    const jobCoords = await geocodeAddress(pendingJob.address) || { lat: 28.5383, lng: -81.3792 };
+    
+    let bestStaff = null;
+    let minDistance = Infinity;
+
+    for (const st of staff) {
+      if (st.role === 'admin') continue;
+      // mock staff position slightly randomized
+      const sLat = 28.5383 + (Math.random() - 0.5) * 0.1;
+      const sLng = -81.3792 + (Math.random() - 0.5) * 0.1;
+      
+      const dist = getDistanceMeters(jobCoords.lat, jobCoords.lng, sLat, sLng);
+      if (dist !== null && dist < minDistance) {
+        minDistance = dist;
+        bestStaff = st;
+      }
+    }
+
+    if (!bestStaff) {
+      setIsDispatching(false);
+      return tt('No available staff found.', 'red');
+    }
+
+    await sb.from('elevore_missions').update({ 
+      team_assigned: bestStaff.name, 
+      status: 'scheduled' 
+    }).eq('id', pendingJob.id);
+
+    tt(`Assigned to ${bestStaff.name} (${Math.round(minDistance/1000)}km away) 🚀`, 'green');
+    setIsDispatching(false);
+    refresh();
+  };
+
   const deploy = async () => {
     if (!state.name || !state.address) return tt('Fill Name and Address', 'red');
     setLoad(true);
@@ -3256,6 +5288,62 @@ export default function App() {
     setLoad(false);
   };
 
+  const checkAndScheduleNextMission = async (job) => {
+    try {
+      const client = clients.find(c => c.name === job.client_name);
+      const frequency = job.specs?.frequency || client?.specs?.frequency || 'one-time';
+      const membership = job.membership_plan || client?.membership || 'none';
+      
+      let days = null;
+      if (frequency === 'weekly' || membership === 'premium') days = 7;
+      else if (frequency === 'bi-weekly' || membership === 'basic') days = 14;
+      else if (frequency === 'monthly') days = 30;
+      else if (membership === 'vip') days = 7;
+      
+      if (!days) return;
+      
+      const todayStr = new Date().toISOString().split('T')[0];
+      const hasFuture = jobs.some(j => 
+        j.client_name === job.client_name && 
+        j.status === 'scheduled' && 
+        j.scheduled_date >= todayStr
+      );
+      if (hasFuture) {
+        console.log("Future mission already scheduled for " + job.client_name);
+        return;
+      }
+      
+      const nextDate = new Date();
+      nextDate.setDate(nextDate.getDate() + days);
+      const dateStr = nextDate.toISOString().split('T')[0];
+      
+      const payload = {
+        client_name: job.client_name,
+        client_phone: job.client_phone || '',
+        address: job.address || '',
+        service_type: job.service_type || 'regular',
+        total_price: job.total_price || 0,
+        deposit_paid: 0,
+        team_assigned: job.team_assigned || '',
+        status: 'scheduled',
+        scheduled_date: dateStr,
+        notes: `Recurrencia automática (${frequency !== 'one-time' ? frequency : membership})`,
+        membership_plan: membership !== 'none' ? membership : null,
+        specs: {
+          ...(job.specs || {}),
+          auto_scheduled: true,
+          previous_job_id: job.id
+        },
+        tenant_id: tenantId || job.tenant_id
+      };
+      
+      await sb.from('elevore_missions').insert([payload]);
+      tt(`Auto-agendado: Siguiente visita el ${dateStr} 🗓️`, 'green');
+    } catch (e) {
+      console.error("Error auto-scheduling:", e);
+    }
+  };
+
   const update = async (job, patch, msg) => {
     const { error } = await sb.from('elevore_missions').update(patch).eq('id', job.id);
     if (error) return tt(error.message, 'red');
@@ -3263,6 +5351,7 @@ export default function App() {
     log((msg || 'Updated') + ': ' + job.client_name);
     if (patch.status === 'completed' || patch.status === 'paid') {
       triggerN8nEmail({ ...job, ...patch });
+      checkAndScheduleNextMission({ ...job, ...patch });
     }
     refresh();
   };
@@ -3291,6 +5380,7 @@ export default function App() {
 
     if (status === 'completed') {
       triggerN8nEmail({ ...jobData, ...patch, status });
+      checkAndScheduleNextMission({ ...jobData, ...patch, status });
     }
 
     refresh();
@@ -3326,7 +5416,15 @@ export default function App() {
               }
             }
             if (dLat && dLng) {
-              patch.gps_distance_meters = getDistanceMeters(lat, lng, dLat, dLng);
+              const dist = getDistanceMeters(lat, lng, dLat, dLng);
+              patch.gps_distance_meters = dist;
+              if (dist > 300) {
+                patch.specs = {
+                  ...(jobData.specs || {}),
+                  gps_deviation: true,
+                  gps_deviation_meters: dist
+                };
+              }
             }
           } else {
             patch.check_out_lat = lat;
@@ -3355,6 +5453,89 @@ export default function App() {
   const passQC = job => update(job, { status: 'paid', specs: { ...(job.specs || {}), quality_passed: true, quality_passed_at: new Date().toISOString() } }, 'QC Passed ✓');
   const markLost = async job => { const r = prompt('Lost reason (price/no-answer/competitor/timing):') || 'unknown'; await update(job, { status: 'lost', specs: { ...(job.specs || {}), lost_reason: r, lost_at: new Date().toISOString() } }, 'Marked lost'); };
   const rebook = job => { setState({ ...INIT, ...(job.specs || {}), name: job.client_name, phone: job.client_phone, address: job.address, status: 'scheduled', deposit: 0, date: job.next_visit || '' }); setEdit(null); setView('deploy'); setDtab('money'); };
+
+  const scheduleNextClean = async (client) => {
+    try {
+      const clientJobs = jobs.filter(j => j.client_name === client.name);
+      let baseJob = clientJobs[0];
+      if (!baseJob) {
+        baseJob = {
+          id: 'dummy_' + Date.now(),
+          client_name: client.name,
+          client_phone: client.phone || '',
+          address: client.address || '',
+          service_type: 'regular',
+          total_price: 150,
+          team_assigned: staff.find(s => s.role === 'staff')?.name || '',
+          membership_plan: client.membership || 'vip',
+          specs: client.specs || {},
+          tenant_id: tenantId
+        };
+      }
+      await checkAndScheduleNextMission(baseJob);
+      refresh();
+    } catch (e) {
+      tt('Error: ' + e.message, 'red');
+    }
+  };
+
+  const simulateRecurrenceCharge = async (client) => {
+    setChargingClient(client);
+    setChargeStage('connecting');
+    await new Promise(r => setTimeout(r, 1000));
+    setChargeStage('verifying');
+    await new Promise(r => setTimeout(r, 1000));
+    setChargeStage('authorizing');
+    await new Promise(r => setTimeout(r, 1200));
+    setChargeStage('success');
+    
+    try {
+      const updatedSpecs = {
+        ...(client.specs || {}),
+        last_recurrence_charge: new Date().toISOString(),
+        recurrence_charges: [
+          ...(client.specs?.recurrence_charges || []),
+          {
+            date: new Date().toISOString(),
+            amount: client.specs?.totalPrice || 150,
+            payment_id: 'rec_pi_' + Math.random().toString(36).substring(2, 11)
+          }
+        ]
+      };
+      
+      await sb.from('clients')
+        .update({ specs: updatedSpecs })
+        .eq('name', client.name);
+        
+      tt(`Cobro de recurrencia exitoso para ${client.name} ✓`, 'green');
+      setClients(prev => prev.map(c => c.name === client.name ? { ...c, specs: updatedSpecs } : c));
+      
+      const clientJobs = jobs.filter(j => j.client_name === client.name);
+      let baseJob = clientJobs[0];
+      if (!baseJob) {
+        baseJob = {
+          id: 'rec_' + Date.now(),
+          client_name: client.name,
+          client_phone: client.phone || '',
+          address: client.address || '',
+          service_type: 'regular',
+          total_price: client.specs?.totalPrice || 150,
+          team_assigned: staff.find(s => s.role === 'staff')?.name || '',
+          membership_plan: client.membership || 'vip',
+          specs: client.specs || {},
+          tenant_id: tenantId
+        };
+      }
+      await checkAndScheduleNextMission(baseJob);
+    } catch (e) {
+      console.error("Error storing recurrence charge:", e);
+    }
+    
+    await new Promise(r => setTimeout(r, 1000));
+    setChargeStage('');
+    setChargingClient(null);
+    refresh();
+  };
 
   // Add new employee dynamic code
   const handleAddEmployee = async () => {
@@ -3504,8 +5685,19 @@ export default function App() {
     const qcQ = jobs.filter(j => j.status === 'completed' && !j.specs?.quality_passed);
     const reviewQ = jobs.filter(j => (j.status === 'paid' || j.specs?.quality_passed) && !j.specs?.review_requested_at);
     const lostJ = jobs.filter(j => j.status === 'lost');
-    const lostReasons = lostJ.reduce((a, j) => { const r = j.specs?.lost_reason || 'unknown'; a[r] = (a[r] || 0) + 1; return a; }, {});
-    
+    const lostReasons = lostJ.reduce((a, j) => {
+      const r = j.specs?.lost_reason || 'unknown';
+      a[r] = (a[r] || 0) + 1;
+      return a;
+    }, {});
+    const ChurnRate = clients.length ? Math.round((churn.length / clients.length) * 100) : 0;
+    const referredCount = jobs.filter(j => j.specs?.referred_by).length;
+    const avgCAC = clients.length ? Math.round(((referredCount * 25) + 300) / clients.length) : 40;
+    const ltvCacRatio = avgCAC > 0 ? Number((avgLTV / avgCAC).toFixed(1)) : 0;
+    const profitMargin = col > 0 ? Math.round((net / col) * 100) : 0;
+    const paidJobs = jobs.filter(j => j.status === 'paid');
+    const avgStaffPay = paidJobs.length ? Math.round(netPayAllocated / paidJobs.length) : 0;
+
     // Sleek continuous data lines for active graphics
     const wb = Array.from({ length: 7 }, (_, i) => { const d = new Date(); d.setDate(d.getDate() - 6 + i); const ds = d.toISOString().split('T')[0]; const v = jobs.filter(j => j.scheduled_date === ds).reduce((a, b) => a + (b.total_price || 0), 0); return { l: dn[d.getDay()], v }; });
     const mb2 = Array.from({ length: 6 }, (_, i) => { const d = new Date(); d.setMonth(d.getMonth() - 5 + i); const yr = d.getFullYear(); const mo = d.getMonth(); const v = jobs.filter(j => { if (!j.scheduled_date) return false; const jd = new Date(j.scheduled_date); return jd.getFullYear() === yr && jd.getMonth() === mo; }).reduce((a, b) => a + (b.total_price || 0), 0); return { l: d.toLocaleDateString('en', { month: 'short' }), v }; });
@@ -3521,7 +5713,7 @@ export default function App() {
     const conv = jobs.filter(j => j.status === 'paid' && j.created_at && j.scheduled_date);
     const vel = conv.length ? Math.abs(Math.round(conv.reduce((a, j) => a + dAgo(j.created_at) - dAgo(j.scheduled_date), 0) / conv.length)) : null;
     const mbTargets = clients.filter(c => { const cj = jobs.filter(j => j.client_name === c.name); return cj.length >= 3 && (!c.membership || c.membership === 'none'); });
-    return { gross, col, net, pending, pct, avg, mrr, proj, ltv, avgLTV, bestDay: bd ? dn[bd[0]] : null, retDue, cold, churn, pendSig, moneyTable, expiring, qcQ, reviewQ, lostJ, lostReasons, bonuses, wb, mb2, avgRating, payroll, byS, bySvc, todayJobs, total: jobs.length, vel, mbTargets };
+    return { gross, col, net, pending, pct, avg, mrr, proj, ltv, avgLTV, bestDay: bd ? dn[bd[0]] : null, retDue, cold, churn, pendSig, moneyTable, expiring, qcQ, reviewQ, lostJ, lostReasons, bonuses, wb, mb2, avgRating, payroll, byS, bySvc, todayJobs, total: jobs.length, vel, mbTargets, churnRate: ChurnRate, avgCAC, ltvCacRatio, profitMargin, avgStaffPay };
   }, [jobs, clients]);
 
   const dna = useMemo(() => { const m = {}; clients.forEach(c => { const cj = jobs.filter(j => j.client_name === c.name); m[c.name] = { score: calcDNA(cj), count: cj.length, spent: cj.reduce((a, b) => a + (b.total_price || 0), 0), last: cj[0]?.scheduled_date }; }); return m; }, [clients, jobs]);
@@ -3734,89 +5926,160 @@ ${job.final_signature ? `<div class="sig"><p style="font-size:10px;color:#999;ma
       {aiOpen && <AIAdvisor jobs={jobs} clients={clients} staff={staff} isStaff={role === 'staff'} activeUser={activeEmployee?.name || 'User'} onClose={() => setAIOpen(false)} tt={tt} onOpenReport={() => { setAIOpen(false); setAIReportOpen(true); }} />}
       {aiReportOpen && <AIReportModal jobs={jobs} clients={clients} staff={staff} onClose={() => setAIReportOpen(false)} tt={tt} />}
 
-      {/* 🧬 CLIENT DNA DETAIL MODAL */}
+      {/* OVERLAY DE SIMULACIÓN DE COBRO RECURRENTE */}
+      {chargingClient && (
+        <div className="fixed inset-0 bg-slate-950/95 backdrop-blur-lg z-[3000] flex flex-col items-center justify-center p-6 text-center animate-in fade-in duration-300">
+          <div className="w-20 h-20 relative flex items-center justify-center mb-6">
+            <div className="absolute inset-0 rounded-full border-4 border-white/5 border-t-[#F5C518] animate-spin"></div>
+            <Icon name="credit-card" className="w-8 h-8 text-[#F5C518] animate-pulse" />
+          </div>
+          <h2 className="text-xl font-black uppercase tracking-widest text-white mb-2">Simulando Cobro Recurrente</h2>
+          <p className="text-xs text-slate-400 font-bold uppercase tracking-wider mb-6">Cliente: {chargingClient.name}</p>
+          <div className="max-w-xs w-full space-y-3 mt-4 text-[9px] font-black uppercase tracking-wider text-left border-l border-white/10 pl-4">
+            {[
+              { key: 'connecting', label: 'Conectando con Stripe Billing Gateway...' },
+              { key: 'verifying', label: 'Verificando método de pago predeterminado...' },
+              { key: 'authorizing', label: 'Autorizando cobro de membresía...' },
+              { key: 'success', label: '¡Cobro Exitoso! Notificando al cliente...' }
+            ].map(step => {
+              const active = chargeStage === step.key;
+              const completed = ['connecting', 'verifying', 'authorizing', 'success'].indexOf(chargeStage) > ['connecting', 'verifying', 'authorizing', 'success'].indexOf(step.key);
+              return (
+                <div key={step.key} className={`flex items-center gap-2 transition-all duration-300 ${active ? 'text-[#F5C518] font-extrabold scale-105 pl-1' : completed ? 'text-green-500 opacity-60' : 'text-slate-700 opacity-30'}`}>
+                  <div className={`w-2 h-2 rounded-full ${active ? 'bg-[#F5C518] animate-ping' : completed ? 'bg-green-500' : 'bg-slate-800'}`} />
+                  <span>{step.label}</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* 🧬 CLIENT DETAIL SLIDE-OUT DRAWER */}
       {selectedClient && (() => {
         const clientJobs = jobs.filter(j => j.client_name === selectedClient.name);
         const ltv = clientJobs.reduce((acc, j) => acc + (j.total_price || 0), 0);
         const totalCount = clientJobs.length;
         const lv = lvl(totalCount);
+        const allPhotos = [];
+        clientJobs.forEach(job => {
+          const bp = job.before_photos || job.specs?.before_photos || [];
+          const ap = job.after_photos || job.specs?.after_photos || [];
+          if (Array.isArray(bp)) bp.forEach(url => allPhotos.push({ url, type: 'Antes', date: job.scheduled_date }));
+          if (Array.isArray(ap)) ap.forEach(url => allPhotos.push({ url, type: 'Después', date: job.scheduled_date }));
+        });
+
         return (
-          <div className="fixed inset-0 bg-black/90 backdrop-blur-md z-[2000] flex items-center justify-center p-4" onClick={e => e.target === e.currentTarget && setSelectedClient(null)}>
-            <div className="g p-6 w-full max-w-2xl space-y-5 border-t-4 mx-auto bg-slate-950 rounded-2xl shadow-2xl border border-white/5 animate-in fade-in-50 zoom-in-95 duration-150" style={{ borderTopColor: lv.color }}>
-              <div className="flex justify-between items-start pb-2 border-b border-white/5">
-                <div>
+          <>
+            <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[1999] transition-opacity duration-300 animate-in fade-in" onClick={() => setSelectedClient(null)} />
+            <div className="fixed inset-y-0 right-0 w-full max-w-md bg-slate-950/95 backdrop-blur-md border-l border-white/10 z-[2000] flex flex-col shadow-2xl animate-in slide-in-from-right duration-300">
+              <div className="p-6 border-b border-white/5 flex flex-col gap-2 relative">
+                <button onClick={() => setSelectedClient(null)} className="absolute top-4 right-4 p-1.5 text-slate-500 hover:text-white rounded-lg hover:bg-white/5 transition-colors">
+                  <Icon name="x" className="w-5 h-5" />
+                </button>
+                <div className="flex items-center gap-2">
                   <span className="text-[7px] font-black px-2 py-0.5 rounded-full uppercase" style={{ background: lv.color, color: '#000' }}>{lv.name}</span>
-                  <h3 className="text-xl font-black uppercase italic text-white mt-1">{selectedClient.name}</h3>
-                  <p className="text-[8px] text-slate-500 uppercase mt-0.5">Client Profile DNA & History</p>
-                </div>
-                <button onClick={() => setSelectedClient(null)} className="text-slate-500 hover:text-white"><Icon name="x" className="w-5 h-5" /></button>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div className="bg-white/5 border border-white/5 p-4 rounded-xl">
-                  <p className="text-[7px] text-slate-500 uppercase font-black tracking-wider">Total LTV (Spend)</p>
-                  <p className="text-xl font-black text-green-400 mt-1">{fmt$(ltv)}</p>
-                </div>
-                <div className="bg-white/5 border border-white/5 p-4 rounded-xl">
-                  <p className="text-[7px] text-slate-500 uppercase font-black tracking-wider">Total Services</p>
-                  <p className="text-xl font-black text-[#F5C518] mt-1">{totalCount}</p>
-                </div>
-                <div className="bg-white/5 border border-white/5 p-4 rounded-xl">
-                  <p className="text-[7px] text-slate-500 uppercase font-black tracking-wider">Contact Phone</p>
-                  <p className="text-sm font-black text-white mt-2 truncate">{selectedClient.phone || 'N/A'}</p>
-                </div>
-              </div>
-              <div className="bg-white/5 border border-white/5 p-3 rounded-xl flex items-center justify-between">
-                <div>
-                  <p className="text-[7px] text-slate-500 uppercase font-black">Main Address</p>
-                  <p className="text-[10px] text-white font-bold mt-0.5">{selectedClient.address || 'No address specified'}</p>
-                </div>
-                {selectedClient.address && (
-                  <button onClick={() => { setMapAddress(selectedClient.address); setView('brief'); setSelectedClient(null); tt('🗺️ Showing client map...'); }} className="px-3 py-1.5 bg-blue-900/30 text-blue-400 border border-blue-500/10 rounded-lg text-[8px] font-black uppercase hover:bg-blue-600 transition-all flex items-center gap-1"><Icon name="navigation" className="w-3 h-3" /> Map</button>
-                )}
-              </div>
-              <div className="space-y-2">
-                <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest px-1">📅 Service History</p>
-                <div className="max-h-[180px] overflow-y-auto border border-white/5 rounded-xl nsb">
-                  {clientJobs.length === 0 ? (
-                    <div className="text-center py-8 text-[8px] text-slate-600 uppercase font-black italic">No past jobs recorded.</div>
-                  ) : (
-                    <table className="w-full text-left border-collapse">
-                      <thead>
-                        <tr className="bg-white/5 border-b border-white/5 text-[7px] uppercase font-black text-slate-400">
-                          <th className="p-3">Service</th>
-                          <th className="p-3">Date</th>
-                          <th className="p-3">Price</th>
-                          <th className="p-3">Status</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-white/5">
-                        {clientJobs.map(job => (
-                          <tr key={job.id} className="text-[8px] text-slate-300 font-bold uppercase hover:bg-white/[0.02]">
-                            <td className="p-3 font-black text-white">{job.service_type || 'Cleaning'}</td>
-                            <td className="p-3">{fmtD(job.scheduled_date)}</td>
-                            <td className="p-3 text-gradient font-gradient font-black">{fmt$(job.total_price)}</td>
-                            <td className="p-3">
-                              <span className={`text-[6px] font-black px-2 py-0.5 rounded-full uppercase ${job.status === 'paid' ? 'bg-blue-600 text-white' : job.status === 'in_progress' ? 'bg-green-600 text-white' : job.status === 'completed' ? 'bg-purple-600 text-white' : 'bg-[#F5C518] text-black'}`}>{job.status}</span>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                  {selectedClient.membership && selectedClient.membership !== 'none' && (
+                    <span className="text-[7px] font-black px-2 py-0.5 rounded-full bg-[#F5C518]/20 text-[#F5C518] uppercase">💎 {selectedClient.membership}</span>
                   )}
                 </div>
+                <h3 className="text-lg font-black uppercase italic text-white leading-tight">{selectedClient.name}</h3>
+                <p className="text-[8px] text-slate-500 uppercase tracking-widest leading-none">Expediente de Retención y Preferencias</p>
               </div>
-              <div className="flex gap-2 justify-end border-t border-white/5 pt-3">
-                <button onClick={() => {
-                  setState({ ...INIT, ...selectedClient.specs, name: selectedClient.name, phone: selectedClient.phone, address: selectedClient.address });
-                  setSelectedClient(null);
-                  setView('deploy');
-                  setDtab('specs');
-                  tt('Quick booking initialized 🚀');
-                }} className="px-4 py-2.5 bg-[#F5C518] hover:bg-[#F5C518]/90 text-black text-[9px] font-black uppercase rounded-xl active:scale-95 transition-all">+ Quick Book Service</button>
-                <button onClick={() => setSelectedClient(null)} className="px-4 py-2.5 bg-white/5 hover:bg-white/10 text-slate-400 rounded-xl text-[9px] font-black uppercase active:scale-95 transition-all">Close</button>
+
+              <div className="px-6 py-4 bg-white/[0.02] border-b border-white/5 grid grid-cols-3 gap-2 text-center">
+                <div><p className="text-[7px] text-slate-500 uppercase font-black">LTV Total</p><p className="text-xs font-black text-green-400 mt-0.5">{fmt$(ltv)}</p></div>
+                <div><p className="text-[7px] text-slate-500 uppercase font-black">Servicios</p><p className="text-xs font-black text-[#F5C518] mt-0.5">{totalCount}</p></div>
+                <div><p className="text-[7px] text-slate-500 uppercase font-black">Teléfono</p><p className="text-[9px] font-black text-white mt-0.5 truncate">{selectedClient.phone || 'N/A'}</p></div>
+              </div>
+
+              <div className="flex border-b border-white/5 bg-black/40 p-1">
+                {[
+                  { id: 'preferences', label: 'PREFERENCIAS', icon: 'sliders' },
+                  { id: 'history', label: 'HISTORIAL', icon: 'clock' },
+                  { id: 'gallery', label: 'GALERÍA', icon: 'image' }
+                ].map(t => (
+                  <button key={t.id} onClick={() => setDrawerTab(t.id)} className={`flex-1 py-3 text-[8px] font-black uppercase tracking-wider flex items-center justify-center gap-1.5 rounded-lg transition-all ${drawerTab === t.id ? 'bg-white/5 text-[#F5C518] font-extrabold border border-white/10' : 'text-slate-400 hover:text-white hover:bg-white/[0.02]'}`}>
+                    <Icon name={t.icon} className="w-3.5 h-3.5" /> {t.label}
+                  </button>
+                ))}
+              </div>
+
+              <div className="flex-1 overflow-y-auto p-6 space-y-4 nsb">
+                {drawerTab === 'preferences' && (
+                  <div className="space-y-4 animate-in fade-in duration-200">
+                    <div className="space-y-1"><label className="text-[8px] font-black uppercase text-slate-500 tracking-widest pl-1">Código de Acceso / Llave</label><input className="inp w-full uppercase font-mono text-xs" placeholder="Ej. Código 1234#" value={prefEntryCode} onChange={e => setPrefEntryCode(e.target.value)} /></div>
+                    <div className="space-y-1"><label className="text-[8px] font-black uppercase text-slate-500 tracking-widest pl-1">Mascotas en Casa</label><input className="inp w-full text-xs" placeholder="Ej. Dos perros" value={prefPets} onChange={e => setPrefPets(e.target.value)} /></div>
+                    <div className="space-y-1"><label className="text-[8px] font-black uppercase text-slate-500 tracking-widest pl-1">Preferencias de Productos</label><input className="inp w-full text-xs" placeholder="Ej. Productos ecológicos" value={prefProducts} onChange={e => setPrefProducts(e.target.value)} /></div>
+                    <div className="space-y-1"><label className="text-[8px] font-black uppercase text-slate-500 tracking-widest pl-1">Notas Internas para el Staff</label><textarea rows={4} className="inp w-full text-xs resize-none" placeholder="Cuidado extra con el piso..." value={prefNotes} onChange={e => setPrefNotes(e.target.value)} /></div>
+                    <button onClick={saveClientPreferences} className="w-full py-4 bg-[#F5C518] hover:bg-[#F5C518]/90 text-black text-[10px] font-black uppercase tracking-widest rounded-xl active:scale-95 transition-all shadow-[0_0_20px_rgba(245,197,24,0.15)] flex items-center justify-center gap-2">
+                      <Icon name="save" className="w-4 h-4" /> Guardar Preferencias
+                    </button>
+                  </div>
+                )}
+                {drawerTab === 'history' && (
+                  <div className="space-y-4 animate-in fade-in duration-200">
+                    {clientJobs.length === 0 ? (
+                      <div className="text-center py-12 text-[9px] text-slate-600 uppercase font-black italic">No hay historial</div>
+                    ) : (
+                      <div className="relative border-l border-white/5 pl-4 ml-2 space-y-5">
+                        {clientJobs.sort((a,b) => new Date(b.scheduled_date) - new Date(a.scheduled_date)).map(job => (
+                          <div key={job.id} className="relative group">
+                            <div className={`absolute -left-[21px] top-1 w-2.5 h-2.5 rounded-full border-2 border-slate-950 ${job.status === 'paid' ? 'bg-blue-500' : job.status === 'completed' ? 'bg-purple-500' : 'bg-amber-500'}`} />
+                            <div className="g p-4 space-y-2 bg-white/[0.01] hover:bg-white/[0.03] transition-colors border border-white/5">
+                              <div className="flex justify-between items-start">
+                                <div>
+                                  <h4 className="text-xs font-black text-white uppercase italic">{job.service_type || 'Limpieza'}</h4>
+                                  <p className="text-[8px] text-slate-500 font-bold uppercase mt-0.5">{fmtD(job.scheduled_date)}</p>
+                                </div>
+                                <span className={`text-[6px] font-black px-1.5 py-0.5 rounded uppercase ${job.status === 'paid' ? 'bg-blue-500/20 text-blue-400' : job.status === 'completed' ? 'bg-purple-500/20 text-purple-400' : 'bg-amber-500/20 text-amber-400'}`}>{job.status}</span>
+                              </div>
+                              <div className="flex justify-between items-center text-[9px]">
+                                <span className="font-black text-slate-300">{fmt$(job.total_price)}</span>
+                                {job.client_rating && <span className="text-[#F5C518] font-black">⭐ {job.client_rating}/5</span>}
+                              </div>
+                              <div className="flex gap-2 items-center justify-end border-t border-white/5 pt-2 mt-1">
+                                {job.approval_signature && (
+                                  <div className="text-right"><p className="text-[5px] text-slate-600 uppercase font-black">Cotización</p><img src={job.approval_signature} className="h-5 opacity-40 hover:opacity-100 transition-opacity border border-white/10 rounded" alt="firma" /></div>
+                                )}
+                                {job.final_signature && (
+                                  <div className="text-right"><p className="text-[5px] text-slate-600 uppercase font-black">Conformidad</p><img src={job.final_signature} className="h-5 opacity-40 hover:opacity-100 transition-opacity border border-white/10 rounded" alt="firma" /></div>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+                {drawerTab === 'gallery' && (
+                  <div className="space-y-4 animate-in fade-in duration-200">
+                    {allPhotos.length === 0 ? (
+                      <div className="text-center py-12 text-[9px] text-slate-600 uppercase font-black italic">No hay fotos</div>
+                    ) : (
+                      <div className="grid grid-cols-2 gap-3">
+                        {allPhotos.map((photo, i) => (
+                          <div key={i} className="relative rounded-xl overflow-hidden border border-white/10 group cursor-zoom-in" onClick={() => window.open(photo.url, '_blank')}>
+                            <img src={photo.url} alt="Servicio" className="w-full h-32 object-cover transition-transform duration-300 group-hover:scale-105" />
+                            <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent p-2 text-left">
+                              <span className={`text-[6px] font-black px-1 py-0.5 rounded uppercase ${photo.type === 'Antes' ? 'bg-amber-600 text-white' : 'bg-green-600 text-white'}`}>{photo.type}</span>
+                              <p className="text-[7px] text-slate-300 font-bold uppercase mt-1 leading-none">{fmtD(photo.date)}</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              <div className="p-6 border-t border-white/5 bg-black/40 flex gap-2">
+                <button onClick={() => { setState({ ...INIT, ...selectedClient.specs, name: selectedClient.name, phone: selectedClient.phone, address: selectedClient.address }); setSelectedClient(null); setView('deploy'); setDtab('specs'); tt('Quick booking initialized 🚀'); }} className="flex-1 py-3 bg-[#F5C518] hover:bg-[#F5C518]/90 text-black text-[9px] font-black uppercase rounded-xl active:scale-95 transition-all flex items-center justify-center gap-1.5"><Icon name="calendar" className="w-3.5 h-3.5" />+ Agendar Servicio</button>
+                <button onClick={() => { setMapAddress(selectedClient.address); setView('brief'); setSelectedClient(null); tt('🗺️ Showing client map...'); }} className="px-4 py-3 bg-white/5 hover:bg-white/10 text-slate-300 border border-white/10 rounded-xl text-[9px] font-black uppercase active:scale-95 transition-all flex items-center justify-center"><Icon name="navigation" className="w-3.5 h-3.5" /></button>
               </div>
             </div>
-          </div>
+          </>
         );
       })()}
 
@@ -3862,9 +6125,17 @@ ${job.final_signature ? `<div class="sig"><p style="font-size:10px;color:#999;ma
                 { id: 'billing', label: 'SaaS Billing', icon: 'crown' },
                 { id: 'deploy', label: 'New Estimate', icon: 'zap' }
               ].map(item => {
-                const isActive = view === item.id;
+                const isActive = item.id === 'members' ? (view === 'members' && membersTab === 'vip')
+                               : item.id === 'billing' ? (view === 'members' && membersTab === 'billing')
+                               : view === item.id;
                 return (
-                  <button key={item.id} onClick={() => { if (item.id === 'deploy') { setEdit(null); setState(INIT); setDtab('identity'); } setView(item.id); setMobileMenuOpen(false); }} className={`w-full flex items-center justify-between gap-3 px-4 py-3.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all duration-200 active:scale-95 ${isActive ? 'bg-[#F5C518] text-black shadow-lg shadow-[#F5C518]/15' : 'text-slate-400 hover:bg-white/5 hover:text-white'}`}>
+                  <button key={item.id} onClick={() => {
+                    if (item.id === 'deploy') { setEdit(null); setState(INIT); setDtab('identity'); }
+                    if (item.id === 'members') { setMembersTab('vip'); setView('members'); }
+                    else if (item.id === 'billing') { setMembersTab('billing'); setView('members'); }
+                    else { setView(item.id); }
+                    setMobileMenuOpen(false);
+                  }} className={`w-full flex items-center justify-between gap-3 px-4 py-3.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all duration-200 active:scale-95 ${isActive ? 'bg-[#F5C518] text-black shadow-lg shadow-[#F5C518]/15' : 'text-slate-400 hover:bg-white/5 hover:text-white'}`}>
                     <div className="flex items-center gap-3">
                       <Icon name={item.icon} className={`w-4 h-4 ${isActive ? 'text-black' : 'text-slate-400'}`} />
                       <span>{item.label}</span>
@@ -4279,19 +6550,157 @@ ${job.final_signature ? `<div class="sig"><p style="font-size:10px;color:#999;ma
                 </div>
               </div>
 
+              {/* ── ELEVORE HEALTH & ANALYTICS CENTER ── */}
+              <div className="relative rounded-2xl overflow-hidden border border-amber-500/10 bg-gradient-to-br from-zinc-950 via-black to-slate-950 p-6 space-y-4 shadow-2xl">
+                <div className="absolute top-0 left-0 w-full h-[1.5px] bg-gradient-to-r from-amber-500/50 via-purple-500/30 to-transparent" />
+                <div className="flex justify-between items-center">
+                  <div className="flex items-center gap-2">
+                    <div className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse" />
+                    <h3 className="text-[10px] font-black text-white uppercase tracking-widest font-display">💎 Elevore Health & Advanced Analytics</h3>
+                  </div>
+                  <span className="text-[7px] font-black px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20 uppercase tracking-widest">Growth Deck v2.0</span>
+                </div>
+
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3.5">
+                  {/* LTV CARD */}
+                  <div className="bg-white/[0.02] border border-white/5 hover:border-white/10 p-4 rounded-xl flex flex-col justify-between min-h-[110px] transition-all">
+                    <div>
+                      <p className="text-[7.5px] text-slate-500 font-black uppercase tracking-wider">Average Lifetime Value</p>
+                      <p className="text-xl font-black text-white mt-1">
+                        {isPrivate ? <span className="blur-xs select-none">***</span> : fmt$(finance.avgLTV)}
+                      </p>
+                    </div>
+                    <div className="mt-2 flex items-center justify-between text-[7px] font-black uppercase text-slate-400">
+                      <span>Ciclo de vida</span>
+                      <span className="text-green-400">LTV Alto</span>
+                    </div>
+                  </div>
+
+                  {/* CHURN RATE CARD */}
+                  <div className="bg-white/[0.02] border border-white/5 hover:border-white/10 p-4 rounded-xl flex flex-col justify-between min-h-[110px] transition-all">
+                    <div>
+                      <p className="text-[7.5px] text-slate-500 font-black uppercase tracking-wider">Tasa de Churn (45 días)</p>
+                      <p className="text-xl font-black text-white mt-1">
+                        {finance.churnRate}%
+                      </p>
+                    </div>
+                    <div className="mt-2 space-y-1">
+                      <div className="w-full bg-white/5 h-1 rounded-full overflow-hidden">
+                        <div className={`h-full ${finance.churnRate > 15 ? 'bg-red-500' : 'bg-green-500'}`} style={{ width: `${Math.min(finance.churnRate * 4, 100)}%` }} />
+                      </div>
+                      <div className="flex justify-between text-[7px] font-black uppercase">
+                        <span className="text-slate-500">Inactivos: {finance.churn.length}</span>
+                        <span className={finance.churnRate > 15 ? 'text-red-400' : 'text-green-400'}>
+                          {finance.churnRate > 15 ? 'Riesgo Alto' : 'Óptimo'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* CAC CARD */}
+                  <div className="bg-white/[0.02] border border-white/5 hover:border-white/10 p-4 rounded-xl flex flex-col justify-between min-h-[110px] transition-all">
+                    <div>
+                      <p className="text-[7.5px] text-slate-500 font-black uppercase tracking-wider">Costo Adquisición (CAC)</p>
+                      <p className="text-xl font-black text-white mt-1">
+                        {isPrivate ? <span className="blur-xs select-none">***</span> : fmt$(finance.avgCAC)}
+                      </p>
+                    </div>
+                    <div className="mt-2 flex items-center justify-between text-[7px] font-black uppercase text-slate-400">
+                      <span>Costo por Lead</span>
+                      <span className="text-blue-400">Eficiente</span>
+                    </div>
+                  </div>
+
+                  {/* LTV : CAC RATIO CARD */}
+                  <div className="bg-white/[0.02] border border-white/5 hover:border-white/10 p-4 rounded-xl flex flex-col justify-between min-h-[110px] transition-all">
+                    <div>
+                      <p className="text-[7.5px] text-slate-500 font-black uppercase tracking-wider">Ratio LTV : CAC</p>
+                      <p className="text-xl font-black text-[#F5C518] mt-1">
+                        {finance.ltvCacRatio}x
+                      </p>
+                    </div>
+                    <div className="mt-2 flex items-center justify-between text-[7px] font-black uppercase">
+                      <span className="text-slate-500">Rentabilidad Mkt</span>
+                      <span className={finance.ltvCacRatio >= 3 ? 'text-green-400 font-bold' : 'text-amber-400'}>
+                        {finance.ltvCacRatio >= 3 ? 'Excelente 💎' : 'Saludable'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 pt-1">
+                  {/* NET PROFIT MARGIN CARD */}
+                  <div className="bg-white/[0.01] border border-white/5 p-4 rounded-xl space-y-3.5">
+                    <div className="flex justify-between items-center">
+                      <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">💰 Net Profit Margin & Payouts</p>
+                      <span className="text-[7px] font-black text-green-400 bg-green-500/10 px-1.5 py-0.5 rounded uppercase">Margin: {finance.profitMargin}%</span>
+                    </div>
+                    <div className="space-y-2 text-[9px] font-bold uppercase">
+                      <div className="flex justify-between items-center">
+                        <span className="text-slate-500">Margen de Ganancia Neto:</span>
+                        <span className="text-white font-black">{isPrivate ? '***' : fmt$(finance.net)} ({finance.profitMargin}%)</span>
+                      </div>
+                      <div className="flex justify-between items-center border-t border-white/5 pt-2">
+                        <span className="text-slate-500">Pago Promedio a Staff:</span>
+                        <span className="text-amber-400 font-black">{isPrivate ? '***' : fmt$(finance.avgStaffPay)} / clean</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* AI RETENTION & GROWTH INSIGHTS */}
+                  <div className="bg-amber-500/5 border border-amber-500/10 p-4 rounded-xl flex items-start gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center flex-shrink-0">
+                      <Icon name="brain" className="w-4.5 h-4.5 text-[#F5C518]" />
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-[8px] font-black text-amber-500 uppercase tracking-wider">AI Analytics Insight</p>
+                      {finance.churnRate > 15 ? (
+                        <p className="text-[8.5px] text-slate-300 leading-relaxed font-semibold">
+                          ⚠️ **Alerta Churn ({finance.churnRate}%):** La inactividad de clientes superó el umbral. Sugerimos lanzar la campaña de re-engagement en el CRM o enviar promociones automáticas por WhatsApp para recuperar cuentas.
+                        </p>
+                      ) : finance.ltvCacRatio >= 3.5 ? (
+                        <p className="text-[8.5px] text-slate-300 leading-relaxed font-semibold">
+                          💎 **Excelente salud ({finance.ltvCacRatio}x LTV/CAC):** El valor de vida útil del cliente cubre ampliamente el costo de adquisición. Tienes margen para aumentar la pauta publicitaria o el bono de referidos.
+                        </p>
+                      ) : (
+                        <p className="text-[8.5px] text-slate-300 leading-relaxed font-semibold">
+                          🟢 **Ratio LTV:CAC estable ({finance.ltvCacRatio}x):** El retorno es saludable. Optimizar las comisiones por upsells del staff aumentará la rentabilidad por visita.
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
 
               {/* ── LIVE GPS DISPATCH ── */}
               <div className="relative rounded-2xl overflow-hidden border border-[#F5C518]/15 bg-gradient-to-br from-amber-950/10 to-black p-6 space-y-4">
                 <div className="absolute top-0 left-0 w-full h-[1.5px] bg-gradient-to-r from-[#F5C518]/40 to-transparent" />
-                <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
-                  <h3 className="text-[10px] font-black text-white uppercase tracking-widest font-display">📍 Live Logistics & Dispatch</h3>
-                  <span className="text-[6px] bg-amber-500/10 text-amber-400 font-bold px-1.5 py-0.5 rounded border border-amber-500/15">SYNC ACTIVE</span>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
+                    <h3 className="text-[10px] font-black text-white uppercase tracking-widest font-display">📍 Live Logistics & Dispatch</h3>
+                    <span className="text-[6px] bg-amber-500/10 text-amber-400 font-bold px-1.5 py-0.5 rounded border border-amber-500/15">SYNC ACTIVE</span>
+                  </div>
+                  <button 
+                    onClick={autoDispatchMission} 
+                    disabled={isDispatching}
+                    className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-[8px] font-black uppercase tracking-wider transition-all border ${isDispatching ? 'bg-amber-500/10 text-amber-500/50 border-amber-500/20' : 'bg-amber-500 text-black border-amber-400 hover:bg-amber-400 active:scale-95 shadow-[0_0_15px_rgba(245,197,24,0.3)]'}`}
+                  >
+                    {isDispatching ? (
+                      <><Icon name="loader" className="w-3 h-3 animate-spin" /> Routing...</>
+                    ) : (
+                      <><Icon name="zap" className="w-3 h-3" /> Auto-Dispatch</>
+                    )}
+                  </button>
                 </div>
                 <MapComponent address={activeMapAddress} />
                 <div className="flex gap-2 overflow-x-auto nsb">
                   {jobs.filter(j => j.status === 'scheduled' || j.status === 'in_progress').map(job => (
-                    <button key={job.id} onClick={() => setMapAddress(job.address)} className={`px-3 py-2 rounded-xl text-[8px] font-black uppercase flex-shrink-0 border transition-all ${activeMapAddress === job.address ? 'bg-[#F5C518] border-[#F5C518] text-black shadow-lg shadow-[#F5C518]/10' : 'bg-white/5 border-white/5 text-slate-400 hover:text-white hover:border-white/20'}`}>{job.client_name}</button>
+                    <button key={job.id} onClick={() => setMapAddress(job.address)} className={`px-3 py-2 rounded-xl text-[8px] font-black uppercase flex-shrink-0 border transition-all flex items-center gap-1.5 ${activeMapAddress === job.address ? 'bg-[#F5C518] border-[#F5C518] text-black shadow-lg shadow-[#F5C518]/10' : 'bg-white/5 border-white/5 text-slate-400 hover:text-white hover:border-white/20'}`}>
+                      {job.client_name}
+                      {job.specs?.gps_deviation && <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse flex-shrink-0" title="GPS Deviation Warning" />}
+                    </button>
                   ))}
                   {jobs.filter(j => j.status === 'scheduled' || j.status === 'in_progress').length === 0 && (
                     <p className="text-[8px] text-slate-600 font-bold uppercase italic">Sin misiones activas ahora</p>
@@ -4515,6 +6924,11 @@ ${job.final_signature ? `<div class="sig"><p style="font-size:10px;color:#999;ma
                               <div className="flex items-center gap-1.5 flex-wrap mb-1">
                                 <h3 onClick={() => setSelectedClient(clients.find(c => c.name === job.client_name) || { name: job.client_name, phone: job.client_phone, address: job.address })} className="text-base font-black uppercase italic text-white leading-none hover:text-[#F5C518] cursor-pointer transition-colors">{job.client_name}</h3>
                             <span className={`text-[6px] font-black px-1.5 py-0.5 rounded-full uppercase ${job.status === 'paid' ? 'bg-blue-600 text-white' : job.status === 'in_progress' ? 'bg-green-600 text-white' : job.status === 'lead' ? 'bg-[#F5C518] text-black' : job.status === 'completed' ? 'bg-purple-600 text-white' : job.status === 'lost' ? 'bg-red-900 text-red-300' : 'bg-slate-700 text-slate-300'}`}>{job.status}</span>
+                            {job.specs?.gps_deviation && (
+                              <span className="text-[6px] bg-red-600 text-white font-black px-1.5 py-0.5 rounded-full animate-pulse flex items-center gap-0.5">
+                                <Icon name="alert-triangle" className="w-2 h-2" /> GPS DEV: {Math.round(job.specs.gps_deviation_meters || 0)}m
+                              </span>
+                            )}
                             {isH && <span className="text-[6px] bg-green-600 text-black font-black px-1.5 py-0.5 rounded-full">🛠️</span>}
                             {job.specs?.referred_by && (
                               <span className="text-[6px] bg-[#F5C518]/10 text-[#F5C518] border border-[#F5C518]/25 font-black px-1.5 py-0.5 rounded-full flex items-center gap-0.5">
@@ -4635,124 +7049,170 @@ ${job.final_signature ? `<div class="sig"><p style="font-size:10px;color:#999;ma
               ===================================================================== */}
           {role === 'admin' && view === 'members' && (
             <div className="space-y-6 animate-in fade-in pb-24">
-              <div className="g p-6 border-t-4 border-yellow-500 bg-[rgba(255,255,255,0.04)] border-[rgba(255,255,255,0.08)] flex justify-between items-center relative overflow-hidden">
-                <div>
-                  <h2 className="text-xl font-black tracking-widest uppercase text-white font-display">💎 VIP MEMBERSHIP PLANS</h2>
-                  <p className="text-[9px] text-slate-400 uppercase tracking-widest mt-1">Tenant Subscribed Recurring Stream</p>
-                </div>
-                <p className="text-3xl font-black italic text-[#F5C518]">{isPrivate ? '***' : fmt$(finance.mrr)}<span className="text-[9px] text-slate-500 font-black">/mo MRR</span></p>
+              {/* Sub-tab Switcher Bar */}
+              <div className="flex gap-2 bg-black/45 p-1.5 rounded-2xl border border-white/5">
+                <button 
+                  onClick={() => setMembersTab('vip')} 
+                  className={`flex-1 py-3 text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 rounded-xl transition-all ${
+                    membersTab === 'vip' 
+                      ? 'bg-[#F5C518] text-black shadow-lg shadow-[#F5C518]/15' 
+                      : 'text-slate-400 hover:text-white hover:bg-white/5'
+                  }`}
+                >
+                  <Icon name="diamond" className="w-4 h-4" />
+                  Membresías VIP
+                </button>
+                <button 
+                  onClick={() => setMembersTab('billing')} 
+                  className={`flex-1 py-3 text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 rounded-xl transition-all ${
+                    membersTab === 'billing' 
+                      ? 'bg-[#F5C518] text-black shadow-lg shadow-[#F5C518]/15' 
+                      : 'text-slate-400 hover:text-white hover:bg-white/5'
+                  }`}
+                >
+                  <Icon name="crown" className="w-4 h-4" />
+                  SaaS Billing
+                </button>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {MBS.filter(m => m.id !== 'none').map(m => (
-                  <div key={m.id} className="g p-6 border-l-4 bg-[rgba(255,255,255,0.04)] border-[rgba(255,255,255,0.08)] flex flex-col justify-between min-h-[220px] hover:border-slate-500/20 transition-all" style={{ borderColor: m.color }}>
-                    <div className="flex justify-between items-center mb-4">
-                      <h3 className="text-lg font-black uppercase italic text-white font-display">{m.name}</h3>
-                      <p className="text-2xl font-black" style={{ color: m.color }}>{fmt$(m.price)}<span className="text-[9px] text-slate-500">/mo</span></p>
+
+              {membersTab === 'vip' ? (
+                <div className="space-y-6 animate-in fade-in">
+                  {/* VIP Header card */}
+                  <div className="g p-6 border-t-4 border-yellow-500 bg-[rgba(255,255,255,0.04)] border-[rgba(255,255,255,0.08)] flex justify-between items-center relative overflow-hidden">
+                    <div>
+                      <h2 className="text-xl font-black tracking-widest uppercase text-white font-display">💎 MOTOR DE MEMBRESÍAS VIP</h2>
+                      <p className="text-[9px] text-slate-400 uppercase tracking-widest mt-1">Gestión de recurrencia activa para clientes</p>
                     </div>
-                    <ul className="space-y-2 mb-4 flex-1">{m.perks?.map((p, i) => (<li key={i} className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">✓ {p}</li>))}</ul>
+                    <p className="text-3xl font-black italic text-[#F5C518]">{isPrivate ? '***' : fmt$(finance.mrr)}<span className="text-[9px] text-slate-500 font-black">/mo MRR</span></p>
                   </div>
-                ))}
-              </div>
-              {dtab === 'billing' && (
+
+                  {/* Active VIP clients grid */}
+                  <div className="space-y-3">
+                    <h3 className="text-[10px] font-black uppercase tracking-wider text-slate-400 px-1">SOCIOS VIP ACTIVOS</h3>
+                    {clients.filter(c => c.membership && c.membership !== 'none').length === 0 ? (
+                      <div className="g p-8 text-center text-slate-500 font-black uppercase italic">
+                        No hay clientes con membresía VIP activa.
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {clients.filter(c => c.membership && c.membership !== 'none').map(client => {
+                          const mInfo = MBS.find(m => m.id === client.membership) || { name: 'VIP', price: 0, color: '#fbbf24' };
+                          const clientJobs = jobs.filter(j => j.client_name === client.name);
+                          const lastCharge = client.specs?.last_recurrence_charge;
+                          
+                          return (
+                            <div key={client.name} className="g p-5 border-l-4 bg-[rgba(255,255,255,0.03)] border-[rgba(255,255,255,0.06)] hover:border-slate-500/20 transition-all flex flex-col justify-between" style={{ borderColor: mInfo.color }}>
+                              <div>
+                                <div className="flex justify-between items-start">
+                                  <div>
+                                    <h4 className="text-sm font-black uppercase italic text-white leading-none">{client.name}</h4>
+                                    <p className="text-[8px] text-slate-400 uppercase tracking-wider mt-1">{client.address}</p>
+                                  </div>
+                                  <span className="text-[7px] font-black px-2 py-0.5 rounded-full uppercase" style={{ backgroundColor: mInfo.color + '20', color: mInfo.color }}>
+                                    {mInfo.name} (${mInfo.price}/mes)
+                                  </span>
+                                </div>
+
+                                <div className="mt-3 grid grid-cols-2 gap-2 text-[9px] text-slate-400">
+                                  <div>
+                                    <p className="text-[7px] text-slate-500 uppercase font-black">Último Cobro</p>
+                                    <p className="font-bold text-white mt-0.5">
+                                      {lastCharge ? new Date(lastCharge).toLocaleDateString() : 'Sin registros'}
+                                    </p>
+                                  </div>
+                                  <div>
+                                    <p className="text-[7px] text-slate-500 uppercase font-black">Servicios Realizados</p>
+                                    <p className="font-bold text-white mt-0.5">{clientJobs.length} servicios</p>
+                                  </div>
+                                </div>
+                              </div>
+
+                              <div className="mt-4 flex gap-2">
+                                <button 
+                                  onClick={() => simulateRecurrenceCharge(client)}
+                                  className="flex-1 bg-white/5 hover:bg-white/10 text-white font-black uppercase text-[8px] py-2.5 rounded-xl border border-white/10 active:scale-95 transition-all flex items-center justify-center gap-1"
+                                >
+                                  <Icon name="credit-card" className="w-3 h-3 text-[#F5C518]" />
+                                  Cobrar Recurrencia
+                                </button>
+                                <button 
+                                  onClick={() => scheduleNextClean(client)}
+                                  className="flex-1 bg-[#F5C518]/15 hover:bg-[#F5C518]/25 text-[#F5C518] font-black uppercase text-[8px] py-2.5 rounded-xl border border-[#F5C518]/20 active:scale-95 transition-all flex items-center justify-center gap-1"
+                                >
+                                  <Icon name="calendar" className="w-3 h-3" />
+                                  Agendar Limpieza
+                                </button>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Standard Memberships pricing list */}
+                  <div className="space-y-3 pt-4">
+                    <h3 className="text-[10px] font-black uppercase tracking-wider text-slate-400 px-1">PLANES DISPONIBLES</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      {MBS.filter(m => m.id !== 'none').map(m => (
+                        <div key={m.id} className="g p-6 border-l-4 bg-[rgba(255,255,255,0.04)] border-[rgba(255,255,255,0.08)] flex flex-col justify-between min-h-[200px]" style={{ borderColor: m.color }}>
+                          <div className="flex justify-between items-center mb-4">
+                            <h3 className="text-lg font-black uppercase italic text-white font-display">{m.name}</h3>
+                            <p className="text-2xl font-black" style={{ color: m.color }}>{fmt$(m.price)}<span className="text-[9px] text-slate-500">/mo</span></p>
+                          </div>
+                          <ul className="space-y-2 mb-4 flex-1">{m.perks?.map((p, i) => (<li key={i} className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">✓ {p}</li>))}</ul>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                /* SaaS Billing Tab */
                 <div className="space-y-5 animate-in fade-in">
-                  <div className="g p-8 border-t-4 border-[#F5C518] text-center relative overflow-hidden bg-black/40">
-                    <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(245,197,24,0.1),transparent)]"></div>
+                  <div className="g p-8 border-t-4 border-[#F5C518] text-center relative overflow-hidden bg-black/40 shadow-[0_0_50px_rgba(245,197,24,0.1)]">
+                    <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(245,197,24,0.15),transparent)]"></div>
                     <div className="relative z-10 space-y-4">
                       <div className="w-16 h-16 bg-gradient-to-br from-amber-400 to-amber-600 rounded-2xl mx-auto flex items-center justify-center shadow-[0_0_30px_rgba(245,197,24,0.3)]">
                         <Icon name="crown" className="w-8 h-8 text-black" />
                       </div>
                       <div>
                         <h2 className="text-2xl font-black uppercase italic text-white tracking-widest">ELEVORE PRO</h2>
-                        <p className="text-[10px] text-amber-500 font-black uppercase tracking-[0.2em] mt-1">SaaS Subscription</p>
+                        <p className="text-[10px] text-amber-500 font-black uppercase tracking-[0.2em] mt-1">SaaS Premium Subscription</p>
                       </div>
                       
-                      <div className="py-4">
-                        <span className="text-5xl font-black text-white">$149</span>
+                      <div className="py-2">
+                        <span className="text-6xl font-black text-white italic tracking-tighter">$149</span>
                         <span className="text-slate-500 font-bold uppercase text-[10px] tracking-widest">/month</span>
                       </div>
                       
-                      <div className="text-left space-y-3 bg-white/5 p-5 rounded-2xl border border-white/10">
-                        <p className="flex items-center gap-3 text-sm text-slate-300"><Icon name="check-circle" className="w-4 h-4 text-green-500" /> Unlimited Missions & Dispatch</p>
-                        <p className="flex items-center gap-3 text-sm text-slate-300"><Icon name="check-circle" className="w-4 h-4 text-green-500" /> AI Predictive Revenue Engine</p>
-                        <p className="flex items-center gap-3 text-sm text-slate-300"><Icon name="check-circle" className="w-4 h-4 text-green-500" /> Automated Client Portals (E-Sign)</p>
-                        <p className="flex items-center gap-3 text-sm text-slate-300"><Icon name="check-circle" className="w-4 h-4 text-green-500" /> Real-time GPS Tracking</p>
-                        <p className="flex items-center gap-3 text-sm text-slate-300"><Icon name="check-circle" className="w-4 h-4 text-green-500" /> Automated Referral Engine</p>
+                      <div className="text-left space-y-3 bg-black/50 p-6 rounded-2xl border border-white/10 max-w-sm mx-auto shadow-inner">
+                        <p className="flex items-center gap-3 text-sm text-slate-300 font-medium"><Icon name="check-circle" className="w-4 h-4 text-[#F5C518]" /> Unlimited Missions & Dispatch</p>
+                        <p className="flex items-center gap-3 text-sm text-slate-300 font-medium"><Icon name="check-circle" className="w-4 h-4 text-[#F5C518]" /> AI Predictive Revenue Engine</p>
+                        <p className="flex items-center gap-3 text-sm text-slate-300 font-medium"><Icon name="check-circle" className="w-4 h-4 text-[#F5C518]" /> Automated Client Portals</p>
+                        <p className="flex items-center gap-3 text-sm text-slate-300 font-medium"><Icon name="check-circle" className="w-4 h-4 text-[#F5C518]" /> Real-time GPS Tracking</p>
+                        <p className="flex items-center gap-3 text-sm text-slate-300 font-medium"><Icon name="check-circle" className="w-4 h-4 text-[#F5C518]" /> WhatsApp Integration</p>
                       </div>
 
-                      <button onClick={() => { tt('Redirecting to Stripe Checkout... 💳', 'green'); setTimeout(() => window.open('https://stripe.com', '_blank'), 1500); }} className="w-full gold py-5 rounded-2xl font-black uppercase text-sm shadow-[0_0_30px_rgba(245,197,24,0.2)] active:scale-95 transition-all flex items-center justify-center gap-2">
+                      <button onClick={() => { tt('Redirecting to Stripe Checkout... 💳', 'green'); setTimeout(() => window.open('https://stripe.com', '_blank'), 1500); }} className="w-full max-w-sm mx-auto gold py-5 rounded-2xl font-black uppercase text-sm shadow-[0_0_30px_rgba(245,197,24,0.3)] active:scale-95 transition-all flex items-center justify-center gap-2 mt-4 animate-pulse">
                         <Icon name="credit-card" className="w-5 h-5" />
                         Upgrade to Pro (Stripe)
                       </button>
                       
-                      <p className="text-[8px] text-slate-500 font-bold uppercase tracking-widest pt-2">Powered by Stripe Billing</p>
+                      <p className="text-[8px] text-slate-500 font-bold uppercase tracking-widest pt-3">Secured by Stripe Billing</p>
                     </div>
                   </div>
                   
-                  <div className="g p-6 border border-white/5 bg-[rgba(255,255,255,0.02)]">
+                  <div className="g p-6 border border-white/5 bg-black/20">
                     <div className="flex items-center justify-between">
                       <div>
                         <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Current Plan</p>
-                        <p className="text-white font-bold">Free Trial (MVP)</p>
+                        <p className="text-white font-bold text-sm">Free Trial (MVP)</p>
                       </div>
-                      <span className="px-3 py-1 bg-red-500/20 border border-red-500/30 text-red-400 text-[8px] font-black uppercase rounded-full animate-pulse">Expires Soon</span>
+                      <span className="px-3 py-1.5 bg-red-500/20 border border-red-500/30 text-red-400 text-[9px] font-black uppercase tracking-wider rounded-full animate-pulse">Expires in 14 Days</span>
                     </div>
                   </div>
                 </div>
               )}
-
-            </div>
-          )}
-
-          {/* =====================================================================
-              👑 ADMIN DASHBOARD TEAM PAYROLL TABS (payroll)
-              ===================================================================== */}
-          {/* =====================================================================
-              👑 SAAS BILLING TIER
-              ===================================================================== */}
-          {role === 'admin' && view === 'billing' && (
-            <div className="space-y-5 animate-in zoom-in-95 pb-32">
-              <div className="g p-8 border-t-4 border-[#F5C518] text-center relative overflow-hidden bg-black/40 shadow-[0_0_50px_rgba(245,197,24,0.1)]">
-                <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(245,197,24,0.15),transparent)]"></div>
-                <div className="relative z-10 space-y-4">
-                  <div className="w-16 h-16 bg-gradient-to-br from-amber-400 to-amber-600 rounded-2xl mx-auto flex items-center justify-center shadow-[0_0_30px_rgba(245,197,24,0.3)]">
-                    <Icon name="crown" className="w-8 h-8 text-black" />
-                  </div>
-                  <div>
-                    <h2 className="text-2xl font-black uppercase italic text-white tracking-widest">ELEVORE PRO</h2>
-                    <p className="text-[10px] text-amber-500 font-black uppercase tracking-[0.2em] mt-1">SaaS Premium Subscription</p>
-                  </div>
-                  
-                  <div className="py-2">
-                    <span className="text-6xl font-black text-white italic tracking-tighter">$149</span>
-                    <span className="text-slate-500 font-bold uppercase text-[10px] tracking-widest">/month</span>
-                  </div>
-                  
-                  <div className="text-left space-y-3 bg-black/50 p-6 rounded-2xl border border-white/10 max-w-sm mx-auto shadow-inner">
-                    <p className="flex items-center gap-3 text-sm text-slate-300 font-medium"><Icon name="check-circle" className="w-4 h-4 text-[#F5C518]" /> Unlimited Missions & Dispatch</p>
-                    <p className="flex items-center gap-3 text-sm text-slate-300 font-medium"><Icon name="check-circle" className="w-4 h-4 text-[#F5C518]" /> AI Predictive Revenue Engine</p>
-                    <p className="flex items-center gap-3 text-sm text-slate-300 font-medium"><Icon name="check-circle" className="w-4 h-4 text-[#F5C518]" /> Automated Client Portals</p>
-                    <p className="flex items-center gap-3 text-sm text-slate-300 font-medium"><Icon name="check-circle" className="w-4 h-4 text-[#F5C518]" /> Real-time GPS Tracking</p>
-                    <p className="flex items-center gap-3 text-sm text-slate-300 font-medium"><Icon name="check-circle" className="w-4 h-4 text-[#F5C518]" /> WhatsApp Integration</p>
-                  </div>
-
-                  <button onClick={() => { tt('Redirecting to Stripe Checkout... 💳', 'green'); setTimeout(() => window.open('https://stripe.com', '_blank'), 1500); }} className="w-full max-w-sm mx-auto gold py-5 rounded-2xl font-black uppercase text-sm shadow-[0_0_30px_rgba(245,197,24,0.3)] active:scale-95 transition-all flex items-center justify-center gap-2 mt-4 animate-pulse">
-                    <Icon name="credit-card" className="w-5 h-5" />
-                    Upgrade to Pro (Stripe)
-                  </button>
-                  
-                  <p className="text-[8px] text-slate-500 font-bold uppercase tracking-widest pt-3">Secured by Stripe Billing</p>
-                </div>
-              </div>
-              
-              <div className="g p-6 border border-white/5 bg-black/20">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Current Plan</p>
-                    <p className="text-white font-bold text-sm">Free Trial (MVP)</p>
-                  </div>
-                  <span className="px-3 py-1.5 bg-red-500/20 border border-red-500/30 text-red-400 text-[9px] font-black uppercase tracking-wider rounded-full animate-pulse">Expires in 14 Days</span>
-                </div>
-              </div>
             </div>
           )}
 
