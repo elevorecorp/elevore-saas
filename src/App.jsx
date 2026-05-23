@@ -16,6 +16,98 @@ function Icon({ name, className, style, ...props }) {
   return <LucideIcon className={className} style={style} {...props} />;
 }
 
+// =====================================================================
+// 📊 EMBEDDED CHART ENGINE (Quant SVG Lines & Bars)
+// =====================================================================
+function EmbedChart({ type, data, labels }) {
+  if (!data || !data.length) return null;
+  const maxVal = Math.max(...data, 1);
+  
+  if (type === 'bar') {
+    return (
+      <div className="bg-black/60 border border-white/10 rounded-xl p-3 my-3 text-center shadow-inner">
+        <div className="flex justify-between items-end h-28 gap-2 px-2 pt-4">
+          {data.map((val, idx) => {
+            const hPct = Math.round((val / maxVal) * 100);
+            return (
+              <div key={idx} className="flex-1 flex flex-col items-center group relative h-full justify-end">
+                <div className="absolute bottom-full mb-1 text-[8px] font-mono text-emerald-400 opacity-0 group-hover:opacity-100 transition-opacity bg-black/90 px-1.5 py-0.5 rounded border border-white/10 z-10 pointer-events-none">
+                  ${val.toLocaleString()}
+                </div>
+                <div 
+                  style={{ height: `${Math.max(4, hPct)}%` }}
+                  className="w-full bg-gradient-to-t from-amber-600 to-[#F5C518] rounded-t-sm shadow-[0_0_8px_rgba(245,197,24,0.25)] transition-all duration-500 hover:scale-x-105"
+                />
+                <span className="text-[7px] text-slate-500 mt-1 font-mono leading-none truncate max-w-[40px]">{labels[idx] || ''}</span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  }
+
+  // Line Chart
+  const width = 300;
+  const height = 100;
+  const padding = 15;
+  const points = data.map((val, idx) => {
+    const x = padding + (idx * (width - padding * 2)) / (data.length - 1 || 1);
+    const y = height - padding - (val / maxVal) * (height - padding * 2);
+    return { x, y, val, label: labels[idx] || '' };
+  });
+  
+  const polylinePoints = points.map(p => `${p.x},${p.y}`).join(' ');
+
+  return (
+    <div className="bg-black/60 border border-white/10 rounded-xl p-3 my-3 text-center shadow-inner overflow-hidden">
+      <svg width="100%" height={height} viewBox={`0 0 ${width} ${height}`} className="overflow-visible">
+        <defs>
+          <filter id="goldGlow" x="-20%" y="-20%" width="140%" height="140%">
+            <feDropShadow dx="0" dy="2" stdDeviation="3" floodColor="#F5C518" floodOpacity="0.4"/>
+          </filter>
+          <linearGradient id="goldLineGrad" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0%" stopColor="#d4a310" />
+            <stop offset="100%" stopColor="#F5C518" />
+          </linearGradient>
+        </defs>
+        
+        {/* Horizontal grids */}
+        <line x1={padding} y1={height - padding} x2={width - padding} y2={height - padding} stroke="rgba(255,255,255,0.06)" strokeWidth="1" />
+        <line x1={padding} y1={height/2} x2={width - padding} y2={height/2} stroke="rgba(255,255,255,0.03)" strokeWidth="1" />
+        <line x1={padding} y1={padding} x2={width - padding} y2={padding} stroke="rgba(255,255,255,0.06)" strokeWidth="1" />
+        
+        {/* Spline/Polyline */}
+        <polyline
+          fill="none"
+          stroke="url(#goldLineGrad)"
+          strokeWidth="2"
+          points={polylinePoints}
+          filter="url(#goldGlow)"
+        />
+        
+        {/* Dot nodes */}
+        {points.map((p, idx) => (
+          <g key={idx} className="group cursor-pointer">
+            <circle
+              cx={p.x}
+              cy={p.y}
+              r="3.5"
+              className="fill-[#F5C518] stroke-[#030206] stroke-2 hover:r-5 transition-all"
+            />
+            <text x={p.x} y={height - 2} textAnchor="middle" className="text-[7px] fill-slate-500 font-mono select-none">{p.label}</text>
+            <g className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none">
+              <rect x={p.x - 20} y={p.y - 18} width="40" height="11" rx="3" className="fill-black/90 stroke-white/10 stroke-[0.5px]" />
+              <text x={p.x} y={p.y - 10} textAnchor="middle" className="text-[7.5px] fill-emerald-400 font-mono font-black">${p.val.toLocaleString()}</text>
+            </g>
+          </g>
+        ))}
+      </svg>
+    </div>
+  );
+}
+
+
 // Default constants in case tenant configs are loading
 const DEFAULT_CFG = {
   STAFF_PAY: 0.40,
@@ -5153,6 +5245,9 @@ export default function App() {
   const [copilotInput, setCopilotInput] = useState('');
   const [copilotLoading, setCopilotLoading] = useState(false);
   const [copilotWide, setCopilotWide] = useState(false);
+  const [copilotListening, setCopilotListening] = useState(false);
+  const [speakingMsgIdx, setSpeakingMsgIdx] = useState(null);
+  const recognitionRef = useRef(null);
   const [actLog, setActLog] = useState([]);
   const [rtOn, setRT] = useState(false);
   const [state, setState] = useState(INIT);
@@ -6335,6 +6430,42 @@ Instrucciones generales de formato:
     return `<div class="overflow-x-auto my-3 border border-white/10 rounded-xl bg-black/40"><table class="w-full text-left border-collapse">${headerHtml}${bodyHtml}</table></div>`;
   };
 
+  const parseChartTag = (text) => {
+    if (!text) return [{ type: 'text', content: '' }];
+    const chartRegex = /<Chart\s+type="([^"]+)"\s+data="([^"]+)"\s+labels="([^"]+)"\s*\/?>/g;
+    const parts = [];
+    let lastIndex = 0;
+    let match;
+    
+    while ((match = chartRegex.exec(text)) !== null) {
+      const index = match.index;
+      if (index > lastIndex) {
+        parts.push({ type: 'text', content: text.substring(lastIndex, index) });
+      }
+      
+      const chartType = match[1];
+      const rawData = match[2].replace(/'/g, '"');
+      const rawLabels = match[3].replace(/'/g, '"');
+      
+      try {
+        const chartData = JSON.parse(rawData);
+        const chartLabels = JSON.parse(rawLabels);
+        parts.push({ type: 'chart', chartType, chartData, chartLabels });
+      } catch (e) {
+        console.warn("Failed to parse chart in message:", e, rawData, rawLabels);
+        parts.push({ type: 'text', content: match[0] });
+      }
+      
+      lastIndex = chartRegex.lastIndex;
+    }
+    
+    if (lastIndex < text.length) {
+      parts.push({ type: 'text', content: text.substring(lastIndex) });
+    }
+    
+    return parts.length ? parts : [{ type: 'text', content: text }];
+  };
+
   const renderMarkdown = (text) => {
     if (!text) return '';
     let html = text
@@ -6386,6 +6517,140 @@ Instrucciones generales de formato:
     return html;
   };
 
+  const speakMessage = (text, idx) => {
+    if (speakingMsgIdx === idx) {
+      window.speechSynthesis.cancel();
+      setSpeakingMsgIdx(null);
+      return;
+    }
+    
+    window.speechSynthesis.cancel();
+    setSpeakingMsgIdx(idx);
+    
+    const cleanText = text
+      .replace(/<Chart[^>]*>/g, ' [Presenta un reporte gráfico de datos] ')
+      .replace(/\[CMD\][^\n]*/g, '')
+      .replace(/\*\*([^*]+)\*\*/g, '$1')
+      .replace(/`([^`]+)`/g, '$1');
+
+    const utterance = new SpeechSynthesisUtterance(cleanText);
+    utterance.lang = 'es-MX';
+    utterance.rate = 1.05;
+    utterance.pitch = 0.95;
+    
+    utterance.onend = () => {
+      setSpeakingMsgIdx(null);
+    };
+    utterance.onerror = () => {
+      setSpeakingMsgIdx(null);
+    };
+    
+    window.speechSynthesis.speak(utterance);
+  };
+
+  const toggleCopilotDictation = () => {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      tt('Tu navegador no soporta el reconocimiento de voz.', 'amber');
+      return;
+    }
+
+    if (copilotListening) {
+      recognitionRef.current?.stop();
+      setCopilotListening(false);
+      return;
+    }
+
+    try {
+      const rec = new SpeechRecognition();
+      rec.lang = 'es-ES';
+      rec.interimResults = false;
+      rec.maxAlternatives = 1;
+      
+      rec.onstart = () => {
+        setCopilotListening(true);
+        tt('Dictado activo. Habla ahora...', 'green');
+      };
+      
+      rec.onresult = (event) => {
+        const transcript = event.results[0][0].transcript;
+        setCopilotInput(prev => (prev ? prev + ' ' : '') + transcript);
+      };
+      
+      rec.onerror = (err) => {
+        console.error("Speech recognition error:", err);
+        setCopilotListening(false);
+      };
+      
+      rec.onend = () => {
+        setCopilotListening(false);
+      };
+      
+      recognitionRef.current = rec;
+      rec.start();
+    } catch (e) {
+      console.error(e);
+      setCopilotListening(false);
+    }
+  };
+
+  const executeAICommand = async (cmd) => {
+    const { action, client_name, job_id, team_name } = cmd;
+    try {
+      if (action === 'winback') {
+        const targetJob = jobs.find(j => j.client_name?.toLowerCase().trim() === client_name?.toLowerCase().trim());
+        if (targetJob) {
+          tt(`Desplegando campaña de recuperación para ${client_name}... 🚀`, 'green');
+          await wa(targetJob, 'winback');
+        } else {
+          tt(`No se encontró un trabajo para el cliente ${client_name}.`, 'amber');
+        }
+      } 
+      else if (action === 'upsell') {
+        const targetJob = jobs.find(j => j.client_name?.toLowerCase().trim() === client_name?.toLowerCase().trim());
+        if (targetJob) {
+          tt(`Ofreciendo membresía recurrente a ${client_name}... 👑`, 'green');
+          await offerMembership(targetJob);
+        } else {
+          tt(`No se encontró un trabajo para el cliente ${client_name}.`, 'amber');
+        }
+      } 
+      else if (action === 'print_invoice') {
+        let targetJob = jobs.find(j => j.id === job_id);
+        if (!targetJob && client_name) {
+          targetJob = jobs.find(j => j.client_name?.toLowerCase().trim() === client_name?.toLowerCase().trim());
+        }
+        if (targetJob) {
+          tt(`Imprimiendo factura de ${targetJob.client_name}... 📄`, 'green');
+          printInvoice(targetJob);
+        } else {
+          tt('No se encontró el trabajo para la factura.', 'amber');
+        }
+      }
+      else if (action === 'reassign') {
+        let targetJob = jobs.find(j => j.id === job_id);
+        if (!targetJob && client_name) {
+          targetJob = jobs.find(j => j.client_name?.toLowerCase().trim() === client_name?.toLowerCase().trim());
+        }
+        if (targetJob && team_name) {
+          tt(`Reasignando trabajo de ${targetJob.client_name} a ${team_name}... 👥`, 'green');
+          const { error } = await sb.from('jobs').update({ team_assigned: team_name }).eq('id', targetJob.id);
+          if (!error) {
+            tt(`Trabajo de ${targetJob.client_name} reasignado a ${team_name} exitosamente! 🚀`, 'green');
+            refresh();
+          } else {
+            tt(`Error al reasignar en Supabase: ${error.message}`, 'red');
+          }
+        } else {
+          tt('No se encontró el trabajo o equipo especificado.', 'amber');
+        }
+      }
+    } catch (e) {
+      console.error("Error running AI command:", e);
+      tt("Error al ejecutar acción del copiloto", "red");
+    }
+  };
+
   const handleCopilot = async (e) => {
     e.preventDefault();
     if (!copilotInput.trim()) return;
@@ -6395,6 +6660,71 @@ Instrucciones generales de formato:
     setCopilotLoading(true);
 
     try {
+      // 1. REGRESIÓN LINEAL (PREDICTIVA)
+      const monthlyTrendValues = finance.mb2.map(item => item.v || 0);
+      const nTrend = monthlyTrendValues.length;
+      let sumX = 0, sumY = 0, sumXY = 0, sumXX = 0;
+      for (let i = 0; i < nTrend; i++) {
+        sumX += i;
+        sumY += monthlyTrendValues[i];
+        sumXY += i * monthlyTrendValues[i];
+        sumXX += i * i;
+      }
+      const slope = (nTrend * sumXY - sumX * sumY) / (nTrend * sumXX - sumX * sumX || 1);
+      const intercept = (sumY - slope * sumX) / nTrend;
+      const predictedNextMonth = Math.max(0, Math.round(slope * nTrend + intercept));
+      const forecastSlopeText = slope > 0 
+        ? `CRECIENTE (+$${Math.round(slope).toLocaleString()}/mes)` 
+        : slope < 0 
+          ? `DECRECIENTE (-$${Math.round(Math.abs(slope)).toLocaleString()}/mes)` 
+          : 'ESTABLE';
+
+      // 2. RIESGOS DE CHURN INDIVIDUALES
+      const clientRiskScores = clients.map(c => {
+        const clientJobs = jobs.filter(j => j.client_name === c.name && j.status === 'paid');
+        if (!clientJobs.length) return { name: c.name, score: 50, days: 'Sin servicios pagados' };
+        const lastJob = clientJobs.sort((a, b) => new Date(b.scheduled_date || 0) - new Date(a.scheduled_date || 0))[0];
+        const daysSinceLast = dAgo(lastJob.scheduled_date);
+        const score = Math.min(100, Math.max(0, Math.round(((daysSinceLast - 30) / 60) * 100)));
+        return { name: c.name, score, days: daysSinceLast };
+      }).sort((a, b) => b.score - a.score);
+      const highRiskClients = clientRiskScores.filter(r => r.score >= 60).slice(0, 5);
+
+      // 3. RAG LOCAL (BASE DE CONOCIMIENTO)
+      const SOPS = [
+        { topic: "Parche de Drywall / Yeso", keyword: "drywall yeso parche pared hueco", content: "SOP Huecos en pared (Drywall): 1. Recortar la sección dañada en un cuadrado limpio. 2. Colocar un respaldo de madera atornillado si el hueco es >3 pulgadas. 3. Fijar el parche de yeso nuevo. 4. Aplicar cinta de fibra de vidrio en las uniones. 5. Cubrir con compuesto para juntas en 2 capas. 6. Lijar hasta que quede liso y pintar." },
+        { topic: "Remoción de manchas en alfombras", keyword: "alfombra mancha olor suciedad orina te pet", content: "SOP Limpieza de Alfombras: 1. Secar la mancha de inmediato con toalla limpia, sin frotar. 2. Tratar con eliminador enzimático para mascotas si hay olor. 3. Para manchas de café/vino, usar mezcla de vinagre blanco, lavaplatos y agua tibia. 4. Extraer el líquido con máquina aspiradora de agua. 5. Secar con ventilador." },
+        { topic: "Manejo de clientes difíciles", keyword: "cliente enojado queja dificil conflicto reclamo", content: "SOP Gestión de Conflictos: 1. Escuchar sin interrumpir y asentar con la cabeza. 2. Decir: 'Entiendo perfectamente su frustración y lo solucionaremos'. 3. Nunca discutir o culpar al empleado. 4. Ofrecer garantía de satisfacción (rehacer el área afectada gratis). 5. Documentar e informar al administrador." },
+        { topic: "Procedimiento de Check-in en Campo", keyword: "checkin entrada llegada retraso gps", content: "SOP Registro de Entrada (Check-in): El equipo debe marcar check-in al llegar a la propiedad. Si hay retraso >15 mins, notificar al cliente vía SMS/WhatsApp usando la plantilla de retraso. Registrar fotos del estado 'antes' de iniciar." },
+        { topic: "Limpieza de Hornos por dentro", keyword: "horno cocina grasa profundo", content: "SOP Limpieza de Horno: 1. Aplicar desengrasante industrial sobre las paredes internas del horno frío. 2. Dejar actuar por 20 minutos. 3. Retirar las rejillas y restregarlas por separado. 4. Limpiar el interior con fibra no abrasiva para evitar rayones. 5. Enjuagar con paño húmedo hasta retirar residuos químicos." }
+      ];
+
+      const clientNotes = clients.filter(c => c.specs && (c.specs.notes || c.specs.entryCode || c.specs.pets)).map(c => ({
+        topic: `Nota de cliente: ${c.name}`,
+        keyword: `${c.name.toLowerCase()} mascotas entrada codigo notas`,
+        content: `Cliente: ${c.name} | Mascotas: ${c.specs.pets || 'Ninguna'} | Código entrada: ${c.specs.entryCode || 'No especificado'} | Notas: ${c.specs.notes || 'Ninguna'}`
+      }));
+
+      const queryWords = userText.toLowerCase().split(/\s+/).filter(w => w.length > 2);
+      const searchResults = [...SOPS, ...clientNotes].map(item => {
+        let score = 0;
+        queryWords.forEach(word => {
+          if (item.keyword.toLowerCase().includes(word) || item.topic.toLowerCase().includes(word)) {
+            score += 2;
+          }
+          if (item.content.toLowerCase().includes(word)) {
+            score += 1;
+          }
+        });
+        return { ...item, score };
+      }).filter(item => item.score > 0)
+        .sort((a, b) => b.score - a.score)
+        .slice(0, 2);
+      
+      const ragContextText = searchResults.length > 0
+        ? `INFORMACIÓN DE SOPORTE RECUPERADA (RAG Local):\n${searchResults.map(r => `[KNOWLEDGE: ${r.topic}] ${r.content}`).join('\n')}`
+        : 'No se encontró información de SOPs o notas de clientes relevante a la consulta del usuario.';
+
       const ollamaUrl = localStorage.getItem('elevore_ollama_url') || 'http://127.0.0.1:11434';
       const ollamaModel = localStorage.getItem('elevore_ollama_model') || 'llama3';
       
@@ -6402,6 +6732,14 @@ Instrucciones generales de formato:
 Tus respuestas deben ser ultra-analíticas, orientadas a datos, precisas y profesionales (al estilo de Goldman Sachs o McKinsey). Utiliza términos de finanzas corporativas (LTV/CAC, MRR, ROI, Margen Neto, Churn).
 Sé directo al grano: felicita los logros, pero critica severamente las ineficiencias financieras (como CAC alto, bajo LTV, fugas en el embudo de ventas, o canales de marketing con ROI negativo).
 Cuando sea oportuno, formatea tus recomendaciones en tablas de markdown, listas estructuradas con viñetas o resúmenes ejecutivos numéricos.
+
+=== ANÁLISIS PREDICTIVO (FORECAST MODEL) ===
+- Pendiente de Ingresos (Últimos 6 meses): ${forecastSlopeText}
+- Predicción de Facturación Próximo Mes: $${predictedNextMonth.toLocaleString()} USD
+- Clientes con Mayor Probabilidad de Churn (Riesgo): ${JSON.stringify(highRiskClients.map(c => `${c.name} (${c.score}% riesgo, ${c.days} días inactivo)`))}
+
+=== CONTEXTO ADICIONAL DE BASE DE CONOCIMIENTO (RAG) ===
+${ragContextText}
 
 DATOS FINANCIEROS Y OPERATIVOS DE ${tenantName} PARA TU ANÁLISIS:
 - Ingresos Brutos Totales: $${finance.gross.toLocaleString()} USD
@@ -6432,7 +6770,17 @@ ${finance.churn.length > 0 ? finance.churn.map(c => `- ${c.name}`).join('\n') : 
 Razones de Leads Perdidos: ${JSON.stringify(finance.lostReasons)}
 Nómina pagada acumulada por empleado: ${JSON.stringify(finance.payroll)}
 
-¡Instrucción adicional: Sé sofisticado, pragmático y habla con la máxima autoridad de un banquero de inversión! Responde siempre en español.`;
+=== ETIQUETAS ESPECIALES DE RESPUESTA (CRÍTICO) ===
+1. GRÁFICOS SVG: Si el usuario te pide ver un gráfico, tendencia, o desglose visual de datos, responde incluyendo una etiqueta de gráfico SVG en tu respuesta con el formato exacto:
+   \`<Chart type="bar" data="[val1, val2, ...]" labels="['tag1', 'tag2', ...]" />\` o
+   \`<Chart type="line" data="[val1, val2, ...]" labels="['tag1', 'tag2', ...]" />\`
+   donde data es un array de números y labels es un array de strings.
+2. COMANDOS DE ACCIÓN DIRECTA: Si el usuario solicita explícitamente realizar una acción, al final de tu respuesta (o como tu única respuesta) debes incluir exactamente la etiqueta:
+   \`[CMD] {"action": "winback|upsell|print_invoice|reassign", "client_name": "nombre_cliente", "job_id": "id_trabajo_si_aplica", "team_name": "nombre_equipo_si_reasigna"}\`
+   No pongas texto largo explicativo si el usuario te pidió realizar la acción, sé sumamente rápido y directo.
+
+
+¡Responde con el estilo característico de Wall Street: sofisticado, directo al grano y enfocado en la rentabilidad! Responde siempre en español.`;
 
       const res = await fetch(`${ollamaUrl}/api/chat`, {
         method: 'POST',
@@ -6450,7 +6798,19 @@ Nómina pagada acumulada por empleado: ${JSON.stringify(finance.payroll)}
       });
       if (!res.ok) throw new Error('Error al conectar con la IA');
       const data = await res.json();
-      setCopilotMsgs(prev => [...prev, { role: 'assistant', content: data.message?.content || 'Sin respuesta' }]);
+      const resContent = data.message?.content || 'Sin respuesta';
+      
+      const cmdMatch = resContent.match(/\[CMD\]\s*(\{.*\})/);
+      if (cmdMatch) {
+        try {
+          const cmdJson = JSON.parse(cmdMatch[1]);
+          executeAICommand(cmdJson);
+        } catch (e) {
+          console.error("Failed to parse command JSON:", e, cmdMatch[1]);
+        }
+      }
+
+      setCopilotMsgs(prev => [...prev, { role: 'assistant', content: resContent }]);
     } catch (err) {
       setCopilotMsgs(prev => [...prev, { role: 'assistant', content: `Error: ${err.message}. Asegúrate de que Ollama esté corriendo.` }]);
     }
@@ -9272,20 +9632,49 @@ Respond ONLY in this exact JSON format (no explanation, no markdown, just raw JS
                     <div className="flex-1 p-4 overflow-y-auto custom-scroll flex flex-col gap-3">
                       {copilotMsgs.map((m, i) => (
                         <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                          <div className={`max-w-[90%] p-3 rounded-2xl text-xs ${
-                            m.role === 'user' 
-                              ? 'bg-gradient-to-r from-amber-500 to-[#F5C518] text-black font-semibold rounded-br-none shadow-[0_4px_12px_rgba(245,197,24,0.15)]' 
-                              : 'bg-white/5 text-white border border-white/10 rounded-bl-none'
-                          }`}>
-                            {m.role === 'user' ? (
-                              m.content
-                            ) : (
-                              <div 
-                                className="markdown-content flex flex-col gap-1 text-[11px] leading-relaxed text-white/90"
-                                dangerouslySetInnerHTML={{ __html: renderMarkdown(m.content) }}
-                              />
-                            )}
-                          </div>
+                          {m.role === 'user' ? (
+                            <div className="max-w-[90%] p-3 rounded-2xl text-xs bg-gradient-to-r from-amber-500 to-[#F5C518] text-black font-semibold rounded-br-none shadow-[0_4px_12px_rgba(245,197,24,0.15)]">
+                              {m.content}
+                            </div>
+                          ) : (
+                            <div className="group relative flex flex-col items-start max-w-[90%]">
+                              <div className="p-3 rounded-2xl text-xs bg-white/5 text-white border border-white/10 rounded-bl-none w-full">
+                                <div className="flex flex-col gap-1 text-[11px] leading-relaxed text-white/90">
+                                  {parseChartTag(m.content).map((part, pIdx) => {
+                                    if (part.type === 'chart') {
+                                      return (
+                                        <EmbedChart 
+                                          key={pIdx} 
+                                          type={part.chartType} 
+                                          data={part.chartData} 
+                                          labels={part.chartLabels} 
+                                        />
+                                      );
+                                    }
+                                    return (
+                                      <div 
+                                        key={pIdx}
+                                        className="markdown-content"
+                                        dangerouslySetInnerHTML={{ __html: renderMarkdown(part.content) }}
+                                      />
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => speakMessage(m.content, i)}
+                                className={`mt-1 text-[8px] flex items-center gap-1 transition-all px-1.5 py-0.5 rounded cursor-pointer ${
+                                  speakingMsgIdx === i 
+                                    ? 'text-red-400 bg-red-400/10 border border-red-400/20 animate-pulse' 
+                                    : 'text-slate-400 hover:text-[#F5C518] hover:bg-white/5'
+                                }`}
+                              >
+                                <Icon name={speakingMsgIdx === i ? "square" : "volume-2"} className="w-2.5 h-2.5" />
+                                <span>{speakingMsgIdx === i ? "Detener Audio" : "Escuchar Reporte"}</span>
+                              </button>
+                            </div>
+                          )}
                         </div>
                       ))}
                       {copilotLoading && (
@@ -9322,12 +9711,24 @@ Respond ONLY in this exact JSON format (no explanation, no markdown, just raw JS
                     </div>
 
                     {/* Chat Input */}
-                    <form onSubmit={handleCopilot} className="p-3 border-t border-white/10 bg-black/60 flex gap-2">
+                    <form onSubmit={handleCopilot} className="p-3 border-t border-white/10 bg-black/60 flex gap-2 items-center">
+                      <button
+                        type="button"
+                        onClick={toggleCopilotDictation}
+                        className={`w-10 h-10 rounded-xl flex items-center justify-center border transition-all active:scale-95 cursor-pointer ${
+                          copilotListening 
+                            ? 'bg-red-500/20 text-red-500 border-red-500/40 animate-pulse shadow-[0_0_15px_rgba(239,68,68,0.3)]' 
+                            : 'bg-white/5 text-slate-400 border-white/10 hover:text-white hover:border-white/20'
+                        }`}
+                        title="Dictar por voz"
+                      >
+                        <Icon name="mic" className="w-4 h-4" />
+                      </button>
                       <input
                         type="text"
                         value={copilotInput}
                         onChange={e => setCopilotInput(e.target.value)}
-                        placeholder="Pregúntale a James Sterling..."
+                        placeholder={copilotListening ? "Escuchando dictado..." : "Pregúntale a James Sterling..."}
                         className="flex-1 bg-white/5 border border-white/10 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-[#F5C518] focus:bg-white/[0.08] transition-all placeholder-slate-500"
                       />
                       <button type="submit" disabled={copilotLoading} className="w-10 h-10 bg-[#F5C518] hover:bg-[#E5B508] disabled:opacity-40 disabled:hover:bg-[#F5C518] text-black rounded-xl flex items-center justify-center hover:scale-105 active:scale-95 transition-all shadow-[0_0_15px_rgba(245,197,24,0.25)] cursor-pointer">
