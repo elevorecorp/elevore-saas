@@ -6700,6 +6700,36 @@ Instrucciones generales de formato:
         { topic: "Procedimiento de Check-in en Campo", keyword: "checkin entrada llegada retraso gps", content: "SOP Registro de Entrada (Check-in): El equipo debe marcar check-in al llegar a la propiedad. Si hay retraso >15 mins, notificar al cliente vía SMS/WhatsApp usando la plantilla de retraso. Registrar fotos del estado 'antes' de iniciar." },
         { topic: "Limpieza de Hornos por dentro", keyword: "horno cocina grasa profundo", content: "SOP Limpieza de Horno: 1. Aplicar desengrasante industrial sobre las paredes internas del horno frío. 2. Dejar actuar por 20 minutos. 3. Retirar las rejillas y restregarlas por separado. 4. Limpiar el interior con fibra no abrasiva para evitar rayones. 5. Enjuagar con paño húmedo hasta retirar residuos químicos." }
       ];
+
+      const clientNotes = clients.filter(c => c.specs && (c.specs.notes || c.specs.entryCode || c.specs.pets)).map(c => ({
+        topic: `Nota de cliente: ${c.name}`,
+        keyword: `${c.name.toLowerCase()} mascotas entrada codigo notas`,
+        content: `Cliente: ${c.name} | Mascotas: ${c.specs.pets || 'Ninguna'} | Código entrada: ${c.specs.entryCode || 'No especificado'} | Notas: ${c.specs.notes || 'Ninguna'}`
+      }));
+
+      const queryWords = userText.toLowerCase().split(/\s+/).filter(w => w.length > 2);
+      const searchResults = [...SOPS, ...clientNotes].map(item => {
+        let score = 0;
+        queryWords.forEach(word => {
+          if (item.keyword.toLowerCase().includes(word) || item.topic.toLowerCase().includes(word)) {
+            score += 2;
+          }
+          if (item.content.toLowerCase().includes(word)) {
+            score += 1;
+          }
+        });
+        return { ...item, score };
+      }).filter(item => item.score > 0)
+        .sort((a, b) => b.score - a.score)
+        .slice(0, 2);
+      
+      const ragContextText = searchResults.length > 0
+        ? `INFORMACIÓN DE SOPORTE RECUPERADA (RAG Local):\n${searchResults.map(r => `[KNOWLEDGE: ${r.topic}] ${r.content}`).join('\n')}`
+        : 'No se encontró información de SOPs o notas de clientes relevante a la consulta del usuario.';
+
+      const ollamaUrl = localStorage.getItem('elevore_ollama_url') || 'http://127.0.0.1:11434';
+      const ollamaModel = localStorage.getItem('elevore_ollama_model') || 'llama3';
+
       const systemPrompt = view === 'landing' ? `Eres James Sterling, un brillante y sofisticado Consultor de Crecimiento Empresarial de Wall Street y Agente de Ventas de Elevore Empire.
 Tu objetivo en este chat público es convencer al visitante del sitio web de Elevore Empire de registrarse en nuestra plataforma SaaS Premium.
 Habla en español con un tono elegante, sofisticado, persuasivo y corporativo. Explica con entusiasmo cómo Elevore ayuda a los negocios de servicios para el hogar (cleaning, handymen, HVAC, landscaping) a automatizar sus operaciones, controlar la calidad y multiplicar sus ingresos en piloto automático.
