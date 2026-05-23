@@ -6978,7 +6978,432 @@ Instrucciones generales de formato:
     );
   };
 
-  if (view === 'landing') return <LandingPage onLogin={() => setView('auth')} onSignup={() => setView('signup')} />;
+  const renderCopilot = () => {
+    if (role !== 'admin' && view !== 'landing') return null;
+    return (
+      <>
+        <button
+          onClick={() => setCopilotOpen(!copilotOpen)}
+          className="fixed bottom-6 right-6 z-[3000] w-14 h-14 bg-gradient-to-r from-amber-500 to-[#F5C518] rounded-full flex items-center justify-center shadow-[0_0_30px_rgba(245,197,24,0.4)] hover:scale-110 active:scale-95 transition-all text-black"
+        >
+          <Icon name="cpu" className="w-6 h-6" />
+        </button>
+
+        {copilotOpen && (
+          <div className={`fixed bottom-24 right-6 z-[3000] ${copilotWide ? 'w-[850px]' : 'w-96'} h-[550px] bg-[#030206]/95 backdrop-blur-2xl border border-[#F5C518]/20 rounded-2xl shadow-[0_0_50px_rgba(245,197,24,0.15)] overflow-hidden flex flex-col transition-all duration-300 animate-in slide-in-from-bottom-5`}>
+            {/* Header */}
+            <div className="p-4 border-b border-white/10 bg-gradient-to-r from-amber-500/25 via-transparent to-transparent flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-lg bg-[#F5C518]/20 flex items-center justify-center border border-[#F5C518]/30">
+                  <Icon name="cpu" className="w-4 h-4 text-[#F5C518]" />
+                </div>
+                <div>
+                  <h3 className="text-[10px] font-black text-white uppercase tracking-widest leading-none">
+                    {view === 'landing' ? 'Elevore SaaS Advisor' : 'Elevore Quant Core // v2'}
+                  </h3>
+                  <p className="text-[7px] text-[#F5C518] font-black uppercase tracking-widest mt-1.5 animate-pulse">
+                    {view === 'landing' ? 'Public Sales Agent - Online' : 'James Sterling Engine - Online'}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <button 
+                  onClick={() => setCopilotWide(!copilotWide)} 
+                  className="text-slate-400 hover:text-[#F5C518] transition-colors p-1.5 rounded-lg hover:bg-white/5 cursor-pointer"
+                  title={copilotWide ? "Contraer Chat" : "Expandir Calculadora de ROI"}
+                  type="button"
+                >
+                  <Icon name={copilotWide ? "minimize-2" : "maximize-2"} className="w-3.5 h-3.5" />
+                </button>
+                <button 
+                  onClick={() => setCopilotOpen(false)} 
+                  className="text-slate-400 hover:text-red-400 transition-colors p-1.5 rounded-lg hover:bg-white/5 cursor-pointer"
+                  type="button"
+                >
+                  <Icon name="x" className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </div>
+
+            {/* Looping Financial Ticker */}
+            <div className="bg-black/95 border-b border-white/10 px-3 py-1 overflow-hidden whitespace-nowrap text-[9px] font-mono text-emerald-400 select-none flex items-center relative shadow-inner h-6">
+              <div className="animate-ticker inline-flex items-center gap-6">
+                {[1, 2].map((loopIdx) => (
+                  <React.Fragment key={loopIdx}>
+                    {view === 'landing' ? (
+                      <>
+                        <span>Status: <strong className="text-white">ACTIVE</strong></span>
+                        <span className="text-[#F5C518]">•</span>
+                        <span>Empires Active: <strong className="text-white">1,420+</strong></span>
+                        <span className="text-[#F5C518]">•</span>
+                        <span>Avg. Growth: <strong className="text-white">+38%</strong></span>
+                        <span className="text-[#F5C518]">•</span>
+                        <span>LTV/CAC: <strong className="text-white">4.8x</strong></span>
+                        <span className="text-[#F5C518]">•</span>
+                        <span>Uptime: <strong className="text-white">99.99%</strong></span>
+                        <span className="text-[#F5C518]">•</span>
+                        <span>Automated Today: <strong className="text-white">18,429</strong></span>
+                        <span className="text-[#F5C518]">•</span>
+                      </>
+                    ) : (
+                      <>
+                        <span>MRR: <strong className="text-white">${finance.mrr.toLocaleString()}</strong></span>
+                        <span className="text-[#F5C518]">•</span>
+                        <span>LTV/CAC: <strong className="text-white">${finance.ltvCacRatio}x</strong></span>
+                        <span className="text-[#F5C518]">•</span>
+                        <span>Margen: <strong className="text-white">${finance.profitMargin}%</strong></span>
+                        <span className="text-[#F5C518]">•</span>
+                        <span>Churn: <strong className={`${finance.churnRate > 15 ? "text-red-400" : "text-white"}`}>${finance.churnRate}%</strong></span>
+                        <span className="text-[#F5C518]">•</span>
+                        <span>NPS: <strong className="text-white">${finance.nps}</strong></span>
+                        <span className="text-[#F5C518]">•</span>
+                        <span>Neto: <strong className="text-emerald-400">${finance.net.toLocaleString()}</strong></span>
+                        <span className="text-[#F5C518]">•</span>
+                        <span>Proyección: <strong className="text-white">${finance.proj.toLocaleString()}</strong></span>
+                        <span className="text-[#F5C518]">•</span>
+                        <span>Meta: <strong className="text-white">${(tenantSettings?.monthly_goal || 15000).toLocaleString()}</strong></span>
+                        <span className="text-[#F5C518]">•</span>
+                      </>
+                    )}
+                  </React.Fragment>
+                ))}
+              </div>
+            </div>
+
+            {/* Central Pane */}
+            <div className="flex-1 flex overflow-hidden min-h-0">
+              {/* Left Side: Chat Messages */}
+              <div className="flex-1 flex flex-col min-w-0 bg-[#06050a]/30">
+                <div className="flex-1 p-4 overflow-y-auto custom-scroll flex flex-col gap-3">
+                  {copilotMsgs.map((m, i) => (
+                    <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                      {m.role === 'user' ? (
+                        <div className="max-w-[90%] p-3 rounded-2xl text-xs bg-gradient-to-r from-amber-500 to-[#F5C518] text-black font-semibold rounded-br-none shadow-[0_4px_12px_rgba(245,197,24,0.15)]">
+                          {m.content}
+                        </div>
+                      ) : (
+                        <div className="group relative flex flex-col items-start max-w-[90%]">
+                          <div className="p-3 rounded-2xl text-xs bg-white/5 text-white border border-white/10 rounded-bl-none w-full">
+                            <div className="flex flex-col gap-1 text-[11px] leading-relaxed text-white/90">
+                              {parseChartTag(m.content).map((part, pIdx) => {
+                                if (part.type === 'chart') {
+                                  return (
+                                    <EmbedChart 
+                                      key={pIdx} 
+                                      type={part.chartType} 
+                                      data={part.chartData} 
+                                      labels={part.chartLabels} 
+                                    />
+                                  );
+                                }
+                                return (
+                                  <div 
+                                    key={pIdx}
+                                    className="markdown-content"
+                                    dangerouslySetInnerHTML={{ __html: renderMarkdown(part.content) }}
+                                  />
+                                );
+                              })}
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => speakMessage(m.content, i)}
+                            className={`mt-1 text-[8px] flex items-center gap-1 transition-all px-1.5 py-0.5 rounded cursor-pointer ${
+                              speakingMsgIdx === i 
+                                ? 'text-red-400 bg-red-400/10 border border-red-400/20 animate-pulse' 
+                                : 'text-slate-400 hover:text-[#F5C518] hover:bg-white/5'
+                            }`}
+                          >
+                            <Icon name={speakingMsgIdx === i ? "square" : "volume-2"} className="w-2.5 h-2.5" />
+                            <span>{speakingMsgIdx === i ? "Detener Audio" : "Escuchar Reporte"}</span>
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                  {copilotLoading && (
+                    <div className="flex justify-start">
+                      <div className="bg-white/5 border border-white/10 text-white rounded-2xl rounded-bl-none p-3 flex gap-1.5 items-center">
+                        <div className="w-1.5 h-1.5 bg-[#F5C518] rounded-full animate-bounce"></div>
+                        <div className="w-1.5 h-1.5 bg-[#F5C518] rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                        <div className="w-1.5 h-1.5 bg-[#F5C518] rounded-full animate-bounce" style={{ animationDelay: '0.4s' }}></div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Suggestion Chips */}
+                <div className="px-3 pb-2 pt-1 border-t border-white/5 bg-black/20 overflow-x-auto flex gap-1.5 custom-scroll scrollbar-none select-none">
+                  {view === 'landing' ? (
+                    [
+                      { label: '🚀 ROI Elevore', prompt: 'Haz una simulación de ROI personalizada para mi negocio usando Elevore.' },
+                      { label: '💎 Ver Planes', prompt: 'Explícame detalladamente qué incluye cada plan y cuál me conviene.' },
+                      { label: '🌟 Ventajas', prompt: '¿Cuáles son las 3 ventajas principales de Elevore frente a la competencia?' },
+                      { label: '📱 Demo GPS', prompt: '¿Cómo funciona el rastreo GPS en tiempo real de los equipos?' }
+                    ].map((chip, idx) => (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => {
+                          setCopilotInput(chip.prompt);
+                        }}
+                        className="px-2.5 py-1 bg-white/5 hover:bg-[#F5C518]/10 hover:border-[#F5C518]/30 border border-white/10 rounded-full text-[9px] font-bold text-slate-300 hover:text-[#F5C518] transition-all whitespace-nowrap active:scale-95 cursor-pointer"
+                      >
+                        {chip.label}
+                      </button>
+                    ))
+                  ) : (
+                    [
+                      { label: '📊 ROI Mkt', prompt: 'Haz un análisis cuantitativo riguroso sobre el ROI de nuestros canales de adquisición y dime cuál deberíamos duplicar o cancelar.' },
+                      { label: '💡 Plan LTV', prompt: `Dame un plan financiero estilo Wall Street para duplicar nuestro LTV/CAC ratio, analizando el LTV actual de ${finance.avgLTV} y CAC de ${finance.avgCAC}.` },
+                      { label: '🎯 VIP Upsell', prompt: `Identifica qué clientes VIP deberíamos convencer para pasarse a membresías recurrentes. Analiza a nuestros mejores candidatos: ${finance.mbTargets.slice(0,5).map(c=>c.name).join(', ')}.` },
+                      { label: '🚨 Winback', prompt: `Genera una estrategia de campaña de recuperación (Winback) para recuperar los clientes inactivos. Analiza a: ${finance.churn.slice(0,5).map(c=>c.name).join(', ')}.` },
+                      { label: '📉 Forense Churn', prompt: `Analiza nuestra tasa de churn del ${finance.churnRate}% y genera un reporte forense detallado con acciones mitigantes.` }
+                    ].map((chip, idx) => (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => {
+                          setCopilotInput(chip.prompt);
+                        }}
+                        className="px-2.5 py-1 bg-white/5 hover:bg-[#F5C518]/10 hover:border-[#F5C518]/30 border border-white/10 rounded-full text-[9px] font-bold text-slate-300 hover:text-[#F5C518] transition-all whitespace-nowrap active:scale-95 cursor-pointer"
+                      >
+                        {chip.label}
+                      </button>
+                    ))
+                  )}
+                </div>
+
+                {/* Chat Input */}
+                <form onSubmit={handleCopilot} className="p-3 border-t border-white/10 bg-black/60 flex gap-2 items-center">
+                  <button
+                    type="button"
+                    onClick={toggleCopilotDictation}
+                    className={`w-10 h-10 rounded-xl flex items-center justify-center border transition-all active:scale-95 cursor-pointer ${
+                      copilotListening 
+                        ? 'bg-red-500/20 text-red-500 border-red-500/40 animate-pulse shadow-[0_0_15px_rgba(239,68,68,0.3)]' 
+                        : 'bg-white/5 text-slate-400 border-white/10 hover:text-white hover:border-white/20'
+                    }`}
+                    title="Dictar por voz"
+                  >
+                    <Icon name="mic" className="w-4 h-4" />
+                  </button>
+                  <input
+                    type="text"
+                    value={copilotInput}
+                    onChange={e => setCopilotInput(e.target.value)}
+                    placeholder={copilotListening ? "Escuchando dictado..." : "Pregúntale a James Sterling..."}
+                    className="flex-1 bg-white/5 border border-white/10 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-[#F5C518] focus:bg-white/[0.08] transition-all placeholder-slate-500"
+                  />
+                  <button type="submit" disabled={copilotLoading} className="w-10 h-10 bg-[#F5C518] hover:bg-[#E5B508] disabled:opacity-40 disabled:hover:bg-[#F5C518] text-black rounded-xl flex items-center justify-center hover:scale-105 active:scale-95 transition-all shadow-[0_0_15px_rgba(245,197,24,0.25)] cursor-pointer">
+                    <Icon name="send" className="w-4 h-4" />
+                  </button>
+                </form>
+              </div>
+
+              {/* Right Side: Ledger Data Desk / ROI Calculator */}
+              {copilotWide && (
+                view === 'landing' ? (
+                  <div className="w-[420px] border-l border-white/10 bg-[#07060b]/90 flex flex-col overflow-y-auto custom-scroll p-4 gap-4 animate-in fade-in duration-300">
+                    <div className="flex items-center justify-between border-b border-white/10 pb-2">
+                      <div className="flex items-center gap-2">
+                        <Icon name="calculator" className="w-3.5 h-3.5 text-[#F5C518]" />
+                        <h4 className="text-[10px] font-black text-white uppercase tracking-widest">Elevore SaaS ROI Simulator</h4>
+                      </div>
+                      <span className="text-[7px] bg-emerald-500/20 text-emerald-400 font-mono px-1.5 py-0.5 rounded border border-emerald-500/30 uppercase tracking-widest animate-pulse font-black">Interactive Sandbox</span>
+                    </div>
+
+                    <div className="space-y-4">
+                      {/* Input 1 */}
+                      <div>
+                        <div className="flex justify-between text-[9px] font-black uppercase text-slate-400 mb-1">
+                          <span>Ingreso Mensual Actual</span>
+                          <span className="text-white font-mono">${simRevenue.toLocaleString()} USD</span>
+                        </div>
+                        <input
+                          type="range"
+                          min="2000"
+                          max="100000"
+                          step="1000"
+                          value={simRevenue}
+                          onChange={(e) => setSimRevenue(parseInt(e.target.value))}
+                          className="w-full h-1 bg-white/10 rounded-lg appearance-none cursor-pointer accent-[#F5C518]"
+                        />
+                        <div className="flex justify-between text-[7px] text-slate-500 font-mono mt-1">
+                          <span>$2,000</span>
+                          <span>$100,000</span>
+                        </div>
+                      </div>
+
+                      {/* Input 2 */}
+                      <div>
+                        <div className="flex justify-between text-[9px] font-black uppercase text-slate-400 mb-1">
+                          <span>Trabajos Completados / Mes</span>
+                          <span className="text-white font-mono">{simJobs} trabajos</span>
+                        </div>
+                        <input
+                          type="range"
+                          min="10"
+                          max="300"
+                          step="5"
+                          value={simJobs}
+                          onChange={(e) => setSimJobs(parseInt(e.target.value))}
+                          className="w-full h-1 bg-white/10 rounded-lg appearance-none cursor-pointer accent-[#F5C518]"
+                        />
+                        <div className="flex justify-between text-[7px] text-slate-500 font-mono mt-1">
+                          <span>10</span>
+                          <span>300</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Projection Calculations */}
+                    <div className="bg-white/[0.02] border border-white/5 rounded-xl p-3 space-y-2.5">
+                      <span className="text-[8px] text-[#F5C518] font-black uppercase tracking-widest block">Beneficios Mensuales Estimados</span>
+                      
+                      <div className="flex justify-between items-center text-[10px] border-b border-white/5 pb-2">
+                        <div>
+                          <p className="font-bold text-white leading-tight">Upsell de Membresía (+35%)</p>
+                          <p className="text-[7px] text-slate-500 font-mono">Incremento de ticket promedio por cotizaciones 3-tier</p>
+                        </div>
+                        <span className="text-xs font-black text-emerald-400 font-mono">+${Math.round(simRevenue * 0.35).toLocaleString()}</span>
+                      </div>
+
+                      <div className="flex justify-between items-center text-[10px] border-b border-white/5 pb-2">
+                        <div>
+                          <p className="font-bold text-white leading-tight">Tiempo de Oficina Ahorrado</p>
+                          <p className="text-[7px] text-slate-500 font-mono">Auto-despacho, GPS en vivo y firmas digitales</p>
+                        </div>
+                        <span className="text-xs font-black text-emerald-400 font-mono">+${Math.round(simJobs * 0.5)} hrs/mes</span>
+                      </div>
+
+                      <div className="flex justify-between items-center text-[10px]">
+                        <div>
+                          <p className="font-bold text-white leading-tight">Clientes Recuperados (Churn Winback)</p>
+                          <p className="text-[7px] text-slate-500 font-mono">Campañas de recuperación automatizadas por WhatsApp</p>
+                        </div>
+                        <span className="text-xs font-black text-emerald-400 font-mono">+${Math.round(simJobs * 0.08)} clientes</span>
+                      </div>
+                    </div>
+
+                    {/* Net Value card */}
+                    <div className="bg-gradient-to-br from-[#F5C518]/20 to-transparent border border-[#F5C518]/30 rounded-xl p-3 text-center">
+                      <p className="text-[8px] text-[#F5C518] font-black uppercase tracking-widest">Valor Neto Generado Anual</p>
+                      <h3 className="text-2xl font-black italic tracking-tighter text-white mt-1">${Math.round(simRevenue * 0.35 * 12).toLocaleString()} USD</h3>
+                      <p className="text-[6px] text-slate-400 uppercase tracking-widest mt-1">Estimado en base a un incremento mínimo del 35%</p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="w-[420px] border-l border-white/10 bg-[#07060b]/90 flex flex-col overflow-y-auto custom-scroll p-4 gap-4 animate-in fade-in duration-300">
+                    <div className="flex items-center justify-between border-b border-white/10 pb-2">
+                      <div className="flex items-center gap-2">
+                        <Icon name="activity" className="w-3.5 h-3.5 text-[#F5C518]" />
+                        <h4 className="text-[10px] font-black text-white uppercase tracking-widest">Elevore Quant Ledger</h4>
+                      </div>
+                      <span className="text-[7px] bg-emerald-500/20 text-emerald-400 font-mono px-1.5 py-0.5 rounded border border-emerald-500/30 uppercase tracking-widest animate-pulse font-black">Real-Time Data Feed</span>
+                    </div>
+
+                    {/* Economic Grid */}
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="bg-white/[0.02] border border-white/5 rounded-xl p-2.5 flex flex-col justify-between">
+                        <span className="text-[7px] text-slate-500 font-bold uppercase tracking-wider">Net Margin / profit</span>
+                        <div className="flex items-baseline justify-between mt-1">
+                          <span className="text-xs font-black text-white font-mono-values">${finance.net.toLocaleString()}</span>
+                          <span className="text-[8px] text-emerald-400 font-mono font-bold">Margin: {finance.profitMargin}%</span>
+                        </div>
+                      </div>
+                      <div className="bg-white/[0.02] border border-white/5 rounded-xl p-2.5 flex flex-col justify-between">
+                        <span className="text-[7px] text-slate-500 font-bold uppercase tracking-wider">Lifetime efficiency</span>
+                        <div className="flex items-baseline justify-between mt-1">
+                          <span className="text-xs font-black text-white font-mono-values">{finance.ltvCacRatio}x</span>
+                          <span className="text-[7px] text-slate-400 font-mono">LTV: ${finance.avgLTV} / CAC: ${finance.avgCAC}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Marketing Channels ROI Report */}
+                    <div className="bg-white/[0.02] border border-white/5 rounded-xl p-3">
+                      <span className="text-[8px] text-[#F5C518] font-black uppercase tracking-widest block mb-2">Canales de Adquisición & ROI</span>
+                      <div className="space-y-2">
+                        {finance.channelReport.map((ch, idx) => (
+                          <div key={idx} className="flex justify-between items-center text-[10px] border-b border-white/5 pb-1.5 last:border-b-0 last:pb-0">
+                            <div>
+                              <p className="font-bold text-white leading-tight">{ch.name}</p>
+                              <p className="text-[7px] text-slate-500 font-mono">CAC: ${ch.cac} | Spend: ${ch.spend} | Conv: {ch.customers}</p>
+                            </div>
+                            <div className="text-right">
+                              <p className="font-mono text-white">${ch.ltv.toLocaleString()}</p>
+                              <p className={`text-[8px] font-mono font-black ${ch.roi >= 100 ? 'text-emerald-400' : ch.roi > 0 ? 'text-amber-400' : 'text-slate-500'}`}>
+                                ROI: {ch.roi}%
+                              </p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Action Targets */}
+                    <div className="grid grid-cols-2 gap-2">
+                      {/* Upsell VIP */}
+                      <div className="bg-white/[0.02] border border-white/5 rounded-xl p-3 flex flex-col">
+                        <div className="flex items-center gap-1 mb-2 text-[8px] text-[#F5C518] font-black uppercase tracking-widest">
+                          <Icon name="crown" className="w-2.5 h-2.5" />
+                          <span>Upsell Membresía</span>
+                        </div>
+                        <div className="flex-1 space-y-1.5 overflow-y-auto max-h-24 custom-scroll pr-1">
+                          {finance.mbTargets.length > 0 ? (
+                            finance.mbTargets.slice(0, 4).map((t, idx) => (
+                              <div key={idx} className="text-[9px] bg-white/5 px-2 py-1 rounded border border-white/5 flex justify-between items-center">
+                                <span className="font-semibold text-white truncate max-w-[80px]" title={t.name}>{t.name}</span>
+                                <span className="text-[8px] font-mono text-amber-400 font-bold">{t.count} serv.</span>
+                              </div>
+                            ))
+                          ) : (
+                            <p className="text-[8px] text-slate-500 italic">No hay candidatos.</p>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Winback Churn */}
+                      <div className="bg-white/[0.02] border border-white/5 rounded-xl p-3 flex flex-col">
+                        <div className="flex items-center gap-1 mb-2 text-[8px] text-red-400 font-black uppercase tracking-widest">
+                          <Icon name="alert-circle" className="w-2.5 h-2.5" />
+                          <span>Winback Churn ({finance.churn.length})</span>
+                        </div>
+                        <div className="flex-1 space-y-1.5 overflow-y-auto max-h-24 custom-scroll pr-1">
+                          {finance.churn.length > 0 ? (
+                            finance.churn.slice(0, 4).map((t, idx) => (
+                              <div key={idx} className="text-[9px] bg-white/5 px-2 py-1 rounded border border-white/5 flex justify-between items-center">
+                                <span className="font-semibold text-white truncate max-w-[100px]" title={t.name}>{t.name}</span>
+                                <Icon name="alert-triangle" className="w-2.5 h-2.5 text-amber-500/80 animate-pulse" />
+                              </div>
+                            ))
+                          ) : (
+                            <p className="text-[8px] text-slate-500 italic">Cero clientes en churn.</p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )
+              )}
+            </div>
+          </div>
+        )}
+      </>
+    );
+  };
+
+
+  if (view === 'landing') {
+    return (
+      <div className="min-h-screen bg-slate-950 text-slate-100 font-sans relative overflow-x-hidden">
+        <LandingPage onLogin={() => setView('auth')} onSignup={() => setView('signup')} />
+        {renderCopilot()}
+      </div>
+    );
+  }
   if (view === 'signup') return <OnboardingFlow onBack={() => setView('landing')} tt={tt} />;
   if (view === 'auth') return <LoginFlow onBack={() => setView('landing')} onLoginSuccess={handleLoginSuccess} tt={tt} />;
 
@@ -9555,399 +9980,7 @@ Respond ONLY in this exact JSON format (no explanation, no markdown, just raw JS
         {/* =====================================================================
             🤖 COPILOTO IA
             ===================================================================== */}
-        {(role === 'admin' || view === 'landing') && (
-          <>
-            <button
-              onClick={() => setCopilotOpen(!copilotOpen)}
-              className="fixed bottom-6 right-6 z-[3000] w-14 h-14 bg-gradient-to-r from-amber-500 to-[#F5C518] rounded-full flex items-center justify-center shadow-[0_0_30px_rgba(245,197,24,0.4)] hover:scale-110 active:scale-95 transition-all text-black"
-            >
-              <Icon name="cpu" className="w-6 h-6" />
-            </button>
-
-            {copilotOpen && (
-              <div className={`fixed bottom-24 right-6 z-[3000] ${copilotWide ? 'w-[850px]' : 'w-96'} h-[550px] bg-[#030206]/95 backdrop-blur-2xl border border-[#F5C518]/20 rounded-2xl shadow-[0_0_50px_rgba(245,197,24,0.15)] overflow-hidden flex flex-col transition-all duration-300 animate-in slide-in-from-bottom-5`}>
-                {/* Header */}
-                <div className="p-4 border-b border-white/10 bg-gradient-to-r from-amber-500/25 via-transparent to-transparent flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-lg bg-[#F5C518]/20 flex items-center justify-center border border-[#F5C518]/30">
-                      <Icon name="cpu" className="w-4 h-4 text-[#F5C518]" />
-                    </div>
-                    <div>
-                      <h3 className="text-[10px] font-black text-white uppercase tracking-widest leading-none">
-                        {view === 'landing' ? 'Elevore SaaS Advisor' : 'Elevore Quant Core // v2'}
-                      </h3>
-                      <p className="text-[7px] text-[#F5C518] font-black uppercase tracking-widest mt-1.5 animate-pulse">
-                        {view === 'landing' ? 'Public Sales Agent - Online' : 'James Sterling Engine - Online'}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <button 
-                      onClick={() => setCopilotWide(!copilotWide)} 
-                      className="text-slate-400 hover:text-[#F5C518] transition-colors p-1.5 rounded-lg hover:bg-white/5 cursor-pointer"
-                      title={copilotWide ? "Contraer Chat" : "Expandir Calculadora de ROI"}
-                      type="button"
-                    >
-                      <Icon name={copilotWide ? "minimize-2" : "maximize-2"} className="w-3.5 h-3.5" />
-                    </button>
-                    <button 
-                      onClick={() => setCopilotOpen(false)} 
-                      className="text-slate-400 hover:text-red-400 transition-colors p-1.5 rounded-lg hover:bg-white/5 cursor-pointer"
-                      type="button"
-                    >
-                      <Icon name="x" className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                </div>
-
-                {/* Looping Financial Ticker */}
-                <div className="bg-black/95 border-b border-white/10 px-3 py-1 overflow-hidden whitespace-nowrap text-[9px] font-mono text-emerald-400 select-none flex items-center relative shadow-inner h-6">
-                  <div className="animate-ticker inline-flex items-center gap-6">
-                    {[1, 2].map((loopIdx) => (
-                      <React.Fragment key={loopIdx}>
-                        {view === 'landing' ? (
-                          <>
-                            <span>Status: <strong className="text-white">ACTIVE</strong></span>
-                            <span className="text-[#F5C518]">•</span>
-                            <span>Empires Active: <strong className="text-white">1,420+</strong></span>
-                            <span className="text-[#F5C518]">•</span>
-                            <span>Avg. Growth: <strong className="text-white">+38%</strong></span>
-                            <span className="text-[#F5C518]">•</span>
-                            <span>LTV/CAC: <strong className="text-white">4.8x</strong></span>
-                            <span className="text-[#F5C518]">•</span>
-                            <span>Uptime: <strong className="text-white">99.99%</strong></span>
-                            <span className="text-[#F5C518]">•</span>
-                            <span>Automated Today: <strong className="text-white">18,429</strong></span>
-                            <span className="text-[#F5C518]">•</span>
-                          </>
-                        ) : (
-                          <>
-                            <span>MRR: <strong className="text-white">${finance.mrr.toLocaleString()}</strong></span>
-                            <span className="text-[#F5C518]">•</span>
-                            <span>LTV/CAC: <strong className="text-white">{finance.ltvCacRatio}x</strong></span>
-                            <span className="text-[#F5C518]">•</span>
-                            <span>Margen: <strong className="text-white">{finance.profitMargin}%</strong></span>
-                            <span className="text-[#F5C518]">•</span>
-                            <span>Churn: <strong className={finance.churnRate > 15 ? "text-red-400" : "text-white"}>{finance.churnRate}%</strong></span>
-                            <span className="text-[#F5C518]">•</span>
-                            <span>NPS: <strong className="text-white">{finance.nps}</strong></span>
-                            <span className="text-[#F5C518]">•</span>
-                            <span>Neto: <strong className="text-emerald-400">${finance.net.toLocaleString()}</strong></span>
-                            <span className="text-[#F5C518]">•</span>
-                            <span>Proyección: <strong className="text-white">${finance.proj.toLocaleString()}</strong></span>
-                            <span className="text-[#F5C518]">•</span>
-                            <span>Meta: <strong className="text-white">${(tenantSettings?.monthly_goal || 15000).toLocaleString()}</strong></span>
-                            <span className="text-[#F5C518]">•</span>
-                          </>
-                        )}
-                      </React.Fragment>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Central Pane */}
-                <div className="flex-1 flex overflow-hidden min-h-0">
-                  {/* Left Side: Chat Messages */}
-                  <div className="flex-1 flex flex-col min-w-0 bg-[#06050a]/30">
-                    <div className="flex-1 p-4 overflow-y-auto custom-scroll flex flex-col gap-3">
-                      {copilotMsgs.map((m, i) => (
-                        <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                          {m.role === 'user' ? (
-                            <div className="max-w-[90%] p-3 rounded-2xl text-xs bg-gradient-to-r from-amber-500 to-[#F5C518] text-black font-semibold rounded-br-none shadow-[0_4px_12px_rgba(245,197,24,0.15)]">
-                              {m.content}
-                            </div>
-                          ) : (
-                            <div className="group relative flex flex-col items-start max-w-[90%]">
-                              <div className="p-3 rounded-2xl text-xs bg-white/5 text-white border border-white/10 rounded-bl-none w-full">
-                                <div className="flex flex-col gap-1 text-[11px] leading-relaxed text-white/90">
-                                  {parseChartTag(m.content).map((part, pIdx) => {
-                                    if (part.type === 'chart') {
-                                      return (
-                                        <EmbedChart 
-                                          key={pIdx} 
-                                          type={part.chartType} 
-                                          data={part.chartData} 
-                                          labels={part.chartLabels} 
-                                        />
-                                      );
-                                    }
-                                    return (
-                                      <div 
-                                        key={pIdx}
-                                        className="markdown-content"
-                                        dangerouslySetInnerHTML={{ __html: renderMarkdown(part.content) }}
-                                      />
-                                    );
-                                  })}
-                                </div>
-                              </div>
-                              <button
-                                type="button"
-                                onClick={() => speakMessage(m.content, i)}
-                                className={`mt-1 text-[8px] flex items-center gap-1 transition-all px-1.5 py-0.5 rounded cursor-pointer ${
-                                  speakingMsgIdx === i 
-                                    ? 'text-red-400 bg-red-400/10 border border-red-400/20 animate-pulse' 
-                                    : 'text-slate-400 hover:text-[#F5C518] hover:bg-white/5'
-                                }`}
-                              >
-                                <Icon name={speakingMsgIdx === i ? "square" : "volume-2"} className="w-2.5 h-2.5" />
-                                <span>{speakingMsgIdx === i ? "Detener Audio" : "Escuchar Reporte"}</span>
-                              </button>
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                      {copilotLoading && (
-                        <div className="flex justify-start">
-                          <div className="bg-white/5 border border-white/10 text-white rounded-2xl rounded-bl-none p-3 flex gap-1.5 items-center">
-                            <div className="w-1.5 h-1.5 bg-[#F5C518] rounded-full animate-bounce"></div>
-                            <div className="w-1.5 h-1.5 bg-[#F5C518] rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
-                            <div className="w-1.5 h-1.5 bg-[#F5C518] rounded-full animate-bounce" style={{ animationDelay: '0.4s' }}></div>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Suggestion Chips */}
-                    <div className="px-3 pb-2 pt-1 border-t border-white/5 bg-black/20 overflow-x-auto flex gap-1.5 custom-scroll scrollbar-none select-none">
-                      {[
-                        { label: '📊 ROI Mkt', prompt: 'Haz un análisis cuantitativo riguroso sobre el ROI de nuestros canales de adquisición y dime cuál deberíamos duplicar o cancelar.' },
-                        { label: '💡 Plan LTV', prompt: `Dame un plan financiero estilo Wall Street para duplicar nuestro LTV/CAC ratio, analizando el LTV actual de $${finance.avgLTV} y CAC de $${finance.avgCAC}.` },
-                        { label: '🎯 VIP Upsell', prompt: `Identifica qué clientes VIP deberíamos convencer para pasarse a membresías recurrentes. Analiza a nuestros mejores candidatos: ${finance.mbTargets.slice(0,5).map(c=>c.name).join(', ')}.` },
-                        { label: '🚨 Winback', prompt: `Genera una estrategia de campaña de recuperación (Winback) para recuperar los clientes inactivos. Analiza a: ${finance.churn.slice(0,5).map(c=>c.name).join(', ')}.` },
-                        { label: '📉 Forense Churn', prompt: `Analiza nuestra tasa de churn del ${finance.churnRate}% y genera un reporte forense detallado con acciones mitigantes.` }
-                      ].map((chip, idx) => (
-                        <button
-                          key={idx}
-                          type="button"
-                          onClick={() => {
-                            setCopilotInput(chip.prompt);
-                          }}
-                          className="px-2.5 py-1 bg-white/5 hover:bg-[#F5C518]/10 hover:border-[#F5C518]/30 border border-white/10 rounded-full text-[9px] font-bold text-slate-300 hover:text-[#F5C518] transition-all whitespace-nowrap active:scale-95 cursor-pointer"
-                        >
-                          {chip.label}
-                        </button>
-                      ))}
-                    </div>
-
-                    {/* Chat Input */}
-                    <form onSubmit={handleCopilot} className="p-3 border-t border-white/10 bg-black/60 flex gap-2 items-center">
-                      <button
-                        type="button"
-                        onClick={toggleCopilotDictation}
-                        className={`w-10 h-10 rounded-xl flex items-center justify-center border transition-all active:scale-95 cursor-pointer ${
-                          copilotListening 
-                            ? 'bg-red-500/20 text-red-500 border-red-500/40 animate-pulse shadow-[0_0_15px_rgba(239,68,68,0.3)]' 
-                            : 'bg-white/5 text-slate-400 border-white/10 hover:text-white hover:border-white/20'
-                        }`}
-                        title="Dictar por voz"
-                      >
-                        <Icon name="mic" className="w-4 h-4" />
-                      </button>
-                      <input
-                        type="text"
-                        value={copilotInput}
-                        onChange={e => setCopilotInput(e.target.value)}
-                        placeholder={copilotListening ? "Escuchando dictado..." : "Pregúntale a James Sterling..."}
-                        className="flex-1 bg-white/5 border border-white/10 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-[#F5C518] focus:bg-white/[0.08] transition-all placeholder-slate-500"
-                      />
-                      <button type="submit" disabled={copilotLoading} className="w-10 h-10 bg-[#F5C518] hover:bg-[#E5B508] disabled:opacity-40 disabled:hover:bg-[#F5C518] text-black rounded-xl flex items-center justify-center hover:scale-105 active:scale-95 transition-all shadow-[0_0_15px_rgba(245,197,24,0.25)] cursor-pointer">
-                        <Icon name="send" className="w-4 h-4" />
-                      </button>
-                    </form>
-                  </div>
-
-                  {/* Right Side: Ledger Data Desk */}
-                  {copilotWide && (
-                    view === 'landing' ? (
-                      <div className="w-[420px] border-l border-white/10 bg-[#07060b]/90 flex flex-col overflow-y-auto custom-scroll p-4 gap-4 animate-in fade-in duration-300">
-                        <div className="flex items-center justify-between border-b border-white/10 pb-2">
-                          <div className="flex items-center gap-2">
-                            <Icon name="calculator" className="w-3.5 h-3.5 text-[#F5C518]" />
-                            <h4 className="text-[10px] font-black text-white uppercase tracking-widest">Elevore SaaS ROI Simulator</h4>
-                          </div>
-                          <span className="text-[7px] bg-emerald-500/20 text-emerald-400 font-mono px-1.5 py-0.5 rounded border border-emerald-500/30 uppercase tracking-widest animate-pulse font-black">Interactive Sandbox</span>
-                        </div>
-
-                        <div className="space-y-4">
-                          {/* Input 1 */}
-                          <div>
-                            <div className="flex justify-between text-[9px] font-black uppercase text-slate-400 mb-1">
-                              <span>Ingreso Mensual Actual</span>
-                              <span className="text-white font-mono">${simRevenue.toLocaleString()} USD</span>
-                            </div>
-                            <input
-                              type="range"
-                              min="2000"
-                              max="100000"
-                              step="1000"
-                              value={simRevenue}
-                              onChange={(e) => setSimRevenue(parseInt(e.target.value))}
-                              className="w-full h-1 bg-white/10 rounded-lg appearance-none cursor-pointer accent-[#F5C518]"
-                            />
-                            <div className="flex justify-between text-[7px] text-slate-500 font-mono mt-1">
-                              <span>$2,000</span>
-                              <span>$100,000</span>
-                            </div>
-                          </div>
-
-                          {/* Input 2 */}
-                          <div>
-                            <div className="flex justify-between text-[9px] font-black uppercase text-slate-400 mb-1">
-                              <span>Trabajos Completados / Mes</span>
-                              <span className="text-white font-mono">{simJobs} trabajos</span>
-                            </div>
-                            <input
-                              type="range"
-                              min="10"
-                              max="300"
-                              step="5"
-                              value={simJobs}
-                              onChange={(e) => setSimJobs(parseInt(e.target.value))}
-                              className="w-full h-1 bg-white/10 rounded-lg appearance-none cursor-pointer accent-[#F5C518]"
-                            />
-                            <div className="flex justify-between text-[7px] text-slate-500 font-mono mt-1">
-                              <span>10</span>
-                              <span>300</span>
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Projection Calculations */}
-                        <div className="bg-white/[0.02] border border-white/5 rounded-xl p-3 space-y-2.5">
-                          <span className="text-[8px] text-[#F5C518] font-black uppercase tracking-widest block">Beneficios Mensuales Estimados</span>
-                          
-                          <div className="flex justify-between items-center text-[10px] border-b border-white/5 pb-2">
-                            <div>
-                              <p className="font-bold text-white leading-tight">Upsell de Membresía (+35%)</p>
-                              <p className="text-[7px] text-slate-500 font-mono">Incremento de ticket promedio por cotizaciones 3-tier</p>
-                            </div>
-                            <span className="text-xs font-black text-emerald-400 font-mono">+${Math.round(simRevenue * 0.35).toLocaleString()}</span>
-                          </div>
-
-                          <div className="flex justify-between items-center text-[10px] border-b border-white/5 pb-2">
-                            <div>
-                              <p className="font-bold text-white leading-tight">Tiempo de Oficina Ahorrado</p>
-                              <p className="text-[7px] text-slate-500 font-mono">Auto-despacho, GPS en vivo y firmas digitales</p>
-                            </div>
-                            <span className="text-xs font-black text-emerald-400 font-mono">+{Math.round(simJobs * 0.5)} hrs/mes</span>
-                          </div>
-
-                          <div className="flex justify-between items-center text-[10px]">
-                            <div>
-                              <p className="font-bold text-white leading-tight">Clientes Recuperados (Churn Winback)</p>
-                              <p className="text-[7px] text-slate-500 font-mono">Campañas de recuperación automatizadas por WhatsApp</p>
-                            </div>
-                            <span className="text-xs font-black text-emerald-400 font-mono">+{Math.round(simJobs * 0.08)} clientes</span>
-                          </div>
-                        </div>
-
-                        {/* Net Value card */}
-                        <div className="bg-gradient-to-br from-[#F5C518]/20 to-transparent border border-[#F5C518]/30 rounded-xl p-3 text-center">
-                          <p className="text-[8px] text-[#F5C518] font-black uppercase tracking-widest">Valor Neto Generado Anual</p>
-                          <h3 className="text-2xl font-black italic tracking-tighter text-white mt-1">${Math.round(simRevenue * 0.35 * 12).toLocaleString()} USD</h3>
-                          <p className="text-[6px] text-slate-400 uppercase tracking-widest mt-1">Estimado en base a un incremento mínimo del 35%</p>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="w-[420px] border-l border-white/10 bg-[#07060b]/90 flex flex-col overflow-y-auto custom-scroll p-4 gap-4 animate-in fade-in duration-300">
-                        <div className="flex items-center justify-between border-b border-white/10 pb-2">
-                          <div className="flex items-center gap-2">
-                            <Icon name="activity" className="w-3.5 h-3.5 text-[#F5C518]" />
-                            <h4 className="text-[10px] font-black text-white uppercase tracking-widest">Elevore Quant Ledger</h4>
-                          </div>
-                          <span className="text-[7px] bg-emerald-500/20 text-emerald-400 font-mono px-1.5 py-0.5 rounded border border-emerald-500/30 uppercase tracking-widest animate-pulse font-black">Real-Time Data Feed</span>
-                        </div>
-
-                        {/* Economic Grid */}
-                        <div className="grid grid-cols-2 gap-2">
-                          <div className="bg-white/[0.02] border border-white/5 rounded-xl p-2.5 flex flex-col justify-between">
-                            <span className="text-[7px] text-slate-500 font-bold uppercase tracking-wider">Net Margin / profit</span>
-                            <div className="flex items-baseline justify-between mt-1">
-                              <span className="text-xs font-black text-white font-mono-values">${finance.net.toLocaleString()}</span>
-                              <span className="text-[8px] text-emerald-400 font-mono font-bold">Margin: {finance.profitMargin}%</span>
-                            </div>
-                          </div>
-                          <div className="bg-white/[0.02] border border-white/5 rounded-xl p-2.5 flex flex-col justify-between">
-                            <span className="text-[7px] text-slate-500 font-bold uppercase tracking-wider">Lifetime efficiency</span>
-                            <div className="flex items-baseline justify-between mt-1">
-                              <span className="text-xs font-black text-white font-mono-values">{finance.ltvCacRatio}x</span>
-                              <span className="text-[7px] text-slate-400 font-mono">LTV: ${finance.avgLTV} / CAC: ${finance.avgCAC}</span>
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Marketing Channels ROI Report */}
-                        <div className="bg-white/[0.02] border border-white/5 rounded-xl p-3">
-                          <span className="text-[8px] text-[#F5C518] font-black uppercase tracking-widest block mb-2">Canales de Adquisición & ROI</span>
-                          <div className="space-y-2">
-                            {finance.channelReport.map((ch, idx) => (
-                              <div key={idx} className="flex justify-between items-center text-[10px] border-b border-white/5 pb-1.5 last:border-b-0 last:pb-0">
-                                <div>
-                                  <p className="font-bold text-white leading-tight">{ch.name}</p>
-                                  <p className="text-[7px] text-slate-500 font-mono">CAC: ${ch.cac} | Spend: ${ch.spend} | Conv: {ch.customers}</p>
-                                </div>
-                                <div className="text-right">
-                                  <p className="font-mono text-white">${ch.ltv.toLocaleString()}</p>
-                                  <p className={`text-[8px] font-mono font-black ${ch.roi >= 100 ? 'text-emerald-400' : ch.roi > 0 ? 'text-amber-400' : 'text-slate-500'}`}>
-                                    ROI: {ch.roi}%
-                                  </p>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-
-                        {/* Action Targets */}
-                        <div className="grid grid-cols-2 gap-2">
-                          {/* Upsell VIP */}
-                          <div className="bg-white/[0.02] border border-white/5 rounded-xl p-3 flex flex-col">
-                            <div className="flex items-center gap-1 mb-2 text-[8px] text-[#F5C518] font-black uppercase tracking-widest">
-                              <Icon name="crown" className="w-2.5 h-2.5" />
-                              <span>Upsell Membresía</span>
-                            </div>
-                            <div className="flex-1 space-y-1.5 overflow-y-auto max-h-24 custom-scroll pr-1">
-                              {finance.mbTargets.length > 0 ? (
-                                finance.mbTargets.slice(0, 4).map((t, idx) => (
-                                  <div key={idx} className="text-[9px] bg-white/5 px-2 py-1 rounded border border-white/5 flex justify-between items-center">
-                                    <span className="font-semibold text-white truncate max-w-[80px]" title={t.name}>{t.name}</span>
-                                    <span className="text-[8px] font-mono text-amber-400 font-bold">{t.count} serv.</span>
-                                  </div>
-                                ))
-                              ) : (
-                                <p className="text-[8px] text-slate-500 italic">No hay candidatos.</p>
-                              )}
-                            </div>
-                          </div>
-
-                          {/* Winback Churn */}
-                          <div className="bg-white/[0.02] border border-white/5 rounded-xl p-3 flex flex-col">
-                            <div className="flex items-center gap-1 mb-2 text-[8px] text-red-400 font-black uppercase tracking-widest">
-                              <Icon name="alert-circle" className="w-2.5 h-2.5" />
-                              <span>Winback Churn ({finance.churn.length})</span>
-                            </div>
-                            <div className="flex-1 space-y-1.5 overflow-y-auto max-h-24 custom-scroll pr-1">
-                              {finance.churn.length > 0 ? (
-                                finance.churn.slice(0, 4).map((t, idx) => (
-                                  <div key={idx} className="text-[9px] bg-white/5 px-2 py-1 rounded border border-white/5 flex justify-between items-center">
-                                    <span className="font-semibold text-white truncate max-w-[100px]" title={t.name}>{t.name}</span>
-                                    <Icon name="alert-triangle" className="w-2.5 h-2.5 text-amber-500/80 animate-pulse" />
-                                  </div>
-                                ))
-                              ) : (
-                                <p className="text-[8px] text-slate-500 italic">Cero clientes en churn.</p>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    )
-                  )}
-                </div>
-              </div>
-            )}
-          </>
-        )}
+        {renderCopilot()}
 
       </div>
     </div>
