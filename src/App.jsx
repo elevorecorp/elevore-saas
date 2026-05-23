@@ -76,7 +76,7 @@ const SEASONS = [
   { name: 'New Year', months: [1], discount: 10, msg: 'Fresh start — 10% off! 🎉' }
 ];
 
-const INIT = { name: '', phone: '', email: '', address: '', svc: 'regular', beds: 2, baths: 2, living: 1, laundryRoom: 0, complexity: 1, sqft: 2000, oven: false, fridge: false, windows: false, pethair: false, garage: false, laundryLoads: 0, expenses: 0, deposit: 0, discount: 0, frequency: 'one-time', team: '', date: '', status: 'lead', totalPrice: 0, laborHours: 2, materialCost: 0, riskMargin: 50, selectedQuickJobs: [], audit_link: '', notes: '', urgencyHours: 24, membership: 'none', lang: 'en' };
+const INIT = { name: '', phone: '', email: '', address: '', svc: 'regular', beds: 2, baths: 2, living: 1, laundryRoom: 0, complexity: 1, sqft: 2000, oven: false, fridge: false, windows: false, pethair: false, garage: false, laundryLoads: 0, expenses: 0, deposit: 0, discount: 0, frequency: 'one-time', team: '', date: '', status: 'lead', totalPrice: 0, laborHours: 2, materialCost: 0, riskMargin: 50, selectedQuickJobs: [], audit_link: '', notes: '', urgencyHours: 24, membership: 'none', lang: 'en', leadSource: 'organic', adSpend: 0, marketingCost: 0 };
 
 const fmt$ = n => '$' + Math.round(n || 0).toLocaleString();
 const fmtD = d => d ? new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'TBD';
@@ -295,16 +295,19 @@ function PhotoDrive({ photos = [], label, onAdd }) {
         ))}
       </div>
       {onAdd && (
-        <div className="flex flex-col gap-2">
-          <div className="flex gap-2">
-            <input type="text" placeholder="Photo link URL..." value={lk} onChange={e => setLk(e.target.value)} className="inp text-xs text-blue-400 flex-1" />
-            <button onClick={() => { if (lk.trim()) { onAdd(lk.trim()); setLk(''); } }} className="px-4 bg-green-600 text-white rounded-xl font-black text-lg active:scale-95">+</button>
-          </div>
+        <div className="flex flex-col gap-2 pt-1">
           <div className="relative w-full">
-            <input type="file" accept="image/*" capture="environment" onChange={handleFileUpload} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" disabled={isUploading} />
-            <button className="w-full bg-slate-800 border border-slate-700 text-slate-300 py-3 rounded-xl text-xs font-black uppercase flex items-center justify-center gap-2 active:scale-95">
-              {isUploading ? <Icon name="loader-2" className="w-4 h-4 animate-spin" /> : <><Icon name="camera" className="w-4 h-4" /> Tomar Foto Directamente</>}
+            <input type="file" accept="image/*" capture="environment" onChange={handleFileUpload} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" disabled={isUploading} />
+            <button className="w-full bg-green-500/10 border border-green-500/35 hover:bg-green-500/20 text-green-400 py-3 rounded-xl text-[10px] font-black uppercase flex items-center justify-center gap-2 active:scale-95 transition-all shadow-[0_0_15px_rgba(34,197,94,0.1)]">
+              {isUploading ? <Icon name="loader-2" className="w-4 h-4 animate-spin" /> : <><Icon name="camera" className="w-4 h-4" /> 📸 Tomar Foto o Subir Imagen</>}
             </button>
+          </div>
+          <div className="flex gap-2 items-center justify-center text-[7px] text-slate-500 font-bold uppercase mt-1">
+            <span>O ingresa un enlace web:</span>
+          </div>
+          <div className="flex gap-2">
+            <input type="text" placeholder="https://..." value={lk} onChange={e => setLk(e.target.value)} className="inp text-[10px] text-blue-400 flex-1 py-1.5" />
+            <button onClick={() => { if (lk.trim()) { onAdd(lk.trim()); setLk(''); } }} className="px-3.5 bg-white/5 border border-white/10 text-slate-400 hover:text-white rounded-xl font-bold text-xs active:scale-95">+</button>
           </div>
         </div>
       )}
@@ -1389,7 +1392,15 @@ function Portal({ cjid }) {
       )}
       <div className="max-w-md mx-auto space-y-5 pb-20">
         <div className="flex justify-end gap-2">{['en', 'es'].map(lg => (<button key={lg} onClick={() => setLang(lg)} className={`text-[8px] font-black px-3 py-1.5 rounded-xl ${lang === lg ? 'bg-amber-500 text-black' : 'bg-white/5 text-slate-500'}`}>{lg.toUpperCase()}</button>))}</div>
-        <div className="text-center space-y-2"><div className="w-16 h-16 bg-white rounded-2xl mx-auto flex items-center justify-center font-black text-black text-2xl italic shadow-xl">E</div><h1 className="text-xl font-black uppercase tracking-[0.3em] text-white">ELEVORE</h1><p className="text-[9px] text-green-500 font-bold uppercase tracking-[0.4em]">{tr(lang, 'hub')}</p></div>
+        <div className="text-center space-y-3 relative z-10">
+          <div className="w-20 h-20 bg-gradient-to-br from-zinc-800 to-black border border-white/10 rounded-[2rem] mx-auto flex items-center justify-center font-black text-white text-4xl shadow-[0_0_40px_rgba(255,255,255,0.05)] transform transition-transform hover:scale-105">
+             {tenantSettings?.business_full_name ? tenantSettings.business_full_name.charAt(0).toUpperCase() : 'E'}
+          </div>
+          <h1 className="text-2xl font-black uppercase tracking-[0.3em] text-transparent bg-clip-text bg-gradient-to-r from-white to-slate-400">
+             {tenantSettings?.business_full_name || 'ELEVORE'}
+          </h1>
+          <p className="text-[9px] text-green-500 font-bold uppercase tracking-[0.4em]">{tr(lang, 'hub')}</p>
+        </div>
 
         {/* ── CLIENT DASHBOARD NAVIGATION TABS ── */}
         <div className="g p-1 rounded-2xl flex items-center justify-between border border-white/5 bg-black/40 backdrop-blur-md sticky top-2 z-[400] shadow-xl overflow-x-auto gap-1">
@@ -2524,18 +2535,29 @@ function AIAdvisor({ jobs, clients, staff, isStaff, activeUser, onClose, tt, onO
     ? `¡Hola ${activeUser}! Soy tu **Manual de Operaciones con IA**. Estoy aquí para ayudarte en tu trabajo de campo. 🛠️ Pregúntame cómo limpiar orificios, parchar drywall, remover manchas de alfombras, o cómo actuar frente a un cliente difícil.`
     : `¡Hola ${activeUser}! Soy tu **Asesor de IA Elevore**. Estoy conectado a tu base de datos en tiempo real. 📊 ¿En qué puedo ayudarte hoy?`;
 
-  // Local settings for LLM provider (Ollama only)
-  const [aiProvider] = useState('ollama');
+  // Local and cloud settings for LLM provider (Ollama & Gemini)
+  const [aiProvider, setAIProvider] = useState(() => localStorage.getItem('elevore_ai_provider') || 'ollama');
   const [ollamaUrl, setOllamaUrl] = useState(() => {
     const saved = localStorage.getItem('elevore_ollama_url');
     if (saved === 'http://localhost:11434') return 'http://127.0.0.1:11434';
     return saved || 'http://127.0.0.1:11434';
   });
   const [ollamaModel, setOllamaModel] = useState(() => localStorage.getItem('elevore_ollama_model') || 'llama3');
+  const [geminiModel, setGeminiModel] = useState(() => localStorage.getItem('elevore_gemini_model') || 'gemini-2.5-flash');
+  const [geminiKey, setGeminiKey] = useState(() => localStorage.getItem('elevore_gemini_key') || '');
   const [showSettings, setShowSettings] = useState(false);
   const [connStatus, setConnStatus] = useState('idle'); // idle, testing, connected, error
 
   // Save AI Provider details
+  useEffect(() => {
+    localStorage.setItem('elevore_gemini_key', geminiKey);
+  }, [geminiKey]);
+
+  // Save AI Provider details
+  useEffect(() => {
+    localStorage.setItem('elevore_ai_provider', aiProvider);
+  }, [aiProvider]);
+
   useEffect(() => {
     localStorage.setItem('elevore_ollama_url', ollamaUrl);
   }, [ollamaUrl]);
@@ -2543,6 +2565,10 @@ function AIAdvisor({ jobs, clients, staff, isStaff, activeUser, onClose, tt, onO
   useEffect(() => {
     localStorage.setItem('elevore_ollama_model', ollamaModel);
   }, [ollamaModel]);
+
+  useEffect(() => {
+    localStorage.setItem('elevore_gemini_model', geminiModel);
+  }, [geminiModel]);
 
   // Load chat memory from LocalStorage
   const storageKey = `elevore_chat_history_${isStaff ? 'staff' : 'admin'}`;
@@ -2595,6 +2621,31 @@ function AIAdvisor({ jobs, clients, staff, isStaff, activeUser, onClose, tt, onO
     const controller = new AbortController();
     const id = setTimeout(() => controller.abort(), 4000);
     try {
+      if (aiProvider === 'gemini') {
+        const res = await fetch('/api/chat', {
+          method: 'POST',
+          headers: { 
+            'Content-Type': 'application/json',
+            'x-gemini-key': geminiKey
+          },
+          body: JSON.stringify({
+            model: geminiModel,
+            messages: [{ role: 'user', content: 'hi' }]
+          }),
+          signal: controller.signal
+        });
+        clearTimeout(id);
+        if (res.ok) {
+          setConnStatus('connected');
+          tt(`Conectado a Gemini exitosamente en la nube (Vercel API)`, 'green');
+        } else {
+          setConnStatus('error');
+          const errData = await res.json().catch(() => ({}));
+          tt(`Error al conectar con Gemini Vercel API: ${errData.error || `HTTP ${res.status}`}`, 'red');
+        }
+        return;
+      }
+
       const res = await fetch(`${ollamaUrl}/api/tags`, { signal: controller.signal });
       clearTimeout(id);
       if (res.ok) {
@@ -2617,7 +2668,11 @@ function AIAdvisor({ jobs, clients, staff, isStaff, activeUser, onClose, tt, onO
     } catch (e) {
       clearTimeout(id);
       setConnStatus('error');
-      tt('No se pudo conectar a Ollama. Asegúrate de ejecutar: $env:OLLAMA_ORIGINS="*" ; ollama run ' + ollamaModel, 'red');
+      if (aiProvider === 'gemini') {
+        tt('No se pudo conectar a la Vercel API: ' + e.message, 'red');
+      } else {
+        tt('No se pudo conectar a Ollama. Asegúrate de ejecutar: $env:OLLAMA_ORIGINS="*" ; ollama run ' + ollamaModel, 'red');
+      }
     }
   };
 
@@ -2668,6 +2723,38 @@ Habla en español. Sé directo, estratégico y orientado a resultados. Si el CEO
     const timeoutId = setTimeout(() => controller.abort(), timeoutDuration);
 
     try {
+      if (aiProvider === 'gemini') {
+        const res = await fetch('/api/chat', {
+          method: 'POST',
+          headers: { 
+            'Content-Type': 'application/json',
+            'x-gemini-key': geminiKey
+          },
+          body: JSON.stringify({
+            model: geminiModel,
+            messages: [
+              { role: 'system', content: systemPrompt },
+              ...messages.slice(-8).map(m => ({
+                role: m.from === 'user' ? 'user' : 'assistant',
+                content: m.text
+              })),
+              { role: 'user', content: userMessage }
+            ]
+          }),
+          signal: controller.signal
+        });
+
+        clearTimeout(timeoutId);
+
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          return `⚠️ Error de Conexión a Gemini (Vercel API): ${errData.error || `HTTP ${res.status}`}`;
+        }
+
+        const data = await res.json();
+        return data.text || 'Lo siento, Gemini no devolvió ningún contenido.';
+      }
+
       // --- OLLAMA LOCAL AI CALL ---
       const res = await fetch(`${ollamaUrl}/api/chat`, {
         method: 'POST',
@@ -2682,7 +2769,8 @@ Habla en español. Sé directo, estratégico y orientado a resultados. Si el CEO
             })),
             { role: 'user', content: userMessage }
           ],
-          stream: false
+          stream: false,
+          keep_alive: -1
         }),
         signal: controller.signal
       });
@@ -2742,7 +2830,7 @@ Habla en español. Sé directo, estratégico y orientado a resultados. Si el CEO
                   {isStaff ? 'Elevore Field Operations Guide' : 'Elevore AI Command'}
                 </p>
                 <span className="text-[6px] bg-white/10 text-slate-400 px-1 py-0.5 rounded uppercase font-bold">
-                  {`Ollama: ${ollamaModel}`}
+                  {aiProvider === 'gemini' ? `Gemini: ${geminiModel}` : `Ollama: ${ollamaModel}`}
                 </span>
               </div>
               <p className="text-[7px] text-slate-500 uppercase mt-0.5">
@@ -2770,36 +2858,93 @@ Habla en español. Sé directo, estratégico y orientado a resultados. Si el CEO
               <button onClick={() => setShowSettings(false)} className="text-slate-500 hover:text-white text-[9px] font-bold uppercase">Cerrar</button>
             </div>
             
-            <div className="space-y-2.5 animate-in fade-in duration-200">
-              <div className="grid grid-cols-2 gap-2">
-                <div className="space-y-1">
-                  <label className="text-[7px] font-bold text-slate-400 uppercase block">Host de Ollama</label>
-                  <input
-                    value={ollamaUrl}
-                    onChange={e => { setOllamaUrl(e.target.value); setConnStatus('idle'); }}
-                    placeholder="http://127.0.0.1:11434"
-                    className="inp text-[10px] py-1.5"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-[7px] font-bold text-slate-400 uppercase block">Modelo local</label>
-                  <input
-                    value={ollamaModel}
-                    onChange={e => { setOllamaModel(e.target.value); setConnStatus('idle'); }}
-                    placeholder="llama3"
-                    className="inp text-[10px] py-1.5"
-                  />
+            <div className="space-y-2.5">
+              <div className="space-y-1">
+                <label className="text-[7px] font-bold text-slate-400 uppercase block">Proveedor de IA (AI Provider)</label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button 
+                    type="button"
+                    onClick={() => { setAIProvider('ollama'); setConnStatus('idle'); }} 
+                    className={`py-1.5 rounded-lg text-[8px] font-black uppercase transition-all ${aiProvider === 'ollama' ? 'bg-[#F5C518] text-black' : 'bg-white/5 text-slate-400 hover:text-white'}`}
+                  >
+                    Ollama (Local PC)
+                  </button>
+                  <button 
+                    type="button"
+                    onClick={() => { setAIProvider('gemini'); setConnStatus('idle'); }} 
+                    className={`py-1.5 rounded-lg text-[8px] font-black uppercase transition-all ${aiProvider === 'gemini' ? 'bg-[#F5C518] text-black' : 'bg-white/5 text-slate-400 hover:text-white'}`}
+                  >
+                    Gemini (Nube 24/7)
+                  </button>
                 </div>
               </div>
-              <div className="p-2 rounded-xl bg-black/40 border border-white/5 space-y-1">
-                <p className="text-[7px] text-[#F5C518] uppercase font-bold">Instrucciones para IA Local:</p>
-                <p className="text-[7px] text-slate-400 leading-normal uppercase">
-                  1. Abre tu terminal y ejecuta:
-                </p>
-                <code className="block bg-black p-1.5 rounded text-[7px] font-mono text-green-400 break-all select-all">
-                  $env:OLLAMA_ORIGINS="*" ; ollama run {ollamaModel || 'llama3'}
-                </code>
-              </div>
+
+              {aiProvider === 'ollama' ? (
+                <div className="space-y-2.5 animate-in fade-in duration-200">
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="space-y-1">
+                      <label className="text-[7px] font-bold text-slate-400 uppercase block">Host de Ollama</label>
+                      <input
+                        value={ollamaUrl}
+                        onChange={e => { setOllamaUrl(e.target.value); setConnStatus('idle'); }}
+                        placeholder="http://127.0.0.1:11434"
+                        className="inp text-[10px] py-1.5"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[7px] font-bold text-slate-400 uppercase block">Modelo local</label>
+                      <input
+                        value={ollamaModel}
+                        onChange={e => { setOllamaModel(e.target.value); setConnStatus('idle'); }}
+                        placeholder="llama3"
+                        className="inp text-[10px] py-1.5"
+                      />
+                    </div>
+                  </div>
+                  <div className="p-2 rounded-xl bg-black/40 border border-white/5 space-y-1">
+                    <p className="text-[7px] text-[#F5C518] uppercase font-bold">Instrucciones para IA Local:</p>
+                    <p className="text-[7px] text-slate-400 leading-normal uppercase">
+                      1. Abre tu terminal y ejecuta:
+                    </p>
+                    <code className="block bg-black p-1.5 rounded text-[7px] font-mono text-green-400 break-all select-all">
+                      $env:OLLAMA_ORIGINS="*" ; ollama run {ollamaModel || 'llama3'}
+                    </code>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-2.5 animate-in fade-in duration-200">
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="space-y-1">
+                      <label className="text-[7px] font-bold text-slate-400 uppercase block">Modelo de Gemini</label>
+                      <select
+                        value={geminiModel}
+                        onChange={e => { setGeminiModel(e.target.value); setConnStatus('idle'); }}
+                        className="inp text-[10px] py-1.5 w-full bg-slate-900 border-white/10 text-white"
+                      >
+                        <option value="gemini-2.5-flash">Gemini 2.5 Flash (Más rápido, recomendado)</option>
+                        <option value="gemini-1.5-flash">Gemini 1.5 Flash (Estándar)</option>
+                        <option value="gemini-1.5-pro">Gemini 1.5 Pro (Complejo)</option>
+                      </select>
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[7px] font-bold text-slate-400 uppercase block">Clave API de Gemini</label>
+                      <input
+                        type="password"
+                        value={geminiKey}
+                        onChange={e => { setGeminiKey(e.target.value); setConnStatus('idle'); }}
+                        placeholder="Ingresa tu API Key de Gemini..."
+                        className="inp text-[10px] py-1.5 w-full bg-slate-900 border-white/10 text-white placeholder-slate-600"
+                      />
+                    </div>
+                  </div>
+                  <div className="p-2.5 rounded-xl bg-green-950/20 border border-green-500/20 space-y-1 text-green-400">
+                    <p className="text-[7.5px] uppercase font-black">☁️ Proveedor de Nube Activo (24/7)</p>
+                    <p className="text-[7px] leading-normal uppercase text-slate-400">
+                      La IA se ejecutará permanentemente en la nube. Ingresa tu <code className="text-white font-mono font-bold bg-white/5 px-1 py-0.5 rounded">API Key</code> arriba para usarla de forma directa sin configurar variables del servidor, o bien configúrala como <code className="text-white font-mono font-bold bg-white/5 px-1 py-0.5 rounded">GEMINI_API_KEY</code> en tu panel de Vercel.
+                    </p>
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="flex gap-2 pt-1">
@@ -4959,6 +5104,7 @@ export default function App() {
   const [tenantId, setTenantId] = useState(null);
   const [tenantName, setTenantName] = useState('ELEVORE EMPIRE');
   const [user, setUser] = useState(null);
+  const [tenantSettings, setTenantSettings] = useState(null);
   
   // Custom states
   const [activeMapAddress, setMapAddress] = useState('');
@@ -5002,14 +5148,136 @@ export default function App() {
   const [chatJob, setChatJob] = useState(null);
   const [chatMsg, setChatMsg] = useState('');
   const [chatLog, setChatLog] = useState([]);
+  const [copilotOpen, setCopilotOpen] = useState(false);
+  const [copilotMsgs, setCopilotMsgs] = useState([{role: 'assistant', content: 'Hola socio. Soy tu Copiloto IA. ¿En qué te ayudo hoy?'}]);
+  const [copilotInput, setCopilotInput] = useState('');
+  const [copilotLoading, setCopilotLoading] = useState(false);
   const [actLog, setActLog] = useState([]);
   const [rtOn, setRT] = useState(false);
   const [state, setState] = useState(INIT);
   const [payoutModalWorker, setPayoutModalWorker] = useState(null);
   const [payoutHistory, setPayoutHistory] = useState([]);
   const [expandedWorkerPayouts, setExpandedWorkerPayouts] = useState({});
+  const [expandedWorkerJobs, setExpandedWorkerJobs] = useState({});
   const [payoutAmount, setPayoutAmount] = useState('');
   const [payoutNote, setPayoutNote] = useState('');
+
+  const [settingsBusName, setSettingsBusName] = useState('');
+  const [settingsPhone, setSettingsPhone] = useState('');
+  const [settingsGoal, setSettingsGoal] = useState('15000');
+  const [settingsPayPct, setSettingsPayPct] = useState('40');
+
+  useEffect(() => {
+    if (tenantSettings) {
+      setSettingsBusName(tenantSettings.business_full_name || '');
+      setSettingsPhone(tenantSettings.zelle_phone || '');
+      setSettingsGoal(String(tenantSettings.monthly_goal || 15000));
+      setSettingsPayPct(tenantSettings.staff_pay_pct !== undefined ? String(Math.round(Number(tenantSettings.staff_pay_pct) * 100)) : '40');
+    }
+  }, [tenantSettings]);
+
+  const saveSettings = async (e) => {
+    if (e) e.preventDefault();
+    if (!tenantId) return;
+    setLoad(true);
+    try {
+      const payload = {
+        business_full_name: settingsBusName,
+        zelle_phone: settingsPhone,
+        monthly_goal: Number(settingsGoal) || 0,
+        staff_pay_pct: (Number(settingsPayPct) || 40) / 100
+      };
+
+      const { error } = await sb
+        .from('tenant_settings')
+        .update(payload)
+        .eq('tenant_id', tenantId);
+
+      if (error) throw error;
+
+      setTenantSettings(prev => ({ ...prev, ...payload }));
+      setTenantName(settingsBusName);
+      tt('Settings saved to database ✓', 'green');
+    } catch (err) {
+      tt('Error saving settings: ' + err.message, 'red');
+    }
+    setLoad(false);
+  };
+
+  const reactivateClientWithAI = async (client) => {
+    setLoad(true);
+    try {
+      const clientJobs = jobs.filter(j => j.client_name === client.name && (j.status === 'paid' || j.status === 'completed'));
+      const lastJob = clientJobs.sort((a, b) => new Date(b.scheduled_date) - new Date(a.scheduled_date))[0];
+      const lastService = lastJob ? lastJob.service_type : 'Servicio Elevore';
+      const lastDate = lastJob ? fmtD(lastJob.scheduled_date) : 'hace un tiempo';
+
+      const prompt = `Escribe un mensaje corto, sumamente persuasivo y amigable por WhatsApp para reactivar a un cliente que no ha reservado su servicio de limpieza en un tiempo.
+Información del cliente:
+- Nombre: ${client.name}
+- Último servicio: ${lastService} (realizado el ${lastDate})
+- Frecuencia habitual: ${client.frequency || 'ocasional'}
+
+Instrucciones:
+1. Sé muy natural y profesional (en español de Latinoamérica).
+2. Ofrécele de forma especial un 15% de descuento de cortesía o un add-on gratuito (como lavado de horno o nevera de cortesía) si responde a este mensaje para agendar esta semana.
+3. El mensaje debe ser directo, tener emojis y no sonar robótico.
+4. Devuelve únicamente el texto del mensaje de WhatsApp, sin introducciones ni comillas ni formatos markdown.`;
+
+      const aiProvider = localStorage.getItem('elevore_ai_provider') || 'ollama';
+      const geminiModel = localStorage.getItem('elevore_gemini_model') || 'gemini-2.5-flash';
+      const geminiKey = localStorage.getItem('elevore_gemini_key') || '';
+      const ollamaUrl = localStorage.getItem('elevore_ollama_url') || 'http://127.0.0.1:11434';
+      const ollamaModel = localStorage.getItem('elevore_ollama_model') || 'llama3';
+
+      let message = '';
+      if (aiProvider === 'gemini') {
+        const res = await fetch('/api/chat', {
+          method: 'POST',
+          headers: { 
+            'Content-Type': 'application/json',
+            'x-gemini-key': geminiKey
+          },
+          body: JSON.stringify({
+            model: geminiModel,
+            messages: [{ role: 'user', content: prompt }]
+          })
+        });
+        if (res.ok) {
+          const data = await res.json();
+          message = data.text || '';
+        }
+      } else {
+        const res = await fetch(`${ollamaUrl}/api/chat`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            model: ollamaModel,
+            messages: [{ role: 'user', content: prompt }],
+            stream: false,
+            keep_alive: -1
+          })
+        });
+        if (res.ok) {
+          const data = await res.json();
+          message = data.message?.content || '';
+        }
+      }
+
+      if (!message.trim()) {
+        message = `¡Hola ${client.name}! 😊 Te extrañamos en Elevore. Queríamos ofrecerte un descuento exclusivo de 15% en tu próximo servicio si agendas esta semana. ¿Te reservamos un espacio? 💫`;
+      }
+
+      const ph = (client.phone || '').replace(/\D/g, '');
+      const ph2 = ph.length === 10 ? '1' + ph : ph;
+      window.open(`https://wa.me/${ph2}?text=${encodeURIComponent(message)}`, '_blank');
+      tt(`Mensaje de reactivación generado por IA para ${client.name}! 🚀`, 'green');
+      log(`IA Reactivación → ${client.name}`);
+    } catch (e) {
+      tt('Error con la IA: ' + e.message, 'red');
+    }
+    setLoad(false);
+  };
 
   // Inventory module state
   const [inventory, setInventory] = useState(() => {
@@ -5110,10 +5378,11 @@ export default function App() {
     }
     setLoad(true);
 
-    const [{ data: j }, { data: c }, { data: s }] = await Promise.all([
+    const [{ data: j }, { data: c }, { data: s }, { data: ts }] = await Promise.all([
       sb.from('elevore_missions').select('*').eq('tenant_id', tenantId).order('created_at', { ascending: false }),
       sb.from('clients').select('*').eq('tenant_id', tenantId),
-      sb.from('staff_profiles').select('*').eq('tenant_id', tenantId)
+      sb.from('staff_profiles').select('*').eq('tenant_id', tenantId),
+      sb.from('tenant_settings').select('*').eq('tenant_id', tenantId).maybeSingle()
     ]);
 
     if (j) {
@@ -5130,6 +5399,9 @@ export default function App() {
         const updated = s.find(x => x.id === activeEmployeeRef.current.id);
         if (updated) setActiveEmp(updated);
       }
+    }
+    if (ts) {
+      setTenantSettings(ts);
     }
 
     // Defensive fetch of payout history
@@ -5184,6 +5456,9 @@ export default function App() {
             }
           }
         }
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'staff_profiles' }, () => {
+        refresh();
       })
       .subscribe();
     setRT(true);
@@ -5273,7 +5548,7 @@ export default function App() {
     if (!state.name || !state.address) return tt('Fill Name and Address', 'red');
     setLoad(true);
     try {
-      const { data: c, error: cErr } = await sb.from('clients').upsert({ name: state.name, phone: state.phone, address: state.address, membership: state.membership, specs: { ...state }, tenant_id: tenantId }, { onConflict: 'name' }).select().single();
+      const { data: c, error: cErr } = await sb.from('clients').upsert({ name: state.name, phone: state.phone, email: state.email, birthday: state.birthday || null, membership: state.membership, specs: { ...state }, tenant_id: tenantId }, { onConflict: 'name' }).select().single();
       if (cErr || !c) { tt('Clients Error: ' + (cErr?.message || 'Check RLS'), 'red'); setLoad(false); return; }
       const fd = { 'weekly': 7, 'bi-weekly': 14, 'monthly': 30, 'one-time': null }[state.frequency];
       let nv = null; if (fd && state.date) { const d = new Date(state.date); d.setDate(d.getDate() + fd); nv = d.toISOString().split('T')[0]; }
@@ -5358,7 +5633,8 @@ export default function App() {
   
   // Custom payroll check-in/out and wallet updating logic
   const executeRecTime = async (jid, type, time, status, jobData, patch) => {
-    await sb.from('elevore_missions').update(patch).eq('id', jid);
+    const { error: missionErr } = await sb.from('elevore_missions').update(patch).eq('id', jid);
+    if (missionErr) throw missionErr;
     tt(type === 'check_in_time' ? '▶ Checked in!' : '⏹ Checked out!');
     log(type === 'check_in_time' ? `Check-in: ${jid}` : `Check-out: ${jid}`);
     
@@ -5373,7 +5649,8 @@ export default function App() {
       const newBal = (activeEmployee.wallet_balance || 0) + netEarned;
       const newTot = (activeEmployee.total_earned || 0) + netEarned;
       
-      await sb.from('staff_profiles').update({ wallet_balance: newBal, total_earned: newTot }).eq('id', activeEmployee.id);
+      const { error: staffErr } = await sb.from('staff_profiles').update({ wallet_balance: newBal, total_earned: newTot }).eq('id', activeEmployee.id);
+      if (staffErr) throw staffErr;
       setActiveEmp({ ...activeEmployee, wallet_balance: newBal, total_earned: newTot });
       tt(`Earnings stored! +${fmt$(netEarned)} 💰`);
     }
@@ -5391,53 +5668,66 @@ export default function App() {
     const status = type === 'check_in_time' ? 'in_progress' : 'completed';
     
     // Read the current job values to calculate pay
-    const { data: jobData } = await sb.from('elevore_missions').select('*').eq('id', jid).single();
-    if (!jobData) return;
+    const { data: jobData, error: jobErr } = await sb.from('elevore_missions').select('*').eq('id', jid).single();
+    if (jobErr) throw jobErr;
+    if (!jobData) throw new Error("Mission not found");
 
     const patch = { [type]: time, status };
 
     if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        async (position) => {
-          const lat = position.coords.latitude;
-          const lng = position.coords.longitude;
-          if (type === 'check_in_time') {
-            patch.check_in_lat = lat;
-            patch.check_in_lng = lng;
-            let dLat = jobData.dest_lat;
-            let dLng = jobData.dest_lng;
-            if (!dLat || !dLng) {
-              const coords = await geocodeAddress(jobData.address);
-              if (coords) {
-                dLat = coords.lat;
-                dLng = coords.lng;
-                patch.dest_lat = dLat;
-                patch.dest_lng = dLng;
+      await new Promise((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(
+          async (position) => {
+            try {
+              const lat = position.coords.latitude;
+              const lng = position.coords.longitude;
+              if (type === 'check_in_time') {
+                patch.check_in_lat = lat;
+                patch.check_in_lng = lng;
+                let dLat = jobData.dest_lat;
+                let dLng = jobData.dest_lng;
+                if (!dLat || !dLng) {
+                  const coords = await geocodeAddress(jobData.address);
+                  if (coords) {
+                    dLat = coords.lat;
+                    dLng = coords.lng;
+                    patch.dest_lat = dLat;
+                    patch.dest_lng = dLng;
+                  }
+                }
+                if (dLat && dLng) {
+                  const dist = getDistanceMeters(lat, lng, dLat, dLng);
+                  patch.gps_distance_meters = dist;
+                  if (dist > 300) {
+                    patch.specs = {
+                      ...(jobData.specs || {}),
+                      gps_deviation: true,
+                      gps_deviation_meters: dist
+                    };
+                  }
+                }
+              } else {
+                patch.check_out_lat = lat;
+                patch.check_out_lng = lng;
               }
+              await executeRecTime(jid, type, time, status, jobData, patch);
+              resolve();
+            } catch (err) {
+              reject(err);
             }
-            if (dLat && dLng) {
-              const dist = getDistanceMeters(lat, lng, dLat, dLng);
-              patch.gps_distance_meters = dist;
-              if (dist > 300) {
-                patch.specs = {
-                  ...(jobData.specs || {}),
-                  gps_deviation: true,
-                  gps_deviation_meters: dist
-                };
-              }
+          },
+          async (error) => {
+            try {
+              console.warn("Geolocation failed, writing without GPS coordinates", error);
+              await executeRecTime(jid, type, time, status, jobData, patch);
+              resolve();
+            } catch (err) {
+              reject(err);
             }
-          } else {
-            patch.check_out_lat = lat;
-            patch.check_out_lng = lng;
-          }
-          await executeRecTime(jid, type, time, status, jobData, patch);
-        },
-        async (error) => {
-          console.warn("Geolocation failed, writing without GPS coordinates", error);
-          await executeRecTime(jid, type, time, status, jobData, patch);
-        },
-        { enableHighAccuracy: true, timeout: 5000 }
-      );
+          },
+          { enableHighAccuracy: true, timeout: 5000 }
+        );
+      });
     } else {
       await executeRecTime(jid, type, time, status, jobData, patch);
     }
@@ -5653,7 +5943,12 @@ export default function App() {
   const finance = useMemo(() => {
     const gross = jobs.reduce((a, b) => a + (b.total_price || 0), 0);
     const col = jobs.reduce((a, b) => a + (b.deposit_paid || 0), 0);
-    const exp = jobs.reduce((a, b) => a + (b.specs?.expenses || 0), 0);
+    const exp = jobs.reduce((acc, job) => {
+      const expenses = Number(job.specs?.expenses || 0);
+      const materials = Number(job.specs?.materialCost || 0);
+      const marketing = Number(job.specs?.marketingCost || 0);
+      return acc + expenses + materials + marketing;
+    }, 0);
     const bonuses = jobs.reduce((a, b) => a + calcBonus(b), 0);
     const netPayAllocated = jobs.filter(j => j.status === 'paid').reduce((acc, job) => {
       const w = staff.find(s => s.name === job.team_assigned);
@@ -5662,7 +5957,7 @@ export default function App() {
     }, 0);
     const net = Math.max(0, Math.round(col - netPayAllocated - exp - bonuses));
     const pending = gross - col;
-    const pct = Math.min(100, (gross / DEFAULT_CFG.GOAL) * 100);
+    const pct = Math.min(100, (gross / (tenantSettings?.monthly_goal || DEFAULT_CFG.GOAL)) * 100);
     const avg = jobs.length ? Math.round(gross / jobs.length) : 0;
     const mrr = clients.reduce((a, c) => { const m = MBS.find(x => x.id === c.membership); return a + (m?.price || 0); }, 0);
     const byS = { lead: 0, scheduled: 0, in_progress: 0, completed: 0, paid: 0, lost: 0 };
@@ -5692,7 +5987,59 @@ export default function App() {
     }, {});
     const ChurnRate = clients.length ? Math.round((churn.length / clients.length) * 100) : 0;
     const referredCount = jobs.filter(j => j.specs?.referred_by).length;
-    const avgCAC = clients.length ? Math.round(((referredCount * 25) + 300) / clients.length) : 40;
+
+    // --- NEW ACQUISITION CHANNELS ROI & CAC ---
+    const channels = ['google', 'facebook', 'flyers', 'referral', 'organic'];
+    const channelStats = {
+      google: { name: 'Google Ads', leads: 0, customers: 0, spend: 0, ltv: 0 },
+      facebook: { name: 'Facebook/Redes', leads: 0, customers: 0, spend: 0, ltv: 0 },
+      flyers: { name: 'Volantes/Flyers', leads: 0, customers: 0, spend: 0, ltv: 0 },
+      referral: { name: 'Referidos', leads: 0, customers: 0, spend: 0, ltv: 0 },
+      organic: { name: 'Organic/Otros', leads: 0, customers: 0, spend: 0, ltv: 0 }
+    };
+
+    clients.forEach(c => {
+      const src = c.specs?.leadSource || 'organic';
+      const spend = Number(c.specs?.adSpend || 0);
+      if (channelStats[src]) {
+        channelStats[src].leads++;
+        channelStats[src].spend += spend;
+      }
+    });
+
+    jobs.forEach(j => {
+      const c = clients.find(cl => cl.name === j.client_name);
+      const src = c?.specs?.leadSource || j.specs?.leadSource || 'organic';
+      if (channelStats[src]) {
+        channelStats[src].ltv += (j.total_price || 0);
+        if (j.status === 'paid' || j.status === 'completed') {
+          const clientActiveJobs = jobs.filter(jo => jo.client_name === j.client_name && (jo.status === 'paid' || jo.status === 'completed'));
+          if (clientActiveJobs.length === 1 && j.id === clientActiveJobs[0].id) {
+            channelStats[src].customers++;
+          }
+        }
+      }
+    });
+
+    const channelReport = Object.keys(channelStats).map(ch => {
+      const stat = channelStats[ch];
+      const cac = stat.leads > 0 ? Math.round(stat.spend / stat.leads) : 0;
+      const roi = stat.spend > 0 ? Math.round(((stat.ltv - stat.spend) / stat.spend) * 100) : 0;
+      return {
+        key: ch,
+        name: stat.name,
+        leads: stat.leads,
+        customers: stat.customers,
+        spend: stat.spend,
+        ltv: stat.ltv,
+        cac,
+        roi
+      };
+    });
+
+    const totalAdSpend = clients.reduce((acc, c) => acc + Number(c.specs?.adSpend || 0), 0);
+    const totalReferralsReward = referredCount * 25;
+    const avgCAC = clients.length ? Math.round((totalAdSpend + totalReferralsReward) / clients.length) : 40;
     const ltvCacRatio = avgCAC > 0 ? Number((avgLTV / avgCAC).toFixed(1)) : 0;
     const profitMargin = col > 0 ? Math.round((net / col) * 100) : 0;
     const paidJobs = jobs.filter(j => j.status === 'paid');
@@ -5704,6 +6051,12 @@ export default function App() {
     
     const ratings = jobs.filter(j => j.client_rating > 0).map(j => j.client_rating);
     const avgRating = ratings.length ? Math.round((ratings.reduce((a, b) => a + b, 0) / ratings.length) * 10) / 10 : 0;
+
+    // --- NPS SCORE ---
+    const promoters = ratings.filter(r => r === 5).length;
+    const detractors = ratings.filter(r => r <= 3).length;
+    const nps = ratings.length > 0 ? Math.round(((promoters - detractors) / ratings.length) * 100) : 100;
+
     const payroll = jobs.filter(j => j.status === 'paid').map(j => {
       const w = staff.find(s => s.name === j.team_assigned);
       const pct = w && w.payout_pct !== undefined ? (Number(w.payout_pct) / 100) : DEFAULT_CFG.STAFF_PAY;
@@ -5713,7 +6066,7 @@ export default function App() {
     const conv = jobs.filter(j => j.status === 'paid' && j.created_at && j.scheduled_date);
     const vel = conv.length ? Math.abs(Math.round(conv.reduce((a, j) => a + dAgo(j.created_at) - dAgo(j.scheduled_date), 0) / conv.length)) : null;
     const mbTargets = clients.filter(c => { const cj = jobs.filter(j => j.client_name === c.name); return cj.length >= 3 && (!c.membership || c.membership === 'none'); });
-    return { gross, col, net, pending, pct, avg, mrr, proj, ltv, avgLTV, bestDay: bd ? dn[bd[0]] : null, retDue, cold, churn, pendSig, moneyTable, expiring, qcQ, reviewQ, lostJ, lostReasons, bonuses, wb, mb2, avgRating, payroll, byS, bySvc, todayJobs, total: jobs.length, vel, mbTargets, churnRate: ChurnRate, avgCAC, ltvCacRatio, profitMargin, avgStaffPay };
+    return { gross, col, net, pending, pct, avg, mrr, proj, ltv, avgLTV, bestDay: bd ? dn[bd[0]] : null, retDue, cold, churn, pendSig, moneyTable, expiring, qcQ, reviewQ, lostJ, lostReasons, bonuses, wb, mb2, avgRating, payroll, byS, bySvc, todayJobs, total: jobs.length, vel, mbTargets, churnRate: ChurnRate, avgCAC, ltvCacRatio, profitMargin, avgStaffPay, channelReport, nps };
   }, [jobs, clients]);
 
   const dna = useMemo(() => { const m = {}; clients.forEach(c => { const cj = jobs.filter(j => j.client_name === c.name); m[c.name] = { score: calcDNA(cj), count: cj.length, spent: cj.reduce((a, b) => a + (b.total_price || 0), 0), last: cj[0]?.scheduled_date }; }); return m; }, [clients, jobs]);
@@ -5807,47 +6160,221 @@ export default function App() {
     tt('Invalid Passcode', 'red');
   };
 
-  const wa = (job, type) => {
-    const p = job.client_phone?.replace(/\D/g, '') || ''; const ph = p.length === 10 ? '1' + p : p;
-    const bal = job.total_price - job.deposit_paid;
-    const portal = `${location.origin}${location.pathname}?mision=${job.id}`;
-    const ref = `${location.origin}${location.pathname}?ref=${job.client_name?.replace(/\s/g, '_')}&t=${tenantId}`;
-    const msgs = {
-      confirm: `Hi ${job.client_name}! ✨ Elevore confirming your ${job.service_type?.toUpperCase()} on ${fmtD(job.scheduled_date)}. Balance: ${fmt$(bal)}. Zelle: ${DEFAULT_CFG.ZELLE} 🏠`,
-      reminder: `Hi ${job.client_name}! 🔔 Reminder — Elevore ${fmtD(job.scheduled_date)}. Balance: ${fmt$(bal)}. Reply if questions!`,
-      review: `Hi ${job.client_name}! 🌟 Thank you! Quick review: ${DEFAULT_CFG.GOOGLE} ⭐⭐⭐⭐⭐`,
-      referral: `Hi ${job.client_name}! 🎁 Refer a friend, BOTH get $25 off! Link: ${ref}`,
-      quote: `Hi ${job.client_name}! 📋 Your Elevore quote:\n\n🏠 ${job.service_type?.toUpperCase()}\n📅 ${fmtD(job.scheduled_date)}\n💰 ${fmt$(job.total_price)}\n⚖️ Balance: ${fmt$(bal)}\n\n👉 Sign here: ${portal}\n\n⏰ Expires in 24h. Zelle: ${DEFAULT_CFG.ZELLE}`,
-      portal: `Hi ${job.client_name}! ✨ Track your ELEVORE service: ${portal}`,
-      retention: `Hi ${job.client_name}! 🏠 Been a while! Book this week — 10% off. Reply YES! 🌟`,
-      winback: `Hi ${job.client_name}! We miss you! 😊 Book today — loyalty discount. Reply YES! 💫`,
-      bundle: `Hi ${job.client_name}! 🎯 Add Deep Clean for $50 more — save $70! Reply YES! 🏠`,
-      urgency: `⏰ Hi ${job.client_name}! Quote expires soon. Lock price: ${portal}`,
-      birthday: `🎂 Happy Birthday ${job.client_name}! 15% off this week! Reply YES! 🎉`,
-      follow1: `Hi ${job.client_name}! Quick follow-up on your Elevore quote ${fmt$(job.total_price)}. Sign: ${portal}`,
-      follow2: `Hi ${job.client_name}! Checking before this expires. Secure your spot: ${portal}`,
-      final: `Hi ${job.client_name}! Last call — releasing slot soon. Lock it: ${portal}`,
-      membership: `Hi ${job.client_name}! Based on your history, a recurring plan saves money + priority booking. Want options?`,
-      qcfix: `Hi ${job.client_name}! Quality check — anything need attention? Reply and we make it right.`
-    };
-    if (msgs[type]) window.open(`https://wa.me/${ph}?text=${encodeURIComponent(msgs[type])}`, '_blank');
-    log(`WA ${type} → ${job.client_name}`);
+  const wa = async (job, type) => {
+    const waWindow = window.open('', '_blank');
+    if (waWindow) {
+      waWindow.document.write('<div style="display:flex;justify-content:center;align-items:center;height:100vh;font-family:sans-serif;font-size:24px;color:#333;">Generando mensaje con IA... 🚀</div>');
+    }
+    setLoad(true);
+    try {
+      const bal = (job.total_price || 0) - (job.deposit_paid || 0);
+      const portal = `${location.origin}${location.pathname}?mision=${job.id}`;
+      const ref = `${location.origin}${location.pathname}?ref=${job.client_name?.replace(/\s/g, '_')}&t=${tenantId}`;
+      const zelle = tenantSettings?.zelle_phone || DEFAULT_CFG.ZELLE;
+
+      const prompt = `Escribe un mensaje corto, sumamente profesional y persuasivo para enviar por WhatsApp a un cliente.
+Detalles del Trabajo:
+- Cliente: ${job.client_name}
+- Tipo de Servicio: ${job.service_type?.toUpperCase()}
+- Fecha programada: ${fmtD(job.scheduled_date)}
+- Precio total: ${fmt$(job.total_price)}
+- Depósito pagado: ${fmt$(job.deposit_paid)}
+- Balance pendiente: ${fmt$(bal)}
+- Enlace del Portal del Cliente: ${portal}
+- Código de Referido del Cliente: ${ref}
+- Teléfono de Zelle de la empresa: ${zelle}
+- Tipo de Mensaje a generar: ${type}
+
+Instrucciones para el Tipo de Mensaje "${type}":
+- confirm: Confirmación del servicio y recordatorio de pagar el balance restante por Zelle (${zelle}) el día del servicio.
+- reminder: Recordatorio amigable del servicio programado y del balance pendiente.
+- review: Agradecimiento por el servicio terminado y solicitud de dejar una reseña en Google: ${DEFAULT_CFG.GOOGLE} de 5 estrellas.
+- referral: Invitar al cliente a referir a un amigo para que ambos obtengan $25 de descuento utilizando su enlace: ${ref}.
+- quote: Enviar la cotización detallada, el precio total, el balance pendiente, el enlace para firmar digitalmente y aprobar en su portal: ${portal}.
+- portal: Enlace de seguimiento en tiempo real del servicio en su portal: ${portal}.
+- retention: Reactivación de cliente ofreciéndole un 10% de descuento si reserva esta semana.
+- winback: Mensaje especial para recuperar un cliente inactivo ofreciéndole 15% de descuento.
+- bundle: Oferta especial de venta cruzada (ej. agregar limpieza profunda de horno o ventanas por $50 adicionales).
+- urgency: Alerta de que su cotización en el portal (${portal}) está por expirar y debe firmar para asegurar el precio.
+- birthday: Mensaje de feliz cumpleaños ofreciendo un bono especial de $25 de descuento aplicable en su próximo servicio.
+- follow1 / follow2 / final: Mensajes de seguimiento para leads que aún no han firmado su cotización en el portal (${portal}).
+- membership: Ofrecer un plan recurrente (membresía) para ahorrar dinero en base a su historial.
+- qcfix: Preguntar de forma proactiva si hay algo del servicio que requiera atención para corregirlo inmediatamente.
+
+Instrucciones generales de formato:
+1. El mensaje debe estar redactado en español de Latinoamérica (cercano y persuasivo).
+2. Usa emojis de forma moderada para hacerlo visualmente atractivo.
+3. Devuelve ÚNICAMENTE el texto final para copiar y enviar en WhatsApp, sin introducciones ni comentarios ni markdown.`;
+
+      const aiProvider = localStorage.getItem('elevore_ai_provider') || 'ollama';
+      const geminiModel = localStorage.getItem('elevore_gemini_model') || 'gemini-2.5-flash';
+      const geminiKey = localStorage.getItem('elevore_gemini_key') || '';
+      const ollamaUrl = localStorage.getItem('elevore_ollama_url') || 'http://127.0.0.1:11434';
+      const ollamaModel = localStorage.getItem('elevore_ollama_model') || 'llama3';
+
+      let message = '';
+      if (aiProvider === 'gemini') {
+        const res = await fetch('/api/chat', {
+          method: 'POST',
+          headers: { 
+            'Content-Type': 'application/json',
+            'x-gemini-key': geminiKey
+          },
+          body: JSON.stringify({
+            model: geminiModel,
+            messages: [{ role: 'user', content: prompt }]
+          })
+        });
+        if (res.ok) {
+          const data = await res.json();
+          message = data.text || '';
+        }
+      } else {
+        const res = await fetch(`${ollamaUrl}/api/chat`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            model: ollamaModel,
+            messages: [{ role: 'user', content: prompt }],
+            stream: false,
+            keep_alive: -1
+          })
+        });
+        if (res.ok) {
+          const data = await res.json();
+          message = data.message?.content || '';
+        }
+      }
+
+      if (!message.trim()) {
+        throw new Error('No content returned');
+      }
+
+      const p = job.client_phone?.replace(/\D/g, '') || '';
+      const ph = p.length === 10 ? '1' + p : p;
+      const finalUrl = `https://wa.me/${ph}?text=${encodeURIComponent(message)}`;
+      if (waWindow) {
+        waWindow.location.href = finalUrl;
+      } else {
+        window.open(finalUrl, '_blank');
+      }
+      tt(`Mensaje "${type}" generado con IA enviado! 🚀`);
+      log(`IA WA ${type} → ${job.client_name}`);
+    } catch (err) {
+      console.warn("Fallback to static template message:", err);
+      // Fallback to original static templates
+      const bal = (job.total_price || 0) - (job.deposit_paid || 0);
+      const portal = `${location.origin}${location.pathname}?mision=${job.id}`;
+      const ref = `${location.origin}${location.pathname}?ref=${job.client_name?.replace(/\s/g, '_')}&t=${tenantId}`;
+      const msgs = {
+        confirm: `Hola ${job.client_name}! ✨ Elevore confirma tu servicio de ${job.service_type?.toUpperCase()} para el ${fmtD(job.scheduled_date)}. Balance: ${fmt$(bal)}. Zelle: ${tenantSettings?.zelle_phone || DEFAULT_CFG.ZELLE} 🏠`,
+        reminder: `Hola ${job.client_name}! 🔔 Recordatorio de tu servicio Elevore para el ${fmtD(job.scheduled_date)}. Balance: ${fmt$(bal)}. ¡Escríbenos si tienes dudas!`,
+        review: `Hola ${job.client_name}! 🌟 ¡Gracias por elegirnos! Déjanos una reseña aquí: ${DEFAULT_CFG.GOOGLE} ⭐⭐⭐⭐⭐`,
+        referral: `Hola ${job.client_name}! 🎁 Refiere a un amigo, ¡AMBOS obtienen $25 de descuento! Enlace: ${ref}`,
+        quote: `Hola ${job.client_name}! 📋 Tu cotización Elevore:\n\n🏠 ${job.service_type?.toUpperCase()}\n📅 ${fmtD(job.scheduled_date)}\n💰 ${fmt$(job.total_price)}\n⚖️ Balance: ${fmt$(bal)}\n\n👉 Firma aquí: ${portal}\n\n⏰ Expira en 24h. Zelle: ${tenantSettings?.zelle_phone || DEFAULT_CFG.ZELLE}`,
+        portal: `Hola ${job.client_name}! ✨ Sigue tu servicio ELEVORE en tiempo real: ${portal}`,
+        retention: `Hola ${job.client_name}! 🏠 Ha pasado un tiempo. Reserva esta semana y obtén 10% de descuento. ¡Escríbenos! 🌟`,
+        winback: `Hola ${job.client_name}! 😊 ¡Te extrañamos! Reserva hoy con un descuento especial de cliente leal.`,
+      };
+      const p = job.client_phone?.replace(/\D/g, '') || '';
+      const ph = p.length === 10 ? '1' + p : p;
+      const fallbackMsg = msgs[type] || `Hola ${job.client_name}! Elevore te contacta sobre tu servicio de ${job.service_type?.toUpperCase()}. Portal: ${portal}`;
+      const finalUrl = `https://wa.me/${ph}?text=${encodeURIComponent(fallbackMsg)}`;
+      if (waWindow) {
+        waWindow.location.href = finalUrl;
+      } else {
+        window.open(finalUrl, '_blank');
+      }
+      tt(`Mensaje de plantilla enviado! 🚀`);
+      log(`WA ${type} (Static) → ${job.client_name}`);
+    }
+    setLoad(false);
   };
 
   const recordFollow = async (job, type) => { wa(job, type); const h = [...(job.specs?.followups || []), { type, time: new Date().toISOString() }]; await update(job, { specs: { ...(job.specs || {}), followups: h, last_followup: type } }, `Follow-up ${type} sent`); };
   const requestReview = async (job) => { if ((job.client_rating || 0) > 0 && (job.client_rating || 0) < 5) { wa(job, 'qcfix'); tt('⚠️ Low rating — fix sent', 'red'); return; } wa(job, 'review'); await update(job, { specs: { ...(job.specs || {}), review_requested_at: new Date().toISOString() } }, 'Review requested'); };
   const offerMembership = async (job) => { wa(job, 'membership'); await update(job, { specs: { ...(job.specs || {}), membership_offered_at: new Date().toISOString() } }, 'Membership offer sent'); };
 
+  const deploySmartCampaign = async () => {
+    if (finance.mbTargets && finance.mbTargets.length > 0) {
+      const targetName = finance.mbTargets[0].name;
+      const j = jobs.find(jj => jj.client_name === targetName);
+      if (j) {
+        tt(`Desplegando campaña de membresía para ${targetName}... 🚀`, 'green');
+        await offerMembership(j);
+      } else {
+        tt('No se encontró un trabajo reciente para el cliente objetivo.', 'amber');
+      }
+    } else if (finance.churn && finance.churn.length > 0) {
+      const targetName = finance.churn[0].name;
+      const j = jobs.find(jj => jj.client_name === targetName);
+      if (j) {
+        tt(`Desplegando campaña de recuperación para ${targetName}... 🚀`, 'green');
+        await wa(j, 'winback');
+      } else {
+        tt('No se encontró un trabajo para el cliente inactivo.', 'amber');
+      }
+    } else {
+      tt('No hay objetivos de campaña sugeridos actualmente.', 'amber');
+    }
+  };
+
+  const handleCopilot = async (e) => {
+    e.preventDefault();
+    if (!copilotInput.trim()) return;
+    const userText = copilotInput.trim();
+    setCopilotMsgs(prev => [...prev, { role: 'user', content: userText }]);
+    setCopilotInput('');
+    setCopilotLoading(true);
+
+    try {
+      const ollamaUrl = localStorage.getItem('elevore_ollama_url') || 'http://127.0.0.1:11434';
+      const ollamaModel = localStorage.getItem('elevore_ollama_model') || 'llama3';
+      
+      const systemPrompt = `Eres el Copiloto IA de Elevore, un asistente experto para el negocio ${tenantName}.
+Métricas actuales: 
+- Total Ingresos: $${finance.gross}
+- Trabajos de Hoy: ${finance.todayJobs.length}
+- Clientes Inactivos (Churn): ${finance.churn.length}
+Responde en español de forma cortés, muy breve, como un asistente ejecutivo. Si preguntan qué hacer, sugiere contactar a los clientes inactivos o revisar el dashboard.`;
+
+      const res = await fetch(`${ollamaUrl}/api/chat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: ollamaModel,
+          messages: [
+            { role: 'system', content: systemPrompt },
+            ...copilotMsgs.map(m => ({ role: m.role, content: m.content })),
+            { role: 'user', content: userText }
+          ],
+          stream: false,
+          keep_alive: -1
+        })
+      });
+      if (!res.ok) throw new Error('Error al conectar con la IA');
+      const data = await res.json();
+      setCopilotMsgs(prev => [...prev, { role: 'assistant', content: data.message?.content || 'Sin respuesta' }]);
+    } catch (err) {
+      setCopilotMsgs(prev => [...prev, { role: 'assistant', content: `Error: ${err.message}. Asegúrate de que Ollama esté corriendo.` }]);
+    }
+    setCopilotLoading(false);
+  };
+
   const printInvoice = job => {
     const w = window.open('', '_blank');
-    w.document.write(`<html><head><style>body{font-family:sans-serif;padding:40px;max-width:600px;margin:auto}.h{border-bottom:4px solid #22c55e;padding-bottom:15px;display:flex;justify-content:space-between}.row{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #eee}.total{background:#000;color:#fff;padding:30px;border-radius:15px;margin-top:20px}.sig{border:2px solid #eee;border-radius:8px;margin-top:15px;padding:8px;text-align:center}</style></head><body>
-<div class="h"><div><h1 style="font-style:italic;margin:0">ELEVORE</h1><p style="margin:0;color:#666;font-size:11px">${DEFAULT_CFG.BIZ}</p></div><div style="text-align:right"><h2 style="margin:0">INVOICE #${job.id?.slice(0, 8).toUpperCase()}</h2><p style="margin:0;color:#666;font-size:11px">${new Date().toLocaleDateString()}</p></div></div>
+    const bizName = tenantSettings?.business_full_name || 'ELEVORE';
+    const bizInitial = bizName.charAt(0).toUpperCase();
+    const zelle = tenantSettings?.zelle_phone || DEFAULT_CFG.ZELLE;
+    
+    w.document.write(`<html><head><style>body{font-family:sans-serif;padding:40px;max-width:600px;margin:auto}.h{border-bottom:4px solid #22c55e;padding-bottom:15px;display:flex;justify-content:space-between;align-items:center}.row{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #eee}.total{background:#000;color:#fff;padding:30px;border-radius:15px;margin-top:20px}.sig{border:2px solid #eee;border-radius:8px;margin-top:15px;padding:8px;text-align:center}</style></head><body>
+<div class="h"><div><h1 style="font-style:italic;margin:0;display:flex;align-items:center;gap:10px"><div style="width:40px;height:40px;background:#000;color:#fff;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:24px;">${bizInitial}</div>${bizName}</h1></div><div style="text-align:right"><h2 style="margin:0">INVOICE #${job.id?.slice(0, 8).toUpperCase()}</h2><p style="margin:0;color:#666;font-size:11px">${new Date().toLocaleDateString()}</p></div></div>
 <div style="margin-top:20px"><h3>BILL TO:</h3><p><b>${job.client_name}</b></p><p>${job.address}</p><p>${job.client_phone || ''}</p></div>
 <div style="margin-top:15px"><div class="row"><span>Service</span><span>${job.service_type?.toUpperCase()}</span></div><div class="row"><span>Date</span><span>${fmtD(job.scheduled_date)}</span></div><div class="row"><span>Team</span><span>${job.team_assigned || 'TBD'}</span></div>${job.check_in_time ? `<div class="row"><span>Check-in</span><span>${new Date(job.check_in_time).toLocaleTimeString()}</span></div>` : ''}${job.check_out_time ? `<div class="row"><span>Check-out</span><span>${new Date(job.check_out_time).toLocaleTimeString()}</span></div>` : ''}<div class="row"><span>Total</span><span>${fmt$(job.total_price)}</span></div><div class="row"><span>Deposit Paid</span><span>-${fmt$(job.deposit_paid)}</span></div></div>
-<div class="total"><h1 style="margin:0">BALANCE DUE: ${fmt$(job.total_price - job.deposit_paid)}</h1><p>Zelle: ${DEFAULT_CFG.ZELLE}</p></div>
+<div class="total"><h1 style="margin:0">BALANCE DUE: ${fmt$(job.total_price - job.deposit_paid)}</h1><p>Zelle: ${zelle}</p></div>
 ${job.approval_signature ? `<div class="sig"><p style="font-size:10px;color:#999;margin:0">CLIENT APPROVAL</p><img src="${job.approval_signature}" style="max-height:60px"/></div>` : ''}
 ${job.final_signature ? `<div class="sig"><p style="font-size:10px;color:#999;margin:0">JOB COMPLETION</p><img src="${job.final_signature}" style="max-height:60px"/></div>` : ''}
-<p style="margin-top:40px;text-align:center;color:#999;font-size:11px">Thank you for choosing ${DEFAULT_CFG.BIZ} ⭐</p>
+<p style="margin-top:40px;text-align:center;color:#999;font-size:11px">Thank you for choosing ${bizName} ⭐</p>
 <script>window.print();<\/script></body></html>`);
     w.document.close();
   };
@@ -5873,12 +6400,101 @@ ${job.final_signature ? `<div class="sig"><p style="font-size:10px;color:#999;ma
       setChatLog(l => [...l, { from: 'admin', m: chatMsg, time: new Date().toLocaleTimeString() }]);
       setChatMsg('');
     };
-    const templates = {
-      confirm: `Hi ${chatJob.client_name}! ✨ Elevore confirming your service on ${fmtD(chatJob.scheduled_date)}.`,
-      reminder: `Hi ${chatJob.client_name}! 🔔 Reminder — Elevore ${fmtD(chatJob.scheduled_date)}.`,
-      review: `Hi ${chatJob.client_name}! 🌟 Quick review: ${DEFAULT_CFG.GOOGLE} ⭐⭐⭐⭐⭐`,
-      quote: `Hi ${chatJob.client_name}! 📋 Portal: ${location.origin}${location.pathname}?mision=${chatJob.id}`,
+
+    const generateTemplateWithAI = async (type) => {
+      setLoad(true);
+      try {
+        const bal = (chatJob.total_price || 0) - (chatJob.deposit_paid || 0);
+        const portal = `${location.origin}${location.pathname}?mision=${chatJob.id}`;
+        const ref = `${location.origin}${location.pathname}?ref=${chatJob.client_name?.replace(/\s/g, '_')}&t=${tenantId}`;
+        const zelle = tenantSettings?.zelle_phone || DEFAULT_CFG.ZELLE;
+
+        const prompt = `Escribe un mensaje corto, sumamente profesional y persuasivo para enviar por WhatsApp a un cliente.
+Detalles del Trabajo:
+- Cliente: ${chatJob.client_name}
+- Tipo de Servicio: ${chatJob.service_type?.toUpperCase()}
+- Fecha programada: ${fmtD(chatJob.scheduled_date)}
+- Precio total: ${fmt$(chatJob.total_price)}
+- Depósito pagado: ${fmt$(chatJob.deposit_paid)}
+- Balance pendiente: ${fmt$(bal)}
+- Enlace del Portal del Cliente: ${portal}
+- Código de Referido del Cliente: ${ref}
+- Teléfono de Zelle de la empresa: ${zelle}
+- Tipo de Mensaje a generar: ${type}
+
+Instrucciones para el Tipo de Mensaje "${type}":
+- confirm: Confirmación del servicio y recordatorio de pagar el balance restante por Zelle (${zelle}) el día del servicio.
+- reminder: Recordatorio amigable del servicio programado y del balance pendiente.
+- review: Agradecimiento por el servicio terminado y solicitud de dejar una reseña en Google: ${DEFAULT_CFG.GOOGLE} de 5 estrellas.
+- quote: Enviar la cotización detallada, el precio total, el balance pendiente, el enlace para firmar digitalmente y aprobar en su portal: ${portal}.
+
+Instrucciones generales de formato:
+1. El mensaje debe estar redactado en español de Latinoamérica (cercano y persuasivo).
+2. Usa emojis de forma moderada para hacerlo visualmente atractivo.
+3. Devuelve ÚNICAMENTE el texto final para copiar y enviar en WhatsApp, sin introducciones ni comentarios ni markdown.`;
+
+        const aiProvider = localStorage.getItem('elevore_ai_provider') || 'ollama';
+        const geminiModel = localStorage.getItem('elevore_gemini_model') || 'gemini-2.5-flash';
+        const geminiKey = localStorage.getItem('elevore_gemini_key') || '';
+        const ollamaUrl = localStorage.getItem('elevore_ollama_url') || 'http://127.0.0.1:11434';
+        const ollamaModel = localStorage.getItem('elevore_ollama_model') || 'llama3';
+
+        let message = '';
+        if (aiProvider === 'gemini') {
+          const res = await fetch('/api/chat', {
+            method: 'POST',
+            headers: { 
+              'Content-Type': 'application/json',
+              'x-gemini-key': geminiKey
+            },
+            body: JSON.stringify({
+              model: geminiModel,
+              messages: [{ role: 'user', content: prompt }]
+            })
+          });
+          if (res.ok) {
+            const data = await res.json();
+            message = data.text || '';
+          }
+        } else {
+          const res = await fetch(`${ollamaUrl}/api/chat`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              model: ollamaModel,
+              messages: [{ role: 'user', content: prompt }],
+              stream: false,
+              keep_alive: -1
+            })
+          });
+          if (res.ok) {
+            const data = await res.json();
+            message = data.message?.content || '';
+          }
+        }
+
+        if (!message.trim()) {
+          throw new Error('No content returned');
+        }
+        setChatMsg(message.trim());
+        tt(`Mensaje "${type}" generado con IA! 🤖`);
+      } catch (err) {
+        console.warn("Fallback to static template message:", err);
+        const bal = (chatJob.total_price || 0) - (chatJob.deposit_paid || 0);
+        const portal = `${location.origin}${location.pathname}?mision=${chatJob.id}`;
+        const ref = `${location.origin}${location.pathname}?ref=${chatJob.client_name?.replace(/\s/g, '_')}&t=${tenantId}`;
+        const msgs = {
+          confirm: `Hola ${chatJob.client_name}! ✨ Elevore confirma tu servicio de ${chatJob.service_type?.toUpperCase()} para el ${fmtD(chatJob.scheduled_date)}. Balance: ${fmt$(bal)}. Zelle: ${tenantSettings?.zelle_phone || DEFAULT_CFG.ZELLE} 🏠`,
+          reminder: `Hola ${chatJob.client_name}! 🔔 Recordatorio de tu servicio Elevore para el ${fmtD(chatJob.scheduled_date)}. Balance: ${fmt$(bal)}. ¡Escríbenos si tienes dudas!`,
+          review: `Hola ${chatJob.client_name}! 🌟 ¡Gracias por elegirnos! Déjanos una reseña aquí: ${DEFAULT_CFG.GOOGLE} ⭐⭐⭐⭐⭐`,
+          quote: `Hola ${chatJob.client_name}! 📋 Tu cotización Elevore:\n\n🏠 ${chatJob.service_type?.toUpperCase()}\n📅 ${fmtD(chatJob.scheduled_date)}\n💰 ${chatJob.total_price}\n⚖️ Balance: ${fmt$(bal)}\n\n👉 Firma aquí: ${portal}\n\n⏰ Expira en 24h. Zelle: ${tenantSettings?.zelle_phone || DEFAULT_CFG.ZELLE}`,
+        };
+        setChatMsg(msgs[type] || `Hola ${chatJob.client_name}! Elevore te contacta sobre tu servicio de ${chatJob.service_type?.toUpperCase()}. Portal: ${portal}`);
+        tt(`Plantilla cargada (Fallback)`);
+      }
+      setLoad(false);
     };
+
     return (
       <div className="fixed inset-0 bg-black/90 z-[2000] flex items-end p-4" onClick={e => e.target === e.currentTarget && setChatJob(null)}>
         <div className="g p-6 w-full max-w-md space-y-4 border-t-4 border-green-500 mx-auto bg-slate-950 rounded-2xl shadow-2xl border border-white/5">
@@ -5897,7 +6513,7 @@ ${job.final_signature ? `<div class="sig"><p style="font-size:10px;color:#999;ma
           </div>
           <div className="grid grid-cols-2 gap-1">
             {[['✅ Confirm', 'confirm'], ['🔔 Remind', 'reminder'], ['⭐ Review', 'review'], ['📋 Quote', 'quote']].map(([l, type]) => (
-              <button key={type} onClick={() => setChatMsg(templates[type])} className="py-1.5 bg-white/5 text-slate-400 rounded-xl text-[7px] font-black uppercase active:scale-95 hover:bg-white/10">{l}</button>
+              <button key={type} onClick={() => generateTemplateWithAI(type)} className="py-1.5 bg-white/5 text-slate-400 rounded-xl text-[7px] font-black uppercase active:scale-95 hover:bg-white/10">{l}</button>
             ))}
           </div>
           <div className="flex gap-2">
@@ -6361,28 +6977,58 @@ ${job.final_signature ? `<div class="sig"><p style="font-size:10px;color:#999;ma
                     </div>
                     <p className="text-[8px] text-slate-500 font-bold uppercase tracking-widest mt-1">Meta: {fmt$(DEFAULT_CFG.GOAL)} · Net: {isPrivate ? '****' : fmt$(finance.net)} · Proy: {isPrivate ? '****' : fmt$(finance.proj)}</p>
                   </div>
-                  {/* Mini bar sparkline */}
-                  <div className="flex flex-col gap-2 min-w-[180px]">
-                    <p className="text-[7px] font-black text-slate-500 uppercase tracking-widest">Últimas semanas</p>
+                  {/* Glowing SVG Line Chart */}
+                  <div className="flex flex-col gap-2 min-w-[200px]">
+                    <p className="text-[7px] font-black text-slate-500 uppercase tracking-widest">Trayectoria (7 sem)</p>
                     {(() => {
                       const bars = finance.wb?.slice(-7) || [];
+                      if (bars.length < 2) return <div className="h-14 flex items-center justify-center text-[10px] text-slate-600 italic">No hay suficientes datos</div>;
                       const max = Math.max(...bars.map(b => b.v || 0), 1);
+                      const min = Math.min(...bars.map(b => b.v || 0));
+                      const range = max - min || 1;
+                      
+                      const width = 200;
+                      const height = 48;
+                      const padding = 4;
+                      
+                      const points = bars.map((b, i) => {
+                        const x = (i / (bars.length - 1)) * (width - padding * 2) + padding;
+                        const y = height - padding - (((b.v || 0) - min) / range) * (height - padding * 2);
+                        return `${x},${y}`;
+                      });
+                      
+                      const pathData = `M ${points.join(' L ')}`;
+                      const areaData = `${pathData} L ${width - padding},${height} L ${padding},${height} Z`;
+
                       return (
-                        <div className="flex items-end gap-1 h-14">
-                          {bars.map((b, i) => (
-                            <div key={i} className="flex-1 flex flex-col items-center gap-0.5">
-                              <div className="w-full rounded-sm transition-all" style={{
-                                height: `${Math.max(((b.v || 0) / max) * 48, 3)}px`,
-                                background: i === bars.length - 1 ? 'linear-gradient(to top,#F5C518,#fde68a)' : 'rgba(255,255,255,0.10)'
-                              }} />
-                              <span className="text-[6px] text-slate-600 font-bold">{b.l?.slice(0, 1) || ''}</span>
-                            </div>
-                          ))}
-                          {bars.length === 0 && [1,2,3,4,5,6,7].map((_, i) => (
-                            <div key={i} className="flex-1 flex flex-col items-center gap-0.5">
-                              <div className="w-full rounded-sm" style={{ height: `${12 + i * 5}px`, background: i === 6 ? 'linear-gradient(to top,#F5C518,#fde68a)' : 'rgba(255,255,255,0.08)' }} />
-                            </div>
-                          ))}
+                        <div className="relative h-14 w-full">
+                          <svg width="100%" height="100%" viewBox={`0 0 ${width} ${height}`} className="overflow-visible">
+                            <defs>
+                              <linearGradient id="lineGlow" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="0%" stopColor="rgba(245,197,24,0.5)" />
+                                <stop offset="100%" stopColor="rgba(245,197,24,0)" />
+                              </linearGradient>
+                              <linearGradient id="lineColor" x1="0" y1="0" x2="1" y2="0">
+                                <stop offset="0%" stopColor="#fde68a" />
+                                <stop offset="100%" stopColor="#F5C518" />
+                              </linearGradient>
+                            </defs>
+                            {/* Area fill */}
+                            <path d={areaData} fill="url(#lineGlow)" className="animate-in fade-in duration-1000" />
+                            {/* Line */}
+                            <path d={pathData} fill="none" stroke="url(#lineColor)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="animate-in fade-in duration-1000 delay-300 drop-shadow-[0_0_8px_rgba(245,197,24,0.8)]" />
+                            {/* Data points */}
+                            {bars.map((b, i) => {
+                                const x = (i / (bars.length - 1)) * (width - padding * 2) + padding;
+                                const y = height - padding - (((b.v || 0) - min) / range) * (height - padding * 2);
+                                return <circle key={i} cx={x} cy={y} r={i === bars.length - 1 ? 4 : 2} fill={i === bars.length - 1 ? "#F5C518" : "#fff"} className="animate-in zoom-in duration-500" style={{animationDelay: `${i * 100}ms`}} />;
+                            })}
+                          </svg>
+                          <div className="flex justify-between mt-1">
+                            {bars.map((b, i) => (
+                              <span key={i} className={`text-[6px] font-bold ${i === bars.length - 1 ? 'text-[#F5C518]' : 'text-slate-600'}`}>{b.l?.slice(0, 1)}</span>
+                            ))}
+                          </div>
                         </div>
                       );
                     })()}
@@ -6391,7 +7037,7 @@ ${job.final_signature ? `<div class="sig"><p style="font-size:10px;color:#999;ma
               </div>
 
               {/* ── KPI CARDS ── */}
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="relative rounded-2xl overflow-hidden border border-green-500/20 bg-gradient-to-br from-green-950/40 to-black p-5 flex flex-col justify-between min-h-[130px] hover:border-green-500/40 hover:shadow-[0_0_20px_rgba(34,197,94,0.08)] transition-all group">
                   <div className="absolute top-0 left-0 w-full h-[1.5px] bg-gradient-to-r from-green-400/60 to-transparent" />
                   <div className="flex items-center justify-between">
@@ -6406,22 +7052,6 @@ ${job.final_signature ? `<div class="sig"><p style="font-size:10px;color:#999;ma
                   </div>
                 </div>
 
-                <div className="relative rounded-2xl overflow-hidden border border-[#F5C518]/20 bg-gradient-to-br from-amber-950/40 to-black p-5 flex flex-col justify-between min-h-[130px] hover:border-[#F5C518]/40 hover:shadow-[0_0_20px_rgba(245,197,24,0.08)] transition-all group">
-                  <div className="absolute top-0 left-0 w-full h-[1.5px] bg-gradient-to-r from-[#F5C518]/60 to-transparent" />
-                  <div className="flex items-center justify-between">
-                    <div className="w-8 h-8 rounded-xl bg-[#F5C518]/10 border border-[#F5C518]/20 flex items-center justify-center group-hover:scale-110 transition-transform">
-                      <Icon name="dollar-sign" className="w-4 h-4 text-[#F5C518]" />
-                    </div>
-                    <span className="text-[7px] font-black text-[#F5C518] bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded-full uppercase">HOY</span>
-                  </div>
-                  <div>
-                    <p className="text-3xl font-black text-white italic tracking-tight leading-none">
-                      {isPrivate ? '***' : fmt$(finance.todayJobs.reduce((a, b) => a + (b.total_price || 0), 0))}
-                    </p>
-                    <p className="text-[8px] text-slate-400 uppercase font-black tracking-widest mt-1.5">Revenue Hoy</p>
-                  </div>
-                </div>
-
                 <div className="relative rounded-2xl overflow-hidden border border-blue-500/20 bg-gradient-to-br from-blue-950/40 to-black p-5 flex flex-col justify-between min-h-[130px] hover:border-blue-500/40 hover:shadow-[0_0_20px_rgba(59,130,246,0.08)] transition-all group">
                   <div className="absolute top-0 left-0 w-full h-[1.5px] bg-gradient-to-r from-blue-400/60 to-transparent" />
                   <div className="flex items-center justify-between">
@@ -6433,20 +7063,6 @@ ${job.final_signature ? `<div class="sig"><p style="font-size:10px;color:#999;ma
                   <div>
                     <p className="text-3xl font-black text-white italic tracking-tight leading-none">{isPrivate ? '***' : fmt$(finance.mrr)}</p>
                     <p className="text-[8px] text-slate-400 uppercase font-black tracking-widest mt-1.5">Recurrente Mes</p>
-                  </div>
-                </div>
-
-                <div className="relative rounded-2xl overflow-hidden border border-purple-500/20 bg-gradient-to-br from-purple-950/40 to-black p-5 flex flex-col justify-between min-h-[130px] hover:border-purple-500/40 hover:shadow-[0_0_20px_rgba(168,85,247,0.08)] transition-all group">
-                  <div className="absolute top-0 left-0 w-full h-[1.5px] bg-gradient-to-r from-purple-400/60 to-transparent" />
-                  <div className="flex items-center justify-between">
-                    <div className="w-8 h-8 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center group-hover:scale-110 transition-transform">
-                      <Icon name="star" className="w-4 h-4 text-purple-400" />
-                    </div>
-                    <span className="text-[7px] font-black text-purple-400 bg-purple-500/10 border border-purple-500/20 px-2 py-0.5 rounded-full uppercase">⭐ SCORE</span>
-                  </div>
-                  <div>
-                    <p className="text-4xl font-black text-white italic tracking-tight leading-none">{finance.avgRating || '5.0'}</p>
-                    <p className="text-[8px] text-slate-400 uppercase font-black tracking-widest mt-1.5">Promedio Stars</p>
                   </div>
                 </div>
               </div>
@@ -6516,7 +7132,7 @@ ${job.final_signature ? `<div class="sig"><p style="font-size:10px;color:#999;ma
                       <p className="text-[8px] text-slate-400 leading-relaxed">Capacidad al 80%. IA sugiere multiplicador 1.2x en nuevos estimados por 48h para maximizar margen.</p>
                     </>
                   )}
-                  <button onClick={() => tt('Deploying Smart Campaign... 🚀')} className="mt-4 px-4 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-black text-[8px] uppercase active:scale-95 shadow-lg shadow-blue-600/20 transition-all">Deploy Campaign →</button>
+                  <button onClick={deploySmartCampaign} className="mt-4 px-4 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-black text-[8px] uppercase active:scale-95 shadow-lg shadow-blue-600/20 transition-all">Deploy Campaign →</button>
                 </div>
 
                 {/* ── PROGRESS RINGS ── */}
@@ -6678,9 +7294,8 @@ ${job.final_signature ? `<div class="sig"><p style="font-size:10px;color:#999;ma
                 <div className="absolute top-0 left-0 w-full h-[1.5px] bg-gradient-to-r from-[#F5C518]/40 to-transparent" />
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
-                    <h3 className="text-[10px] font-black text-white uppercase tracking-widest font-display">📍 Live Logistics & Dispatch</h3>
-                    <span className="text-[6px] bg-amber-500/10 text-amber-400 font-bold px-1.5 py-0.5 rounded border border-amber-500/15">SYNC ACTIVE</span>
+                    <div className="w-2.5 h-2.5 rounded-full bg-green-400 animate-pulse" />
+                    <h3 className="text-[10px] font-black text-white uppercase tracking-widest font-display">🚚 SERVICIOS ACTIVOS EN CURSO</h3>
                   </div>
                   <button 
                     onClick={autoDispatchMission} 
@@ -6694,17 +7309,54 @@ ${job.final_signature ? `<div class="sig"><p style="font-size:10px;color:#999;ma
                     )}
                   </button>
                 </div>
-                <MapComponent address={activeMapAddress} />
-                <div className="flex gap-2 overflow-x-auto nsb">
-                  {jobs.filter(j => j.status === 'scheduled' || j.status === 'in_progress').map(job => (
-                    <button key={job.id} onClick={() => setMapAddress(job.address)} className={`px-3 py-2 rounded-xl text-[8px] font-black uppercase flex-shrink-0 border transition-all flex items-center gap-1.5 ${activeMapAddress === job.address ? 'bg-[#F5C518] border-[#F5C518] text-black shadow-lg shadow-[#F5C518]/10' : 'bg-white/5 border-white/5 text-slate-400 hover:text-white hover:border-white/20'}`}>
-                      {job.client_name}
-                      {job.specs?.gps_deviation && <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse flex-shrink-0" title="GPS Deviation Warning" />}
-                    </button>
-                  ))}
-                  {jobs.filter(j => j.status === 'scheduled' || j.status === 'in_progress').length === 0 && (
-                    <p className="text-[8px] text-slate-600 font-bold uppercase italic">Sin misiones activas ahora</p>
-                  )}
+                
+                {/* Active Services List instead of Tactical Map */}
+                <div className="space-y-2 max-h-[300px] overflow-y-auto custom-scroll">
+                  {(() => {
+                    const activeJobs = jobs.filter(j => j.scheduled_date === todayStr && (j.status === 'scheduled' || j.status === 'in_progress'));
+                    if (activeJobs.length === 0) {
+                      return (
+                        <div className="text-center p-6 bg-white/[0.02] border border-white/5 rounded-xl text-slate-500 text-[8px] font-black uppercase">
+                          No hay servicios activos programados para hoy.
+                        </div>
+                      );
+                    }
+                    return activeJobs.map(job => (
+                      <div key={job.id} className="g p-4 flex items-center justify-between border border-white/5 bg-black/40 hover:border-white/10 transition-all rounded-xl">
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2">
+                            <span className={`text-[6px] font-black px-1.5 py-0.5 rounded-md uppercase ${job.status === 'in_progress' ? 'bg-green-500/10 text-green-400 border border-green-500/20' : 'bg-amber-500/10 text-[#F5C518] border border-amber-500/20'}`}>
+                              {job.status}
+                            </span>
+                            <h4 className="text-xs font-black text-white uppercase italic">{job.client_name}</h4>
+                          </div>
+                          <p className="text-[7.5px] text-slate-400 font-bold uppercase">{job.service_type} • 👷 {job.team_assigned || 'TBD'}</p>
+                          <p className="text-[7px] text-slate-500 italic truncate max-w-[280px]">{job.address}</p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <button 
+                            onClick={() => {
+                              const ph = (job.client_phone || '').replace(/\D/g, '');
+                              const ph2 = ph.length === 10 ? '1' + ph : ph;
+                              window.open(`https://wa.me/${ph2}?text=${encodeURIComponent(`Hola ${job.client_name}, de parte de Elevore. ¿Cómo va todo con tu servicio?`)}`, '_blank');
+                            }} 
+                            className="p-2.5 bg-green-500/10 text-green-400 hover:bg-green-500/20 transition-all rounded-xl active:scale-95 border border-green-500/25"
+                          >
+                            <Icon name="message-circle" className="w-3.5 h-3.5" />
+                          </button>
+                          <button 
+                            onClick={() => {
+                              const dest = encodeURIComponent(job.address);
+                              window.open(`https://www.google.com/maps/search/?api=1&query=${dest}`, '_blank');
+                            }} 
+                            className="p-2.5 bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 transition-all rounded-xl active:scale-95 border border-blue-500/25"
+                          >
+                            <Icon name="navigation" className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                    ));
+                  })()}
                 </div>
               </div>
             </div>
@@ -6755,6 +7407,116 @@ ${job.final_signature ? `<div class="sig"><p style="font-size:10px;color:#999;ma
                 <div className="g p-6 bg-[rgba(255,255,255,0.04)] border-[rgba(255,255,255,0.08)] space-y-2">
                   <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4 font-display">📊 MONTHLY REVENUE PROJECTIONS</p>
                   <SleekAreaChart data={finance.mb2} color="#3b82f6" />
+                </div>
+              </div>
+
+              {/* ── CANALES DE ADQUISICIÓN Y ROI ── */}
+              <div className="g p-6 bg-[rgba(255,255,255,0.04)] border-[rgba(255,255,255,0.08)] space-y-4">
+                <div className="flex justify-between items-center border-b border-white/5 pb-3">
+                  <div>
+                    <h3 className="text-xs font-black text-white uppercase tracking-widest font-display">📊 CANALES DE ADQUISICIÓN, CAC Y ROI</h3>
+                    <p className="text-[7.5px] text-slate-500 uppercase font-bold mt-0.5">Rendimiento publicitario y retorno de inversión por cada origen de leads</p>
+                  </div>
+                  <span className="text-[7.5px] font-black px-2 py-1 rounded-full bg-blue-500/10 text-blue-400 border border-blue-500/25 uppercase tracking-wider">ROI TRACKING</span>
+                </div>
+                
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-[9px] uppercase font-bold tracking-wider">
+                    <thead>
+                      <tr className="text-slate-500 border-b border-white/5 pb-2 text-[7.5px]">
+                        <th className="py-2">Canal</th>
+                        <th className="py-2 text-center">Leads</th>
+                        <th className="py-2 text-center">Clientes Activos</th>
+                        <th className="py-2 text-right">Inversión Ad-Spend</th>
+                        <th className="py-2 text-right">CAC Promedio</th>
+                        <th className="py-2 text-right">LTV Generado</th>
+                        <th className="py-2 text-right text-[#F5C518]">ROI</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-white/5">
+                      {finance.channelReport?.map(ch => (
+                        <tr key={ch.key} className="hover:bg-white/[0.02] transition-colors">
+                          <td className="py-3 text-white font-black">{ch.name}</td>
+                          <td className="py-3 text-center text-slate-300">{ch.leads}</td>
+                          <td className="py-3 text-center text-slate-300">{ch.customers}</td>
+                          <td className="py-3 text-right text-slate-300">{fmt$(ch.spend)}</td>
+                          <td className="py-3 text-right text-red-400">{ch.cac > 0 ? fmt$(ch.cac) : '—'}</td>
+                          <td className="py-3 text-right text-green-400">{fmt$(ch.ltv)}</td>
+                          <td className={`py-3 text-right font-black ${ch.roi >= 0 ? 'text-[#F5C518]' : 'text-red-500'}`}>
+                            {ch.spend > 0 ? `${ch.roi}%` : '—'}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* ── CRM ALERTAS DE CHURN Y NPS ── */}
+              <div className="g p-6 bg-[rgba(255,255,255,0.04)] border-[rgba(255,255,255,0.08)] space-y-4">
+                <div className="flex justify-between items-center border-b border-white/5 pb-3">
+                  <div>
+                    <h3 className="text-xs font-black text-white uppercase tracking-widest font-display">⚠️ ALERTAS DE CHURN (RIESGO DE ABANDONO)</h3>
+                    <p className="text-[7.5px] text-slate-500 uppercase font-bold mt-0.5">Clientes que superaron su frecuencia de servicio o llevan más de 45 días inactivos</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[8px] bg-red-500/10 text-red-400 border border-red-500/25 font-bold px-2 py-0.5 rounded-full uppercase">
+                      Score NPS Promedio: {finance.nps > 0 ? `+${finance.nps}` : finance.nps}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="space-y-2 max-h-[300px] overflow-y-auto custom-scroll pr-1">
+                  {finance.churn.length === 0 ? (
+                    <div className="text-center p-6 bg-white/[0.01] border border-white/5 rounded-xl text-slate-500 text-[8px] font-black uppercase">
+                      No hay clientes con riesgo de churn detectados en este momento.
+                    </div>
+                  ) : (
+                    finance.churn.map(client => {
+                      const clientJobs = jobs.filter(j => j.client_name === client.name && (j.status === 'paid' || j.status === 'completed'));
+                      const lastJob = clientJobs.sort((a, b) => new Date(b.scheduled_date) - new Date(a.scheduled_date))[0];
+                      const daysInactive = lastJob ? dAgo(lastJob.scheduled_date) : 999;
+                      const clientNps = lastJob?.client_rating || 5; // default to 5-star
+                      
+                      return (
+                        <div key={client.name} className="flex flex-col sm:flex-row sm:items-center justify-between p-3.5 bg-black/40 border border-white/5 rounded-xl gap-3 hover:border-red-500/20 transition-all">
+                          <div>
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <h4 className="text-xs font-black text-white uppercase italic">{client.name}</h4>
+                              <span className="text-[6.5px] font-black px-1.5 py-0.5 rounded uppercase bg-red-950/40 text-red-400 border border-red-500/20 animate-pulse">
+                                RIESGO DE CHURN
+                              </span>
+                              <span className="text-[6.5px] font-bold px-1.5 py-0.5 rounded uppercase bg-white/5 text-slate-400 border border-white/5">
+                                Inactivo: {daysInactive} días
+                              </span>
+                            </div>
+                            <p className="text-[7.5px] text-slate-400 font-bold uppercase mt-1">
+                              Frecuencia: {client.frequency || 'ocasional'} • Tel: {client.phone}
+                            </p>
+                            <p className="text-[7px] text-slate-500 italic mt-0.5">Última visita: {lastJob ? `${lastJob.service_type} (${fmtD(lastJob.scheduled_date)})` : 'Desconocida'}</p>
+                          </div>
+                          
+                          <div className="flex items-center gap-3">
+                            <div className="text-right">
+                              <span className="text-slate-500 block text-[6px] uppercase font-bold">Satisfacción</span>
+                              <div className="flex gap-0.5 mt-0.5">
+                                {Array.from({ length: 5 }, (_, i) => (
+                                  <span key={i} className={`text-[9px] ${i < clientNps ? 'text-[#F5C518]' : 'text-slate-700'}`}>★</span>
+                                ))}
+                              </div>
+                            </div>
+                            <button
+                              onClick={() => reactivateClientWithAI(client)}
+                              className="px-3.5 py-2 bg-gradient-to-r from-amber-500 to-yellow-600 hover:from-amber-600 hover:to-yellow-700 text-black font-black uppercase text-[8px] rounded-xl active:scale-95 transition-all shadow-[0_0_15px_rgba(245,197,24,0.15)] flex items-center gap-1.5"
+                            >
+                              <Icon name="message-circle" className="w-3 h-3 text-black" />
+                              IA Reactivar ⚡
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
                 </div>
               </div>
 
@@ -6962,14 +7724,7 @@ ${job.final_signature ? `<div class="sig"><p style="font-size:10px;color:#999;ma
                         ))}
                       </div>
 
-                      {job.status === 'lead' && (
-                        <div className="grid grid-cols-4 gap-1 mb-2">
-                          <button onClick={() => recordFollow(job, 'follow1')} className="py-1.5 bg-[#F5C518]/10 text-[#F5C518] rounded-xl text-[7px] font-black uppercase active:scale-95">F1</button>
-                          <button onClick={() => recordFollow(job, 'follow2')} className="py-1.5 bg-orange-500/10 text-orange-400 rounded-xl text-[7px] font-black uppercase active:scale-95">F2</button>
-                          <button onClick={() => recordFollow(job, 'final')} className="py-1.5 bg-red-500/10 text-red-400 rounded-xl text-[7px] font-black uppercase active:scale-95">Final</button>
-                          <button onClick={() => markLost(job)} className="py-1.5 bg-slate-800 text-slate-400 rounded-xl text-[7px] font-black uppercase active:scale-95">Lost</button>
-                        </div>
-                      )}
+
 
                       <div className="flex justify-between items-end border-t border-white/5 pt-3">
                         <div>
@@ -7021,7 +7776,7 @@ ${job.final_signature ? `<div class="sig"><p style="font-size:10px;color:#999;ma
                   const daysSince = dAgo(d.last);
                   const lastJob = jobs.filter(j => j.client_name === client.name)[0];
                   return (
-                    <div key={client.name} className="g p-5 hover:bg-white/[0.02] transition-all border-l-4 bg-[rgba(255,255,255,0.04)] border-[rgba(255,255,255,0.08)] flex flex-col justify-between min-h-[140px]" style={{ borderColor: lv.color }}>
+                    <div key={client.name} className="g p-5 hover:bg-white/[0.02] transition-all border-l-4 bg-[rgba(255,255,255,0.04)] border-[rgba(255,255,255,0.08)] flex flex-col justify-between min-h-[170px]" style={{ borderColor: lv.color }}>
                       <div className="flex justify-between items-start">
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-1 flex-wrap">
@@ -7029,13 +7784,27 @@ ${job.final_signature ? `<div class="sig"><p style="font-size:10px;color:#999;ma
                             <span className="text-[7px] font-black px-2 py-0.5 rounded-full" style={{ background: lv.color, color: '#000' }}>{lv.name}</span>
                             {daysSince >= 45 && <span className="text-[7px] bg-red-900/50 text-red-400 font-black px-2 py-0.5 rounded-full">⚠️ Churn Risk</span>}
                           </div>
-                          <p className="text-[8px] text-slate-400 uppercase">{client.phone}</p>
+                          <p className="text-[8px] text-slate-400 uppercase">{client.phone}{client.email ? ` • ${client.email}` : ''}</p>
+                          {client.birthday && <p className="text-[7.5px] text-pink-400 font-black uppercase mt-1">🎂 Bday: {fmtD(client.birthday)}</p>}
+                          
+                          <div className="grid grid-cols-2 gap-2 mt-2.5 pt-2 border-t border-white/5 text-[8px] uppercase font-bold text-slate-400">
+                            <div>
+                              <span className="text-slate-500 block text-[6.5px]">Servicios</span>
+                              <span className="text-white font-black text-xs">{d.count}</span>
+                            </div>
+                            <div>
+                              <span className="text-slate-500 block text-[6.5px]">Recomendados</span>
+                              <span className="text-[#F5C518] font-black text-xs">
+                                {jobs.filter(j => j.specs?.referred_by === client.name).length}
+                              </span>
+                            </div>
+                          </div>
                         </div>
                       </div>
                       <div className="flex gap-1.5 mt-3 flex-wrap">
                         <button onClick={() => lastJob ? wa(lastJob, 'referral') : tt('No previous job', 'red')} className="flex-1 py-2 bg-pink-600/20 text-pink-400 rounded-xl text-[7px] font-black uppercase active:scale-95">🎁 Ref</button>
                         <button onClick={() => lastJob ? wa(lastJob, 'bundle') : tt('No previous job', 'red')} className="flex-1 py-2 bg-blue-600/20 text-blue-400 rounded-xl text-[7px] font-black uppercase active:scale-95">🎯 Bundle</button>
-                        <button onClick={() => { setState({ ...INIT, ...client.specs, name: client.name, phone: client.phone, address: client.address }); setView('deploy'); setDtab('specs'); }} className="flex-1 py-2 bg-white/5 text-slate-400 rounded-xl text-[7px] font-black uppercase active:scale-95 hover:text-white transition-all">+ Job</button>
+                        <button onClick={() => { setState({ ...INIT, ...client.specs, name: client.name, phone: client.phone, email: client.email, birthday: client.birthday, address: client.address }); setView('deploy'); setDtab('specs'); }} className="flex-1 py-2 bg-white/5 text-slate-400 rounded-xl text-[7px] font-black uppercase active:scale-95 hover:text-white transition-all">+ Job</button>
                       </div>
                     </div>
                   );
@@ -7227,11 +7996,11 @@ ${job.final_signature ? `<div class="sig"><p style="font-size:10px;color:#999;ma
                     <h3 className="text-sm font-black uppercase text-[#F5C518]">Brand Identity</h3>
                     <div className="space-y-1">
                       <label className="text-[9px] font-black uppercase text-slate-500 tracking-widest pl-1">Business Full Name</label>
-                      <input className="inp w-full" defaultValue={tenantName} />
+                      <input className="inp w-full" value={settingsBusName} onChange={e => setSettingsBusName(e.target.value)} />
                     </div>
                     <div className="space-y-1">
                       <label className="text-[9px] font-black uppercase text-slate-500 tracking-widest pl-1">Contact / Zelle Phone</label>
-                      <input className="inp w-full" defaultValue="(407) 555-0199" />
+                      <input className="inp w-full" value={settingsPhone} onChange={e => setSettingsPhone(e.target.value)} />
                     </div>
                   </div>
                   
@@ -7239,16 +8008,16 @@ ${job.final_signature ? `<div class="sig"><p style="font-size:10px;color:#999;ma
                     <h3 className="text-sm font-black uppercase text-[#F5C518]">Financials</h3>
                     <div className="space-y-1">
                       <label className="text-[9px] font-black uppercase text-slate-500 tracking-widest pl-1">Monthly MRR Goal ($)</label>
-                      <input className="inp w-full" type="number" defaultValue={15000} />
+                      <input className="inp w-full" type="number" value={settingsGoal} onChange={e => setSettingsGoal(e.target.value)} />
                     </div>
                     <div className="space-y-1">
                       <label className="text-[9px] font-black uppercase text-slate-500 tracking-widest pl-1">Staff Default Payout %</label>
-                      <input className="inp w-full" type="number" defaultValue={40} />
+                      <input className="inp w-full" type="number" value={settingsPayPct} onChange={e => setSettingsPayPct(e.target.value)} />
                     </div>
                   </div>
                 </div>
                 
-                <button onClick={() => tt('Settings saved to database ✓')} className="w-full mt-8 bg-[#F5C518] text-black py-4 rounded-xl font-black uppercase tracking-widest active:scale-95 transition-all">Save Changes</button>
+                <button onClick={saveSettings} className="w-full mt-8 bg-[#F5C518] text-black py-4 rounded-xl font-black uppercase tracking-widest active:scale-95 transition-all">Save Changes</button>
               </div>
             </div>
           )}
@@ -7419,6 +8188,42 @@ ${job.final_signature ? `<div class="sig"><p style="font-size:10px;color:#999;ma
                             </div>
                           );
                         })()}
+
+                        {/* Collapsible job history accordion */}
+                        {(() => {
+                          const isExpanded = !!expandedWorkerJobs[worker.id];
+                          const workerMissions = jobs.filter(j => j.team_assigned && j.team_assigned.toLowerCase().includes(worker.name.toLowerCase()) && (j.status === 'completed' || j.status === 'paid'));
+                          return (
+                            <div className="border-t border-white/5 pt-2 mt-1">
+                              <button
+                                onClick={() => setExpandedWorkerJobs(prev => ({ ...prev, [worker.id]: !isExpanded }))}
+                                className="flex items-center justify-between w-full text-[7.5px] font-black text-blue-400 uppercase tracking-wider hover:text-white transition-colors"
+                              >
+                                <span>🏠 {isExpanded ? 'Ocultar Trabajos / Hide Jobs' : 'Ver Historial de Trabajos / View Jobs History'} ({workerMissions.length})</span>
+                                <span>{isExpanded ? '▲' : '▼'}</span>
+                              </button>
+                              {isExpanded && (
+                                <div className="mt-2 space-y-1.5 max-h-[150px] overflow-y-auto custom-scroll text-[7px]">
+                                  {workerMissions.length === 0 ? (
+                                    <p className="text-slate-500 italic py-1">Sin trabajos completados / No completed jobs</p>
+                                  ) : (
+                                    workerMissions.map(j => (
+                                      <div key={j.id} className="bg-black/40 border border-white/5 rounded-lg p-2 flex justify-between items-center gap-2">
+                                        <div className="flex-1">
+                                          <p className="text-slate-200 font-bold uppercase">{j.client_name} - {j.service_type}</p>
+                                          <p className="text-slate-500 text-[6.5px] mt-0.5">{fmtD(j.scheduled_date)} • {j.address}</p>
+                                        </div>
+                                        <div className="text-right">
+                                          <span className="text-green-400 font-black">{fmt$(j.total_price)}</span>
+                                        </div>
+                                      </div>
+                                    ))
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })()}
                       </div>
                     ))}
                   </div>
@@ -7550,6 +8355,36 @@ ${job.final_signature ? `<div class="sig"><p style="font-size:10px;color:#999;ma
                     <input className="inp uppercase text-xs" placeholder="CLIENT FULL NAME" value={state.name} onChange={e => onName(e.target.value)} />
                     <input className="inp text-xs" placeholder="PHONE" value={state.phone} onChange={e => setState({ ...state, phone: e.target.value })} />
                     <input className="inp text-xs" placeholder="EMAIL" value={state.email || ''} onChange={e => setState({ ...state, email: e.target.value })} />
+                    <div className="space-y-1">
+                      <label className="text-[8px] font-black uppercase text-slate-500 tracking-wider block pl-1">Cumpleaños del Cliente (Opcional)</label>
+                      <input type="date" className="inp text-xs" value={state.birthday || ''} onChange={e => setState({ ...state, birthday: e.target.value })} />
+                    </div>
+                    <div className="grid grid-cols-2 gap-3 uppercase">
+                      <div className="space-y-1 text-left">
+                        <label className="text-[8px] font-black text-slate-500 tracking-wider block pl-1">Lead Source</label>
+                        <select 
+                          value={state.leadSource || 'organic'} 
+                          className="inp text-xs w-full bg-slate-900 border-white/10 text-white font-black" 
+                          onChange={e => setState({ ...state, leadSource: e.target.value })}
+                        >
+                          <option value="organic">Organic/Otros</option>
+                          <option value="google">Google Ads</option>
+                          <option value="facebook">Facebook/Redes</option>
+                          <option value="flyers">Volantes/Flyers</option>
+                          <option value="referral">Referido</option>
+                        </select>
+                      </div>
+                      <div className="space-y-1 text-left">
+                        <label className="text-[8px] font-black text-slate-500 tracking-wider block pl-1">Ad Spend / CAC ($)</label>
+                        <input 
+                          type="number" 
+                          value={state.adSpend || ''} 
+                          placeholder="0" 
+                          className="inp text-xs w-full" 
+                          onChange={e => setState({ ...state, adSpend: parseFloat(e.target.value) || 0 })} 
+                        />
+                      </div>
+                    </div>
                     <input className="inp uppercase text-xs" placeholder="ADDRESS" value={state.address} onChange={e => setState({ ...state, address: e.target.value })} />
                     <textarea className="inp text-xs resize-none h-16" placeholder="Notes..." value={state.notes} onChange={e => setState({ ...state, notes: e.target.value })} />
                     <div className="grid grid-cols-3 gap-2">
@@ -7665,6 +8500,9 @@ Respond ONLY in this exact JSON format (no explanation, no markdown, just raw JS
                     let ollamaUrl = localStorage.getItem('elevore_ollama_url') || 'http://127.0.0.1:11434';
                     if (ollamaUrl === 'http://localhost:11434') ollamaUrl = 'http://127.0.0.1:11434';
                     const ollamaModel = localStorage.getItem('elevore_ollama_model') || 'llama3';
+                    const aiProvider = localStorage.getItem('elevore_ai_provider') || 'ollama';
+                    const geminiModel = localStorage.getItem('elevore_gemini_model') || 'gemini-2.5-flash';
+                    const geminiKey = localStorage.getItem('elevore_gemini_key') || '';
 
                     const controller = new AbortController();
                     const timeoutDuration = 90000; // 90s for local Ollama
@@ -7672,30 +8510,59 @@ Respond ONLY in this exact JSON format (no explanation, no markdown, just raw JS
 
                     try {
                       let raw = '';
-                      // Ollama Chat API call
-                      const res = await fetch(`${ollamaUrl}/api/chat`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                          model: ollamaModel,
-                          messages: [
-                            { role: 'system', content: 'You must respond ONLY with raw valid JSON. No markdown code blocks, no other text.' },
-                            { role: 'user', content: prompt }
-                          ],
-                          stream: false,
-                          options: { temperature: 0.2 }
-                        }),
-                        signal: controller.signal
-                      });
+                      if (aiProvider === 'gemini') {
+                        const res = await fetch('/api/chat', {
+                          method: 'POST',
+                          headers: { 
+                            'Content-Type': 'application/json',
+                            'x-gemini-key': geminiKey
+                          },
+                          body: JSON.stringify({
+                            model: geminiModel,
+                            messages: [
+                              { role: 'system', content: 'You must respond ONLY with raw valid JSON. No markdown code blocks, no other text.' },
+                              { role: 'user', content: prompt }
+                            ]
+                          }),
+                          signal: controller.signal
+                        });
 
-                      clearTimeout(timeoutId);
+                        clearTimeout(timeoutId);
 
-                      if (!res.ok) {
-                        throw new Error(`Ollama HTTP ${res.status}`);
+                        if (!res.ok) {
+                          const errData = await res.json().catch(() => ({}));
+                          throw new Error(`Gemini Vercel API: ${errData.error || `HTTP ${res.status}`}`);
+                        }
+
+                        const data = await res.json();
+                        raw = data.text || '';
+                      } else {
+                        // Ollama Chat API call
+                        const res = await fetch(`${ollamaUrl}/api/chat`, {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({
+                            model: ollamaModel,
+                            messages: [
+                              { role: 'system', content: 'You must respond ONLY with raw valid JSON. No markdown code blocks, no other text.' },
+                              { role: 'user', content: prompt }
+                            ],
+                            stream: false,
+                            options: { temperature: 0.2 },
+                            keep_alive: -1
+                          }),
+                          signal: controller.signal
+                        });
+
+                        clearTimeout(timeoutId);
+
+                        if (!res.ok) {
+                          throw new Error(`Ollama HTTP ${res.status}`);
+                        }
+
+                        const data = await res.json();
+                        raw = data.message?.content || '';
                       }
-
-                      const data = await res.json();
-                      raw = data.message?.content || '';
 
                       // Strip markdown code fences if present
                       const cleaned = raw.replace(/```json|```/g, '').trim();
@@ -7805,16 +8672,63 @@ Respond ONLY in this exact JSON format (no explanation, no markdown, just raw JS
                   <div className="space-y-4 animate-in fade-in">
                     <h3 className="text-[10px] uppercase text-[#F5C518] font-black italic tracking-widest border-b border-white/5 pb-2 font-display">Financials & Assignment</h3>
                     <div className="grid grid-cols-2 gap-3 text-center font-black uppercase">
-                      <div className="space-y-1">
-                        <p className="text-[8px] text-slate-400">Expenses</p>
-                        <input type="number" value={state.expenses} className="inp text-orange-400 text-center text-xs" onChange={e => setState({ ...state, expenses: parseFloat(e.target.value) || 0 })} />
+                      <div className="space-y-1 text-left">
+                        <label className="text-[8px] font-black text-slate-500 tracking-wider block pl-1">Gastos Operativos ($)</label>
+                        <input type="number" value={state.expenses} className="inp text-orange-400 text-xs" onChange={e => setState({ ...state, expenses: parseFloat(e.target.value) || 0 })} />
                       </div>
-                      <div className="space-y-1">
-                        <p className="text-[8px] text-slate-400">Discount</p>
-                        <select value={state.discount} className="inp text-red-500 font-black text-center text-xs appearance-none" onChange={e => setState({ ...state, discount: parseInt(e.target.value) })}><option value="0">0%</option><option value="10">10%</option><option value="20">20%</option><option value="30">30%</option></select>
+                      <div className="space-y-1 text-left">
+                        <label className="text-[8px] font-black text-slate-500 tracking-wider block pl-1">Descuento (%)</label>
+                        <select value={state.discount} className="inp text-red-500 font-black text-xs appearance-none" onChange={e => setState({ ...state, discount: parseInt(e.target.value) })}><option value="0">0%</option><option value="10">10%</option><option value="20">20%</option><option value="30">30%</option></select>
                       </div>
                     </div>
-                    <div className="space-y-3 pt-2">
+                    <div className="grid grid-cols-2 gap-3 text-center font-black uppercase">
+                      <div className="space-y-1 text-left">
+                        <label className="text-[8px] font-black text-slate-500 tracking-wider block pl-1">Costo Materiales ($)</label>
+                        <input type="number" value={state.materialCost || ''} placeholder="0" className="inp text-blue-400 text-xs" onChange={e => setState({ ...state, materialCost: parseFloat(e.target.value) || 0 })} />
+                      </div>
+                      <div className="space-y-1 text-left">
+                        <label className="text-[8px] font-black text-slate-500 tracking-wider block pl-1">Costo Ad-Spend ($)</label>
+                        <input type="number" value={state.marketingCost || ''} placeholder="0" className="inp text-purple-400 text-xs" onChange={e => setState({ ...state, marketingCost: parseFloat(e.target.value) || 0 })} />
+                      </div>
+                    </div>
+
+                    {/* Live Margin Calculation Box */}
+                    {(() => {
+                      const finalPrice = state.totalPrice || 0;
+                      const laborPct = tenantSettings?.staff_pay_pct !== undefined ? Number(tenantSettings.staff_pay_pct) : 0.40;
+                      const laborCost = Math.round(finalPrice * laborPct);
+                      const matCost = state.materialCost || 0;
+                      const mktCost = state.marketingCost || 0;
+                      const exp = state.expenses || 0;
+                      const netProfit = finalPrice - laborCost - matCost - mktCost - exp;
+                      const marginPct = finalPrice > 0 ? Math.round((netProfit / finalPrice) * 100) : 0;
+                      
+                      return (
+                        <div className="p-3.5 rounded-2xl bg-black/40 border border-white/5 space-y-2 uppercase text-[7px] font-black tracking-wider">
+                          <p className="text-[8px] text-[#F5C518] border-b border-white/5 pb-1">⚡ Margen de Ganancia Real</p>
+                          <div className="flex justify-between">
+                            <span className="text-slate-400">Precio de Venta:</span>
+                            <span className="text-white">{fmt$(finalPrice)}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-slate-400">Pago a Staff ({Math.round(laborPct*100)}%):</span>
+                            <span className="text-red-400">-{fmt$(laborCost)}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-slate-400">Materiales / Ad-Spend / Gastos:</span>
+                            <span className="text-red-400">-{fmt$(matCost + mktCost + exp)}</span>
+                          </div>
+                          <div className="flex justify-between border-t border-white/5 pt-1.5 text-[8.5px]">
+                            <span className="text-slate-200">Beneficio Neto:</span>
+                            <span className={netProfit >= 0 ? "text-green-400" : "text-red-500"}>
+                              {fmt$(netProfit)} ({marginPct}%)
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })()}
+
+                    <div className="space-y-3 pt-1">
                       <p className="text-[8px] text-slate-400 uppercase font-black tracking-wider">Asignar Proyecto a Empleado</p>
                       <select value={state.team} className="inp text-xs text-center" onChange={e => setState({ ...state, team: e.target.value })}>
                         <option value="">Seleccionar Empleado...</option>
@@ -7914,14 +8828,26 @@ Respond ONLY in this exact JSON format (no explanation, no markdown, just raw JS
                             {c.daysSince === 999 ? 'nuevo' : `${c.daysSince}d`}
                           </span>
                         </div>
-                        <div className="grid grid-cols-4 gap-1.5">
+                        <div className="grid grid-cols-5 gap-1">
                           {[
                             { label: '🔔 Recordar', type: 'retention' },
                             { label: '🎁 Oferta', type: 'winback' },
+                            { label: '🎂 Bday', type: 'birthday' },
                             { label: '⭐ Reseña', type: 'review' },
                             { label: '🏠 Bundle', type: 'bundle' },
                           ].map(btn => (
-                            <button key={btn.type} onClick={() => { const ph = (c.phone||'').replace(/\D/g,''); const ph2 = ph.length===10?'1'+ph:ph; const msgs={retention:`Hi ${c.name}! 🏠 Han pasado un tiempo desde tu último servicio con Elevore. Esta semana tenemos disponibilidad — ¿te agendamos con 10% off? Reply YES!`,winback:`Hi ${c.name}! 😊 Te extrañamos en Elevore. Como cliente especial, hoy tienes 15% de descuento en tu próximo servicio. ¿Lo agendamos? 💫`,review:`Hi ${c.name}! 🌟 ¿Nos puedes dejar una reseña? Te tomará 1 minuto: ${DEFAULT_CFG.GOOGLE}`,bundle:`Hi ${c.name}! 🎯 Tenemos una oferta especial — Deep Clean + Ventanas por $50 adicionales (ahorras $70). ¿Lo añadimos a tu próximo servicio?`}; window.open(`https://wa.me/${ph2}?text=${encodeURIComponent(msgs[btn.type]||'')}`, '_blank'); tt(`WA → ${c.name} ✓`); }} className="py-2 bg-white/5 text-slate-400 rounded-xl text-[6px] font-black uppercase active:scale-95 hover:bg-white/10 hover:text-white transition-all">
+                            <button key={btn.type} onClick={() => {
+                              const jobForClient = c.lastJob || {
+                                client_name: c.name,
+                                client_phone: c.phone,
+                                service_type: 'regular',
+                                total_price: 150,
+                                deposit_paid: 0,
+                                scheduled_date: new Date().toISOString().split('T')[0],
+                                id: 'crm_' + Date.now()
+                              };
+                              wa(jobForClient, btn.type);
+                            }} className="py-2 bg-white/5 text-slate-400 rounded-xl text-[5.5px] font-black uppercase active:scale-95 hover:bg-white/10 hover:text-white transition-all">
                               {btn.label}
                             </button>
                           ))}
@@ -8171,6 +9097,66 @@ Respond ONLY in this exact JSON format (no explanation, no markdown, just raw JS
               </div>
             </div>
           </div>
+        )}
+
+        {/* =====================================================================
+            🤖 COPILOTO IA
+            ===================================================================== */}
+        {role === 'admin' && (
+          <>
+            <button
+              onClick={() => setCopilotOpen(!copilotOpen)}
+              className="fixed bottom-6 right-6 z-[3000] w-14 h-14 bg-gradient-to-r from-amber-500 to-[#F5C518] rounded-full flex items-center justify-center shadow-[0_0_30px_rgba(245,197,24,0.4)] hover:scale-110 active:scale-95 transition-all text-black"
+            >
+              <Icon name="cpu" className="w-6 h-6" />
+            </button>
+
+            {copilotOpen && (
+              <div className="fixed bottom-24 right-6 z-[3000] w-80 bg-[#0a0a0f]/95 backdrop-blur-2xl border border-white/10 rounded-2xl shadow-2xl overflow-hidden flex flex-col animate-in slide-in-from-bottom-5 duration-300">
+                <div className="p-4 border-b border-white/10 bg-gradient-to-r from-amber-500/20 to-transparent flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-[#F5C518]/20 flex items-center justify-center border border-[#F5C518]/30">
+                    <Icon name="cpu" className="w-4 h-4 text-[#F5C518]" />
+                  </div>
+                  <div>
+                    <h3 className="text-xs font-black text-white uppercase tracking-widest">Elevore AI</h3>
+                    <p className="text-[7px] text-[#F5C518] font-black uppercase tracking-widest">Copiloto Activo</p>
+                  </div>
+                </div>
+                
+                <div className="flex-1 p-4 h-64 overflow-y-auto custom-scroll flex flex-col gap-3">
+                  {copilotMsgs.map((m, i) => (
+                    <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                      <div className={`max-w-[85%] p-3 rounded-2xl text-xs ${m.role === 'user' ? 'bg-[#F5C518] text-black font-medium rounded-br-none' : 'bg-white/5 text-white border border-white/10 rounded-bl-none'}`}>
+                        {m.content}
+                      </div>
+                    </div>
+                  ))}
+                  {copilotLoading && (
+                    <div className="flex justify-start">
+                      <div className="bg-white/5 border border-white/10 text-white rounded-2xl rounded-bl-none p-3 flex gap-1 items-center">
+                        <div className="w-1.5 h-1.5 bg-[#F5C518] rounded-full animate-bounce"></div>
+                        <div className="w-1.5 h-1.5 bg-[#F5C518] rounded-full animate-bounce delay-100"></div>
+                        <div className="w-1.5 h-1.5 bg-[#F5C518] rounded-full animate-bounce delay-200"></div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <form onSubmit={handleCopilot} className="p-3 border-t border-white/10 bg-black/50 flex gap-2">
+                  <input
+                    type="text"
+                    value={copilotInput}
+                    onChange={e => setCopilotInput(e.target.value)}
+                    placeholder="Pregúntale a la IA..."
+                    className="flex-1 bg-white/5 border border-white/10 rounded-xl px-3 text-xs text-white focus:outline-none focus:border-[#F5C518] transition-colors"
+                  />
+                  <button type="submit" disabled={copilotLoading} className="w-10 h-10 bg-[#F5C518] text-black rounded-xl flex items-center justify-center hover:scale-105 active:scale-95 disabled:opacity-50 transition-all">
+                    <Icon name="send" className="w-4 h-4" />
+                  </button>
+                </form>
+              </div>
+            )}
+          </>
         )}
 
       </div>

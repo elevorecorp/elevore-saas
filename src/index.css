@@ -471,3 +471,23 @@ body {
   to   { color: #F5C518; text-shadow: 0 0 10px rgba(245,197,24,0.5); }
 }
 .star-animated { animation: star-fill 0.3s ease forwards; }
+
+/* ============================================================
+   INVOICE / PRINT MEDIA QUERIES
+   ============================================================ */
+.print-only { display: none; }
+
+@media print {
+  body { background: white !important; color: black !important; overflow: auto; }
+  .no-print, .no-print * { display: none !important; }
+  .print-only { display: block !important; }
+  .invoice-container { 
+    color: black !important; 
+    background: white !important; 
+    padding: 0 !important;
+  }
+  * { 
+    -webkit-print-color-adjust: exact !important; 
+    print-color-adjust: exact !important; 
+  }
+}
