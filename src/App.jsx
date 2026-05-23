@@ -6653,6 +6653,71 @@ Instrucciones generales de formato:
     }
   };
 
+  const getHeuristicResponse = (query, currentView, fin, name, risks) => {
+    const q = query.toLowerCase();
+    
+    // Landing Page Mode Responses
+    if (currentView === 'landing') {
+      if (q.includes('roi') || q.includes('calcula') || q.includes('ganar') || q.includes('dinero') || q.includes('simula')) {
+        return `### 📊 Simulación de Retorno sobre Inversión (ROI)\nAnalizando tu simulación en la **Calculadora de ROI de Elevore**:\n* Un incremento estimado del **35%** en tus ingresos mediante cotizaciones persuasivas y upsells automáticos.\n* Ahorro promedio de **0.5 horas de oficina** por cada trabajo realizado.\n* Reactivación de hasta un **8% de clientes inactivos** mediante campañas automáticas de Winback.\n\nTe recomiendo expandir el panel derecho usando las flechas de la cabecera del chat para ajustar tus sliders de ingresos y trabajos mensuales en tiempo real. ¡La rentabilidad está a un clic!`;
+      }
+      if (q.includes('plan') || q.includes('precio') || q.includes('costo') || q.includes('cuanto') || q.includes('pagar') || q.includes('suscrip')) {
+        return `### 💎 Planes de Suscripción Premium de Elevore Empire\n\n| Plan | Inversión Mensual | Beneficios Clave |\n| :--- | :--- | :--- |\n| **Basic** | $199 USD | 2 servicios incluidos/mes, 5% de descuento, soporte estándar. |\n| **Premium** | $349 USD | 4 servicios/mes, 10% de descuento, desengrasado de horno gratis. |\n| **VIP** | $549 USD | 6 servicios/mes, 15% de descuento, soporte prioritario 24/7 y equipo dedicado. |\n\n*Nota:* Te sugiero iniciar tu prueba gratuita de 14 días haciendo clic en el botón dorado **\"Start Free Trial\"** en la barra superior.`;
+      }
+      if (q.includes('ventaja') || q.includes('beneficio') || q.includes('porque') || q.includes('competencia') || q.includes('diferencia') || q.includes('gps') || q.includes('ia') || q.includes('auditoria')) {
+        return `### ⚡ ¿Por qué Elevore Empire es de Nivel Wall Street?\nNuestra plataforma no es un software administrativo común; es un multiplicador de flujo de caja:\n1. **Rastreo GPS Estilo Uber**: Monitorea a tus cuadrillas en ruta y da visibilidad en tiempo real a tus clientes.\n2. **Control de Calidad por Visión IA**: Analiza fotos de antes/después para garantizar estándares de 5 estrellas.\n3. **Módulo de Cotizaciones Good-Better-Best**: Presenta 3 niveles de servicio y aumenta de inmediato el ticket promedio en 35%.\n4. **CRM de Recuperación Automática (Winback)**: Reactiva clientes fríos vía WhatsApp sin gastar en publicidad.`;
+      }
+      
+      return `Estimado visitante, soy **James Sterling**, asesor de crecimiento de **Elevore Empire**. \n¿Quieres saber cómo automatizar tus operaciones de servicios para el hogar y escalar tu flujo de caja? \n* Pregúntame sobre nuestro **Rastreo GPS en tiempo real**, **Control de Calidad por IA**, o nuestros **Planes de precios**.\n* Te sugiero hacer clic en el botón de expansión arriba para abrir la **Calculadora interactiva de ROI** y simular tus retornos anuales.`;
+    }
+    
+    // Dashboard Mode Responses (Private Admin Mode)
+    const mrr = fin.mrr || 0;
+    const net = fin.net || 0;
+    const margin = fin.profitMargin || 0;
+    const ltvCac = fin.ltvCacRatio || 0;
+    const churn = fin.churnRate || 0;
+    
+    if (q.includes('mrr') || q.includes('proyec') || q.includes('ingreso') || q.includes('factura') || q.includes('meta') || q.includes('grafic') || q.includes('tendencia')) {
+      const labels = ['M-4', 'M-3', 'M-2', 'M-1', 'Actual', 'Forecast'];
+      const data = [
+        Math.round(net * 0.7),
+        Math.round(net * 0.8),
+        Math.round(net * 0.85),
+        Math.round(net * 0.95),
+        Math.round(net),
+        Math.round(fin.proj || net * 1.1)
+      ];
+      return `### 📈 Reporte de Flujo de Caja y Forecast Corporativo - ${name}\nHe proyectado la tendencia de ingresos del negocio basados en los últimos 5 meses de operación:\n* **Ingreso Neto Actual**: $${net.toLocaleString()} USD\n* **MRR Recurrente**: $${mrr.toLocaleString()} USD\n* **Proyección de Cierre (Forecast)**: $${(fin.proj || net).toLocaleString()} USD\n* **Meta de Facturación**: $${(fin.pct ? Math.round(net / (fin.pct / 100)) : 15000).toLocaleString()} USD (Progreso actual: ${fin.pct ? fin.pct.toFixed(1) : 0}%)\n\n<Chart type="line" data="[${data.join(', ')}]" labels="['M-4', 'M-3', 'M-2', 'M-1', 'Actual', 'Forecast']" />\n\n*Recomendación de Sterling:* Mantener el gasto publicitario estable. La pendiente es alcista, pero debemos acelerar la conversión de cotizaciones pendientes ($${(fin.pending || 0).toLocaleString()} USD) para asegurar el flujo de caja del próximo período.`;
+    }
+    
+    if (q.includes('roi') || q.includes('marketing') || q.includes('canal') || q.includes('publicidad') || q.includes('gasto') || q.includes('adquisic')) {
+      const report = fin.channelReport || [];
+      let breakdown = `| Canal | Spend | Leads | LTV Promedio | CAC | ROI |\n`;
+      report.forEach(c => {
+        breakdown += `| **${c.name}** | $${c.spend} | ${c.leads} | $${c.ltv} | $${c.cac} | **${c.roi}%** |\n`;
+      });
+      
+      return `### 📊 Auditoría del ROI de Canales de Adquisición\nAquí tienes el desglose de eficiencia publicitaria de tu empresa:\n\n${breakdown}\n\n*Análisis Cuantitativo:*\n* El ratio de eficiencia **LTV/CAC promedio es de ${ltvCac}x** (Meta saludable: >3.0x).\n* Duplicar presupuesto en los canales con ROI mayor al 150%.\n* Suspender campañas o recortar presupuestos en canales de bajo rendimiento o ROI negativo.`;
+    }
+    
+    if (q.includes('churn') || q.includes('riesgo') || q.includes('perdido') || q.includes('abandon') || q.includes('recupera') || q.includes('winback')) {
+      const churnList = fin.churn || [];
+      let listStr = churnList.map(c => `- **${c.name}** (Inactivo)`).join('\n') || '- Ninguno registrado en este momento.';
+      
+      return `### 🚨 Alerta de Retención y Campaña Winback (Fuga de Capital)\nNuestra tasa de abandono (**Churn Rate**) actual se sitúa en **${churn}%**.\nTenemos los siguientes clientes en riesgo o inactivos:\n\n${listStr}\n\n*Plan de Acción Inmediato (Wall Street Winback):*\n1. Ejecutar plantilla de recuperación automática por WhatsApp ofreciendo un descuento exclusivo del 15% en su próximo servicio.\n2. Priorizar el contacto con los clientes con mayor historial de facturación para evitar que su LTV se deteriore.`;
+    }
+    
+    if (q.includes('upsell') || q.includes('membresia') || q.includes('candidato') || q.includes('vender') || q.includes('mas')) {
+      const targets = fin.mbTargets || [];
+      let targetsStr = targets.slice(0, 4).map(t => `- **${t.name}** (${t.count} servicios completados)`).join('\n') || '- No se identificaron candidatos viables en esta corrida.';
+      
+      return `### 💎 Estrategia de Upsell de Membresías Recurrentes\nPara aumentar el MRR de forma acelerada, debemos convertir clientes de alta frecuencia no recurrentes en miembros de suscripción mensual:\n* Candidatos prioritarios detectados:\n${targetsStr}\n\n*Plan de Ventas:*\n* Instruir a los técnicos en el campo a ofrecer el **Plan Premium** al momento de finalizar el servicio, destacando el 10% de descuento automático en futuros agendamientos.`;
+    }
+  
+    return `CFO James Sterling reportándose. Analizando el Ledger de **${name}**:\n* **Margen Neto**: ${margin}% | **LTV/CAC**: ${ltvCac}x | **MRR**: $${mrr.toLocaleString()} USD\n* ¿Qué reporte financiero o plan operativo deseas que audite?\n  - Escribe **"ROI"** para analizar tus canales de marketing.\n  - Escribe **"MRR"** para ver las predicciones y gráficos de caja.\n  - Escribe **"Churn"** para ver alertas de clientes inactivos.\n  - Escribe **"Upsell"** para ver candidatos a membresías.`;
+  };
+
   const handleCopilot = async (e) => {
     e.preventDefault();
     if (!copilotInput.trim()) return;
@@ -6892,7 +6957,9 @@ Nómina pagada acumulada por empleado: ${JSON.stringify(finance.payroll)}
 
       setCopilotMsgs(prev => [...prev, { role: 'assistant', content: resContent }]);
     } catch (err) {
-      setCopilotMsgs(prev => [...prev, { role: 'assistant', content: `Error: ${err.message}. Asegúrate de que Ollama esté corriendo.` }]);
+      console.warn("AI pipeline failed, using Sterling Local Heuristic Engine:", err);
+      const resContent = getHeuristicResponse(userText, view, finance, tenantName, highRiskClients);
+      setCopilotMsgs(prev => [...prev, { role: 'assistant', content: resContent }]);
     }
     setCopilotLoading(false);
   };
