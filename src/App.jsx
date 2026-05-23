@@ -6809,23 +6809,76 @@ Nómina pagada acumulada por empleado: ${JSON.stringify(finance.payroll)}
 
 ¡Responde con el estilo característico de Wall Street: sofisticado, directo al grano y enfocado en la rentabilidad! Responde siempre en español.`;
 
-      const res = await fetch(`${ollamaUrl}/api/chat`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          model: ollamaModel,
-          messages: [
-            { role: 'system', content: systemPrompt },
-            ...copilotMsgs.map(m => ({ role: m.role, content: m.content })),
-            { role: 'user', content: userText }
-          ],
-          stream: false,
-          keep_alive: -1
-        })
-      });
-      if (!res.ok) throw new Error('Error al conectar con la IA');
+      let res;
+      let usedProvider = 'ollama';
+      const aiProvider = localStorage.getItem('elevore_ai_provider') || 'ollama';
+      const geminiModel = localStorage.getItem('elevore_gemini_model') || 'gemini-2.5-flash';
+      const geminiKey = localStorage.getItem('elevore_gemini_key') || '';
+
+      const shouldForceGemini = (view === 'landing' || aiProvider === 'gemini');
+
+      if (shouldForceGemini) {
+        usedProvider = 'gemini';
+        res = await fetch('/api/chat', {
+          method: 'POST',
+          headers: { 
+            'Content-Type': 'application/json',
+            'x-gemini-key': geminiKey
+          },
+          body: JSON.stringify({
+            model: geminiModel,
+            messages: [
+              { role: 'system', content: systemPrompt },
+              ...copilotMsgs.map(m => ({ role: m.role, content: m.content })),
+              { role: 'user', content: userText }
+            ]
+          })
+        });
+      } else {
+        try {
+          res = await fetch(`${ollamaUrl}/api/chat`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              model: ollamaModel,
+              messages: [
+                { role: 'system', content: systemPrompt },
+                ...copilotMsgs.map(m => ({ role: m.role, content: m.content })),
+                { role: 'user', content: userText }
+              ],
+              stream: false,
+              keep_alive: -1
+            })
+          });
+        } catch (ollamaErr) {
+          console.warn("Local Ollama connection failed, falling back to Gemini Cloud:", ollamaErr);
+          usedProvider = 'gemini';
+          res = await fetch('/api/chat', {
+            method: 'POST',
+            headers: { 
+              'Content-Type': 'application/json',
+              'x-gemini-key': geminiKey
+            },
+            body: JSON.stringify({
+              model: geminiModel,
+              messages: [
+                { role: 'system', content: systemPrompt },
+                ...copilotMsgs.map(m => ({ role: m.role, content: m.content })),
+                { role: 'user', content: userText }
+              ]
+            })
+          });
+        }
+      }
+
+      if (!res.ok) {
+        const errorText = await res.text();
+        throw new Error(`AI API failed: ${res.status} - ${errorText}`);
+      }
       const data = await res.json();
-      const resContent = data.message?.content || 'Sin respuesta';
+      const resContent = usedProvider === 'gemini' 
+        ? (data.text || 'Sin respuesta') 
+        : (data.message?.content || 'Sin respuesta');
       
       const cmdMatch = resContent.match(/\[CMD\]\s*(\{.*\})/);
       if (cmdMatch) {
