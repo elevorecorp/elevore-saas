@@ -5152,6 +5152,7 @@ export default function App() {
   const [copilotMsgs, setCopilotMsgs] = useState([{role: 'assistant', content: 'Hola socio. Soy tu Copiloto IA. ¿En qué te ayudo hoy?'}]);
   const [copilotInput, setCopilotInput] = useState('');
   const [copilotLoading, setCopilotLoading] = useState(false);
+  const [copilotWide, setCopilotWide] = useState(false);
   const [actLog, setActLog] = useState([]);
   const [rtOn, setRT] = useState(false);
   const [state, setState] = useState(INIT);
@@ -6319,6 +6320,72 @@ Instrucciones generales de formato:
     }
   };
 
+  const parseTable = (rows) => {
+    if (rows.length < 2) return rows.join('\n');
+    const parseRowCells = (row) => {
+      return row.split('|').slice(1, -1).map(cell => cell.trim());
+    };
+    const headers = parseRowCells(rows[0]);
+    const bodyRows = rows.slice(2);
+    const headerHtml = `<thead><tr class="border-b border-[#F5C518]/20 bg-white/5 font-mono text-[9px] text-[#F5C518] uppercase tracking-wider">${headers.map(h => `<th class="px-2 py-1.5 text-left font-black">${h}</th>`).join('')}</tr></thead>`;
+    const bodyHtml = `<tbody>${bodyRows.map((r, ri) => {
+      const cells = parseRowCells(r);
+      return `<tr class="border-b border-white/5 text-[10px] hover:bg-white/5 transition-colors font-mono ${ri % 2 === 0 ? 'bg-white/[0.01]' : 'bg-transparent'}">${cells.map(c => `<td class="px-2 py-1.5 text-white/90">${c}</td>`).join('')}</tr>`;
+    }).join('')}</tbody>`;
+    return `<div class="overflow-x-auto my-3 border border-white/10 rounded-xl bg-black/40"><table class="w-full text-left border-collapse">${headerHtml}${bodyHtml}</table></div>`;
+  };
+
+  const renderMarkdown = (text) => {
+    if (!text) return '';
+    let html = text
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
+    html = html.replace(/```(.*?)\n([\s\S]*?)```/g, (match, lang, code) => {
+      return `<pre class="bg-black/60 border border-white/10 rounded-xl p-3 font-mono text-[10px] text-emerald-400 overflow-x-auto my-2"><code>${code.trim()}</code></pre>`;
+    });
+    html = html.replace(/`([^`]+)`/g, '<code class="bg-white/10 text-amber-400 px-1 py-0.5 rounded font-mono text-[10px]">$1</code>');
+    html = html.replace(/\*\*([^*]+)\*\*/g, '<strong class="text-white font-black">$1</strong>');
+    html = html.replace(/^### (.*$)/gim, '<h4 class="text-xs font-bold text-white tracking-wide mt-3 mb-1 uppercase text-amber-400">$1</h4>');
+    html = html.replace(/^## (.*$)/gim, '<h3 class="text-sm font-black text-white tracking-widest mt-4 mb-2 uppercase border-b border-[#F5C518]/20 pb-1">$1</h3>');
+    html = html.replace(/^# (.*$)/gim, '<h2 class="text-base font-black text-[#F5C518] tracking-widest mt-4 mb-2 uppercase">$1</h2>');
+
+    const lines = html.split('\n');
+    let inTable = false;
+    let tableRows = [];
+    let parsedLines = [];
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i].trim();
+      if (line.startsWith('|') && line.endsWith('|')) {
+        if (!inTable) {
+          inTable = true;
+          tableRows = [];
+        }
+        tableRows.push(line);
+      } else {
+        if (inTable) {
+          parsedLines.push(parseTable(tableRows));
+          inTable = false;
+        }
+        parsedLines.push(line);
+      }
+    }
+    if (inTable) {
+      parsedLines.push(parseTable(tableRows));
+    }
+    html = parsedLines.join('\n');
+    html = html.replace(/^\s*[-*+]\s+(.*)$/gim, '<li class="ml-4 list-disc text-white/90 my-1">$1</li>');
+    html = html.replace(/^---$/gim, '<div class="h-[1px] bg-gradient-to-r from-transparent via-[#F5C518]/30 to-transparent my-4"></div>');
+    html = html.split('\n').map(line => {
+      const trimmed = line.trim();
+      if (trimmed.startsWith('<li') || trimmed.startsWith('<tr') || trimmed.startsWith('<td') || trimmed.startsWith('<th') || trimmed.startsWith('<table') || trimmed.startsWith('</table') || trimmed.startsWith('<div') || trimmed.startsWith('<h') || trimmed.startsWith('<pre') || trimmed.startsWith('</pre') || trimmed.startsWith('<code>') || trimmed.startsWith('</code>') || trimmed.startsWith('<thead') || trimmed.startsWith('</thead') || trimmed.startsWith('<tbody') || trimmed.startsWith('</tbody')) {
+        return line;
+      }
+      return line ? line + '<br/>' : '<div class="h-2"></div>';
+    }).join('\n');
+    return html;
+  };
+
   const handleCopilot = async (e) => {
     e.preventDefault();
     if (!copilotInput.trim()) return;
@@ -6331,12 +6398,41 @@ Instrucciones generales de formato:
       const ollamaUrl = localStorage.getItem('elevore_ollama_url') || 'http://127.0.0.1:11434';
       const ollamaModel = localStorage.getItem('elevore_ollama_model') || 'llama3';
       
-      const systemPrompt = `Eres el Copiloto IA de Elevore, un asistente experto para el negocio ${tenantName}.
-Métricas actuales: 
-- Total Ingresos: $${finance.gross}
+      const systemPrompt = `Eres James Sterling, un despiadado y brillante analista cuantitativo de fondos de cobertura y CFO de Wall Street, contratado por el negocio ${tenantName} para maximizar el flujo de caja, disparar el MRR y optimizar la rentabilidad de su operación de servicios.
+Tus respuestas deben ser ultra-analíticas, orientadas a datos, precisas y profesionales (al estilo de Goldman Sachs o McKinsey). Utiliza términos de finanzas corporativas (LTV/CAC, MRR, ROI, Margen Neto, Churn).
+Sé directo al grano: felicita los logros, pero critica severamente las ineficiencias financieras (como CAC alto, bajo LTV, fugas en el embudo de ventas, o canales de marketing con ROI negativo).
+Cuando sea oportuno, formatea tus recomendaciones en tablas de markdown, listas estructuradas con viñetas o resúmenes ejecutivos numéricos.
+
+DATOS FINANCIEROS Y OPERATIVOS DE ${tenantName} PARA TU ANÁLISIS:
+- Ingresos Brutos Totales: $${finance.gross.toLocaleString()} USD
+- Total Recaudado Real: $${finance.col.toLocaleString()} USD
+- Utilidad Neta (Net Profit): $${finance.net.toLocaleString()} USD
+- Margen de Ganancia Neto: ${finance.profitMargin}%
+- Pendiente de Cobro: $${finance.pending.toLocaleString()} USD
+- MRR de Membresías: $${finance.mrr.toLocaleString()} USD
+- Meta Mensual: $${(tenantSettings?.monthly_goal || 15000).toLocaleString()} USD (Progreso: ${finance.pct.toFixed(1)}%)
+- Proyección de Cierre de Mes (Forecast): $${finance.proj.toLocaleString()} USD
+- Valor de Vida del Cliente (LTV Promedio): $${finance.avgLTV.toLocaleString()} USD
+- Costo de Adquisición de Clientes (CAC Promedio): $${finance.avgCAC.toLocaleString()} USD
+- Ratio de Eficiencia LTV/CAC: ${finance.ltvCacRatio}x
+- Tasa de Abandono (Churn Rate): ${finance.churnRate}%
+- NPS (Net Promoter Score): ${finance.nps}%
+- Distribución de Trabajos por Estado: Leads (${finance.byS.lead || 0}), Agendados (${finance.byS.scheduled || 0}), En Proceso (${finance.byS.in_progress || 0}), Completados (${finance.byS.completed || 0}), Pagados (${finance.byS.paid || 0}), Perdidos (${finance.byS.lost || 0})
 - Trabajos de Hoy: ${finance.todayJobs.length}
-- Clientes Inactivos (Churn): ${finance.churn.length}
-Responde en español de forma cortés, muy breve, como un asistente ejecutivo. Si preguntan qué hacer, sugiere contactar a los clientes inactivos o revisar el dashboard.`;
+
+INFORME DETALLADO DE MARKETING (ROI por Canal):
+${finance.channelReport.map(c => `- ${c.name}: Leads=${c.leads}, Conversiones=${c.customers}, Spend=$${c.spend}, LTV=$${c.ltv}, CAC=$${c.cac}, ROI=${c.roi}%`).join('\n')}
+
+CANDIDATOS PRIORITARIOS PARA UPSELL DE MEMBRESÍA (Clientes frecuentes no recurrentes):
+${finance.mbTargets.length > 0 ? finance.mbTargets.map(t => `- ${t.name} (Servicios completados: ${t.count})`).join('\n') : 'Ninguno identificado en este momento.'}
+
+CLIENTES EN RIESGO DE CHURN (Sin servicios en más de 45 días):
+${finance.churn.length > 0 ? finance.churn.map(c => `- ${c.name}`).join('\n') : 'Ninguno (retención perfecta).'}
+
+Razones de Leads Perdidos: ${JSON.stringify(finance.lostReasons)}
+Nómina pagada acumulada por empleado: ${JSON.stringify(finance.payroll)}
+
+¡Instrucción adicional: Sé sofisticado, pragmático y habla con la máxima autoridad de un banquero de inversión! Responde siempre en español.`;
 
       const res = await fetch(`${ollamaUrl}/api/chat`, {
         method: 'POST',
@@ -9112,48 +9208,229 @@ Respond ONLY in this exact JSON format (no explanation, no markdown, just raw JS
             </button>
 
             {copilotOpen && (
-              <div className="fixed bottom-24 right-6 z-[3000] w-80 bg-[#0a0a0f]/95 backdrop-blur-2xl border border-white/10 rounded-2xl shadow-2xl overflow-hidden flex flex-col animate-in slide-in-from-bottom-5 duration-300">
-                <div className="p-4 border-b border-white/10 bg-gradient-to-r from-amber-500/20 to-transparent flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-lg bg-[#F5C518]/20 flex items-center justify-center border border-[#F5C518]/30">
-                    <Icon name="cpu" className="w-4 h-4 text-[#F5C518]" />
+              <div className={`fixed bottom-24 right-6 z-[3000] ${copilotWide ? 'w-[850px]' : 'w-96'} h-[550px] bg-[#030206]/95 backdrop-blur-2xl border border-[#F5C518]/20 rounded-2xl shadow-[0_0_50px_rgba(245,197,24,0.15)] overflow-hidden flex flex-col transition-all duration-300 animate-in slide-in-from-bottom-5`}>
+                {/* Header */}
+                <div className="p-4 border-b border-white/10 bg-gradient-to-r from-amber-500/25 via-transparent to-transparent flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-[#F5C518]/20 flex items-center justify-center border border-[#F5C518]/30">
+                      <Icon name="cpu" className="w-4 h-4 text-[#F5C518]" />
+                    </div>
+                    <div>
+                      <h3 className="text-[10px] font-black text-white uppercase tracking-widest leading-none">Elevore Quant Core // v2</h3>
+                      <p className="text-[7px] text-[#F5C518] font-black uppercase tracking-widest mt-1.5 animate-pulse">James Sterling Engine - Online</p>
+                    </div>
                   </div>
-                  <div>
-                    <h3 className="text-xs font-black text-white uppercase tracking-widest">Elevore AI</h3>
-                    <p className="text-[7px] text-[#F5C518] font-black uppercase tracking-widest">Copiloto Activo</p>
+                  <div className="flex items-center gap-1.5">
+                    <button 
+                      onClick={() => setCopilotWide(!copilotWide)} 
+                      className="text-slate-400 hover:text-[#F5C518] transition-colors p-1.5 rounded-lg hover:bg-white/5 cursor-pointer"
+                      title={copilotWide ? "Contraer Chat" : "Expandir Ledger Cuantitativo"}
+                      type="button"
+                    >
+                      <Icon name={copilotWide ? "minimize-2" : "maximize-2"} className="w-3.5 h-3.5" />
+                    </button>
+                    <button 
+                      onClick={() => setCopilotOpen(false)} 
+                      className="text-slate-400 hover:text-red-400 transition-colors p-1.5 rounded-lg hover:bg-white/5 cursor-pointer"
+                      type="button"
+                    >
+                      <Icon name="x" className="w-3.5 h-3.5" />
+                    </button>
                   </div>
                 </div>
-                
-                <div className="flex-1 p-4 h-64 overflow-y-auto custom-scroll flex flex-col gap-3">
-                  {copilotMsgs.map((m, i) => (
-                    <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                      <div className={`max-w-[85%] p-3 rounded-2xl text-xs ${m.role === 'user' ? 'bg-[#F5C518] text-black font-medium rounded-br-none' : 'bg-white/5 text-white border border-white/10 rounded-bl-none'}`}>
-                        {m.content}
-                      </div>
+
+                {/* Looping Financial Ticker */}
+                <div className="bg-black/95 border-b border-white/10 px-3 py-1 overflow-hidden whitespace-nowrap text-[9px] font-mono text-emerald-400 select-none flex items-center relative shadow-inner h-6">
+                  <div className="animate-ticker inline-flex items-center gap-6">
+                    {[1, 2].map((loopIdx) => (
+                      <React.Fragment key={loopIdx}>
+                        <span>MRR: <strong className="text-white">${finance.mrr.toLocaleString()}</strong></span>
+                        <span className="text-[#F5C518]">•</span>
+                        <span>LTV/CAC: <strong className="text-white">{finance.ltvCacRatio}x</strong></span>
+                        <span className="text-[#F5C518]">•</span>
+                        <span>Margen: <strong className="text-white">{finance.profitMargin}%</strong></span>
+                        <span className="text-[#F5C518]">•</span>
+                        <span>Churn: <strong className={finance.churnRate > 15 ? "text-red-400" : "text-white"}>{finance.churnRate}%</strong></span>
+                        <span className="text-[#F5C518]">•</span>
+                        <span>NPS: <strong className="text-white">{finance.nps}</strong></span>
+                        <span className="text-[#F5C518]">•</span>
+                        <span>Neto: <strong className="text-emerald-400">${finance.net.toLocaleString()}</strong></span>
+                        <span className="text-[#F5C518]">•</span>
+                        <span>Proyección: <strong className="text-white">${finance.proj.toLocaleString()}</strong></span>
+                        <span className="text-[#F5C518]">•</span>
+                        <span>Meta: <strong className="text-white">${(tenantSettings?.monthly_goal || 15000).toLocaleString()}</strong></span>
+                        <span className="text-[#F5C518]">•</span>
+                      </React.Fragment>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Central Pane */}
+                <div className="flex-1 flex overflow-hidden min-h-0">
+                  {/* Left Side: Chat Messages */}
+                  <div className="flex-1 flex flex-col min-w-0 bg-[#06050a]/30">
+                    <div className="flex-1 p-4 overflow-y-auto custom-scroll flex flex-col gap-3">
+                      {copilotMsgs.map((m, i) => (
+                        <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                          <div className={`max-w-[90%] p-3 rounded-2xl text-xs ${
+                            m.role === 'user' 
+                              ? 'bg-gradient-to-r from-amber-500 to-[#F5C518] text-black font-semibold rounded-br-none shadow-[0_4px_12px_rgba(245,197,24,0.15)]' 
+                              : 'bg-white/5 text-white border border-white/10 rounded-bl-none'
+                          }`}>
+                            {m.role === 'user' ? (
+                              m.content
+                            ) : (
+                              <div 
+                                className="markdown-content flex flex-col gap-1 text-[11px] leading-relaxed text-white/90"
+                                dangerouslySetInnerHTML={{ __html: renderMarkdown(m.content) }}
+                              />
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                      {copilotLoading && (
+                        <div className="flex justify-start">
+                          <div className="bg-white/5 border border-white/10 text-white rounded-2xl rounded-bl-none p-3 flex gap-1.5 items-center">
+                            <div className="w-1.5 h-1.5 bg-[#F5C518] rounded-full animate-bounce"></div>
+                            <div className="w-1.5 h-1.5 bg-[#F5C518] rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                            <div className="w-1.5 h-1.5 bg-[#F5C518] rounded-full animate-bounce" style={{ animationDelay: '0.4s' }}></div>
+                          </div>
+                        </div>
+                      )}
                     </div>
-                  ))}
-                  {copilotLoading && (
-                    <div className="flex justify-start">
-                      <div className="bg-white/5 border border-white/10 text-white rounded-2xl rounded-bl-none p-3 flex gap-1 items-center">
-                        <div className="w-1.5 h-1.5 bg-[#F5C518] rounded-full animate-bounce"></div>
-                        <div className="w-1.5 h-1.5 bg-[#F5C518] rounded-full animate-bounce delay-100"></div>
-                        <div className="w-1.5 h-1.5 bg-[#F5C518] rounded-full animate-bounce delay-200"></div>
+
+                    {/* Suggestion Chips */}
+                    <div className="px-3 pb-2 pt-1 border-t border-white/5 bg-black/20 overflow-x-auto flex gap-1.5 custom-scroll scrollbar-none select-none">
+                      {[
+                        { label: '📊 ROI Mkt', prompt: 'Haz un análisis cuantitativo riguroso sobre el ROI de nuestros canales de adquisición y dime cuál deberíamos duplicar o cancelar.' },
+                        { label: '💡 Plan LTV', prompt: `Dame un plan financiero estilo Wall Street para duplicar nuestro LTV/CAC ratio, analizando el LTV actual de $${finance.avgLTV} y CAC de $${finance.avgCAC}.` },
+                        { label: '🎯 VIP Upsell', prompt: `Identifica qué clientes VIP deberíamos convencer para pasarse a membresías recurrentes. Analiza a nuestros mejores candidatos: ${finance.mbTargets.slice(0,5).map(c=>c.name).join(', ')}.` },
+                        { label: '🚨 Winback', prompt: `Genera una estrategia de campaña de recuperación (Winback) para recuperar los clientes inactivos. Analiza a: ${finance.churn.slice(0,5).map(c=>c.name).join(', ')}.` },
+                        { label: '📉 Forense Churn', prompt: `Analiza nuestra tasa de churn del ${finance.churnRate}% y genera un reporte forense detallado con acciones mitigantes.` }
+                      ].map((chip, idx) => (
+                        <button
+                          key={idx}
+                          type="button"
+                          onClick={() => {
+                            setCopilotInput(chip.prompt);
+                          }}
+                          className="px-2.5 py-1 bg-white/5 hover:bg-[#F5C518]/10 hover:border-[#F5C518]/30 border border-white/10 rounded-full text-[9px] font-bold text-slate-300 hover:text-[#F5C518] transition-all whitespace-nowrap active:scale-95 cursor-pointer"
+                        >
+                          {chip.label}
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* Chat Input */}
+                    <form onSubmit={handleCopilot} className="p-3 border-t border-white/10 bg-black/60 flex gap-2">
+                      <input
+                        type="text"
+                        value={copilotInput}
+                        onChange={e => setCopilotInput(e.target.value)}
+                        placeholder="Pregúntale a James Sterling..."
+                        className="flex-1 bg-white/5 border border-white/10 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-[#F5C518] focus:bg-white/[0.08] transition-all placeholder-slate-500"
+                      />
+                      <button type="submit" disabled={copilotLoading} className="w-10 h-10 bg-[#F5C518] hover:bg-[#E5B508] disabled:opacity-40 disabled:hover:bg-[#F5C518] text-black rounded-xl flex items-center justify-center hover:scale-105 active:scale-95 transition-all shadow-[0_0_15px_rgba(245,197,24,0.25)] cursor-pointer">
+                        <Icon name="send" className="w-4 h-4" />
+                      </button>
+                    </form>
+                  </div>
+
+                  {/* Right Side: Ledger Data Desk */}
+                  {copilotWide && (
+                    <div className="w-[420px] border-l border-white/10 bg-[#07060b]/90 flex flex-col overflow-y-auto custom-scroll p-4 gap-4 animate-in fade-in duration-300">
+                      <div className="flex items-center justify-between border-b border-white/10 pb-2">
+                        <div className="flex items-center gap-2">
+                          <Icon name="activity" className="w-3.5 h-3.5 text-[#F5C518]" />
+                          <h4 className="text-[10px] font-black text-white uppercase tracking-widest">Elevore Quant Ledger</h4>
+                        </div>
+                        <span className="text-[7px] bg-emerald-500/20 text-emerald-400 font-mono px-1.5 py-0.5 rounded border border-emerald-500/30 uppercase tracking-widest animate-pulse font-black">Real-Time Data Feed</span>
+                      </div>
+
+                      {/* Economic Grid */}
+                      <div className="grid grid-cols-2 gap-2">
+                        <div className="bg-white/[0.02] border border-white/5 rounded-xl p-2.5 flex flex-col justify-between">
+                          <span className="text-[7px] text-slate-500 font-bold uppercase tracking-wider">Net Margin / profit</span>
+                          <div className="flex items-baseline justify-between mt-1">
+                            <span className="text-xs font-black text-white font-mono-values">${finance.net.toLocaleString()}</span>
+                            <span className="text-[8px] text-emerald-400 font-mono font-bold">Margin: {finance.profitMargin}%</span>
+                          </div>
+                        </div>
+                        <div className="bg-white/[0.02] border border-white/5 rounded-xl p-2.5 flex flex-col justify-between">
+                          <span className="text-[7px] text-slate-500 font-bold uppercase tracking-wider">Lifetime efficiency</span>
+                          <div className="flex items-baseline justify-between mt-1">
+                            <span className="text-xs font-black text-white font-mono-values">{finance.ltvCacRatio}x</span>
+                            <span className="text-[7px] text-slate-400 font-mono">LTV: ${finance.avgLTV} / CAC: ${finance.avgCAC}</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Marketing Channels ROI Report */}
+                      <div className="bg-white/[0.02] border border-white/5 rounded-xl p-3">
+                        <span className="text-[8px] text-[#F5C518] font-black uppercase tracking-widest block mb-2">Canales de Adquisición & ROI</span>
+                        <div className="space-y-2">
+                          {finance.channelReport.map((ch, idx) => (
+                            <div key={idx} className="flex justify-between items-center text-[10px] border-b border-white/5 pb-1.5 last:border-b-0 last:pb-0">
+                              <div>
+                                <p className="font-bold text-white leading-tight">{ch.name}</p>
+                                <p className="text-[7px] text-slate-500 font-mono">CAC: ${ch.cac} | Spend: ${ch.spend} | Conv: {ch.customers}</p>
+                              </div>
+                              <div className="text-right">
+                                <p className="font-mono text-white">${ch.ltv.toLocaleString()}</p>
+                                <p className={`text-[8px] font-mono font-black ${ch.roi >= 100 ? 'text-emerald-400' : ch.roi > 0 ? 'text-amber-400' : 'text-slate-500'}`}>
+                                  ROI: {ch.roi}%
+                                </p>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Action Targets */}
+                      <div className="grid grid-cols-2 gap-2">
+                        {/* Upsell VIP */}
+                        <div className="bg-white/[0.02] border border-white/5 rounded-xl p-3 flex flex-col">
+                          <div className="flex items-center gap-1 mb-2 text-[8px] text-[#F5C518] font-black uppercase tracking-widest">
+                            <Icon name="crown" className="w-2.5 h-2.5" />
+                            <span>Upsell Membresía</span>
+                          </div>
+                          <div className="flex-1 space-y-1.5 overflow-y-auto max-h-24 custom-scroll pr-1">
+                            {finance.mbTargets.length > 0 ? (
+                              finance.mbTargets.slice(0, 4).map((t, idx) => (
+                                <div key={idx} className="text-[9px] bg-white/5 px-2 py-1 rounded border border-white/5 flex justify-between items-center">
+                                  <span className="font-semibold text-white truncate max-w-[80px]" title={t.name}>{t.name}</span>
+                                  <span className="text-[8px] font-mono text-amber-400 font-bold">{t.count} serv.</span>
+                                </div>
+                              ))
+                            ) : (
+                              <p className="text-[8px] text-slate-500 italic">No hay candidatos.</p>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Winback Churn */}
+                        <div className="bg-white/[0.02] border border-white/5 rounded-xl p-3 flex flex-col">
+                          <div className="flex items-center gap-1 mb-2 text-[8px] text-red-400 font-black uppercase tracking-widest">
+                            <Icon name="alert-circle" className="w-2.5 h-2.5" />
+                            <span>Winback Churn ({finance.churn.length})</span>
+                          </div>
+                          <div className="flex-1 space-y-1.5 overflow-y-auto max-h-24 custom-scroll pr-1">
+                            {finance.churn.length > 0 ? (
+                              finance.churn.slice(0, 4).map((t, idx) => (
+                                <div key={idx} className="text-[9px] bg-white/5 px-2 py-1 rounded border border-white/5 flex justify-between items-center">
+                                  <span className="font-semibold text-white truncate max-w-[100px]" title={t.name}>{t.name}</span>
+                                  <Icon name="alert-triangle" className="w-2.5 h-2.5 text-amber-500/80 animate-pulse" />
+                                </div>
+                              ))
+                            ) : (
+                              <p className="text-[8px] text-slate-500 italic">Cero clientes en churn.</p>
+                            )}
+                          </div>
+                        </div>
                       </div>
                     </div>
                   )}
                 </div>
-
-                <form onSubmit={handleCopilot} className="p-3 border-t border-white/10 bg-black/50 flex gap-2">
-                  <input
-                    type="text"
-                    value={copilotInput}
-                    onChange={e => setCopilotInput(e.target.value)}
-                    placeholder="Pregúntale a la IA..."
-                    className="flex-1 bg-white/5 border border-white/10 rounded-xl px-3 text-xs text-white focus:outline-none focus:border-[#F5C518] transition-colors"
-                  />
-                  <button type="submit" disabled={copilotLoading} className="w-10 h-10 bg-[#F5C518] text-black rounded-xl flex items-center justify-center hover:scale-105 active:scale-95 disabled:opacity-50 transition-all">
-                    <Icon name="send" className="w-4 h-4" />
-                  </button>
-                </form>
               </div>
             )}
           </>

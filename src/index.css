@@ -491,3 +491,23 @@ body {
     print-color-adjust: exact !important; 
   }
 }
+
+/* ============================================================
+   QUANT AI COPILOT / WALL STREET BLOOMBERG STYLE
+   ============================================================ */
+@keyframes ticker {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+.animate-ticker {
+  display: inline-flex;
+  animation: ticker 30s linear infinite;
+}
+.animate-ticker:hover {
+  animation-play-state: paused;
+}
+
+.font-mono-values {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+}
+
