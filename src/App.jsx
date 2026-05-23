@@ -5248,6 +5248,8 @@ export default function App() {
   const [copilotListening, setCopilotListening] = useState(false);
   const [speakingMsgIdx, setSpeakingMsgIdx] = useState(null);
   const recognitionRef = useRef(null);
+  const [simRevenue, setSimRevenue] = useState(10000);
+  const [simJobs, setSimJobs] = useState(50);
   const [actLog, setActLog] = useState([]);
   const [rtOn, setRT] = useState(false);
   const [state, setState] = useState(INIT);
@@ -6698,37 +6700,33 @@ Instrucciones generales de formato:
         { topic: "Procedimiento de Check-in en Campo", keyword: "checkin entrada llegada retraso gps", content: "SOP Registro de Entrada (Check-in): El equipo debe marcar check-in al llegar a la propiedad. Si hay retraso >15 mins, notificar al cliente vía SMS/WhatsApp usando la plantilla de retraso. Registrar fotos del estado 'antes' de iniciar." },
         { topic: "Limpieza de Hornos por dentro", keyword: "horno cocina grasa profundo", content: "SOP Limpieza de Horno: 1. Aplicar desengrasante industrial sobre las paredes internas del horno frío. 2. Dejar actuar por 20 minutos. 3. Retirar las rejillas y restregarlas por separado. 4. Limpiar el interior con fibra no abrasiva para evitar rayones. 5. Enjuagar con paño húmedo hasta retirar residuos químicos." }
       ];
+      const systemPrompt = view === 'landing' ? `Eres James Sterling, un brillante y sofisticado Consultor de Crecimiento Empresarial de Wall Street y Agente de Ventas de Elevore Empire.
+Tu objetivo en este chat público es convencer al visitante del sitio web de Elevore Empire de registrarse en nuestra plataforma SaaS Premium.
+Habla en español con un tono elegante, sofisticado, persuasivo y corporativo. Explica con entusiasmo cómo Elevore ayuda a los negocios de servicios para el hogar (cleaning, handymen, HVAC, landscaping) a automatizar sus operaciones, controlar la calidad y multiplicar sus ingresos en piloto automático.
+Detalles Clave del SaaS Elevore Empire que puedes promocionar:
+- Motor de Inteligencia Predictiva (Upsells automáticos y proyecciones de flujo de caja).
+- GPS en vivo Uber-style para rastrear equipos de trabajo en ruta.
+- Cotizaciones persuasivas de 3 opciones (Good-Better-Best) que elevan el valor del ticket en 35%.
+- CRM integrado con plantillas automatizadas de WhatsApp (winback, control de calidad, cobros rápidos).
+- Control de Calidad por Visión IA (analiza fotos del antes/después).
+- Firmas digitales obligatorias para aprobación legal de contratos.
 
-      const clientNotes = clients.filter(c => c.specs && (c.specs.notes || c.specs.entryCode || c.specs.pets)).map(c => ({
-        topic: `Nota de cliente: ${c.name}`,
-        keyword: `${c.name.toLowerCase()} mascotas entrada codigo notas`,
-        content: `Cliente: ${c.name} | Mascotas: ${c.specs.pets || 'Ninguna'} | Código entrada: ${c.specs.entryCode || 'No especificado'} | Notas: ${c.specs.notes || 'Ninguna'}`
-      }));
+Planes de Precios de Elevore SaaS:
+- Plan Basic ($199/mes): Incluye 2 limpiezas/servicios al mes, 5% de descuento, soporte prioritario.
+- Plan Premium ($349/mes): Incluye 4 servicios al mes, 10% de descuento, desengrasado de horno gratis.
+- Plan VIP ($549/mes): Incluye 6 servicios al mes, 15% de descuento, todos los complementos incluidos, equipo dedicado.
 
-      const queryWords = userText.toLowerCase().split(/\s+/).filter(w => w.length > 2);
-      const searchResults = [...SOPS, ...clientNotes].map(item => {
-        let score = 0;
-        queryWords.forEach(word => {
-          if (item.keyword.toLowerCase().includes(word) || item.topic.toLowerCase().includes(word)) {
-            score += 2;
-          }
-          if (item.content.toLowerCase().includes(word)) {
-            score += 1;
-          }
-        });
-        return { ...item, score };
-      }).filter(item => item.score > 0)
-        .sort((a, b) => b.score - a.score)
-        .slice(0, 2);
-      
-      const ragContextText = searchResults.length > 0
-        ? `INFORMACIÓN DE SOPORTE RECUPERADA (RAG Local):\n${searchResults.map(r => `[KNOWLEDGE: ${r.topic}] ${r.content}`).join('\n')}`
-        : 'No se encontró información de SOPs o notas de clientes relevante a la consulta del usuario.';
+*Instrucciones de llamadas a la acción:*
+- Recomienda al visitante que haga clic en el botón dorado "Start Free Trial" arriba en la barra de navegación para iniciar su prueba gratuita de 14 días.
+- Si quieren simular sus ganancias reales con Elevore, diles que hagan clic en el botón de expansión (las flechas en la cabecera de este chat) para abrir la Calculadora de ROI en tiempo real.
 
-      const ollamaUrl = localStorage.getItem('elevore_ollama_url') || 'http://127.0.0.1:11434';
-      const ollamaModel = localStorage.getItem('elevore_ollama_model') || 'llama3';
-      
-      const systemPrompt = `Eres James Sterling, un despiadado y brillante analista cuantitativo de fondos de cobertura y CFO de Wall Street, contratado por el negocio ${tenantName} para maximizar el flujo de caja, disparar el MRR y optimizar la rentabilidad de su operación de servicios.
+=== ETIQUETAS ESPECIALES DE RESPUESTA (CRÍTICO) ===
+1. GRÁFICOS SVG: Si el usuario te pide ver un gráfico, tendencia, o desglose visual de datos (por ejemplo, simulaciones de crecimiento o comparativas de planes), responde incluyendo una etiqueta de gráfico SVG en tu respuesta con el formato exacto:
+   \`<Chart type="bar" data="[val1, val2, ...]" labels="['tag1', 'tag2', ...]" />\` o
+   \`<Chart type="line" data="[val1, val2, ...]" labels="['tag1', 'tag2', ...]" />\`
+   donde data es un array de números y labels es un array de strings. Por ejemplo, simula un crecimiento de ingresos proyectado a 5 meses: \`<Chart type="line" data="[10000, 13500, 15000, 18500, 22000]" labels="['Mes 1', 'Mes 2', 'Mes 3', 'Mes 4', 'Mes 5']" />\`.
+
+¡Responde de forma concisa, educada y profesional, con el estilo de un consultor de inversiones de élite!` : `Eres James Sterling, un despiadado y brillante analista cuantitativo de fondos de cobertura y CFO de Wall Street, contratado por el negocio ${tenantName} para maximizar el flujo de caja, disparar el MRR y optimizar la rentabilidad de su operación de servicios.
 Tus respuestas deben ser ultra-analíticas, orientadas a datos, precisas y profesionales (al estilo de Goldman Sachs o McKinsey). Utiliza términos de finanzas corporativas (LTV/CAC, MRR, ROI, Margen Neto, Churn).
 Sé directo al grano: felicita los logros, pero critica severamente las ineficiencias financieras (como CAC alto, bajo LTV, fugas en el embudo de ventas, o canales de marketing con ROI negativo).
 Cuando sea oportuno, formatea tus recomendaciones en tablas de markdown, listas estructuradas con viñetas o resúmenes ejecutivos numéricos.
@@ -6778,7 +6776,6 @@ Nómina pagada acumulada por empleado: ${JSON.stringify(finance.payroll)}
 2. COMANDOS DE ACCIÓN DIRECTA: Si el usuario solicita explícitamente realizar una acción, al final de tu respuesta (o como tu única respuesta) debes incluir exactamente la etiqueta:
    \`[CMD] {"action": "winback|upsell|print_invoice|reassign", "client_name": "nombre_cliente", "job_id": "id_trabajo_si_aplica", "team_name": "nombre_equipo_si_reasigna"}\`
    No pongas texto largo explicativo si el usuario te pidió realizar la acción, sé sumamente rápido y directo.
-
 
 ¡Responde con el estilo característico de Wall Street: sofisticado, directo al grano y enfocado en la rentabilidad! Responde siempre en español.`;
 
@@ -9558,7 +9555,7 @@ Respond ONLY in this exact JSON format (no explanation, no markdown, just raw JS
         {/* =====================================================================
             🤖 COPILOTO IA
             ===================================================================== */}
-        {role === 'admin' && (
+        {(role === 'admin' || view === 'landing') && (
           <>
             <button
               onClick={() => setCopilotOpen(!copilotOpen)}
@@ -9576,15 +9573,19 @@ Respond ONLY in this exact JSON format (no explanation, no markdown, just raw JS
                       <Icon name="cpu" className="w-4 h-4 text-[#F5C518]" />
                     </div>
                     <div>
-                      <h3 className="text-[10px] font-black text-white uppercase tracking-widest leading-none">Elevore Quant Core // v2</h3>
-                      <p className="text-[7px] text-[#F5C518] font-black uppercase tracking-widest mt-1.5 animate-pulse">James Sterling Engine - Online</p>
+                      <h3 className="text-[10px] font-black text-white uppercase tracking-widest leading-none">
+                        {view === 'landing' ? 'Elevore SaaS Advisor' : 'Elevore Quant Core // v2'}
+                      </h3>
+                      <p className="text-[7px] text-[#F5C518] font-black uppercase tracking-widest mt-1.5 animate-pulse">
+                        {view === 'landing' ? 'Public Sales Agent - Online' : 'James Sterling Engine - Online'}
+                      </p>
                     </div>
                   </div>
                   <div className="flex items-center gap-1.5">
                     <button 
                       onClick={() => setCopilotWide(!copilotWide)} 
                       className="text-slate-400 hover:text-[#F5C518] transition-colors p-1.5 rounded-lg hover:bg-white/5 cursor-pointer"
-                      title={copilotWide ? "Contraer Chat" : "Expandir Ledger Cuantitativo"}
+                      title={copilotWide ? "Contraer Chat" : "Expandir Calculadora de ROI"}
                       type="button"
                     >
                       <Icon name={copilotWide ? "minimize-2" : "maximize-2"} className="w-3.5 h-3.5" />
@@ -9604,22 +9605,41 @@ Respond ONLY in this exact JSON format (no explanation, no markdown, just raw JS
                   <div className="animate-ticker inline-flex items-center gap-6">
                     {[1, 2].map((loopIdx) => (
                       <React.Fragment key={loopIdx}>
-                        <span>MRR: <strong className="text-white">${finance.mrr.toLocaleString()}</strong></span>
-                        <span className="text-[#F5C518]">•</span>
-                        <span>LTV/CAC: <strong className="text-white">{finance.ltvCacRatio}x</strong></span>
-                        <span className="text-[#F5C518]">•</span>
-                        <span>Margen: <strong className="text-white">{finance.profitMargin}%</strong></span>
-                        <span className="text-[#F5C518]">•</span>
-                        <span>Churn: <strong className={finance.churnRate > 15 ? "text-red-400" : "text-white"}>{finance.churnRate}%</strong></span>
-                        <span className="text-[#F5C518]">•</span>
-                        <span>NPS: <strong className="text-white">{finance.nps}</strong></span>
-                        <span className="text-[#F5C518]">•</span>
-                        <span>Neto: <strong className="text-emerald-400">${finance.net.toLocaleString()}</strong></span>
-                        <span className="text-[#F5C518]">•</span>
-                        <span>Proyección: <strong className="text-white">${finance.proj.toLocaleString()}</strong></span>
-                        <span className="text-[#F5C518]">•</span>
-                        <span>Meta: <strong className="text-white">${(tenantSettings?.monthly_goal || 15000).toLocaleString()}</strong></span>
-                        <span className="text-[#F5C518]">•</span>
+                        {view === 'landing' ? (
+                          <>
+                            <span>Status: <strong className="text-white">ACTIVE</strong></span>
+                            <span className="text-[#F5C518]">•</span>
+                            <span>Empires Active: <strong className="text-white">1,420+</strong></span>
+                            <span className="text-[#F5C518]">•</span>
+                            <span>Avg. Growth: <strong className="text-white">+38%</strong></span>
+                            <span className="text-[#F5C518]">•</span>
+                            <span>LTV/CAC: <strong className="text-white">4.8x</strong></span>
+                            <span className="text-[#F5C518]">•</span>
+                            <span>Uptime: <strong className="text-white">99.99%</strong></span>
+                            <span className="text-[#F5C518]">•</span>
+                            <span>Automated Today: <strong className="text-white">18,429</strong></span>
+                            <span className="text-[#F5C518]">•</span>
+                          </>
+                        ) : (
+                          <>
+                            <span>MRR: <strong className="text-white">${finance.mrr.toLocaleString()}</strong></span>
+                            <span className="text-[#F5C518]">•</span>
+                            <span>LTV/CAC: <strong className="text-white">{finance.ltvCacRatio}x</strong></span>
+                            <span className="text-[#F5C518]">•</span>
+                            <span>Margen: <strong className="text-white">{finance.profitMargin}%</strong></span>
+                            <span className="text-[#F5C518]">•</span>
+                            <span>Churn: <strong className={finance.churnRate > 15 ? "text-red-400" : "text-white"}>{finance.churnRate}%</strong></span>
+                            <span className="text-[#F5C518]">•</span>
+                            <span>NPS: <strong className="text-white">{finance.nps}</strong></span>
+                            <span className="text-[#F5C518]">•</span>
+                            <span>Neto: <strong className="text-emerald-400">${finance.net.toLocaleString()}</strong></span>
+                            <span className="text-[#F5C518]">•</span>
+                            <span>Proyección: <strong className="text-white">${finance.proj.toLocaleString()}</strong></span>
+                            <span className="text-[#F5C518]">•</span>
+                            <span>Meta: <strong className="text-white">${(tenantSettings?.monthly_goal || 15000).toLocaleString()}</strong></span>
+                            <span className="text-[#F5C518]">•</span>
+                          </>
+                        )}
                       </React.Fragment>
                     ))}
                   </div>
@@ -9739,97 +9759,189 @@ Respond ONLY in this exact JSON format (no explanation, no markdown, just raw JS
 
                   {/* Right Side: Ledger Data Desk */}
                   {copilotWide && (
-                    <div className="w-[420px] border-l border-white/10 bg-[#07060b]/90 flex flex-col overflow-y-auto custom-scroll p-4 gap-4 animate-in fade-in duration-300">
-                      <div className="flex items-center justify-between border-b border-white/10 pb-2">
-                        <div className="flex items-center gap-2">
-                          <Icon name="activity" className="w-3.5 h-3.5 text-[#F5C518]" />
-                          <h4 className="text-[10px] font-black text-white uppercase tracking-widest">Elevore Quant Ledger</h4>
-                        </div>
-                        <span className="text-[7px] bg-emerald-500/20 text-emerald-400 font-mono px-1.5 py-0.5 rounded border border-emerald-500/30 uppercase tracking-widest animate-pulse font-black">Real-Time Data Feed</span>
-                      </div>
-
-                      {/* Economic Grid */}
-                      <div className="grid grid-cols-2 gap-2">
-                        <div className="bg-white/[0.02] border border-white/5 rounded-xl p-2.5 flex flex-col justify-between">
-                          <span className="text-[7px] text-slate-500 font-bold uppercase tracking-wider">Net Margin / profit</span>
-                          <div className="flex items-baseline justify-between mt-1">
-                            <span className="text-xs font-black text-white font-mono-values">${finance.net.toLocaleString()}</span>
-                            <span className="text-[8px] text-emerald-400 font-mono font-bold">Margin: {finance.profitMargin}%</span>
+                    view === 'landing' ? (
+                      <div className="w-[420px] border-l border-white/10 bg-[#07060b]/90 flex flex-col overflow-y-auto custom-scroll p-4 gap-4 animate-in fade-in duration-300">
+                        <div className="flex items-center justify-between border-b border-white/10 pb-2">
+                          <div className="flex items-center gap-2">
+                            <Icon name="calculator" className="w-3.5 h-3.5 text-[#F5C518]" />
+                            <h4 className="text-[10px] font-black text-white uppercase tracking-widest">Elevore SaaS ROI Simulator</h4>
                           </div>
+                          <span className="text-[7px] bg-emerald-500/20 text-emerald-400 font-mono px-1.5 py-0.5 rounded border border-emerald-500/30 uppercase tracking-widest animate-pulse font-black">Interactive Sandbox</span>
                         </div>
-                        <div className="bg-white/[0.02] border border-white/5 rounded-xl p-2.5 flex flex-col justify-between">
-                          <span className="text-[7px] text-slate-500 font-bold uppercase tracking-wider">Lifetime efficiency</span>
-                          <div className="flex items-baseline justify-between mt-1">
-                            <span className="text-xs font-black text-white font-mono-values">{finance.ltvCacRatio}x</span>
-                            <span className="text-[7px] text-slate-400 font-mono">LTV: ${finance.avgLTV} / CAC: ${finance.avgCAC}</span>
-                          </div>
-                        </div>
-                      </div>
 
-                      {/* Marketing Channels ROI Report */}
-                      <div className="bg-white/[0.02] border border-white/5 rounded-xl p-3">
-                        <span className="text-[8px] text-[#F5C518] font-black uppercase tracking-widest block mb-2">Canales de Adquisición & ROI</span>
-                        <div className="space-y-2">
-                          {finance.channelReport.map((ch, idx) => (
-                            <div key={idx} className="flex justify-between items-center text-[10px] border-b border-white/5 pb-1.5 last:border-b-0 last:pb-0">
-                              <div>
-                                <p className="font-bold text-white leading-tight">{ch.name}</p>
-                                <p className="text-[7px] text-slate-500 font-mono">CAC: ${ch.cac} | Spend: ${ch.spend} | Conv: {ch.customers}</p>
-                              </div>
-                              <div className="text-right">
-                                <p className="font-mono text-white">${ch.ltv.toLocaleString()}</p>
-                                <p className={`text-[8px] font-mono font-black ${ch.roi >= 100 ? 'text-emerald-400' : ch.roi > 0 ? 'text-amber-400' : 'text-slate-500'}`}>
-                                  ROI: {ch.roi}%
-                                </p>
-                              </div>
+                        <div className="space-y-4">
+                          {/* Input 1 */}
+                          <div>
+                            <div className="flex justify-between text-[9px] font-black uppercase text-slate-400 mb-1">
+                              <span>Ingreso Mensual Actual</span>
+                              <span className="text-white font-mono">${simRevenue.toLocaleString()} USD</span>
                             </div>
-                          ))}
+                            <input
+                              type="range"
+                              min="2000"
+                              max="100000"
+                              step="1000"
+                              value={simRevenue}
+                              onChange={(e) => setSimRevenue(parseInt(e.target.value))}
+                              className="w-full h-1 bg-white/10 rounded-lg appearance-none cursor-pointer accent-[#F5C518]"
+                            />
+                            <div className="flex justify-between text-[7px] text-slate-500 font-mono mt-1">
+                              <span>$2,000</span>
+                              <span>$100,000</span>
+                            </div>
+                          </div>
+
+                          {/* Input 2 */}
+                          <div>
+                            <div className="flex justify-between text-[9px] font-black uppercase text-slate-400 mb-1">
+                              <span>Trabajos Completados / Mes</span>
+                              <span className="text-white font-mono">{simJobs} trabajos</span>
+                            </div>
+                            <input
+                              type="range"
+                              min="10"
+                              max="300"
+                              step="5"
+                              value={simJobs}
+                              onChange={(e) => setSimJobs(parseInt(e.target.value))}
+                              className="w-full h-1 bg-white/10 rounded-lg appearance-none cursor-pointer accent-[#F5C518]"
+                            />
+                            <div className="flex justify-between text-[7px] text-slate-500 font-mono mt-1">
+                              <span>10</span>
+                              <span>300</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Projection Calculations */}
+                        <div className="bg-white/[0.02] border border-white/5 rounded-xl p-3 space-y-2.5">
+                          <span className="text-[8px] text-[#F5C518] font-black uppercase tracking-widest block">Beneficios Mensuales Estimados</span>
+                          
+                          <div className="flex justify-between items-center text-[10px] border-b border-white/5 pb-2">
+                            <div>
+                              <p className="font-bold text-white leading-tight">Upsell de Membresía (+35%)</p>
+                              <p className="text-[7px] text-slate-500 font-mono">Incremento de ticket promedio por cotizaciones 3-tier</p>
+                            </div>
+                            <span className="text-xs font-black text-emerald-400 font-mono">+${Math.round(simRevenue * 0.35).toLocaleString()}</span>
+                          </div>
+
+                          <div className="flex justify-between items-center text-[10px] border-b border-white/5 pb-2">
+                            <div>
+                              <p className="font-bold text-white leading-tight">Tiempo de Oficina Ahorrado</p>
+                              <p className="text-[7px] text-slate-500 font-mono">Auto-despacho, GPS en vivo y firmas digitales</p>
+                            </div>
+                            <span className="text-xs font-black text-emerald-400 font-mono">+{Math.round(simJobs * 0.5)} hrs/mes</span>
+                          </div>
+
+                          <div className="flex justify-between items-center text-[10px]">
+                            <div>
+                              <p className="font-bold text-white leading-tight">Clientes Recuperados (Churn Winback)</p>
+                              <p className="text-[7px] text-slate-500 font-mono">Campañas de recuperación automatizadas por WhatsApp</p>
+                            </div>
+                            <span className="text-xs font-black text-emerald-400 font-mono">+{Math.round(simJobs * 0.08)} clientes</span>
+                          </div>
+                        </div>
+
+                        {/* Net Value card */}
+                        <div className="bg-gradient-to-br from-[#F5C518]/20 to-transparent border border-[#F5C518]/30 rounded-xl p-3 text-center">
+                          <p className="text-[8px] text-[#F5C518] font-black uppercase tracking-widest">Valor Neto Generado Anual</p>
+                          <h3 className="text-2xl font-black italic tracking-tighter text-white mt-1">${Math.round(simRevenue * 0.35 * 12).toLocaleString()} USD</h3>
+                          <p className="text-[6px] text-slate-400 uppercase tracking-widest mt-1">Estimado en base a un incremento mínimo del 35%</p>
                         </div>
                       </div>
-
-                      {/* Action Targets */}
-                      <div className="grid grid-cols-2 gap-2">
-                        {/* Upsell VIP */}
-                        <div className="bg-white/[0.02] border border-white/5 rounded-xl p-3 flex flex-col">
-                          <div className="flex items-center gap-1 mb-2 text-[8px] text-[#F5C518] font-black uppercase tracking-widest">
-                            <Icon name="crown" className="w-2.5 h-2.5" />
-                            <span>Upsell Membresía</span>
+                    ) : (
+                      <div className="w-[420px] border-l border-white/10 bg-[#07060b]/90 flex flex-col overflow-y-auto custom-scroll p-4 gap-4 animate-in fade-in duration-300">
+                        <div className="flex items-center justify-between border-b border-white/10 pb-2">
+                          <div className="flex items-center gap-2">
+                            <Icon name="activity" className="w-3.5 h-3.5 text-[#F5C518]" />
+                            <h4 className="text-[10px] font-black text-white uppercase tracking-widest">Elevore Quant Ledger</h4>
                           </div>
-                          <div className="flex-1 space-y-1.5 overflow-y-auto max-h-24 custom-scroll pr-1">
-                            {finance.mbTargets.length > 0 ? (
-                              finance.mbTargets.slice(0, 4).map((t, idx) => (
-                                <div key={idx} className="text-[9px] bg-white/5 px-2 py-1 rounded border border-white/5 flex justify-between items-center">
-                                  <span className="font-semibold text-white truncate max-w-[80px]" title={t.name}>{t.name}</span>
-                                  <span className="text-[8px] font-mono text-amber-400 font-bold">{t.count} serv.</span>
-                                </div>
-                              ))
-                            ) : (
-                              <p className="text-[8px] text-slate-500 italic">No hay candidatos.</p>
-                            )}
+                          <span className="text-[7px] bg-emerald-500/20 text-emerald-400 font-mono px-1.5 py-0.5 rounded border border-emerald-500/30 uppercase tracking-widest animate-pulse font-black">Real-Time Data Feed</span>
+                        </div>
+
+                        {/* Economic Grid */}
+                        <div className="grid grid-cols-2 gap-2">
+                          <div className="bg-white/[0.02] border border-white/5 rounded-xl p-2.5 flex flex-col justify-between">
+                            <span className="text-[7px] text-slate-500 font-bold uppercase tracking-wider">Net Margin / profit</span>
+                            <div className="flex items-baseline justify-between mt-1">
+                              <span className="text-xs font-black text-white font-mono-values">${finance.net.toLocaleString()}</span>
+                              <span className="text-[8px] text-emerald-400 font-mono font-bold">Margin: {finance.profitMargin}%</span>
+                            </div>
+                          </div>
+                          <div className="bg-white/[0.02] border border-white/5 rounded-xl p-2.5 flex flex-col justify-between">
+                            <span className="text-[7px] text-slate-500 font-bold uppercase tracking-wider">Lifetime efficiency</span>
+                            <div className="flex items-baseline justify-between mt-1">
+                              <span className="text-xs font-black text-white font-mono-values">{finance.ltvCacRatio}x</span>
+                              <span className="text-[7px] text-slate-400 font-mono">LTV: ${finance.avgLTV} / CAC: ${finance.avgCAC}</span>
+                            </div>
                           </div>
                         </div>
 
-                        {/* Winback Churn */}
-                        <div className="bg-white/[0.02] border border-white/5 rounded-xl p-3 flex flex-col">
-                          <div className="flex items-center gap-1 mb-2 text-[8px] text-red-400 font-black uppercase tracking-widest">
-                            <Icon name="alert-circle" className="w-2.5 h-2.5" />
-                            <span>Winback Churn ({finance.churn.length})</span>
-                          </div>
-                          <div className="flex-1 space-y-1.5 overflow-y-auto max-h-24 custom-scroll pr-1">
-                            {finance.churn.length > 0 ? (
-                              finance.churn.slice(0, 4).map((t, idx) => (
-                                <div key={idx} className="text-[9px] bg-white/5 px-2 py-1 rounded border border-white/5 flex justify-between items-center">
-                                  <span className="font-semibold text-white truncate max-w-[100px]" title={t.name}>{t.name}</span>
-                                  <Icon name="alert-triangle" className="w-2.5 h-2.5 text-amber-500/80 animate-pulse" />
+                        {/* Marketing Channels ROI Report */}
+                        <div className="bg-white/[0.02] border border-white/5 rounded-xl p-3">
+                          <span className="text-[8px] text-[#F5C518] font-black uppercase tracking-widest block mb-2">Canales de Adquisición & ROI</span>
+                          <div className="space-y-2">
+                            {finance.channelReport.map((ch, idx) => (
+                              <div key={idx} className="flex justify-between items-center text-[10px] border-b border-white/5 pb-1.5 last:border-b-0 last:pb-0">
+                                <div>
+                                  <p className="font-bold text-white leading-tight">{ch.name}</p>
+                                  <p className="text-[7px] text-slate-500 font-mono">CAC: ${ch.cac} | Spend: ${ch.spend} | Conv: {ch.customers}</p>
                                 </div>
-                              ))
-                            ) : (
-                              <p className="text-[8px] text-slate-500 italic">Cero clientes en churn.</p>
-                            )}
+                                <div className="text-right">
+                                  <p className="font-mono text-white">${ch.ltv.toLocaleString()}</p>
+                                  <p className={`text-[8px] font-mono font-black ${ch.roi >= 100 ? 'text-emerald-400' : ch.roi > 0 ? 'text-amber-400' : 'text-slate-500'}`}>
+                                    ROI: {ch.roi}%
+                                  </p>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Action Targets */}
+                        <div className="grid grid-cols-2 gap-2">
+                          {/* Upsell VIP */}
+                          <div className="bg-white/[0.02] border border-white/5 rounded-xl p-3 flex flex-col">
+                            <div className="flex items-center gap-1 mb-2 text-[8px] text-[#F5C518] font-black uppercase tracking-widest">
+                              <Icon name="crown" className="w-2.5 h-2.5" />
+                              <span>Upsell Membresía</span>
+                            </div>
+                            <div className="flex-1 space-y-1.5 overflow-y-auto max-h-24 custom-scroll pr-1">
+                              {finance.mbTargets.length > 0 ? (
+                                finance.mbTargets.slice(0, 4).map((t, idx) => (
+                                  <div key={idx} className="text-[9px] bg-white/5 px-2 py-1 rounded border border-white/5 flex justify-between items-center">
+                                    <span className="font-semibold text-white truncate max-w-[80px]" title={t.name}>{t.name}</span>
+                                    <span className="text-[8px] font-mono text-amber-400 font-bold">{t.count} serv.</span>
+                                  </div>
+                                ))
+                              ) : (
+                                <p className="text-[8px] text-slate-500 italic">No hay candidatos.</p>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Winback Churn */}
+                          <div className="bg-white/[0.02] border border-white/5 rounded-xl p-3 flex flex-col">
+                            <div className="flex items-center gap-1 mb-2 text-[8px] text-red-400 font-black uppercase tracking-widest">
+                              <Icon name="alert-circle" className="w-2.5 h-2.5" />
+                              <span>Winback Churn ({finance.churn.length})</span>
+                            </div>
+                            <div className="flex-1 space-y-1.5 overflow-y-auto max-h-24 custom-scroll pr-1">
+                              {finance.churn.length > 0 ? (
+                                finance.churn.slice(0, 4).map((t, idx) => (
+                                  <div key={idx} className="text-[9px] bg-white/5 px-2 py-1 rounded border border-white/5 flex justify-between items-center">
+                                    <span className="font-semibold text-white truncate max-w-[100px]" title={t.name}>{t.name}</span>
+                                    <Icon name="alert-triangle" className="w-2.5 h-2.5 text-amber-500/80 animate-pulse" />
+                                  </div>
+                                ))
+                              ) : (
+                                <p className="text-[8px] text-slate-500 italic">Cero clientes en churn.</p>
+                              )}
+                            </div>
                           </div>
                         </div>
                       </div>
-                    </div>
+                    )
                   )}
                 </div>
               </div>
