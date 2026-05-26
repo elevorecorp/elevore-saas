@@ -1,0 +1,918 @@
+diff --git a/src/App.jsx b/src/App.jsx
+index b28b726..4762648 100644
+--- a/src/App.jsx
++++ b/src/App.jsx
+@@ -295,17 +295,20 @@ function PhotoDrive({ photos = [], label, onAdd }) {
+         ))}
+       </div>
+       {onAdd && (
+-        <div className="flex flex-col gap-2">
+-          <div className="flex gap-2">
+-            <input type="text" placeholder="Photo link URL..." value={lk} onChange={e => setLk(e.target.value)} className="inp text-xs text-blue-400 flex-1" />
+-            <button onClick={() => { if (lk.trim()) { onAdd(lk.trim()); setLk(''); } }} className="px-4 bg-green-600 text-white rounded-xl font-black text-lg active:scale-95">+</button>
+-          </div>
++        <div className="flex flex-col gap-2 pt-1">
+           <div className="relative w-full">
+-            <input type="file" accept="image/*" capture="environment" onChange={handleFileUpload} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" disabled={isUploading} />
+-            <button className="w-full bg-slate-800 border border-slate-700 text-slate-300 py-3 rounded-xl text-xs font-black uppercase flex items-center justify-center gap-2 active:scale-95">
+-              {isUploading ? <Icon name="loader-2" className="w-4 h-4 animate-spin" /> : <><Icon name="camera" className="w-4 h-4" /> Tomar Foto Directamente</>}
++            <input type="file" accept="image/*" capture="environment" onChange={handleFileUpload} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" disabled={isUploading} />
++            <button className="w-full bg-green-500/10 border border-green-500/35 hover:bg-green-500/20 text-green-400 py-3 rounded-xl text-[10px] font-black uppercase flex items-center justify-center gap-2 active:scale-95 transition-all shadow-[0_0_15px_rgba(34,197,94,0.1)]">
++              {isUploading ? <Icon name="loader-2" className="w-4 h-4 animate-spin" /> : <><Icon name="camera" className="w-4 h-4" /> 📸 Tomar Foto o Subir Imagen</>}
+             </button>
+           </div>
++          <div className="flex gap-2 items-center justify-center text-[7px] text-slate-500 font-bold uppercase mt-1">
++            <span>O ingresa un enlace web:</span>
++          </div>
++          <div className="flex gap-2">
++            <input type="text" placeholder="https://..." value={lk} onChange={e => setLk(e.target.value)} className="inp text-[10px] text-blue-400 flex-1 py-1.5" />
++            <button onClick={() => { if (lk.trim()) { onAdd(lk.trim()); setLk(''); } }} className="px-3.5 bg-white/5 border border-white/10 text-slate-400 hover:text-white rounded-xl font-bold text-xs active:scale-95">+</button>
++          </div>
+         </div>
+       )}
+     </div>
+@@ -1389,7 +1392,12 @@ function Portal({ cjid }) {
+       )}
+       <div className="max-w-md mx-auto space-y-5 pb-20">
+         <div className="flex justify-end gap-2">{['en', 'es'].map(lg => (<button key={lg} onClick={() => setLang(lg)} className={`text-[8px] font-black px-3 py-1.5 rounded-xl ${lang === lg ? 'bg-amber-500 text-black' : 'bg-white/5 text-slate-500'}`}>{lg.toUpperCase()}</button>))}</div>
+-        <div className="text-center space-y-2"><div className="w-16 h-16 bg-white rounded-2xl mx-auto flex items-center justify-center font-black text-black text-2xl italic shadow-xl">E</div><h1 className="text-xl font-black uppercase tracking-[0.3em] text-white">ELEVORE</h1><p className="text-[9px] text-green-500 font-bold uppercase tracking-[0.4em]">{tr(lang, 'hub')}</p></div>
++        <div className="text-center space-y-2">
++          <div className="w-16 h-16 bg-white rounded-2xl mx-auto flex items-center justify-center font-black text-black text-2xl italic shadow-xl">E</div>
++          <h1 className="text-xl font-black uppercase tracking-[0.3em] text-white">ELEVORE</h1>
++          <p className="text-[9px] text-green-500 font-bold uppercase tracking-[0.4em]">{tr(lang, 'hub')}</p>
++          <a href="https://banani.co" target="_blank" rel="noopener noreferrer" className="inline-block text-[8px] font-black uppercase tracking-widest text-[#F5C518] hover:underline bg-[#F5C518]/10 border border-[#F5C518]/25 px-2.5 py-1 rounded-lg">🌐 BANANI.CO</a>
++        </div>
+ 
+         {/* ── CLIENT DASHBOARD NAVIGATION TABS ── */}
+         <div className="g p-1 rounded-2xl flex items-center justify-between border border-white/5 bg-black/40 backdrop-blur-md sticky top-2 z-[400] shadow-xl overflow-x-auto gap-1">
+@@ -2524,18 +2532,23 @@ function AIAdvisor({ jobs, clients, staff, isStaff, activeUser, onClose, tt, onO
+     ? `¡Hola ${activeUser}! Soy tu **Manual de Operaciones con IA**. Estoy aquí para ayudarte en tu trabajo de campo. 🛠️ Pregúntame cómo limpiar orificios, parchar drywall, remover manchas de alfombras, o cómo actuar frente a un cliente difícil.`
+     : `¡Hola ${activeUser}! Soy tu **Asesor de IA Elevore**. Estoy conectado a tu base de datos en tiempo real. 📊 ¿En qué puedo ayudarte hoy?`;
+ 
+-  // Local settings for LLM provider (Ollama only)
+-  const [aiProvider] = useState('ollama');
++  // Local and cloud settings for LLM provider (Ollama & Gemini)
++  const [aiProvider, setAIProvider] = useState(() => localStorage.getItem('elevore_ai_provider') || 'ollama');
+   const [ollamaUrl, setOllamaUrl] = useState(() => {
+     const saved = localStorage.getItem('elevore_ollama_url');
+     if (saved === 'http://localhost:11434') return 'http://127.0.0.1:11434';
+     return saved || 'http://127.0.0.1:11434';
+   });
+   const [ollamaModel, setOllamaModel] = useState(() => localStorage.getItem('elevore_ollama_model') || 'llama3');
++  const [geminiModel, setGeminiModel] = useState(() => localStorage.getItem('elevore_gemini_model') || 'gemini-2.5-flash');
+   const [showSettings, setShowSettings] = useState(false);
+   const [connStatus, setConnStatus] = useState('idle'); // idle, testing, connected, error
+ 
+   // Save AI Provider details
++  useEffect(() => {
++    localStorage.setItem('elevore_ai_provider', aiProvider);
++  }, [aiProvider]);
++
+   useEffect(() => {
+     localStorage.setItem('elevore_ollama_url', ollamaUrl);
+   }, [ollamaUrl]);
+@@ -2544,6 +2557,10 @@ function AIAdvisor({ jobs, clients, staff, isStaff, activeUser, onClose, tt, onO
+     localStorage.setItem('elevore_ollama_model', ollamaModel);
+   }, [ollamaModel]);
+ 
++  useEffect(() => {
++    localStorage.setItem('elevore_gemini_model', geminiModel);
++  }, [geminiModel]);
++
+   // Load chat memory from LocalStorage
+   const storageKey = `elevore_chat_history_${isStaff ? 'staff' : 'admin'}`;
+   const [messages, setMessages] = useState(() => {
+@@ -2595,6 +2612,28 @@ function AIAdvisor({ jobs, clients, staff, isStaff, activeUser, onClose, tt, onO
+     const controller = new AbortController();
+     const id = setTimeout(() => controller.abort(), 4000);
+     try {
++      if (aiProvider === 'gemini') {
++        const res = await fetch('/api/chat', {
++          method: 'POST',
++          headers: { 'Content-Type': 'application/json' },
++          body: JSON.stringify({
++            model: geminiModel,
++            messages: [{ role: 'user', content: 'hi' }]
++          }),
++          signal: controller.signal
++        });
++        clearTimeout(id);
++        if (res.ok) {
++          setConnStatus('connected');
++          tt(`Conectado a Gemini exitosamente en la nube (Vercel API)`, 'green');
++        } else {
++          setConnStatus('error');
++          const errData = await res.json().catch(() => ({}));
++          tt(`Error al conectar con Gemini Vercel API: ${errData.error || `HTTP ${res.status}`}`, 'red');
++        }
++        return;
++      }
++
+       const res = await fetch(`${ollamaUrl}/api/tags`, { signal: controller.signal });
+       clearTimeout(id);
+       if (res.ok) {
+@@ -2617,7 +2656,11 @@ function AIAdvisor({ jobs, clients, staff, isStaff, activeUser, onClose, tt, onO
+     } catch (e) {
+       clearTimeout(id);
+       setConnStatus('error');
+-      tt('No se pudo conectar a Ollama. Asegúrate de ejecutar: $env:OLLAMA_ORIGINS="*" ; ollama run ' + ollamaModel, 'red');
++      if (aiProvider === 'gemini') {
++        tt('No se pudo conectar a la Vercel API: ' + e.message, 'red');
++      } else {
++        tt('No se pudo conectar a Ollama. Asegúrate de ejecutar: $env:OLLAMA_ORIGINS="*" ; ollama run ' + ollamaModel, 'red');
++      }
+     }
+   };
+ 
+@@ -2668,6 +2711,35 @@ Habla en español. Sé directo, estratégico y orientado a resultados. Si el CEO
+     const timeoutId = setTimeout(() => controller.abort(), timeoutDuration);
+ 
+     try {
++      if (aiProvider === 'gemini') {
++        const res = await fetch('/api/chat', {
++          method: 'POST',
++          headers: { 'Content-Type': 'application/json' },
++          body: JSON.stringify({
++            model: geminiModel,
++            messages: [
++              { role: 'system', content: systemPrompt },
++              ...messages.slice(-8).map(m => ({
++                role: m.from === 'user' ? 'user' : 'assistant',
++                content: m.text
++              })),
++              { role: 'user', content: userMessage }
++            ]
++          }),
++          signal: controller.signal
++        });
++
++        clearTimeout(timeoutId);
++
++        if (!res.ok) {
++          const errData = await res.json().catch(() => ({}));
++          return `⚠️ Error de Conexión a Gemini (Vercel API): ${errData.error || `HTTP ${res.status}`}`;
++        }
++
++        const data = await res.json();
++        return data.text || 'Lo siento, Gemini no devolvió ningún contenido.';
++      }
++
+       // --- OLLAMA LOCAL AI CALL ---
+       const res = await fetch(`${ollamaUrl}/api/chat`, {
+         method: 'POST',
+@@ -2742,7 +2814,7 @@ Habla en español. Sé directo, estratégico y orientado a resultados. Si el CEO
+                   {isStaff ? 'Elevore Field Operations Guide' : 'Elevore AI Command'}
+                 </p>
+                 <span className="text-[6px] bg-white/10 text-slate-400 px-1 py-0.5 rounded uppercase font-bold">
+-                  {`Ollama: ${ollamaModel}`}
++                  {aiProvider === 'gemini' ? `Gemini: ${geminiModel}` : `Ollama: ${ollamaModel}`}
+                 </span>
+               </div>
+               <p className="text-[7px] text-slate-500 uppercase mt-0.5">
+@@ -2770,36 +2842,81 @@ Habla en español. Sé directo, estratégico y orientado a resultados. Si el CEO
+               <button onClick={() => setShowSettings(false)} className="text-slate-500 hover:text-white text-[9px] font-bold uppercase">Cerrar</button>
+             </div>
+             
+-            <div className="space-y-2.5 animate-in fade-in duration-200">
+-              <div className="grid grid-cols-2 gap-2">
+-                <div className="space-y-1">
+-                  <label className="text-[7px] font-bold text-slate-400 uppercase block">Host de Ollama</label>
+-                  <input
+-                    value={ollamaUrl}
+-                    onChange={e => { setOllamaUrl(e.target.value); setConnStatus('idle'); }}
+-                    placeholder="http://127.0.0.1:11434"
+-                    className="inp text-[10px] py-1.5"
+-                  />
+-                </div>
+-                <div className="space-y-1">
+-                  <label className="text-[7px] font-bold text-slate-400 uppercase block">Modelo local</label>
+-                  <input
+-                    value={ollamaModel}
+-                    onChange={e => { setOllamaModel(e.target.value); setConnStatus('idle'); }}
+-                    placeholder="llama3"
+-                    className="inp text-[10px] py-1.5"
+-                  />
++            <div className="space-y-2.5">
++              <div className="space-y-1">
++                <label className="text-[7px] font-bold text-slate-400 uppercase block">Proveedor de IA (AI Provider)</label>
++                <div className="grid grid-cols-2 gap-2">
++                  <button 
++                    type="button"
++                    onClick={() => { setAIProvider('ollama'); setConnStatus('idle'); }} 
++                    className={`py-1.5 rounded-lg text-[8px] font-black uppercase transition-all ${aiProvider === 'ollama' ? 'bg-[#F5C518] text-black' : 'bg-white/5 text-slate-400 hover:text-white'}`}
++                  >
++                    Ollama (Local PC)
++                  </button>
++                  <button 
++                    type="button"
++                    onClick={() => { setAIProvider('gemini'); setConnStatus('idle'); }} 
++                    className={`py-1.5 rounded-lg text-[8px] font-black uppercase transition-all ${aiProvider === 'gemini' ? 'bg-[#F5C518] text-black' : 'bg-white/5 text-slate-400 hover:text-white'}`}
++                  >
++                    Gemini (Nube 24/7)
++                  </button>
+                 </div>
+               </div>
+-              <div className="p-2 rounded-xl bg-black/40 border border-white/5 space-y-1">
+-                <p className="text-[7px] text-[#F5C518] uppercase font-bold">Instrucciones para IA Local:</p>
+-                <p className="text-[7px] text-slate-400 leading-normal uppercase">
+-                  1. Abre tu terminal y ejecuta:
+-                </p>
+-                <code className="block bg-black p-1.5 rounded text-[7px] font-mono text-green-400 break-all select-all">
+-                  $env:OLLAMA_ORIGINS="*" ; ollama run {ollamaModel || 'llama3'}
+-                </code>
+-              </div>
++
++              {aiProvider === 'ollama' ? (
++                <div className="space-y-2.5 animate-in fade-in duration-200">
++                  <div className="grid grid-cols-2 gap-2">
++                    <div className="space-y-1">
++                      <label className="text-[7px] font-bold text-slate-400 uppercase block">Host de Ollama</label>
++                      <input
++                        value={ollamaUrl}
++                        onChange={e => { setOllamaUrl(e.target.value); setConnStatus('idle'); }}
++                        placeholder="http://127.0.0.1:11434"
++                        className="inp text-[10px] py-1.5"
++                      />
++                    </div>
++                    <div className="space-y-1">
++                      <label className="text-[7px] font-bold text-slate-400 uppercase block">Modelo local</label>
++                      <input
++                        value={ollamaModel}
++                        onChange={e => { setOllamaModel(e.target.value); setConnStatus('idle'); }}
++                        placeholder="llama3"
++                        className="inp text-[10px] py-1.5"
++                      />
++                    </div>
++                  </div>
++                  <div className="p-2 rounded-xl bg-black/40 border border-white/5 space-y-1">
++                    <p className="text-[7px] text-[#F5C518] uppercase font-bold">Instrucciones para IA Local:</p>
++                    <p className="text-[7px] text-slate-400 leading-normal uppercase">
++                      1. Abre tu terminal y ejecuta:
++                    </p>
++                    <code className="block bg-black p-1.5 rounded text-[7px] font-mono text-green-400 break-all select-all">
++                      $env:OLLAMA_ORIGINS="*" ; ollama run {ollamaModel || 'llama3'}
++                    </code>
++                  </div>
++                </div>
++              ) : (
++                <div className="space-y-2.5 animate-in fade-in duration-200">
++                  <div className="space-y-1">
++                    <label className="text-[7px] font-bold text-slate-400 uppercase block">Modelo de Gemini</label>
++                    <select
++                      value={geminiModel}
++                      onChange={e => { setGeminiModel(e.target.value); setConnStatus('idle'); }}
++                      className="inp text-[10px] py-1.5 w-full bg-slate-900 border-white/10 text-white"
++                    >
++                      <option value="gemini-2.5-flash">Gemini 2.5 Flash (Más rápido, recomendado)</option>
++                      <option value="gemini-1.5-flash">Gemini 1.5 Flash (Estándar)</option>
++                      <option value="gemini-1.5-pro">Gemini 1.5 Pro (Complejo)</option>
++                    </select>
++                  </div>
++                  <div className="p-2.5 rounded-xl bg-green-950/20 border border-green-500/20 space-y-1 text-green-400">
++                    <p className="text-[7.5px] uppercase font-black">☁️ Proveedor de Nube Activo (24/7)</p>
++                    <p className="text-[7px] leading-normal uppercase text-slate-400">
++                      La IA se ejecutará permanentemente a través de la infraestructura en la nube de Vercel. Asegúrate de configurar la clave de entorno <code className="text-white font-mono font-bold bg-white/5 px-1 py-0.5 rounded">GEMINI_API_KEY</code> en tu panel de Vercel o archivo <code className="text-white font-mono font-bold bg-white/5 px-1 py-0.5 rounded">.env</code>.
++                    </p>
++                  </div>
++                </div>
++              )}
+             </div>
+ 
+             <div className="flex gap-2 pt-1">
+@@ -5008,9 +5125,52 @@ export default function App() {
+   const [payoutModalWorker, setPayoutModalWorker] = useState(null);
+   const [payoutHistory, setPayoutHistory] = useState([]);
+   const [expandedWorkerPayouts, setExpandedWorkerPayouts] = useState({});
++  const [expandedWorkerJobs, setExpandedWorkerJobs] = useState({});
+   const [payoutAmount, setPayoutAmount] = useState('');
+   const [payoutNote, setPayoutNote] = useState('');
+ 
++  const [settingsBusName, setSettingsBusName] = useState('');
++  const [settingsPhone, setSettingsPhone] = useState('');
++  const [settingsGoal, setSettingsGoal] = useState('15000');
++  const [settingsPayPct, setSettingsPayPct] = useState('40');
++
++  useEffect(() => {
++    if (tenantSettings) {
++      setSettingsBusName(tenantSettings.business_full_name || '');
++      setSettingsPhone(tenantSettings.zelle_phone || '');
++      setSettingsGoal(String(tenantSettings.monthly_goal || 15000));
++      setSettingsPayPct(tenantSettings.staff_pay_pct !== undefined ? String(Math.round(Number(tenantSettings.staff_pay_pct) * 100)) : '40');
++    }
++  }, [tenantSettings]);
++
++  const saveSettings = async (e) => {
++    if (e) e.preventDefault();
++    if (!tenantId) return;
++    setLoad(true);
++    try {
++      const payload = {
++        business_full_name: settingsBusName,
++        zelle_phone: settingsPhone,
++        monthly_goal: Number(settingsGoal) || 0,
++        staff_pay_pct: (Number(settingsPayPct) || 40) / 100
++      };
++
++      const { error } = await sb
++        .from('tenant_settings')
++        .update(payload)
++        .eq('tenant_id', tenantId);
++
++      if (error) throw error;
++
++      setTenantSettings(prev => ({ ...prev, ...payload }));
++      setTenantName(settingsBusName);
++      tt('Settings saved to database ✓', 'green');
++    } catch (err) {
++      tt('Error saving settings: ' + err.message, 'red');
++    }
++    setLoad(false);
++  };
++
+   // Inventory module state
+   const [inventory, setInventory] = useState(() => {
+     try { return JSON.parse(localStorage.getItem('elevore_inventory') || '[]'); } catch { return []; }
+@@ -5110,10 +5270,11 @@ export default function App() {
+     }
+     setLoad(true);
+ 
+-    const [{ data: j }, { data: c }, { data: s }] = await Promise.all([
++    const [{ data: j }, { data: c }, { data: s }, { data: ts }] = await Promise.all([
+       sb.from('elevore_missions').select('*').eq('tenant_id', tenantId).order('created_at', { ascending: false }),
+       sb.from('clients').select('*').eq('tenant_id', tenantId),
+-      sb.from('staff_profiles').select('*').eq('tenant_id', tenantId)
++      sb.from('staff_profiles').select('*').eq('tenant_id', tenantId),
++      sb.from('tenant_settings').select('*').eq('tenant_id', tenantId).maybeSingle()
+     ]);
+ 
+     if (j) {
+@@ -5131,6 +5292,9 @@ export default function App() {
+         if (updated) setActiveEmp(updated);
+       }
+     }
++    if (ts) {
++      setTenantSettings(ts);
++    }
+ 
+     // Defensive fetch of payout history
+     try {
+@@ -5185,6 +5349,9 @@ export default function App() {
+           }
+         }
+       })
++      .on('postgres_changes', { event: '*', schema: 'public', table: 'staff_profiles' }, () => {
++        refresh();
++      })
+       .subscribe();
+     setRT(true);
+     return () => { sb.removeChannel(ch); setRT(false); };
+@@ -5273,7 +5440,7 @@ export default function App() {
+     if (!state.name || !state.address) return tt('Fill Name and Address', 'red');
+     setLoad(true);
+     try {
+-      const { data: c, error: cErr } = await sb.from('clients').upsert({ name: state.name, phone: state.phone, address: state.address, membership: state.membership, specs: { ...state }, tenant_id: tenantId }, { onConflict: 'name' }).select().single();
++      const { data: c, error: cErr } = await sb.from('clients').upsert({ name: state.name, phone: state.phone, email: state.email, birthday: state.birthday || null, membership: state.membership, specs: { ...state }, tenant_id: tenantId }, { onConflict: 'name' }).select().single();
+       if (cErr || !c) { tt('Clients Error: ' + (cErr?.message || 'Check RLS'), 'red'); setLoad(false); return; }
+       const fd = { 'weekly': 7, 'bi-weekly': 14, 'monthly': 30, 'one-time': null }[state.frequency];
+       let nv = null; if (fd && state.date) { const d = new Date(state.date); d.setDate(d.getDate() + fd); nv = d.toISOString().split('T')[0]; }
+@@ -5358,7 +5525,8 @@ export default function App() {
+   
+   // Custom payroll check-in/out and wallet updating logic
+   const executeRecTime = async (jid, type, time, status, jobData, patch) => {
+-    await sb.from('elevore_missions').update(patch).eq('id', jid);
++    const { error: missionErr } = await sb.from('elevore_missions').update(patch).eq('id', jid);
++    if (missionErr) throw missionErr;
+     tt(type === 'check_in_time' ? '▶ Checked in!' : '⏹ Checked out!');
+     log(type === 'check_in_time' ? `Check-in: ${jid}` : `Check-out: ${jid}`);
+     
+@@ -5373,7 +5541,8 @@ export default function App() {
+       const newBal = (activeEmployee.wallet_balance || 0) + netEarned;
+       const newTot = (activeEmployee.total_earned || 0) + netEarned;
+       
+-      await sb.from('staff_profiles').update({ wallet_balance: newBal, total_earned: newTot }).eq('id', activeEmployee.id);
++      const { error: staffErr } = await sb.from('staff_profiles').update({ wallet_balance: newBal, total_earned: newTot }).eq('id', activeEmployee.id);
++      if (staffErr) throw staffErr;
+       setActiveEmp({ ...activeEmployee, wallet_balance: newBal, total_earned: newTot });
+       tt(`Earnings stored! +${fmt$(netEarned)} 💰`);
+     }
+@@ -5391,53 +5560,66 @@ export default function App() {
+     const status = type === 'check_in_time' ? 'in_progress' : 'completed';
+     
+     // Read the current job values to calculate pay
+-    const { data: jobData } = await sb.from('elevore_missions').select('*').eq('id', jid).single();
+-    if (!jobData) return;
++    const { data: jobData, error: jobErr } = await sb.from('elevore_missions').select('*').eq('id', jid).single();
++    if (jobErr) throw jobErr;
++    if (!jobData) throw new Error("Mission not found");
+ 
+     const patch = { [type]: time, status };
+ 
+     if (navigator.geolocation) {
+-      navigator.geolocation.getCurrentPosition(
+-        async (position) => {
+-          const lat = position.coords.latitude;
+-          const lng = position.coords.longitude;
+-          if (type === 'check_in_time') {
+-            patch.check_in_lat = lat;
+-            patch.check_in_lng = lng;
+-            let dLat = jobData.dest_lat;
+-            let dLng = jobData.dest_lng;
+-            if (!dLat || !dLng) {
+-              const coords = await geocodeAddress(jobData.address);
+-              if (coords) {
+-                dLat = coords.lat;
+-                dLng = coords.lng;
+-                patch.dest_lat = dLat;
+-                patch.dest_lng = dLng;
++      await new Promise((resolve, reject) => {
++        navigator.geolocation.getCurrentPosition(
++          async (position) => {
++            try {
++              const lat = position.coords.latitude;
++              const lng = position.coords.longitude;
++              if (type === 'check_in_time') {
++                patch.check_in_lat = lat;
++                patch.check_in_lng = lng;
++                let dLat = jobData.dest_lat;
++                let dLng = jobData.dest_lng;
++                if (!dLat || !dLng) {
++                  const coords = await geocodeAddress(jobData.address);
++                  if (coords) {
++                    dLat = coords.lat;
++                    dLng = coords.lng;
++                    patch.dest_lat = dLat;
++                    patch.dest_lng = dLng;
++                  }
++                }
++                if (dLat && dLng) {
++                  const dist = getDistanceMeters(lat, lng, dLat, dLng);
++                  patch.gps_distance_meters = dist;
++                  if (dist > 300) {
++                    patch.specs = {
++                      ...(jobData.specs || {}),
++                      gps_deviation: true,
++                      gps_deviation_meters: dist
++                    };
++                  }
++                }
++              } else {
++                patch.check_out_lat = lat;
++                patch.check_out_lng = lng;
+               }
++              await executeRecTime(jid, type, time, status, jobData, patch);
++              resolve();
++            } catch (err) {
++              reject(err);
+             }
+-            if (dLat && dLng) {
+-              const dist = getDistanceMeters(lat, lng, dLat, dLng);
+-              patch.gps_distance_meters = dist;
+-              if (dist > 300) {
+-                patch.specs = {
+-                  ...(jobData.specs || {}),
+-                  gps_deviation: true,
+-                  gps_deviation_meters: dist
+-                };
+-              }
++          },
++          async (error) => {
++            try {
++              console.warn("Geolocation failed, writing without GPS coordinates", error);
++              await executeRecTime(jid, type, time, status, jobData, patch);
++              resolve();
++            } catch (err) {
++              reject(err);
+             }
+-          } else {
+-            patch.check_out_lat = lat;
+-            patch.check_out_lng = lng;
+-          }
+-          await executeRecTime(jid, type, time, status, jobData, patch);
+-        },
+-        async (error) => {
+-          console.warn("Geolocation failed, writing without GPS coordinates", error);
+-          await executeRecTime(jid, type, time, status, jobData, patch);
+-        },
+-        { enableHighAccuracy: true, timeout: 5000 }
+-      );
++          },
++          { enableHighAccuracy: true, timeout: 5000 }
++        );
++      });
+     } else {
+       await executeRecTime(jid, type, time, status, jobData, patch);
+     }
+@@ -5813,11 +5995,11 @@ export default function App() {
+     const portal = `${location.origin}${location.pathname}?mision=${job.id}`;
+     const ref = `${location.origin}${location.pathname}?ref=${job.client_name?.replace(/\s/g, '_')}&t=${tenantId}`;
+     const msgs = {
+-      confirm: `Hi ${job.client_name}! ✨ Elevore confirming your ${job.service_type?.toUpperCase()} on ${fmtD(job.scheduled_date)}. Balance: ${fmt$(bal)}. Zelle: ${DEFAULT_CFG.ZELLE} 🏠`,
++      confirm: `Hi ${job.client_name}! ✨ Elevore confirming your ${job.service_type?.toUpperCase()} on ${fmtD(job.scheduled_date)}. Balance: ${fmt$(bal)}. Zelle: ${tenantSettings?.zelle_phone || DEFAULT_CFG.ZELLE} 🏠`,
+       reminder: `Hi ${job.client_name}! 🔔 Reminder — Elevore ${fmtD(job.scheduled_date)}. Balance: ${fmt$(bal)}. Reply if questions!`,
+       review: `Hi ${job.client_name}! 🌟 Thank you! Quick review: ${DEFAULT_CFG.GOOGLE} ⭐⭐⭐⭐⭐`,
+       referral: `Hi ${job.client_name}! 🎁 Refer a friend, BOTH get $25 off! Link: ${ref}`,
+-      quote: `Hi ${job.client_name}! 📋 Your Elevore quote:\n\n🏠 ${job.service_type?.toUpperCase()}\n📅 ${fmtD(job.scheduled_date)}\n💰 ${fmt$(job.total_price)}\n⚖️ Balance: ${fmt$(bal)}\n\n👉 Sign here: ${portal}\n\n⏰ Expires in 24h. Zelle: ${DEFAULT_CFG.ZELLE}`,
++      quote: `Hi ${job.client_name}! 📋 Your Elevore quote:\n\n🏠 ${job.service_type?.toUpperCase()}\n📅 ${fmtD(job.scheduled_date)}\n💰 ${fmt$(job.total_price)}\n⚖️ Balance: ${fmt$(bal)}\n\n👉 Sign here: ${portal}\n\n⏰ Expires in 24h. Zelle: ${tenantSettings?.zelle_phone || DEFAULT_CFG.ZELLE}`,
+       portal: `Hi ${job.client_name}! ✨ Track your ELEVORE service: ${portal}`,
+       retention: `Hi ${job.client_name}! 🏠 Been a while! Book this week — 10% off. Reply YES! 🌟`,
+       winback: `Hi ${job.client_name}! We miss you! 😊 Book today — loyalty discount. Reply YES! 💫`,
+@@ -5844,7 +6026,7 @@ export default function App() {
+ <div class="h"><div><h1 style="font-style:italic;margin:0">ELEVORE</h1><p style="margin:0;color:#666;font-size:11px">${DEFAULT_CFG.BIZ}</p></div><div style="text-align:right"><h2 style="margin:0">INVOICE #${job.id?.slice(0, 8).toUpperCase()}</h2><p style="margin:0;color:#666;font-size:11px">${new Date().toLocaleDateString()}</p></div></div>
+ <div style="margin-top:20px"><h3>BILL TO:</h3><p><b>${job.client_name}</b></p><p>${job.address}</p><p>${job.client_phone || ''}</p></div>
+ <div style="margin-top:15px"><div class="row"><span>Service</span><span>${job.service_type?.toUpperCase()}</span></div><div class="row"><span>Date</span><span>${fmtD(job.scheduled_date)}</span></div><div class="row"><span>Team</span><span>${job.team_assigned || 'TBD'}</span></div>${job.check_in_time ? `<div class="row"><span>Check-in</span><span>${new Date(job.check_in_time).toLocaleTimeString()}</span></div>` : ''}${job.check_out_time ? `<div class="row"><span>Check-out</span><span>${new Date(job.check_out_time).toLocaleTimeString()}</span></div>` : ''}<div class="row"><span>Total</span><span>${fmt$(job.total_price)}</span></div><div class="row"><span>Deposit Paid</span><span>-${fmt$(job.deposit_paid)}</span></div></div>
+-<div class="total"><h1 style="margin:0">BALANCE DUE: ${fmt$(job.total_price - job.deposit_paid)}</h1><p>Zelle: ${DEFAULT_CFG.ZELLE}</p></div>
++<div class="total"><h1 style="margin:0">BALANCE DUE: ${fmt$(job.total_price - job.deposit_paid)}</h1><p>Zelle: ${tenantSettings?.zelle_phone || DEFAULT_CFG.ZELLE}</p></div>
+ ${job.approval_signature ? `<div class="sig"><p style="font-size:10px;color:#999;margin:0">CLIENT APPROVAL</p><img src="${job.approval_signature}" style="max-height:60px"/></div>` : ''}
+ ${job.final_signature ? `<div class="sig"><p style="font-size:10px;color:#999;margin:0">JOB COMPLETION</p><img src="${job.final_signature}" style="max-height:60px"/></div>` : ''}
+ <p style="margin-top:40px;text-align:center;color:#999;font-size:11px">Thank you for choosing ${DEFAULT_CFG.BIZ} ⭐</p>
+@@ -6391,7 +6573,7 @@ ${job.final_signature ? `<div class="sig"><p style="font-size:10px;color:#999;ma
+               </div>
+ 
+               {/* ── KPI CARDS ── */}
+-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
++              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                 <div className="relative rounded-2xl overflow-hidden border border-green-500/20 bg-gradient-to-br from-green-950/40 to-black p-5 flex flex-col justify-between min-h-[130px] hover:border-green-500/40 hover:shadow-[0_0_20px_rgba(34,197,94,0.08)] transition-all group">
+                   <div className="absolute top-0 left-0 w-full h-[1.5px] bg-gradient-to-r from-green-400/60 to-transparent" />
+                   <div className="flex items-center justify-between">
+@@ -6406,22 +6588,6 @@ ${job.final_signature ? `<div class="sig"><p style="font-size:10px;color:#999;ma
+                   </div>
+                 </div>
+ 
+-                <div className="relative rounded-2xl overflow-hidden border border-[#F5C518]/20 bg-gradient-to-br from-amber-950/40 to-black p-5 flex flex-col justify-between min-h-[130px] hover:border-[#F5C518]/40 hover:shadow-[0_0_20px_rgba(245,197,24,0.08)] transition-all group">
+-                  <div className="absolute top-0 left-0 w-full h-[1.5px] bg-gradient-to-r from-[#F5C518]/60 to-transparent" />
+-                  <div className="flex items-center justify-between">
+-                    <div className="w-8 h-8 rounded-xl bg-[#F5C518]/10 border border-[#F5C518]/20 flex items-center justify-center group-hover:scale-110 transition-transform">
+-                      <Icon name="dollar-sign" className="w-4 h-4 text-[#F5C518]" />
+-                    </div>
+-                    <span className="text-[7px] font-black text-[#F5C518] bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded-full uppercase">HOY</span>
+-                  </div>
+-                  <div>
+-                    <p className="text-3xl font-black text-white italic tracking-tight leading-none">
+-                      {isPrivate ? '***' : fmt$(finance.todayJobs.reduce((a, b) => a + (b.total_price || 0), 0))}
+-                    </p>
+-                    <p className="text-[8px] text-slate-400 uppercase font-black tracking-widest mt-1.5">Revenue Hoy</p>
+-                  </div>
+-                </div>
+-
+                 <div className="relative rounded-2xl overflow-hidden border border-blue-500/20 bg-gradient-to-br from-blue-950/40 to-black p-5 flex flex-col justify-between min-h-[130px] hover:border-blue-500/40 hover:shadow-[0_0_20px_rgba(59,130,246,0.08)] transition-all group">
+                   <div className="absolute top-0 left-0 w-full h-[1.5px] bg-gradient-to-r from-blue-400/60 to-transparent" />
+                   <div className="flex items-center justify-between">
+@@ -6435,20 +6601,6 @@ ${job.final_signature ? `<div class="sig"><p style="font-size:10px;color:#999;ma
+                     <p className="text-[8px] text-slate-400 uppercase font-black tracking-widest mt-1.5">Recurrente Mes</p>
+                   </div>
+                 </div>
+-
+-                <div className="relative rounded-2xl overflow-hidden border border-purple-500/20 bg-gradient-to-br from-purple-950/40 to-black p-5 flex flex-col justify-between min-h-[130px] hover:border-purple-500/40 hover:shadow-[0_0_20px_rgba(168,85,247,0.08)] transition-all group">
+-                  <div className="absolute top-0 left-0 w-full h-[1.5px] bg-gradient-to-r from-purple-400/60 to-transparent" />
+-                  <div className="flex items-center justify-between">
+-                    <div className="w-8 h-8 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center group-hover:scale-110 transition-transform">
+-                      <Icon name="star" className="w-4 h-4 text-purple-400" />
+-                    </div>
+-                    <span className="text-[7px] font-black text-purple-400 bg-purple-500/10 border border-purple-500/20 px-2 py-0.5 rounded-full uppercase">⭐ SCORE</span>
+-                  </div>
+-                  <div>
+-                    <p className="text-4xl font-black text-white italic tracking-tight leading-none">{finance.avgRating || '5.0'}</p>
+-                    <p className="text-[8px] text-slate-400 uppercase font-black tracking-widest mt-1.5">Promedio Stars</p>
+-                  </div>
+-                </div>
+               </div>
+ 
+               {/* ── OPERATIONS QUICK ACTIONS ── */}
+@@ -6678,9 +6830,8 @@ ${job.final_signature ? `<div class="sig"><p style="font-size:10px;color:#999;ma
+                 <div className="absolute top-0 left-0 w-full h-[1.5px] bg-gradient-to-r from-[#F5C518]/40 to-transparent" />
+                 <div className="flex items-center justify-between">
+                   <div className="flex items-center gap-2">
+-                    <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
+-                    <h3 className="text-[10px] font-black text-white uppercase tracking-widest font-display">📍 Live Logistics & Dispatch</h3>
+-                    <span className="text-[6px] bg-amber-500/10 text-amber-400 font-bold px-1.5 py-0.5 rounded border border-amber-500/15">SYNC ACTIVE</span>
++                    <div className="w-2.5 h-2.5 rounded-full bg-green-400 animate-pulse" />
++                    <h3 className="text-[10px] font-black text-white uppercase tracking-widest font-display">🚚 SERVICIOS ACTIVOS EN CURSO</h3>
+                   </div>
+                   <button 
+                     onClick={autoDispatchMission} 
+@@ -6694,17 +6845,54 @@ ${job.final_signature ? `<div class="sig"><p style="font-size:10px;color:#999;ma
+                     )}
+                   </button>
+                 </div>
+-                <MapComponent address={activeMapAddress} />
+-                <div className="flex gap-2 overflow-x-auto nsb">
+-                  {jobs.filter(j => j.status === 'scheduled' || j.status === 'in_progress').map(job => (
+-                    <button key={job.id} onClick={() => setMapAddress(job.address)} className={`px-3 py-2 rounded-xl text-[8px] font-black uppercase flex-shrink-0 border transition-all flex items-center gap-1.5 ${activeMapAddress === job.address ? 'bg-[#F5C518] border-[#F5C518] text-black shadow-lg shadow-[#F5C518]/10' : 'bg-white/5 border-white/5 text-slate-400 hover:text-white hover:border-white/20'}`}>
+-                      {job.client_name}
+-                      {job.specs?.gps_deviation && <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse flex-shrink-0" title="GPS Deviation Warning" />}
+-                    </button>
+-                  ))}
+-                  {jobs.filter(j => j.status === 'scheduled' || j.status === 'in_progress').length === 0 && (
+-                    <p className="text-[8px] text-slate-600 font-bold uppercase italic">Sin misiones activas ahora</p>
+-                  )}
++                
++                {/* Active Services List instead of Tactical Map */}
++                <div className="space-y-2 max-h-[300px] overflow-y-auto custom-scroll">
++                  {(() => {
++                    const activeJobs = jobs.filter(j => j.scheduled_date === todayStr && (j.status === 'scheduled' || j.status === 'in_progress'));
++                    if (activeJobs.length === 0) {
++                      return (
++                        <div className="text-center p-6 bg-white/[0.02] border border-white/5 rounded-xl text-slate-500 text-[8px] font-black uppercase">
++                          No hay servicios activos programados para hoy.
++                        </div>
++                      );
++                    }
++                    return activeJobs.map(job => (
++                      <div key={job.id} className="g p-4 flex items-center justify-between border border-white/5 bg-black/40 hover:border-white/10 transition-all rounded-xl">
++                        <div className="space-y-1">
++                          <div className="flex items-center gap-2">
++                            <span className={`text-[6px] font-black px-1.5 py-0.5 rounded-md uppercase ${job.status === 'in_progress' ? 'bg-green-500/10 text-green-400 border border-green-500/20' : 'bg-amber-500/10 text-[#F5C518] border border-amber-500/20'}`}>
++                              {job.status}
++                            </span>
++                            <h4 className="text-xs font-black text-white uppercase italic">{job.client_name}</h4>
++                          </div>
++                          <p className="text-[7.5px] text-slate-400 font-bold uppercase">{job.service_type} • 👷 {job.team_assigned || 'TBD'}</p>
++                          <p className="text-[7px] text-slate-500 italic truncate max-w-[280px]">{job.address}</p>
++                        </div>
++                        <div className="flex items-center gap-2">
++                          <button 
++                            onClick={() => {
++                              const ph = (job.client_phone || '').replace(/\D/g, '');
++                              const ph2 = ph.length === 10 ? '1' + ph : ph;
++                              window.open(`https://wa.me/${ph2}?text=${encodeURIComponent(`Hola ${job.client_name}, de parte de Elevore. ¿Cómo va todo con tu servicio?`)}`, '_blank');
++                            }} 
++                            className="p-2.5 bg-green-500/10 text-green-400 hover:bg-green-500/20 transition-all rounded-xl active:scale-95 border border-green-500/25"
++                          >
++                            <Icon name="message-circle" className="w-3.5 h-3.5" />
++                          </button>
++                          <button 
++                            onClick={() => {
++                              const dest = encodeURIComponent(job.address);
++                              window.open(`https://www.google.com/maps/search/?api=1&query=${dest}`, '_blank');
++                            }} 
++                            className="p-2.5 bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 transition-all rounded-xl active:scale-95 border border-blue-500/25"
++                          >
++                            <Icon name="navigation" className="w-3.5 h-3.5" />
++                          </button>
++                        </div>
++                      </div>
++                    ));
++                  })()}
+                 </div>
+               </div>
+             </div>
+@@ -6962,14 +7150,7 @@ ${job.final_signature ? `<div class="sig"><p style="font-size:10px;color:#999;ma
+                         ))}
+                       </div>
+ 
+-                      {job.status === 'lead' && (
+-                        <div className="grid grid-cols-4 gap-1 mb-2">
+-                          <button onClick={() => recordFollow(job, 'follow1')} className="py-1.5 bg-[#F5C518]/10 text-[#F5C518] rounded-xl text-[7px] font-black uppercase active:scale-95">F1</button>
+-                          <button onClick={() => recordFollow(job, 'follow2')} className="py-1.5 bg-orange-500/10 text-orange-400 rounded-xl text-[7px] font-black uppercase active:scale-95">F2</button>
+-                          <button onClick={() => recordFollow(job, 'final')} className="py-1.5 bg-red-500/10 text-red-400 rounded-xl text-[7px] font-black uppercase active:scale-95">Final</button>
+-                          <button onClick={() => markLost(job)} className="py-1.5 bg-slate-800 text-slate-400 rounded-xl text-[7px] font-black uppercase active:scale-95">Lost</button>
+-                        </div>
+-                      )}
++
+ 
+                       <div className="flex justify-between items-end border-t border-white/5 pt-3">
+                         <div>
+@@ -7021,7 +7202,7 @@ ${job.final_signature ? `<div class="sig"><p style="font-size:10px;color:#999;ma
+                   const daysSince = dAgo(d.last);
+                   const lastJob = jobs.filter(j => j.client_name === client.name)[0];
+                   return (
+-                    <div key={client.name} className="g p-5 hover:bg-white/[0.02] transition-all border-l-4 bg-[rgba(255,255,255,0.04)] border-[rgba(255,255,255,0.08)] flex flex-col justify-between min-h-[140px]" style={{ borderColor: lv.color }}>
++                    <div key={client.name} className="g p-5 hover:bg-white/[0.02] transition-all border-l-4 bg-[rgba(255,255,255,0.04)] border-[rgba(255,255,255,0.08)] flex flex-col justify-between min-h-[170px]" style={{ borderColor: lv.color }}>
+                       <div className="flex justify-between items-start">
+                         <div className="flex-1 min-w-0">
+                           <div className="flex items-center gap-2 mb-1 flex-wrap">
+@@ -7029,13 +7210,27 @@ ${job.final_signature ? `<div class="sig"><p style="font-size:10px;color:#999;ma
+                             <span className="text-[7px] font-black px-2 py-0.5 rounded-full" style={{ background: lv.color, color: '#000' }}>{lv.name}</span>
+                             {daysSince >= 45 && <span className="text-[7px] bg-red-900/50 text-red-400 font-black px-2 py-0.5 rounded-full">⚠️ Churn Risk</span>}
+                           </div>
+-                          <p className="text-[8px] text-slate-400 uppercase">{client.phone}</p>
++                          <p className="text-[8px] text-slate-400 uppercase">{client.phone}{client.email ? ` • ${client.email}` : ''}</p>
++                          {client.birthday && <p className="text-[7.5px] text-pink-400 font-black uppercase mt-1">🎂 Bday: {fmtD(client.birthday)}</p>}
++                          
++                          <div className="grid grid-cols-2 gap-2 mt-2.5 pt-2 border-t border-white/5 text-[8px] uppercase font-bold text-slate-400">
++                            <div>
++                              <span className="text-slate-500 block text-[6.5px]">Servicios</span>
++                              <span className="text-white font-black text-xs">{d.count}</span>
++                            </div>
++                            <div>
++                              <span className="text-slate-500 block text-[6.5px]">Recomendados</span>
++                              <span className="text-[#F5C518] font-black text-xs">
++                                {jobs.filter(j => j.specs?.referred_by === client.name).length}
++                              </span>
++                            </div>
++                          </div>
+                         </div>
+                       </div>
+                       <div className="flex gap-1.5 mt-3 flex-wrap">
+                         <button onClick={() => lastJob ? wa(lastJob, 'referral') : tt('No previous job', 'red')} className="flex-1 py-2 bg-pink-600/20 text-pink-400 rounded-xl text-[7px] font-black uppercase active:scale-95">🎁 Ref</button>
+                         <button onClick={() => lastJob ? wa(lastJob, 'bundle') : tt('No previous job', 'red')} className="flex-1 py-2 bg-blue-600/20 text-blue-400 rounded-xl text-[7px] font-black uppercase active:scale-95">🎯 Bundle</button>
+-                        <button onClick={() => { setState({ ...INIT, ...client.specs, name: client.name, phone: client.phone, address: client.address }); setView('deploy'); setDtab('specs'); }} className="flex-1 py-2 bg-white/5 text-slate-400 rounded-xl text-[7px] font-black uppercase active:scale-95 hover:text-white transition-all">+ Job</button>
++                        <button onClick={() => { setState({ ...INIT, ...client.specs, name: client.name, phone: client.phone, email: client.email, birthday: client.birthday, address: client.address }); setView('deploy'); setDtab('specs'); }} className="flex-1 py-2 bg-white/5 text-slate-400 rounded-xl text-[7px] font-black uppercase active:scale-95 hover:text-white transition-all">+ Job</button>
+                       </div>
+                     </div>
+                   );
+@@ -7227,11 +7422,11 @@ ${job.final_signature ? `<div class="sig"><p style="font-size:10px;color:#999;ma
+                     <h3 className="text-sm font-black uppercase text-[#F5C518]">Brand Identity</h3>
+                     <div className="space-y-1">
+                       <label className="text-[9px] font-black uppercase text-slate-500 tracking-widest pl-1">Business Full Name</label>
+-                      <input className="inp w-full" defaultValue={tenantName} />
++                      <input className="inp w-full" value={settingsBusName} onChange={e => setSettingsBusName(e.target.value)} />
+                     </div>
+                     <div className="space-y-1">
+                       <label className="text-[9px] font-black uppercase text-slate-500 tracking-widest pl-1">Contact / Zelle Phone</label>
+-                      <input className="inp w-full" defaultValue="(407) 555-0199" />
++                      <input className="inp w-full" value={settingsPhone} onChange={e => setSettingsPhone(e.target.value)} />
+                     </div>
+                   </div>
+                   
+@@ -7239,16 +7434,16 @@ ${job.final_signature ? `<div class="sig"><p style="font-size:10px;color:#999;ma
+                     <h3 className="text-sm font-black uppercase text-[#F5C518]">Financials</h3>
+                     <div className="space-y-1">
+                       <label className="text-[9px] font-black uppercase text-slate-500 tracking-widest pl-1">Monthly MRR Goal ($)</label>
+-                      <input className="inp w-full" type="number" defaultValue={15000} />
++                      <input className="inp w-full" type="number" value={settingsGoal} onChange={e => setSettingsGoal(e.target.value)} />
+                     </div>
+                     <div className="space-y-1">
+                       <label className="text-[9px] font-black uppercase text-slate-500 tracking-widest pl-1">Staff Default Payout %</label>
+-                      <input className="inp w-full" type="number" defaultValue={40} />
++                      <input className="inp w-full" type="number" value={settingsPayPct} onChange={e => setSettingsPayPct(e.target.value)} />
+                     </div>
+                   </div>
+                 </div>
+                 
+-                <button onClick={() => tt('Settings saved to database ✓')} className="w-full mt-8 bg-[#F5C518] text-black py-4 rounded-xl font-black uppercase tracking-widest active:scale-95 transition-all">Save Changes</button>
++                <button onClick={saveSettings} className="w-full mt-8 bg-[#F5C518] text-black py-4 rounded-xl font-black uppercase tracking-widest active:scale-95 transition-all">Save Changes</button>
+               </div>
+             </div>
+           )}
+@@ -7419,6 +7614,42 @@ ${job.final_signature ? `<div class="sig"><p style="font-size:10px;color:#999;ma
+                             </div>
+                           );
+                         })()}
++
++                        {/* Collapsible job history accordion */}
++                        {(() => {
++                          const isExpanded = !!expandedWorkerJobs[worker.id];
++                          const workerMissions = jobs.filter(j => j.team_assigned && j.team_assigned.toLowerCase().includes(worker.name.toLowerCase()) && (j.status === 'completed' || j.status === 'paid'));
++                          return (
++                            <div className="border-t border-white/5 pt-2 mt-1">
++                              <button
++                                onClick={() => setExpandedWorkerJobs(prev => ({ ...prev, [worker.id]: !isExpanded }))}
++                                className="flex items-center justify-between w-full text-[7.5px] font-black text-blue-400 uppercase tracking-wider hover:text-white transition-colors"
++                              >
++                                <span>🏠 {isExpanded ? 'Ocultar Trabajos / Hide Jobs' : 'Ver Historial de Trabajos / View Jobs History'} ({workerMissions.length})</span>
++                                <span>{isExpanded ? '▲' : '▼'}</span>
++                              </button>
++                              {isExpanded && (
++                                <div className="mt-2 space-y-1.5 max-h-[150px] overflow-y-auto custom-scroll text-[7px]">
++                                  {workerMissions.length === 0 ? (
++                                    <p className="text-slate-500 italic py-1">Sin trabajos completados / No completed jobs</p>
++                                  ) : (
++                                    workerMissions.map(j => (
++                                      <div key={j.id} className="bg-black/40 border border-white/5 rounded-lg p-2 flex justify-between items-center gap-2">
++                                        <div className="flex-1">
++                                          <p className="text-slate-200 font-bold uppercase">{j.client_name} - {j.service_type}</p>
++                                          <p className="text-slate-500 text-[6.5px] mt-0.5">{fmtD(j.scheduled_date)} • {j.address}</p>
++                                        </div>
++                                        <div className="text-right">
++                                          <span className="text-green-400 font-black">{fmt$(j.total_price)}</span>
++                                        </div>
++                                      </div>
++                                    ))
++                                  )}
++                                </div>
++                              )}
++                            </div>
++                          );
++                        })()}
+                       </div>
+                     ))}
+                   </div>
+@@ -7550,6 +7781,10 @@ ${job.final_signature ? `<div class="sig"><p style="font-size:10px;color:#999;ma
+                     <input className="inp uppercase text-xs" placeholder="CLIENT FULL NAME" value={state.name} onChange={e => onName(e.target.value)} />
+                     <input className="inp text-xs" placeholder="PHONE" value={state.phone} onChange={e => setState({ ...state, phone: e.target.value })} />
+                     <input className="inp text-xs" placeholder="EMAIL" value={state.email || ''} onChange={e => setState({ ...state, email: e.target.value })} />
++                    <div className="space-y-1">
++                      <label className="text-[8px] font-black uppercase text-slate-500 tracking-wider block pl-1">Cumpleaños del Cliente (Opcional)</label>
++                      <input type="date" className="inp text-xs" value={state.birthday || ''} onChange={e => setState({ ...state, birthday: e.target.value })} />
++                    </div>
+                     <input className="inp uppercase text-xs" placeholder="ADDRESS" value={state.address} onChange={e => setState({ ...state, address: e.target.value })} />
+                     <textarea className="inp text-xs resize-none h-16" placeholder="Notes..." value={state.notes} onChange={e => setState({ ...state, notes: e.target.value })} />
+                     <div className="grid grid-cols-3 gap-2">
+@@ -7665,6 +7900,8 @@ Respond ONLY in this exact JSON format (no explanation, no markdown, just raw JS
+                     let ollamaUrl = localStorage.getItem('elevore_ollama_url') || 'http://127.0.0.1:11434';
+                     if (ollamaUrl === 'http://localhost:11434') ollamaUrl = 'http://127.0.0.1:11434';
+                     const ollamaModel = localStorage.getItem('elevore_ollama_model') || 'llama3';
++                    const aiProvider = localStorage.getItem('elevore_ai_provider') || 'ollama';
++                    const geminiModel = localStorage.getItem('elevore_gemini_model') || 'gemini-2.5-flash';
+ 
+                     const controller = new AbortController();
+                     const timeoutDuration = 90000; // 90s for local Ollama
+@@ -7672,31 +7909,56 @@ Respond ONLY in this exact JSON format (no explanation, no markdown, just raw JS
+ 
+                     try {
+                       let raw = '';
+-                      // Ollama Chat API call
+-                      const res = await fetch(`${ollamaUrl}/api/chat`, {
+-                        method: 'POST',
+-                        headers: { 'Content-Type': 'application/json' },
+-                        body: JSON.stringify({
+-                          model: ollamaModel,
+-                          messages: [
+-                            { role: 'system', content: 'You must respond ONLY with raw valid JSON. No markdown code blocks, no other text.' },
+-                            { role: 'user', content: prompt }
+-                          ],
+-                          stream: false,
+-                          options: { temperature: 0.2 }
+-                        }),
+-                        signal: controller.signal
+-                      });
++                      if (aiProvider === 'gemini') {
++                        const res = await fetch('/api/chat', {
++                          method: 'POST',
++                          headers: { 'Content-Type': 'application/json' },
++                          body: JSON.stringify({
++                            model: geminiModel,
++                            messages: [
++                              { role: 'system', content: 'You must respond ONLY with raw valid JSON. No markdown code blocks, no other text.' },
++                              { role: 'user', content: prompt }
++                            ]
++                          }),
++                          signal: controller.signal
++                        });
++
++                        clearTimeout(timeoutId);
++
++                        if (!res.ok) {
++                          const errData = await res.json().catch(() => ({}));
++                          throw new Error(`Gemini Vercel API: ${errData.error || `HTTP ${res.status}`}`);
++                        }
+ 
+-                      clearTimeout(timeoutId);
++                        const data = await res.json();
++                        raw = data.text || '';
++                      } else {
++                        // Ollama Chat API call
++                        const res = await fetch(`${ollamaUrl}/api/chat`, {
++                          method: 'POST',
++                          headers: { 'Content-Type': 'application/json' },
++                          body: JSON.stringify({
++                            model: ollamaModel,
++                            messages: [
++                              { role: 'system', content: 'You must respond ONLY with raw valid JSON. No markdown code blocks, no other text.' },
++                              { role: 'user', content: prompt }
++                            ],
++                            stream: false,
++                            options: { temperature: 0.2 }
++                          }),
++                          signal: controller.signal
++                        });
++
++                        clearTimeout(timeoutId);
++
++                        if (!res.ok) {
++                          throw new Error(`Ollama HTTP ${res.status}`);
++                        }
+ 
+-                      if (!res.ok) {
+-                        throw new Error(`Ollama HTTP ${res.status}`);
++                        const data = await res.json();
++                        raw = data.message?.content || '';
+                       }
+ 
+-                      const data = await res.json();
+-                      raw = data.message?.content || '';
+-
+                       // Strip markdown code fences if present
+                       const cleaned = raw.replace(/```json|```/g, '').trim();
+                       const parsed = JSON.parse(cleaned);
+@@ -7914,14 +8176,27 @@ Respond ONLY in this exact JSON format (no explanation, no markdown, just raw JS
+                             {c.daysSince === 999 ? 'nuevo' : `${c.daysSince}d`}
+                           </span>
+                         </div>
+-                        <div className="grid grid-cols-4 gap-1.5">
++                        <div className="grid grid-cols-5 gap-1">
+                           {[
+                             { label: '🔔 Recordar', type: 'retention' },
+                             { label: '🎁 Oferta', type: 'winback' },
++                            { label: '🎂 Bday', type: 'birthday' },
+                             { label: '⭐ Reseña', type: 'review' },
+                             { label: '🏠 Bundle', type: 'bundle' },
+                           ].map(btn => (
+-                            <button key={btn.type} onClick={() => { const ph = (c.phone||'').replace(/\D/g,''); const ph2 = ph.length===10?'1'+ph:ph; const msgs={retention:`Hi ${c.name}! 🏠 Han pasado un tiempo desde tu último servicio con Elevore. Esta semana tenemos disponibilidad — ¿te agendamos con 10% off? Reply YES!`,winback:`Hi ${c.name}! 😊 Te extrañamos en Elevore. Como cliente especial, hoy tienes 15% de descuento en tu próximo servicio. ¿Lo agendamos? 💫`,review:`Hi ${c.name}! 🌟 ¿Nos puedes dejar una reseña? Te tomará 1 minuto: ${DEFAULT_CFG.GOOGLE}`,bundle:`Hi ${c.name}! 🎯 Tenemos una oferta especial — Deep Clean + Ventanas por $50 adicionales (ahorras $70). ¿Lo añadimos a tu próximo servicio?`}; window.open(`https://wa.me/${ph2}?text=${encodeURIComponent(msgs[btn.type]||'')}`, '_blank'); tt(`WA → ${c.name} ✓`); }} className="py-2 bg-white/5 text-slate-400 rounded-xl text-[6px] font-black uppercase active:scale-95 hover:bg-white/10 hover:text-white transition-all">
++                            <button key={btn.type} onClick={() => {
++                              const ph = (c.phone||'').replace(/\D/g,'');
++                              const ph2 = ph.length===10?'1'+ph:ph;
++                              const msgs={
++                                retention:`¡Hola ${c.name}! 🏠 Notamos que ha pasado un tiempo desde tu última visita con Elevore. Esta semana tenemos un espacio disponible en tu zona y nos encantaría regresar. Si agendas hoy, te incluimos un 10% de descuento de cortesía. ¿Te reservamos el espacio?`,
++                                winback:`¡Hola ${c.name}! 😊 Te extrañamos en Elevore. Como cliente especial, hoy tienes un 15% de descuento exclusivo en tu próximo mantenimiento completo para renovar la frescura de tu hogar. ¿Qué día de esta semana te queda mejor? 💫`,
++                                birthday:`¡Feliz Cumpleaños, ${c.name}! 🎂🎉 En Elevore queremos celebrar contigo: te regalamos un Bono Especial de $25 de descuento aplicable en tu próximo servicio durante este mes de cumpleaños. ¡Consiéntete hoy! ¿Te reservamos una fecha?`,
++                                review:`¡Hola ${c.name}! 🌟 Tu opinión vale oro para nosotros. ¿Nos apoyarías dejándonos una reseña rápida de 5 estrellas en Google? Te tomará menos de 1 minuto y nos ayuda a seguir mejorando: ${DEFAULT_CFG.GOOGLE}`,
++                                bundle:`¡Hola ${c.name}! 🎯 Tenemos una oferta especial por temporada: Agrega nuestro servicio completo de Limpieza profunda de Horno y Nevera por solo $50 adicionales (ahorras $70). ¿Lo sumamos a tu próximo servicio?`
++                              };
++                              window.open(`https://wa.me/${ph2}?text=${encodeURIComponent(msgs[btn.type]||'')}`, '_blank');
++                              tt(`WA → ${c.name} ✓`);
++                            }} className="py-2 bg-white/5 text-slate-400 rounded-xl text-[5.5px] font-black uppercase active:scale-95 hover:bg-white/10 hover:text-white transition-all">
+                               {btn.label}
+                             </button>
+                           ))}

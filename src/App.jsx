@@ -5236,6 +5236,13 @@ export default function App() {
   const [prefProducts, setPrefProducts] = useState('');
   const [prefNotes, setPrefNotes] = useState('');
   const [selectedJobs, setSelectedJobs] = useState([]);
+  const [agendaView, setAgendaView] = useState('calendar');
+  const [calMonth, setCalMonth] = useState(new Date().getMonth());
+  const [calYear, setCalYear] = useState(new Date().getFullYear());
+  const [financeTab, setFinanceTab] = useState('overview');
+  const [operationsTab, setOperationsTab] = useState('calendar');
+  const [crmTab, setCrmTab] = useState('dna');
+  const [settingsTab, setSettingsTab] = useState('company');
   const [quickMode, setQM] = useState(false);
   const [chatJob, setChatJob] = useState(null);
   const [chatMsg, setChatMsg] = useState('');
@@ -7756,35 +7763,26 @@ Instrucciones generales de formato:
             {role === 'admin' ? (
               [
                 { id: 'brief', label: 'Dashboard', icon: 'sun' },
-                { id: 'intel', label: 'Finances', icon: 'bar-chart-2' },
-                { id: 'agenda', label: 'Missions', icon: 'shield-check' },
-                { id: 'clients', label: 'Clients DNA', icon: 'users' },
-                { id: 'members', label: 'VIP Memberships', icon: 'diamond' },
-                { id: 'crm', label: 'CRM Retención', icon: 'target' },
-                { id: 'inventory', label: 'Inventario', icon: 'package' },
-                { id: 'reminders', label: 'Recordatorios', icon: 'bell' },
-                { id: 'drive', label: 'Photo Drive', icon: 'image' },
-                { id: 'payroll', label: 'Team & Payroll', icon: 'wallet' },
-                { id: 'settings', label: 'App Settings', icon: 'settings' },
-                { id: 'billing', label: 'SaaS Billing', icon: 'crown' },
-                { id: 'deploy', label: 'New Estimate', icon: 'zap' }
+                { id: 'operations', label: 'Operaciones', icon: 'shield-check' },
+                { id: 'crm', label: 'Clientes & CRM', icon: 'users' },
+                { id: 'intel', label: 'Finanzas & Equipos', icon: 'bar-chart-2' },
+                { id: 'settings', label: 'Configuración', icon: 'settings' }
               ].map(item => {
-                const isActive = item.id === 'members' ? (view === 'members' && membersTab === 'vip')
-                               : item.id === 'billing' ? (view === 'members' && membersTab === 'billing')
-                               : view === item.id;
+                const isActive = view === item.id;
                 return (
                   <button key={item.id} onClick={() => {
-                    if (item.id === 'deploy') { setEdit(null); setState(INIT); setDtab('identity'); }
-                    if (item.id === 'members') { setMembersTab('vip'); setView('members'); }
-                    else if (item.id === 'billing') { setMembersTab('billing'); setView('members'); }
-                    else { setView(item.id); }
+                    setView(item.id);
+                    if (item.id === 'operations') setOperationsTab('calendar');
+                    else if (item.id === 'crm') setCrmTab('dna');
+                    else if (item.id === 'intel') setFinanceTab('overview');
+                    else if (item.id === 'settings') setSettingsTab('company');
                     setMobileMenuOpen(false);
                   }} className={`w-full flex items-center justify-between gap-3 px-4 py-3.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all duration-200 active:scale-95 ${isActive ? 'bg-[#F5C518] text-black shadow-lg shadow-[#F5C518]/15' : 'text-slate-400 hover:bg-white/5 hover:text-white'}`}>
                     <div className="flex items-center gap-3">
                       <Icon name={item.icon} className={`w-4 h-4 ${isActive ? 'text-black' : 'text-slate-400'}`} />
                       <span>{item.label}</span>
                     </div>
-                    {item.id === 'reminders' && remindersBadgeCount > 0 && (
+                    {item.id === 'operations' && remindersBadgeCount > 0 && (
                       <span className="bg-red-600 text-white font-bold text-[8px] px-1.5 py-0.5 rounded-full shadow-[0_0_8px_rgba(239,68,68,0.5)]">
                         {remindersBadgeCount}
                       </span>
@@ -8397,233 +8395,424 @@ Instrucciones generales de formato:
               ===================================================================== */}
           {role === 'admin' && view === 'intel' && (
             <div className="space-y-6 animate-in fade-in">
-              <section className="g p-8 shadow-xl bg-[rgba(255,255,255,0.04)] border-[rgba(255,255,255,0.08)] text-center relative overflow-hidden">
-                <p className="text-[9px] font-black text-slate-500 mb-2 uppercase tracking-widest italic font-display">MRR GOAL — {fmt$(DEFAULT_CFG.GOAL)}</p>
-                <h2 className="text-7xl italic tracking-tighter text-white font-black leading-none">{Math.round(finance.pct)}%</h2>
-                <div className="pb mt-4 mb-3"><div className="pf" style={{ width: `${finance.pct}%` }}></div></div>
-                <div className="flex justify-between text-[8px] text-slate-500 font-black uppercase">
-                  <span>Billed: {isPrivate ? '***' : fmt$(finance.gross)}</span>
-                  <span>{finance.gross >= DEFAULT_CFG.GOAL ? '🎯 GOAL!' : 'Left: ' + fmt$(DEFAULT_CFG.GOAL - finance.gross)}</span>
-                </div>
-                <p className="text-[9px] text-[#F5C518] mt-2 font-black uppercase italic text-center font-bold">Net: {isPrivate ? '****' : fmt$(finance.net)} | Projected: {isPrivate ? '****' : fmt$(finance.proj)}</p>
-              </section>
-
-              {/* Finances KPI Grid */}
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+              {/* Premium Sub-tabs Switcher */}
+              <div className="flex gap-2 bg-black/45 p-1.5 rounded-2xl border border-white/5 overflow-x-auto nsb">
                 {[
-                  { l: 'PENDING', v: isPrivate ? '***' : fmt$(finance.pending), color: 'text-orange-400', badge: 'bg-orange-500/10 text-orange-400 border-orange-500/20' },
-                  { l: 'AVG TICKET', v: isPrivate ? '***' : fmt$(finance.avg), color: 'text-blue-400', badge: 'bg-blue-500/10 text-blue-400 border-blue-500/20' },
-                  { l: 'MRR', v: isPrivate ? '***' : fmt$(finance.mrr), color: 'text-purple-400', badge: 'bg-purple-500/10 text-purple-400 border-purple-500/20' },
-                  { l: 'AVG RATING', v: finance.avgRating || '—', color: 'text-[#F5C518]', badge: 'bg-amber-500/10 text-[#F5C518] border-amber-500/20' },
-                  { l: 'AVG LTV', v: isPrivate ? '***' : fmt$(finance.avgLTV), color: 'text-green-400', badge: 'bg-green-500/10 text-green-400 border-green-500/20' },
-                  { l: 'BONUSES', v: fmt$(finance.bonuses), color: 'text-pink-400', badge: 'bg-pink-500/10 text-pink-400 border-pink-500/20' }
-                ].map(k => (
-                  <div key={k.l} className="g p-5 relative overflow-hidden bg-[rgba(255,255,255,0.04)] border border-[rgba(255,255,255,0.08)] rounded-2xl flex flex-col justify-between min-h-[120px] hover:border-slate-500/20 transition-all">
-                    <span className={`absolute top-3 right-3 ${k.badge} text-[7px] px-1.5 py-0.5 rounded-full font-bold uppercase tracking-wider`}>METRIC</span>
-                    <p className={`text-3xl font-black mt-4 ${k.color}`}>{k.v}</p>
-                    <p className="text-[8px] text-slate-400 uppercase font-black tracking-widest mt-2">{k.l}</p>
-                  </div>
+                  { id: 'overview', name: '📊 Resumen General' },
+                  { id: 'services', name: '🧹 Desglose por Servicio' },
+                  { id: 'payroll', name: '👥 Nómina y Equipos' },
+                  { id: 'cac', name: '🎯 CAC & ROI de Marketing' },
+                  { id: 'inventory', name: '🛠️ Inventario' }
+                ].map(tab => (
+                  <button
+                    key={tab.id}
+                    onClick={() => setFinanceTab(tab.id)}
+                    className={`px-4 py-2.5 rounded-xl text-[9px] font-black uppercase whitespace-nowrap active:scale-95 transition-all ${
+                      financeTab === tab.id
+                        ? 'bg-[#F5C518] text-black shadow-lg shadow-[#F5C518]/15'
+                        : 'bg-white/5 text-slate-400 hover:text-white hover:bg-white/10'
+                    }`}
+                  >
+                    {tab.name}
+                  </button>
                 ))}
               </div>
 
-              {/* Area charts */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="g p-6 bg-[rgba(255,255,255,0.04)] border-[rgba(255,255,255,0.08)] space-y-2">
-                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4 font-display">📈 GROSS REVENUE TRENDS</p>
-                  <SleekAreaChart data={finance.wb} color="#F5C518" />
-                </div>
-                <div className="g p-6 bg-[rgba(255,255,255,0.04)] border-[rgba(255,255,255,0.08)] space-y-2">
-                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4 font-display">📊 MONTHLY REVENUE PROJECTIONS</p>
-                  <SleekAreaChart data={finance.mb2} color="#3b82f6" />
-                </div>
-              </div>
-
-              {/* ── CANALES DE ADQUISICIÓN Y ROI ── */}
-              <div className="g p-6 bg-[rgba(255,255,255,0.04)] border-[rgba(255,255,255,0.08)] space-y-4">
-                <div className="flex justify-between items-center border-b border-white/5 pb-3">
-                  <div>
-                    <h3 className="text-xs font-black text-white uppercase tracking-widest font-display">📊 CANALES DE ADQUISICIÓN, CAC Y ROI</h3>
-                    <p className="text-[7.5px] text-slate-500 uppercase font-bold mt-0.5">Rendimiento publicitario y retorno de inversión por cada origen de leads</p>
-                  </div>
-                  <span className="text-[7.5px] font-black px-2 py-1 rounded-full bg-blue-500/10 text-blue-400 border border-blue-500/25 uppercase tracking-wider">ROI TRACKING</span>
-                </div>
-                
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left text-[9px] uppercase font-bold tracking-wider">
-                    <thead>
-                      <tr className="text-slate-500 border-b border-white/5 pb-2 text-[7.5px]">
-                        <th className="py-2">Canal</th>
-                        <th className="py-2 text-center">Leads</th>
-                        <th className="py-2 text-center">Clientes Activos</th>
-                        <th className="py-2 text-right">Inversión Ad-Spend</th>
-                        <th className="py-2 text-right">CAC Promedio</th>
-                        <th className="py-2 text-right">LTV Generado</th>
-                        <th className="py-2 text-right text-[#F5C518]">ROI</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-white/5">
-                      {finance.channelReport?.map(ch => (
-                        <tr key={ch.key} className="hover:bg-white/[0.02] transition-colors">
-                          <td className="py-3 text-white font-black">{ch.name}</td>
-                          <td className="py-3 text-center text-slate-300">{ch.leads}</td>
-                          <td className="py-3 text-center text-slate-300">{ch.customers}</td>
-                          <td className="py-3 text-right text-slate-300">{fmt$(ch.spend)}</td>
-                          <td className="py-3 text-right text-red-400">{ch.cac > 0 ? fmt$(ch.cac) : '—'}</td>
-                          <td className="py-3 text-right text-green-400">{fmt$(ch.ltv)}</td>
-                          <td className={`py-3 text-right font-black ${ch.roi >= 0 ? 'text-[#F5C518]' : 'text-red-500'}`}>
-                            {ch.spend > 0 ? `${ch.roi}%` : '—'}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-
-              {/* ── CRM ALERTAS DE CHURN Y NPS ── */}
-              <div className="g p-6 bg-[rgba(255,255,255,0.04)] border-[rgba(255,255,255,0.08)] space-y-4">
-                <div className="flex justify-between items-center border-b border-white/5 pb-3">
-                  <div>
-                    <h3 className="text-xs font-black text-white uppercase tracking-widest font-display">⚠️ ALERTAS DE CHURN (RIESGO DE ABANDONO)</h3>
-                    <p className="text-[7.5px] text-slate-500 uppercase font-bold mt-0.5">Clientes que superaron su frecuencia de servicio o llevan más de 45 días inactivos</p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-[8px] bg-red-500/10 text-red-400 border border-red-500/25 font-bold px-2 py-0.5 rounded-full uppercase">
-                      Score NPS Promedio: {finance.nps > 0 ? `+${finance.nps}` : finance.nps}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="space-y-2 max-h-[300px] overflow-y-auto custom-scroll pr-1">
-                  {finance.churn.length === 0 ? (
-                    <div className="text-center p-6 bg-white/[0.01] border border-white/5 rounded-xl text-slate-500 text-[8px] font-black uppercase">
-                      No hay clientes con riesgo de churn detectados en este momento.
+              {financeTab === 'overview' && (
+                <>
+                  <section className="g p-8 shadow-xl bg-[rgba(255,255,255,0.04)] border-[rgba(255,255,255,0.08)] text-center relative overflow-hidden">
+                    <p className="text-[9px] font-black text-slate-500 mb-2 uppercase tracking-widest italic font-display">MRR GOAL — {fmt$(DEFAULT_CFG.GOAL)}</p>
+                    <h2 className="text-7xl italic tracking-tighter text-white font-black leading-none">{Math.round(finance.pct)}%</h2>
+                    <div className="pb mt-4 mb-3"><div className="pf" style={{ width: `${finance.pct}%` }}></div></div>
+                    <div className="flex justify-between text-[8px] text-slate-500 font-black uppercase">
+                      <span>Billed: {isPrivate ? '***' : fmt$(finance.gross)}</span>
+                      <span>{finance.gross >= DEFAULT_CFG.GOAL ? '🎯 GOAL!' : 'Left: ' + fmt$(DEFAULT_CFG.GOAL - finance.gross)}</span>
                     </div>
-                  ) : (
-                    finance.churn.map(client => {
-                      const clientJobs = jobs.filter(j => j.client_name === client.name && (j.status === 'paid' || j.status === 'completed'));
-                      const lastJob = clientJobs.sort((a, b) => new Date(b.scheduled_date) - new Date(a.scheduled_date))[0];
-                      const daysInactive = lastJob ? dAgo(lastJob.scheduled_date) : 999;
-                      const clientNps = lastJob?.client_rating || 5; // default to 5-star
-                      
-                      return (
-                        <div key={client.name} className="flex flex-col sm:flex-row sm:items-center justify-between p-3.5 bg-black/40 border border-white/5 rounded-xl gap-3 hover:border-red-500/20 transition-all">
-                          <div>
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <h4 className="text-xs font-black text-white uppercase italic">{client.name}</h4>
-                              <span className="text-[6.5px] font-black px-1.5 py-0.5 rounded uppercase bg-red-950/40 text-red-400 border border-red-500/20 animate-pulse">
-                                RIESGO DE CHURN
-                              </span>
-                              <span className="text-[6.5px] font-bold px-1.5 py-0.5 rounded uppercase bg-white/5 text-slate-400 border border-white/5">
-                                Inactivo: {daysInactive} días
-                              </span>
-                            </div>
-                            <p className="text-[7.5px] text-slate-400 font-bold uppercase mt-1">
-                              Frecuencia: {client.frequency || 'ocasional'} • Tel: {client.phone}
-                            </p>
-                            <p className="text-[7px] text-slate-500 italic mt-0.5">Última visita: {lastJob ? `${lastJob.service_type} (${fmtD(lastJob.scheduled_date)})` : 'Desconocida'}</p>
-                          </div>
+                    <p className="text-[9px] text-[#F5C518] mt-2 font-black uppercase italic text-center font-bold">Net: {isPrivate ? '****' : fmt$(finance.net)} | Projected: {isPrivate ? '****' : fmt$(finance.proj)}</p>
+                  </section>
+
+                  {/* Finances KPI Grid */}
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+                    {[
+                      { l: 'PENDING', v: isPrivate ? '***' : fmt$(finance.pending), color: 'text-orange-400', badge: 'bg-orange-500/10 text-orange-400 border-orange-500/20' },
+                      { l: 'AVG TICKET', v: isPrivate ? '***' : fmt$(finance.avg), color: 'text-blue-400', badge: 'bg-blue-500/10 text-blue-400 border-blue-500/20' },
+                      { l: 'MRR', v: isPrivate ? '***' : fmt$(finance.mrr), color: 'text-purple-400', badge: 'bg-purple-500/10 text-purple-400 border-purple-500/20' },
+                      { l: 'AVG RATING', v: finance.avgRating || '—', color: 'text-[#F5C518]', badge: 'bg-amber-500/10 text-[#F5C518] border-amber-500/20' },
+                      { l: 'AVG LTV', v: isPrivate ? '***' : fmt$(finance.avgLTV), color: 'text-green-400', badge: 'bg-green-500/10 text-green-400 border-green-500/20' },
+                      { l: 'BONUSES', v: fmt$(finance.bonuses), color: 'text-pink-400', badge: 'bg-pink-500/10 text-pink-400 border-pink-500/20' }
+                    ].map(k => (
+                      <div key={k.l} className="g p-5 relative overflow-hidden bg-[rgba(255,255,255,0.04)] border border-[rgba(255,255,255,0.08)] rounded-2xl flex flex-col justify-between min-h-[120px] hover:border-slate-500/20 transition-all">
+                        <span className={`absolute top-3 right-3 ${k.badge} text-[7px] px-1.5 py-0.5 rounded-full font-bold uppercase tracking-wider`}>METRIC</span>
+                        <p className={`text-3xl font-black mt-4 ${k.color}`}>{k.v}</p>
+                        <p className="text-[8px] text-slate-400 uppercase font-black tracking-widest mt-2">{k.l}</p>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Area charts */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="g p-6 bg-[rgba(255,255,255,0.04)] border-[rgba(255,255,255,0.08)] space-y-2">
+                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4 font-display">📈 GROSS REVENUE TRENDS</p>
+                      <SleekAreaChart data={finance.wb} color="#F5C518" />
+                    </div>
+                    <div className="g p-6 bg-[rgba(255,255,255,0.04)] border-[rgba(255,255,255,0.08)] space-y-2">
+                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4 font-display">📊 MONTHLY REVENUE PROJECTIONS</p>
+                      <SleekAreaChart data={finance.mb2} color="#3b82f6" />
+                    </div>
+                  </div>
+
+                  {/* ── CRM ALERTAS DE CHURN Y NPS ── */}
+                  <div className="g p-6 bg-[rgba(255,255,255,0.04)] border-[rgba(255,255,255,0.08)] space-y-4">
+                    <div className="flex justify-between items-center border-b border-white/5 pb-3">
+                      <div>
+                        <h3 className="text-xs font-black text-white uppercase tracking-widest font-display">⚠️ ALERTAS DE CHURN (RIESGO DE ABANDONO)</h3>
+                        <p className="text-[7.5px] text-slate-500 uppercase font-bold mt-0.5">Clientes que superaron su frecuencia de servicio o llevan más de 45 días inactivos</p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-[8px] bg-red-500/10 text-red-400 border border-red-500/25 font-bold px-2 py-0.5 rounded-full uppercase">
+                          Score NPS Promedio: {finance.nps > 0 ? `+${finance.nps}` : finance.nps}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="space-y-2 max-h-[300px] overflow-y-auto custom-scroll pr-1">
+                      {finance.churn.length === 0 ? (
+                        <div className="text-center p-6 bg-white/[0.01] border border-white/5 rounded-xl text-slate-500 text-[8px] font-black uppercase">
+                          No hay clientes con riesgo de churn detectados en este momento.
+                        </div>
+                      ) : (
+                        finance.churn.map(client => {
+                          const clientJobs = jobs.filter(j => j.client_name === client.name && (j.status === 'paid' || j.status === 'completed'));
+                          const lastJob = clientJobs.sort((a, b) => new Date(b.scheduled_date) - new Date(a.scheduled_date))[0];
+                          const daysInactive = lastJob ? dAgo(lastJob.scheduled_date) : 999;
+                          const clientNps = lastJob?.client_rating || 5; // default to 5-star
                           
-                          <div className="flex items-center gap-3">
-                            <div className="text-right">
-                              <span className="text-slate-500 block text-[6px] uppercase font-bold">Satisfacción</span>
-                              <div className="flex gap-0.5 mt-0.5">
-                                {Array.from({ length: 5 }, (_, i) => (
-                                  <span key={i} className={`text-[9px] ${i < clientNps ? 'text-[#F5C518]' : 'text-slate-700'}`}>★</span>
-                                ))}
+                          return (
+                            <div key={client.name} className="flex flex-col sm:flex-row sm:items-center justify-between p-3.5 bg-black/40 border border-white/5 rounded-xl gap-3 hover:border-red-500/20 transition-all">
+                              <div>
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <h4 className="text-xs font-black text-white uppercase italic">{client.name}</h4>
+                                  <span className="text-[6.5px] font-black px-1.5 py-0.5 rounded uppercase bg-red-950/40 text-red-400 border border-red-500/20 animate-pulse">
+                                    RIESGO DE CHURN
+                                  </span>
+                                  <span className="text-[6.5px] font-bold px-1.5 py-0.5 rounded uppercase bg-white/5 text-slate-400 border border-white/5">
+                                    Inactivo: {daysInactive} días
+                                  </span>
+                                </div>
+                                <p className="text-[7.5px] text-slate-400 font-bold uppercase mt-1">
+                                  Frecuencia: {client.frequency || 'ocasional'} • Tel: {client.phone}
+                                </p>
+                                <p className="text-[7px] text-slate-500 italic mt-0.5">Última visita: {lastJob ? `${lastJob.service_type} (${fmtD(lastJob.scheduled_date)})` : 'Desconocida'}</p>
+                              </div>
+                              
+                              <div className="flex items-center gap-3">
+                                <div className="text-right">
+                                  <span className="text-slate-500 block text-[6px] uppercase font-bold">Satisfacción</span>
+                                  <div className="flex gap-0.5 mt-0.5">
+                                    {Array.from({ length: 5 }, (_, i) => (
+                                      <span key={i} className={`text-[9px] ${i < clientNps ? 'text-[#F5C518]' : 'text-slate-700'}`}>★</span>
+                                    ))}
+                                  </div>
+                                </div>
+                                <button
+                                  onClick={() => reactivateClientWithAI(client)}
+                                  className="px-3.5 py-2 bg-gradient-to-r from-amber-500 to-yellow-600 hover:from-amber-600 hover:to-yellow-700 text-black font-black uppercase text-[8px] rounded-xl active:scale-95 transition-all shadow-[0_0_15px_rgba(245,197,24,0.15)] flex items-center gap-1.5"
+                                >
+                                  <Icon name="message-circle" className="w-3 h-3 text-black" />
+                                  IA Reactivar ⚡
+                                </button>
                               </div>
                             </div>
-                            <button
-                              onClick={() => reactivateClientWithAI(client)}
-                              className="px-3.5 py-2 bg-gradient-to-r from-amber-500 to-yellow-600 hover:from-amber-600 hover:to-yellow-700 text-black font-black uppercase text-[8px] rounded-xl active:scale-95 transition-all shadow-[0_0_15px_rgba(245,197,24,0.15)] flex items-center gap-1.5"
-                            >
-                              <Icon name="message-circle" className="w-3 h-3 text-black" />
-                              IA Reactivar ⚡
-                            </button>
+                          );
+                        })
+                      )}
+                    </div>
+                  </div>
+
+                  {/* ── REFERRAL ENGINE DASHBOARD ── */}
+                  <div className="g p-6 bg-[rgba(255,255,255,0.04)] border-[rgba(255,255,255,0.08)] space-y-6">
+                    <div className="flex justify-between items-center border-b border-white/5 pb-4">
+                      <div>
+                        <h3 className="text-xs font-black text-white uppercase tracking-widest font-display">🎁 ORGANIC REFERRAL ENGINE</h3>
+                        <p className="text-[7.5px] text-slate-500 uppercase font-bold mt-0.5">Track referred leads, conversion rate and active program ambassadors</p>
+                      </div>
+                      <span className="text-[7.5px] font-black px-2 py-1 rounded-full bg-[#F5C518]/10 text-[#F5C518] border border-[#F5C518]/25 uppercase tracking-wider animate-pulse">ACTIVE ENGINE</span>
+                    </div>
+
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                      <div className="bg-white/5 border border-white/5 rounded-2xl p-4">
+                        <p className="text-[7.5px] text-slate-500 uppercase font-black tracking-wider">Total Referred Leads</p>
+                        <p className="text-2xl font-black text-white mt-1">{referralStats.totalReferred}</p>
+                      </div>
+                      <div className="bg-white/5 border border-white/5 rounded-2xl p-4">
+                        <p className="text-[7.5px] text-slate-500 uppercase font-black tracking-wider">Pending (Leads)</p>
+                        <p className="text-2xl font-black text-orange-400 mt-1">{referralStats.pendingReferrals}</p>
+                      </div>
+                      <div className="bg-white/5 border border-white/5 rounded-2xl p-4">
+                        <p className="text-[7.5px] text-slate-500 uppercase font-black tracking-wider">Converted (Paid)</p>
+                        <p className="text-2xl font-black text-green-400 mt-1">{referralStats.paidReferrals}</p>
+                      </div>
+                      <div className="bg-white/5 border border-white/5 rounded-2xl p-4">
+                        <p className="text-[7.5px] text-slate-500 uppercase font-black tracking-wider">Conversion Rate</p>
+                        <p className="text-2xl font-black text-[#F5C518] mt-1">{referralStats.conversions}%</p>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
+                      <div className="space-y-3">
+                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">💰 DISCOUNTS LEDGER</p>
+                        <div className="bg-white/5 border border-white/5 rounded-2xl p-5 space-y-4">
+                          <div className="flex justify-between items-center">
+                            <span className="text-[8px] text-slate-400 uppercase font-bold">Estimated Discounts Granted</span>
+                            <span className="text-sm font-black text-white">{fmt$(referralStats.totalDiscountAmount)}</span>
+                          </div>
+                          <div className="flex justify-between items-center border-t border-white/5 pt-3">
+                            <span className="text-[8px] text-slate-400 uppercase font-bold">Standard Discount Value</span>
+                            <span className="text-sm font-black text-[#F5C518]">$25.00</span>
+                          </div>
+                          <p className="text-[7px] text-slate-600 uppercase font-bold italic leading-relaxed">
+                            * Referral discounts are automatically calculated at $25 per referred booking and saved inside mission parameters.
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="space-y-3">
+                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">🏆 BRAND AMBASSADORS</p>
+                        <div className="bg-white/5 border border-white/5 rounded-2xl p-5 max-h-[170px] overflow-y-auto nsb">
+                          {referralStats.ambassadors.length === 0 ? (
+                            <p className="text-[8px] text-slate-600 italic uppercase text-center py-6">No active ambassadors yet</p>
+                          ) : (
+                            <div className="space-y-2.5">
+                              {referralStats.ambassadors.slice(0, 5).map((amb, idx) => (
+                                <div key={amb.name} className="flex justify-between items-center text-[8px] uppercase">
+                                  <div className="flex items-center gap-2">
+                                    <span className="w-4 h-4 rounded-lg bg-[#F5C518]/10 text-[#F5C518] flex items-center justify-center font-black text-[7px]">{idx + 1}</span>
+                                    <span className="font-bold text-white">{amb.name.replace(/_/g, ' ')}</span>
+                                  </div>
+                                  <span className="font-black text-[#F5C518]">{amb.count} friends referred</span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {financeTab === 'services' && (() => {
+                const serviceMetrics = [];
+                const map = {};
+                jobs.forEach(job => {
+                  if (job.status === 'lost') return;
+                  const type = job.service_type || 'regular';
+                  const price = Number(job.total_price) || 0;
+                  if (!map[type]) {
+                    map[type] = { count: 0, revenue: 0 };
+                  }
+                  map[type].count += 1;
+                  map[type].revenue += price;
+                });
+                Object.entries(map).forEach(([name, data]) => {
+                  serviceMetrics.push({
+                    name,
+                    count: data.count,
+                    revenue: data.revenue,
+                    avgTicket: data.count > 0 ? data.revenue / data.count : 0
+                  });
+                });
+                serviceMetrics.sort((a, b) => b.revenue - a.revenue);
+
+                return (
+                  <div className="g p-6 bg-[rgba(255,255,255,0.04)] border-[rgba(255,255,255,0.08)] space-y-6">
+                    <div>
+                      <h3 className="text-xs font-black text-white uppercase tracking-widest font-display">🧹 DESGLOSE FINANCIERO POR SERVICIO</h3>
+                      <p className="text-[7.5px] text-slate-500 uppercase font-bold mt-0.5">Ingresos y tickets promedio generados por cada categoría de servicio</p>
+                    </div>
+
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                      <div className="space-y-4">
+                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">💰 Participación de Ingresos</p>
+                        <div className="space-y-3 bg-white/5 p-5 rounded-2xl border border-white/5">
+                          {serviceMetrics.map(item => {
+                            const totalRevenue = serviceMetrics.reduce((sum, i) => sum + i.revenue, 0);
+                            const percentage = totalRevenue > 0 ? (item.revenue / totalRevenue) * 100 : 0;
+                            return (
+                              <div key={item.name} className="space-y-1">
+                                <div className="flex justify-between text-[8px] uppercase font-black">
+                                  <span className="text-white">{item.name}</span>
+                                  <span className="text-[#F5C518]">{fmt$(item.revenue)} ({Math.round(percentage)}%)</span>
+                                </div>
+                                <div className="pb h-1.5 bg-black/40 rounded-full overflow-hidden">
+                                  <div className="pf h-full bg-gradient-to-r from-amber-400 to-[#F5C518]" style={{ width: `${percentage}%` }}></div>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-left text-[9px] uppercase font-bold tracking-wider">
+                          <thead>
+                            <tr className="text-slate-500 border-b border-white/5 pb-2 text-[7.5px]">
+                              <th className="py-2">Categoría</th>
+                              <th className="py-2 text-center">Servicios</th>
+                              <th className="py-2 text-right">Ingresos Totales</th>
+                              <th className="py-2 text-right text-[#F5C518]">Ticket Promedio</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-white/5">
+                            {serviceMetrics.map(item => (
+                              <tr key={item.name} className="hover:bg-white/[0.02] transition-colors">
+                                <td className="py-3 text-white font-black">{item.name}</td>
+                                <td className="py-3 text-center text-slate-300">{item.count}</td>
+                                <td className="py-3 text-right text-green-400">{fmt$(item.revenue)}</td>
+                                <td className="py-3 text-right text-[#F5C518]">{fmt$(item.avgTicket)}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {financeTab === 'payroll' && (
+                <div className="g p-6 bg-[rgba(255,255,255,0.04)] border-[rgba(255,255,255,0.08)] space-y-6">
+                  <div className="flex justify-between items-center border-b border-white/5 pb-4">
+                    <div>
+                      <h3 className="text-xs font-black text-white uppercase tracking-widest font-display">👥 NÓMINA Y RENDIMIENTO DE EQUIPOS</h3>
+                      <p className="text-[7.5px] text-slate-500 uppercase font-bold mt-0.5">Control de saldos devengados, comisiones y pagos por Zelle a los trabajadores</p>
+                    </div>
+                    <span className="text-[7.5px] font-black px-2 py-1 rounded-full bg-green-500/10 text-green-400 border border-green-500/25 uppercase tracking-wider">TEAM PAYROLL</span>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-4">
+                    {staff.map(worker => (
+                      <div key={worker.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-black/40 border border-white/5 rounded-2xl gap-4 hover:border-slate-500/20 transition-all">
+                        <div>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <h4 className="text-sm font-black text-white uppercase italic">{worker.name}</h4>
+                            <span className="text-[6.5px] font-black px-2 py-0.5 rounded-full uppercase bg-white/5 text-slate-400 border border-white/5">
+                              {worker.role}
+                            </span>
+                          </div>
+                          <div className="flex gap-4 text-[8px] uppercase text-slate-500 mt-2 font-bold">
+                            <span>Acumulado: <strong className="text-slate-300">{fmt$(worker.total_earned || 0)}</strong></span>
+                            <span>Código PIN: <strong className="text-slate-300">{worker.passcode}</strong></span>
                           </div>
                         </div>
-                      );
-                    })
-                  )}
-                </div>
-              </div>
 
-              {/* ── REFERRAL ENGINE DASHBOARD ── */}
-              <div className="g p-6 bg-[rgba(255,255,255,0.04)] border-[rgba(255,255,255,0.08)] space-y-6">
-                <div className="flex justify-between items-center border-b border-white/5 pb-4">
-                  <div>
-                    <h3 className="text-xs font-black text-white uppercase tracking-widest font-display">🎁 ORGANIC REFERRAL ENGINE</h3>
-                    <p className="text-[7.5px] text-slate-500 uppercase font-bold mt-0.5">Track referred leads, conversion rate and active program ambassadors</p>
-                  </div>
-                  <span className="text-[7.5px] font-black px-2 py-1 rounded-full bg-[#F5C518]/10 text-[#F5C518] border border-[#F5C518]/25 uppercase tracking-wider animate-pulse">ACTIVE ENGINE</span>
-                </div>
-
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <div className="bg-white/5 border border-white/5 rounded-2xl p-4">
-                    <p className="text-[7.5px] text-slate-500 uppercase font-black tracking-wider">Total Referred Leads</p>
-                    <p className="text-2xl font-black text-white mt-1">{referralStats.totalReferred}</p>
-                  </div>
-                  <div className="bg-white/5 border border-white/5 rounded-2xl p-4">
-                    <p className="text-[7.5px] text-slate-500 uppercase font-black tracking-wider">Pending (Leads)</p>
-                    <p className="text-2xl font-black text-orange-400 mt-1">{referralStats.pendingReferrals}</p>
-                  </div>
-                  <div className="bg-white/5 border border-white/5 rounded-2xl p-4">
-                    <p className="text-[7.5px] text-slate-500 uppercase font-black tracking-wider">Converted (Paid)</p>
-                    <p className="text-2xl font-black text-green-400 mt-1">{referralStats.paidReferrals}</p>
-                  </div>
-                  <div className="bg-white/5 border border-white/5 rounded-2xl p-4">
-                    <p className="text-[7.5px] text-slate-500 uppercase font-black tracking-wider">Conversion Rate</p>
-                    <p className="text-2xl font-black text-[#F5C518] mt-1">{referralStats.conversions}%</p>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
-                  <div className="space-y-3">
-                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">💰 DISCOUNTS LEDGER</p>
-                    <div className="bg-white/5 border border-white/5 rounded-2xl p-5 space-y-4">
-                      <div className="flex justify-between items-center">
-                        <span className="text-[8px] text-slate-400 uppercase font-bold">Estimated Discounts Granted</span>
-                        <span className="text-sm font-black text-white">{fmt$(referralStats.totalDiscountAmount)}</span>
+                        <div className="flex items-center gap-4 justify-between sm:justify-end">
+                          <div className="text-right">
+                            <span className="text-slate-500 block text-[6.5px] uppercase font-black">Saldo Pendiente</span>
+                            <span className="text-lg font-black text-white leading-none">{fmt$(worker.wallet_balance || 0)}</span>
+                          </div>
+                          <button
+                            onClick={() => handleCashout(worker)}
+                            className="px-4 py-2.5 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-black font-black uppercase text-[8px] rounded-xl active:scale-95 transition-all shadow-[0_0_15px_rgba(16,185,129,0.1)] flex items-center gap-1.5"
+                          >
+                            💸 Zelle Payout
+                          </button>
+                        </div>
                       </div>
-                      <div className="flex justify-between items-center border-t border-white/5 pt-3">
-                        <span className="text-[8px] text-slate-400 uppercase font-bold">Standard Discount Value</span>
-                        <span className="text-sm font-black text-[#F5C518]">$25.00</span>
-                      </div>
-                      <p className="text-[7px] text-slate-600 uppercase font-bold italic leading-relaxed">
-                        * Referral discounts are automatically calculated at $25 per referred booking and saved inside mission parameters.
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {financeTab === 'cac' && (
+                <div className="g p-6 bg-[rgba(255,255,255,0.04)] border-[rgba(255,255,255,0.08)] space-y-6">
+                  <div className="flex justify-between items-center border-b border-white/5 pb-4">
+                    <div>
+                      <h3 className="text-xs font-black text-white uppercase tracking-widest font-display">🎯 CANALES DE ADQUISICIÓN, CAC Y ROI</h3>
+                      <p className="text-[7.5px] text-slate-500 uppercase font-bold mt-0.5">Rendimiento publicitario y retorno de inversión por cada origen de leads</p>
+                    </div>
+                    <span className="text-[7.5px] font-black px-2 py-1 rounded-full bg-blue-500/10 text-blue-400 border border-blue-500/25 uppercase tracking-wider">ROI TRACKING</span>
+                  </div>
+
+                  {/* Summary Cards */}
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div className="bg-white/5 border border-white/5 rounded-2xl p-4">
+                      <p className="text-[7.5px] text-slate-500 uppercase font-black tracking-wider">Total Ad Spend</p>
+                      <p className="text-2xl font-black text-red-400 mt-1">
+                        {fmt$(finance.channelReport?.reduce((sum, ch) => sum + (ch.spend || 0), 0) || 0)}
+                      </p>
+                    </div>
+                    <div className="bg-white/5 border border-white/5 rounded-2xl p-4">
+                      <p className="text-[7.5px] text-slate-500 uppercase font-black tracking-wider">Total LTV Generated</p>
+                      <p className="text-2xl font-black text-green-400 mt-1">
+                        {fmt$(finance.channelReport?.reduce((sum, ch) => sum + (ch.ltv || 0), 0) || 0)}
+                      </p>
+                    </div>
+                    <div className="bg-white/5 border border-white/5 rounded-2xl p-4">
+                      <p className="text-[7.5px] text-slate-500 uppercase font-black tracking-wider">Average CAC</p>
+                      <p className="text-2xl font-black text-orange-400 mt-1">
+                        {(() => {
+                          const report = finance.channelReport || [];
+                          const withCac = report.filter(ch => ch.cac > 0);
+                          if (withCac.length === 0) return '—';
+                          const avg = withCac.reduce((sum, ch) => sum + ch.cac, 0) / withCac.length;
+                          return fmt$(avg);
+                        })()}
+                      </p>
+                    </div>
+                    <div className="bg-white/5 border border-white/5 rounded-2xl p-4">
+                      <p className="text-[7.5px] text-slate-500 uppercase font-black tracking-wider">Overall Marketing ROI</p>
+                      <p className="text-2xl font-black text-[#F5C518] mt-1">
+                        {(() => {
+                          const spend = finance.channelReport?.reduce((sum, ch) => sum + (ch.spend || 0), 0) || 0;
+                          const ltv = finance.channelReport?.reduce((sum, ch) => sum + (ch.ltv || 0), 0) || 0;
+                          if (spend <= 0) return '—';
+                          const roi = Math.round(((ltv - spend) / spend) * 100);
+                          return `${roi}%`;
+                        })()}
                       </p>
                     </div>
                   </div>
 
-                  <div className="space-y-3">
-                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">🏆 BRAND AMBASSADORS</p>
-                    <div className="bg-white/5 border border-white/5 rounded-2xl p-5 max-h-[170px] overflow-y-auto nsb">
-                      {referralStats.ambassadors.length === 0 ? (
-                        <p className="text-[8px] text-slate-600 italic uppercase text-center py-6">No active ambassadors yet</p>
-                      ) : (
-                        <div className="space-y-2.5">
-                          {referralStats.ambassadors.slice(0, 5).map((amb, idx) => (
-                            <div key={amb.name} className="flex justify-between items-center text-[8px] uppercase">
-                              <div className="flex items-center gap-2">
-                                <span className="w-4 h-4 rounded-lg bg-[#F5C518]/10 text-[#F5C518] flex items-center justify-center font-black text-[7px]">{idx + 1}</span>
-                                <span className="font-bold text-white">{amb.name.replace(/_/g, ' ')}</span>
-                              </div>
-                              <span className="font-black text-[#F5C518]">{amb.count} friends referred</span>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left text-[9px] uppercase font-bold tracking-wider">
+                      <thead>
+                        <tr className="text-slate-500 border-b border-white/5 pb-2 text-[7.5px]">
+                          <th className="py-2">Canal</th>
+                          <th className="py-2 text-center">Leads</th>
+                          <th className="py-2 text-center">Clientes Activos</th>
+                          <th className="py-2 text-right">Inversión Ad-Spend</th>
+                          <th className="py-2 text-right">CAC Promedio</th>
+                          <th className="py-2 text-right">LTV Generado</th>
+                          <th className="py-2 text-right text-[#F5C518]">ROI</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-white/5">
+                        {finance.channelReport?.map(ch => (
+                          <tr key={ch.key} className="hover:bg-white/[0.02] transition-colors">
+                            <td className="py-3 text-white font-black">{ch.name}</td>
+                            <td className="py-3 text-center text-slate-300">{ch.leads}</td>
+                            <td className="py-3 text-center text-slate-300">{ch.customers}</td>
+                            <td className="py-3 text-right text-slate-300">{fmt$(ch.spend)}</td>
+                            <td className="py-3 text-right text-red-400">{ch.cac > 0 ? fmt$(ch.cac) : '—'}</td>
+                            <td className="py-3 text-right text-green-400">{fmt$(ch.ltv)}</td>
+                            <td className={`py-3 text-right font-black ${ch.roi >= 0 ? 'text-[#F5C518]' : 'text-red-500'}`}>
+                              {ch.spend > 0 ? `${ch.roi}%` : '—'}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
                 </div>
-              </div>
+              )}
             </div>
           )}
 
           {/* =====================================================================
               👑 ADMIN DASHBOARD MISSIONS TABS (agenda)
               ===================================================================== */}
-          {role === 'admin' && view === 'agenda' && (() => {
+          {role === 'admin' && view === 'operations' && operationsTab === 'calendar' && (() => {
             const bulkMarkStatus = async (status) => {
               if (selectedJobs.length === 0) return;
               setLoad(true);
@@ -8661,11 +8850,60 @@ Instrucciones generales de formato:
             const allFilteredIds = filtered.map(j => j.id);
             const isAllSelected = allFilteredIds.length > 0 && allFilteredIds.every(id => selectedJobs.includes(id));
 
+            const getJobsForDay = (dayObj) => {
+              const yyyy = dayObj.year;
+              const mm = String(dayObj.month + 1).padStart(2, '0');
+              const dd = String(dayObj.day).padStart(2, '0');
+              const dateKey = `${yyyy}-${mm}-${dd}`;
+              return filtered.filter(job => {
+                if (!job.scheduled_date) return false;
+                return job.scheduled_date.startsWith(dateKey);
+              });
+            };
+
             return (
               <div className="space-y-4 animate-in fade-in pb-24">
+                {/* Operations Sub-tabs Switcher */}
+                <div className="flex gap-2 bg-black/45 p-1.5 rounded-2xl border border-white/5 overflow-x-auto nsb">
+                  {[
+                    { id: 'calendar', name: '📅 Calendario de Misiones' },
+                    { id: 'reminders', name: `🔔 Recordatorios (${remindersBadgeCount})` },
+                    { id: 'drive', name: '📸 Photo Drive' },
+                    { id: 'deploy', name: '📝 Nueva Cotización' }
+                  ].map(tab => (
+                    <button
+                      key={tab.id}
+                      onClick={() => setOperationsTab(tab.id)}
+                      className={`px-4 py-2.5 rounded-xl text-[9px] font-black uppercase whitespace-nowrap active:scale-95 transition-all ${
+                        operationsTab === tab.id
+                          ? 'bg-[#F5C518] text-black shadow-lg shadow-[#F5C518]/15'
+                          : 'bg-white/5 text-slate-400 hover:text-white hover:bg-white/10'
+                      }`}
+                    >
+                      {tab.name}
+                    </button>
+                  ))}
+                </div>
+
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                   <h2 className="text-xl md:text-2xl font-black tracking-widest uppercase text-white font-display">MISSIONS DIRECTORY</h2>
-                  <input className="inp md:max-w-xs text-xs" placeholder="🔍 Search by name or address..." value={sq} onChange={e => setSQ(e.target.value)} />
+                  <div className="flex items-center gap-3">
+                    <div className="bg-black/45 border border-white/5 rounded-xl p-1 flex gap-1">
+                      <button
+                        onClick={() => setAgendaView('calendar')}
+                        className={`px-3 py-1.5 rounded-lg text-[8px] font-black uppercase transition-all ${agendaView === 'calendar' ? 'bg-[#F5C518] text-black shadow-lg shadow-[#F5C518]/15' : 'text-slate-400 hover:text-white'}`}
+                      >
+                        📅 Calendario
+                      </button>
+                      <button
+                        onClick={() => setAgendaView('list')}
+                        className={`px-3 py-1.5 rounded-lg text-[8px] font-black uppercase transition-all ${agendaView === 'list' ? 'bg-[#F5C518] text-black shadow-lg shadow-[#F5C518]/15' : 'text-slate-400 hover:text-white'}`}
+                      >
+                        📋 Lista
+                      </button>
+                    </div>
+                    <input className="inp md:max-w-xs text-xs" placeholder="🔍 Search by name or address..." value={sq} onChange={e => setSQ(e.target.value)} />
+                  </div>
                 </div>
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div className="flex gap-1.5 overflow-x-auto nsb pb-1">
@@ -8673,104 +8911,275 @@ Instrucciones generales de formato:
                       <button key={s} onClick={() => setFSt(s)} className={`px-4 py-2 rounded-xl text-[8px] font-black uppercase whitespace-nowrap active:scale-95 transition-all ${fSt === s ? 'bg-[#F5C518] text-black shadow-lg shadow-[#F5C518]/15' : 'bg-white/5 text-slate-500'}`}>{s}</button>
                     ))}
                   </div>
-                  <button onClick={() => {
-                    if (isAllSelected) {
-                      setSelectedJobs(selectedJobs.filter(id => !allFilteredIds.includes(id)));
-                    } else {
-                      setSelectedJobs([...new Set([...selectedJobs, ...allFilteredIds])]);
-                    }
-                  }} className="px-3.5 py-2 bg-white/5 hover:bg-white/10 border border-white/5 text-slate-400 hover:text-white rounded-xl text-[8px] font-black uppercase active:scale-95 transition-all flex items-center gap-1.5">
-                    <Icon name={isAllSelected ? "check-square" : "square"} className="w-3.5 h-3.5" />
-                    Select All ({filtered.length})
-                  </button>
+                  {agendaView === 'list' && (
+                    <button onClick={() => {
+                      if (isAllSelected) {
+                        setSelectedJobs(selectedJobs.filter(id => !allFilteredIds.includes(id)));
+                      } else {
+                        setSelectedJobs([...new Set([...selectedJobs, ...allFilteredIds])]);
+                      }
+                    }} className="px-3.5 py-2 bg-white/5 hover:bg-white/10 border border-white/5 text-slate-400 hover:text-white rounded-xl text-[8px] font-black uppercase active:scale-95 transition-all flex items-center gap-1.5">
+                      <Icon name={isAllSelected ? "check-square" : "square"} className="w-3.5 h-3.5" />
+                      Select All ({filtered.length})
+                    </button>
+                  )}
                 </div>
 
-                {filtered.length === 0 && <div className="g p-10 text-center text-slate-500 font-black italic uppercase bg-[rgba(255,255,255,0.04)] border-[rgba(255,255,255,0.08)]">No missions found.</div>}
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {filtered.map(job => {
-                    const isH = job.service_type === 'handyman';
-                    const bal = job.total_price - job.deposit_paid;
-                    const d = dna[job.client_name];
-                    const lv = lvl(d?.count || 0);
-                    const profit = realProfit(job);
-                    const bonus = calcBonus(job);
-                    return (
-                      <div key={job.id} className={`g p-5 border-l-[7px] shadow-xl hover:bg-white/[0.01] transition-all bg-[rgba(255,255,255,0.04)] border-[rgba(255,255,255,0.08)] relative ${isH ? 'border-green-500' : job.status === 'paid' ? 'border-blue-500' : job.status === 'in_progress' ? 'border-green-400' : job.status === 'lead' ? 'border-[#F5C518]' : job.status === 'completed' ? 'border-purple-500' : job.status === 'lost' ? 'border-red-800' : 'border-amber-500'}`}>
-                        <div className="flex justify-between items-start mb-2">
-                          <div className="flex items-center gap-3 flex-1 min-w-0">
-                            <button onClick={() => {
-                              if (selectedJobs.includes(job.id)) {
-                                setSelectedJobs(selectedJobs.filter(id => id !== job.id));
-                              } else {
-                                setSelectedJobs([...selectedJobs, job.id]);
-                              }
-                            }} className="w-5 h-5 rounded-lg border-2 border-white/10 hover:border-[#F5C518] flex items-center justify-center flex-shrink-0 transition-all">
-                              {selectedJobs.includes(job.id) ? (
-                                <div className="w-3 h-3 bg-[#F5C518] rounded-sm" />
-                              ) : null}
-                            </button>
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-1.5 flex-wrap mb-1">
-                                <h3 onClick={() => setSelectedClient(clients.find(c => c.name === job.client_name) || { name: job.client_name, phone: job.client_phone, address: job.address })} className="text-base font-black uppercase italic text-white leading-none hover:text-[#F5C518] cursor-pointer transition-colors">{job.client_name}</h3>
-                            <span className={`text-[6px] font-black px-1.5 py-0.5 rounded-full uppercase ${job.status === 'paid' ? 'bg-blue-600 text-white' : job.status === 'in_progress' ? 'bg-green-600 text-white' : job.status === 'lead' ? 'bg-[#F5C518] text-black' : job.status === 'completed' ? 'bg-purple-600 text-white' : job.status === 'lost' ? 'bg-red-900 text-red-300' : 'bg-slate-700 text-slate-300'}`}>{job.status}</span>
-                            {job.specs?.gps_deviation && (
-                              <span className="text-[6px] bg-red-600 text-white font-black px-1.5 py-0.5 rounded-full animate-pulse flex items-center gap-0.5">
-                                <Icon name="alert-triangle" className="w-2 h-2" /> GPS DEV: {Math.round(job.specs.gps_deviation_meters || 0)}m
-                              </span>
-                            )}
-                            {isH && <span className="text-[6px] bg-green-600 text-black font-black px-1.5 py-0.5 rounded-full">🛠️</span>}
-                            {job.specs?.referred_by && (
-                              <span className="text-[6px] bg-[#F5C518]/10 text-[#F5C518] border border-[#F5C518]/25 font-black px-1.5 py-0.5 rounded-full flex items-center gap-0.5">
-                                🎁 Ref: {job.specs.referred_by.replace(/_/g, ' ')}
-                              </span>
-                            )}
-                          </div>
-                          <p className="text-[8px] text-slate-400 uppercase">{job.service_type} • {fmtD(job.scheduled_date)} • Assigned: {job.team_assigned || 'No worker'}</p>
-                          {job.check_in_time && (
-                            <div className="mt-1 flex flex-wrap gap-1.5 items-center">
-                              <span className="text-[7px] text-green-400 font-bold uppercase">▶ In: {new Date(job.check_in_time).toLocaleTimeString()}</span>
-                              {job.check_out_time && (
-                                <span className="text-[7px] text-purple-400 font-bold uppercase">⏹ Out: {new Date(job.check_out_time).toLocaleTimeString()}</span>
-                              )}
-                              {job.gps_distance_meters !== undefined && job.gps_distance_meters !== null && (
-                                <span className={`text-[7px] font-black px-1.5 py-0.5 rounded uppercase ${Number(job.gps_distance_meters) <= 150 ? 'bg-green-500/10 text-green-400 border border-green-500/25' : 'bg-amber-500/10 text-amber-400 border border-amber-500/25 animate-pulse'}`}>
-                                  📍 {Number(job.gps_distance_meters) <= 150 ? `On-Site (${job.gps_distance_meters}m)` : `Away (${job.gps_distance_meters}m)`}
+                {agendaView === 'calendar' ? (
+                  <div className="g p-6 bg-[rgba(255,255,255,0.04)] border-[rgba(255,255,255,0.08)] rounded-3xl space-y-6">
+                    {/* Calendar Month Selector & Header */}
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/5 pb-4">
+                      <div>
+                        <h3 className="text-sm font-black text-white uppercase tracking-widest font-display flex items-center gap-2">
+                          <span>📅</span>
+                          <span className="bg-gradient-to-r from-amber-400 to-[#F5C518] bg-clip-text text-transparent">
+                            {new Date(calYear, calMonth).toLocaleDateString('es-ES', { month: 'long', year: 'numeric' })}
+                          </span>
+                        </h3>
+                        <p className="text-[7.5px] text-slate-500 uppercase font-bold mt-0.5">
+                          Haz clic en un día vacío para programar, o en una misión para editar.
+                        </p>
+                      </div>
+                      <div className="flex gap-1">
+                        <button
+                          onClick={() => {
+                            if (calMonth === 0) {
+                              setCalMonth(11);
+                              setCalYear(y => y - 1);
+                            } else {
+                              setCalMonth(m => m - 1);
+                            }
+                          }}
+                          className="px-3 py-2 bg-white/5 hover:bg-white/10 text-white rounded-xl active:scale-95 transition-all text-xs font-black"
+                        >
+                          ◀
+                        </button>
+                        <button
+                          onClick={() => {
+                            setCalMonth(new Date().getMonth());
+                            setCalYear(new Date().getFullYear());
+                          }}
+                          className="px-3.5 py-2 bg-white/5 hover:bg-[#F5C518] hover:text-black text-white rounded-xl text-[8px] font-black uppercase active:scale-95 transition-all"
+                        >
+                          Hoy
+                        </button>
+                        <button
+                          onClick={() => {
+                            if (calMonth === 11) {
+                              setCalMonth(0);
+                              setCalYear(y => y + 1);
+                            } else {
+                              setCalMonth(m => m + 1);
+                            }
+                          }}
+                          className="px-3 py-2 bg-white/5 hover:bg-white/10 text-white rounded-xl active:scale-95 transition-all text-xs font-black"
+                        >
+                          ▶
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Day Names Grid */}
+                    <div className="grid grid-cols-7 gap-2 text-center text-[8px] font-black uppercase text-slate-500 tracking-wider">
+                      {['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'].map(d => (
+                        <div key={d} className="py-1 bg-white/[0.02] rounded-lg">{d}</div>
+                      ))}
+                    </div>
+
+                    {/* Calendar Grid */}
+                    <div className="grid grid-cols-7 gap-2">
+                      {(() => {
+                        const firstDay = new Date(calYear, calMonth, 1).getDay();
+                        const startOffset = firstDay === 0 ? 6 : firstDay - 1;
+                        const totalDays = new Date(calYear, calMonth + 1, 0).getDate();
+                        const prevMonthTotalDays = new Date(calYear, calMonth, 0).getDate();
+
+                        const dayCells = [];
+                        for (let i = startOffset - 1; i >= 0; i--) {
+                          dayCells.push({
+                            day: prevMonthTotalDays - i,
+                            month: calMonth === 0 ? 11 : calMonth - 1,
+                            year: calMonth === 0 ? calYear - 1 : calYear,
+                            isCurrentMonth: false
+                          });
+                        }
+                        for (let i = 1; i <= totalDays; i++) {
+                          dayCells.push({
+                            day: i,
+                            month: calMonth,
+                            year: calYear,
+                            isCurrentMonth: true
+                          });
+                        }
+                        const remaining = 42 - dayCells.length;
+                        for (let i = 1; i <= remaining; i++) {
+                          dayCells.push({
+                            day: i,
+                            month: calMonth === 11 ? 0 : calMonth + 1,
+                            year: calMonth === 11 ? calYear + 1 : calYear,
+                            isCurrentMonth: false
+                          });
+                        }
+
+                        return dayCells.map((dayObj, index) => {
+                          const dayJobs = getJobsForDay(dayObj);
+                          const isToday = new Date().getDate() === dayObj.day && 
+                                          new Date().getMonth() === dayObj.month && 
+                                          new Date().getFullYear() === dayObj.year;
+
+                          const yyyy = dayObj.year;
+                          const mm = String(dayObj.month + 1).padStart(2, '0');
+                          const dd = String(dayObj.day).padStart(2, '0');
+                          const dateStr = `${yyyy}-${mm}-${dd}`;
+
+                          return (
+                            <div
+                              key={index}
+                              onClick={(e) => {
+                                if (e.target === e.currentTarget) {
+                                  setState({ ...INIT, date: dateStr });
+                                  setEdit(null);
+                                  setView('deploy');
+                                  setDtab('identity');
+                                  tt(`Agendando misión para ${dateStr} 📅`);
+                                }
+                              }}
+                              className={`min-h-[100px] p-2 bg-black/45 hover:bg-black/60 border rounded-2xl flex flex-col justify-between cursor-pointer transition-all ${
+                                dayObj.isCurrentMonth ? 'border-white/5 text-white' : 'border-transparent text-slate-600 opacity-30'
+                              } ${isToday ? 'border-[#F5C518] shadow-[0_0_15px_rgba(245,197,24,0.15)] bg-[#F5C518]/5' : ''}`}
+                            >
+                              <div className="flex justify-between items-center mb-1">
+                                <span className={`text-[9px] font-black ${isToday ? 'text-[#F5C518]' : 'text-slate-400'}`}>
+                                  {dayObj.day}
                                 </span>
-                              )}
+                                {dayJobs.length > 0 && (
+                                  <span className="text-[6.5px] px-1.5 py-0.5 bg-white/10 text-white font-bold rounded-full">
+                                    {dayJobs.length}
+                                  </span>
+                                )}
+                              </div>
+
+                              <div className="flex-1 space-y-1 overflow-y-auto max-h-[70px] nsb">
+                                {dayJobs.map(job => {
+                                  let statusColor = 'bg-slate-600/20 text-slate-400 border border-slate-500/20';
+                                  if (job.status === 'paid') statusColor = 'bg-blue-600/20 text-blue-400 border border-blue-500/20';
+                                  else if (job.status === 'completed') statusColor = 'bg-purple-600/20 text-purple-400 border border-purple-500/20';
+                                  else if (job.status === 'in_progress') statusColor = 'bg-green-600/20 text-green-400 border border-green-500/20';
+                                  else if (job.status === 'scheduled') statusColor = 'bg-amber-600/20 text-amber-400 border border-amber-500/20';
+                                  else if (job.status === 'lost') statusColor = 'bg-red-600/20 text-red-400 border border-red-500/20';
+
+                                  return (
+                                    <div
+                                      key={job.id}
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setEdit(job.id);
+                                        setState({ ...job.specs, totalPrice: job.total_price });
+                                        setView('deploy');
+                                        setDtab('identity');
+                                        tt(`Editando misión de ${job.client_name} 📝`);
+                                      }}
+                                      className={`p-1 rounded-lg text-[6.5px] font-black uppercase truncate tracking-tight transition-all active:scale-95 ${statusColor} hover:brightness-125`}
+                                      title={`${job.client_name} - ${job.service_type}`}
+                                    >
+                                      {job.client_name.split(' ')[0]} - {job.service_type}
+                                    </div>
+                                  );
+                                })}
+                              </div>
                             </div>
-                          )}
-                        </div>
-                      </div>
-                      <button onClick={() => { setMapAddress(job.address); setView('brief'); tt('🗺️ Mostrando mapa en Dashboard...'); }} className="p-2.5 bg-blue-900/30 text-blue-400 rounded-xl hover:bg-blue-600 transition-all flex items-center justify-center gap-1 text-[8px] font-black uppercase"><Icon name="navigation" className="w-3.5 h-3.5" />Map</button>
+                          );
+                        });
+                      })()}
                     </div>
-                      <p className="text-[8px] text-slate-500 italic mb-2">{job.address}</p>
-                      
-                      <div className="grid grid-cols-3 gap-1 mb-2">
-                        {[['confirm', '✅'], ['reminder', '🔔'], ['review', '⭐'], ['quote', '📋'], ['referral', '🎁'], ['bundle', '🎯']].map(([tp, em]) => (
-                          <button key={tp} onClick={() => wa(job, tp)} className="py-1.5 bg-white/5 border border-white/5 rounded-xl text-[7px] font-black uppercase active:scale-95 text-slate-400 hover:text-white transition-all">{em} {tp}</button>
-                        ))}
-                      </div>
+                  </div>
+                ) : (
+                  <>
+                    {filtered.length === 0 && <div className="g p-10 text-center text-slate-500 font-black italic uppercase bg-[rgba(255,255,255,0.04)] border-[rgba(255,255,255,0.08)]">No missions found.</div>}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {filtered.map(job => {
+                        const isH = job.service_type === 'handyman';
+                        const bal = job.total_price - job.deposit_paid;
+                        const d = dna[job.client_name];
+                        const lv = lvl(d?.count || 0);
+                        const profit = realProfit(job);
+                        const bonus = calcBonus(job);
+                        return (
+                          <div key={job.id} className={`g p-5 border-l-[7px] shadow-xl hover:bg-white/[0.01] transition-all bg-[rgba(255,255,255,0.04)] border-[rgba(255,255,255,0.08)] relative ${isH ? 'border-green-500' : job.status === 'paid' ? 'border-blue-500' : job.status === 'in_progress' ? 'border-green-400' : job.status === 'lead' ? 'border-[#F5C518]' : job.status === 'completed' ? 'border-purple-500' : job.status === 'lost' ? 'border-red-800' : 'border-amber-500'}`}>
+                            <div className="flex justify-between items-start mb-2">
+                              <div className="flex items-center gap-3 flex-1 min-w-0">
+                                <button onClick={() => {
+                                  if (selectedJobs.includes(job.id)) {
+                                    setSelectedJobs(selectedJobs.filter(id => id !== job.id));
+                                  } else {
+                                    setSelectedJobs([...selectedJobs, job.id]);
+                                  }
+                                }} className="w-5 h-5 rounded-lg border-2 border-white/10 hover:border-[#F5C518] flex items-center justify-center flex-shrink-0 transition-all">
+                                  {selectedJobs.includes(job.id) ? (
+                                    <div className="w-3 h-3 bg-[#F5C518] rounded-sm" />
+                                  ) : null}
+                                </button>
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-1.5 flex-wrap mb-1">
+                                    <h3 onClick={() => setSelectedClient(clients.find(c => c.name === job.client_name) || { name: job.client_name, phone: job.client_phone, address: job.address })} className="text-base font-black uppercase italic text-white leading-none hover:text-[#F5C518] cursor-pointer transition-colors">{job.client_name}</h3>
+                                    <span className={`text-[6px] font-black px-1.5 py-0.5 rounded-full uppercase ${job.status === 'paid' ? 'bg-blue-600 text-white' : job.status === 'in_progress' ? 'bg-green-600 text-white' : job.status === 'lead' ? 'bg-[#F5C518] text-black' : job.status === 'completed' ? 'bg-purple-600 text-white' : job.status === 'lost' ? 'bg-red-900 text-red-300' : 'bg-slate-700 text-slate-300'}`}>{job.status}</span>
+                                    {job.specs?.gps_deviation && (
+                                      <span className="text-[6px] bg-red-600 text-white font-black px-1.5 py-0.5 rounded-full animate-pulse flex items-center gap-0.5">
+                                        <Icon name="alert-triangle" className="w-2 h-2" /> GPS DEV: {Math.round(job.specs.gps_deviation_meters || 0)}m
+                                      </span>
+                                    )}
+                                    {isH && <span className="text-[6px] bg-green-600 text-black font-black px-1.5 py-0.5 rounded-full">🛠️</span>}
+                                    {job.specs?.referred_by && (
+                                      <span className="text-[6px] bg-[#F5C518]/10 text-[#F5C518] border border-[#F5C518]/25 font-black px-1.5 py-0.5 rounded-full flex items-center gap-0.5">
+                                        🎁 Ref: {job.specs.referred_by.replace(/_/g, ' ')}
+                                      </span>
+                                    )}
+                                  </div>
+                                  <p className="text-[8px] text-slate-400 uppercase">{job.service_type} • {fmtD(job.scheduled_date)} • Assigned: {job.team_assigned || 'No worker'}</p>
+                                  {job.check_in_time && (
+                                    <div className="mt-1 flex flex-wrap gap-1.5 items-center">
+                                      <span className="text-[7px] text-green-400 font-bold uppercase">▶ In: {new Date(job.check_in_time).toLocaleTimeString()}</span>
+                                      {job.check_out_time && (
+                                        <span className="text-[7px] text-purple-400 font-bold uppercase">⏹ Out: {new Date(job.check_out_time).toLocaleTimeString()}</span>
+                                      )}
+                                      {job.gps_distance_meters !== undefined && job.gps_distance_meters !== null && (
+                                        <span className={`text-[7px] font-black px-1.5 py-0.5 rounded uppercase ${Number(job.gps_distance_meters) <= 150 ? 'bg-green-500/10 text-green-400 border border-green-500/25' : 'bg-amber-500/10 text-amber-400 border border-amber-500/25 animate-pulse'}`}>
+                                          📍 {Number(job.gps_distance_meters) <= 150 ? `On-Site (${job.gps_distance_meters}m)` : `Away (${job.gps_distance_meters}m)`}
+                                        </span>
+                                      )}
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                              <button onClick={() => { setMapAddress(job.address); setView('brief'); tt('🗺️ Mostrando mapa en Dashboard...'); }} className="p-2.5 bg-blue-900/30 text-blue-400 rounded-xl hover:bg-blue-600 transition-all flex items-center justify-center gap-1 text-[8px] font-black uppercase"><Icon name="navigation" className="w-3.5 h-3.5" />Map</button>
+                            </div>
+                            <p className="text-[8px] text-slate-500 italic mb-2">{job.address}</p>
+                            
+                            <div className="grid grid-cols-3 gap-1 mb-2">
+                              {[['confirm', '✅'], ['reminder', '🔔'], ['review', '⭐'], ['quote', '📋'], ['referral', '🎁'], ['bundle', '🎯']].map(([tp, em]) => (
+                                <button key={tp} onClick={() => wa(job, tp)} className="py-1.5 bg-white/5 border border-white/5 rounded-xl text-[7px] font-black uppercase active:scale-95 text-slate-400 hover:text-white transition-all">{em} {tp}</button>
+                              ))}
+                            </div>
 
-
-
-                      <div className="flex justify-between items-end border-t border-white/5 pt-3">
-                        <div>
-                          <p className="text-[8px] text-slate-500 italic font-black uppercase">Balance</p>
-                          <p className="text-3xl font-black italic tracking-tighter text-white leading-none">{fmt$(bal)}</p>
-                        </div>
-                        <div className="flex gap-1.5">
-                          <button onClick={() => setChatJob(job)} className="p-2.5 bg-blue-900/30 text-blue-400 rounded-xl hover:bg-blue-600 transition-all"><Icon name="message-square" className="w-4 h-4" /></button>
-                          <button onClick={() => printInvoice(job)} className="p-2.5 bg-slate-800 text-[#F5C518] rounded-xl hover:scale-110 transition-all"><Icon name="file-text" className="w-4 h-4" /></button>
-                          <button onClick={() => { setEdit(job.id); setState({ ...job.specs, totalPrice: job.total_price }); setView('deploy'); setDtab('identity'); }} className="p-2.5 bg-slate-800 text-white rounded-xl hover:bg-blue-600 transition-all"><Icon name="edit-3" className="w-4 h-4" /></button>
-                          <button onClick={() => { if (confirm('Archive?')) sb.from('elevore_missions').delete().eq('id', job.id).then(() => { tt('Archived ✓'); refresh(); }); }} className="p-2.5 bg-red-900/30 text-red-500 rounded-xl hover:bg-red-600 transition-all"><Icon name="trash-2" className="w-4 h-4" /></button>
-                          <button onClick={() => window.open(`https://wa.me/${job.client_phone?.replace(/\D/g, '') || ''}`)} className="p-2.5 bg-green-600 text-white rounded-xl active:scale-90 transition-all"><Icon name="message-circle" className="w-4 h-4" /></button>
-                        </div>
-                      </div>
+                            <div className="flex justify-between items-end border-t border-white/5 pt-3">
+                              <div>
+                                <p className="text-[8px] text-slate-500 italic font-black uppercase">Balance</p>
+                                <p className="text-3xl font-black italic tracking-tighter text-white leading-none">{fmt$(bal)}</p>
+                              </div>
+                              <div className="flex gap-1.5">
+                                <button onClick={() => setChatJob(job)} className="p-2.5 bg-blue-900/30 text-blue-400 rounded-xl hover:bg-blue-600 transition-all"><Icon name="message-square" className="w-4 h-4" /></button>
+                                <button onClick={() => printInvoice(job)} className="p-2.5 bg-slate-800 text-[#F5C518] rounded-xl hover:scale-110 transition-all"><Icon name="file-text" className="w-4 h-4" /></button>
+                                <button onClick={() => { setEdit(job.id); setState({ ...job.specs, totalPrice: job.total_price }); setView('deploy'); setDtab('identity'); }} className="p-2.5 bg-slate-800 text-white rounded-xl hover:bg-blue-600 transition-all"><Icon name="edit-3" className="w-4 h-4" /></button>
+                                <button onClick={() => { if (confirm('Archive?')) sb.from('elevore_missions').delete().eq('id', job.id).then(() => { tt('Archived ✓'); refresh(); }); }} className="p-2.5 bg-red-900/30 text-red-500 rounded-xl hover:bg-red-600 transition-all"><Icon name="trash-2" className="w-4 h-4" /></button>
+                                <button onClick={() => window.open(`https://wa.me/${job.client_phone?.replace(/\D/g, '') || ''}`)} className="p-2.5 bg-green-600 text-white rounded-xl active:scale-90 transition-all"><Icon name="message-circle" className="w-4 h-4" /></button>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
-                  );
-                })}
-              </div>
+                  </>
+                )}
                 {/* Bulk Actions Panel */}
                 {selectedJobs.length > 0 && (
                   <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 z-[1050] bg-slate-900/90 backdrop-blur-xl border border-white/10 px-6 py-4 rounded-2xl flex flex-wrap items-center gap-4 shadow-2xl animate-in slide-in-from-bottom duration-250">
@@ -8792,8 +9201,32 @@ Instrucciones generales de formato:
           {/* =====================================================================
               👑 ADMIN DASHBOARD CLIENTS TABS (clients)
               ===================================================================== */}
-          {role === 'admin' && view === 'clients' && (
+          {role === 'admin' && view === 'crm' && crmTab === 'dna' && (
             <div className="space-y-4 animate-in fade-in pb-24">
+              {/* CRM Sub-tabs Switcher */}
+              <div className="flex gap-2 bg-black/45 p-1.5 rounded-2xl border border-white/5 overflow-x-auto nsb">
+                {[
+                  { id: 'dna', name: '👥 DNA de Clientes' },
+                  { id: 'vip', name: '💎 Membresías VIP' },
+                  { id: 'referrals', name: '🎁 Retención & Referidos' }
+                ].map(tab => (
+                  <button
+                    key={tab.id}
+                    onClick={() => {
+                      setCrmTab(tab.id);
+                      if (tab.id === 'vip') setMembersTab('vip');
+                    }}
+                    className={`px-4 py-2.5 rounded-xl text-[9px] font-black uppercase whitespace-nowrap active:scale-95 transition-all ${
+                      crmTab === tab.id
+                        ? 'bg-[#F5C518] text-black shadow-lg shadow-[#F5C518]/15'
+                        : 'bg-white/5 text-slate-400 hover:text-white hover:bg-white/10'
+                    }`}
+                  >
+                    {tab.name}
+                  </button>
+                ))}
+              </div>
+
               <div className="g p-5 border-t-4 border-purple-500 bg-[rgba(255,255,255,0.04)] border-[rgba(255,255,255,0.08)]">
                 <h2 className="text-xl font-black tracking-widest uppercase text-white font-display">🧬 CLIENT DNA LEDGER</h2>
               </div>
@@ -8841,180 +9274,32 @@ Instrucciones generales de formato:
             </div>
           )}
 
-          {/* =====================================================================
-              👑 ADMIN DASHBOARD MEMBERSHIPS TABS (members)
-              ===================================================================== */}
-          {role === 'admin' && view === 'members' && (
+
+          {role === 'admin' && view === 'settings' && settingsTab === 'company' && (
             <div className="space-y-6 animate-in fade-in pb-24">
-              {/* Sub-tab Switcher Bar */}
-              <div className="flex gap-2 bg-black/45 p-1.5 rounded-2xl border border-white/5">
-                <button 
-                  onClick={() => setMembersTab('vip')} 
-                  className={`flex-1 py-3 text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 rounded-xl transition-all ${
-                    membersTab === 'vip' 
-                      ? 'bg-[#F5C518] text-black shadow-lg shadow-[#F5C518]/15' 
-                      : 'text-slate-400 hover:text-white hover:bg-white/5'
-                  }`}
-                >
-                  <Icon name="diamond" className="w-4 h-4" />
-                  Membresías VIP
-                </button>
-                <button 
-                  onClick={() => setMembersTab('billing')} 
-                  className={`flex-1 py-3 text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 rounded-xl transition-all ${
-                    membersTab === 'billing' 
-                      ? 'bg-[#F5C518] text-black shadow-lg shadow-[#F5C518]/15' 
-                      : 'text-slate-400 hover:text-white hover:bg-white/5'
-                  }`}
-                >
-                  <Icon name="crown" className="w-4 h-4" />
-                  SaaS Billing
-                </button>
+              {/* Settings Sub-tabs Switcher */}
+              <div className="flex gap-2 bg-black/45 p-1.5 rounded-2xl border border-white/5 overflow-x-auto nsb">
+                {[
+                  { id: 'company', name: '⚙️ Ajustes de Empresa' },
+                  { id: 'billing', name: '👑 Plan SaaS Billing' }
+                ].map(tab => (
+                  <button
+                    key={tab.id}
+                    onClick={() => {
+                      setSettingsTab(tab.id);
+                      if (tab.id === 'billing') setMembersTab('billing');
+                    }}
+                    className={`px-4 py-2.5 rounded-xl text-[9px] font-black uppercase whitespace-nowrap active:scale-95 transition-all ${
+                      settingsTab === tab.id
+                        ? 'bg-[#F5C518] text-black shadow-lg shadow-[#F5C518]/15'
+                        : 'bg-white/5 text-slate-400 hover:text-white hover:bg-white/10'
+                    }`}
+                  >
+                    {tab.name}
+                  </button>
+                ))}
               </div>
 
-              {membersTab === 'vip' ? (
-                <div className="space-y-6 animate-in fade-in">
-                  {/* VIP Header card */}
-                  <div className="g p-6 border-t-4 border-yellow-500 bg-[rgba(255,255,255,0.04)] border-[rgba(255,255,255,0.08)] flex justify-between items-center relative overflow-hidden">
-                    <div>
-                      <h2 className="text-xl font-black tracking-widest uppercase text-white font-display">💎 MOTOR DE MEMBRESÍAS VIP</h2>
-                      <p className="text-[9px] text-slate-400 uppercase tracking-widest mt-1">Gestión de recurrencia activa para clientes</p>
-                    </div>
-                    <p className="text-3xl font-black italic text-[#F5C518]">{isPrivate ? '***' : fmt$(finance.mrr)}<span className="text-[9px] text-slate-500 font-black">/mo MRR</span></p>
-                  </div>
-
-                  {/* Active VIP clients grid */}
-                  <div className="space-y-3">
-                    <h3 className="text-[10px] font-black uppercase tracking-wider text-slate-400 px-1">SOCIOS VIP ACTIVOS</h3>
-                    {clients.filter(c => c.membership && c.membership !== 'none').length === 0 ? (
-                      <div className="g p-8 text-center text-slate-500 font-black uppercase italic">
-                        No hay clientes con membresía VIP activa.
-                      </div>
-                    ) : (
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {clients.filter(c => c.membership && c.membership !== 'none').map(client => {
-                          const mInfo = MBS.find(m => m.id === client.membership) || { name: 'VIP', price: 0, color: '#fbbf24' };
-                          const clientJobs = jobs.filter(j => j.client_name === client.name);
-                          const lastCharge = client.specs?.last_recurrence_charge;
-                          
-                          return (
-                            <div key={client.name} className="g p-5 border-l-4 bg-[rgba(255,255,255,0.03)] border-[rgba(255,255,255,0.06)] hover:border-slate-500/20 transition-all flex flex-col justify-between" style={{ borderColor: mInfo.color }}>
-                              <div>
-                                <div className="flex justify-between items-start">
-                                  <div>
-                                    <h4 className="text-sm font-black uppercase italic text-white leading-none">{client.name}</h4>
-                                    <p className="text-[8px] text-slate-400 uppercase tracking-wider mt-1">{client.address}</p>
-                                  </div>
-                                  <span className="text-[7px] font-black px-2 py-0.5 rounded-full uppercase" style={{ backgroundColor: mInfo.color + '20', color: mInfo.color }}>
-                                    {mInfo.name} (${mInfo.price}/mes)
-                                  </span>
-                                </div>
-
-                                <div className="mt-3 grid grid-cols-2 gap-2 text-[9px] text-slate-400">
-                                  <div>
-                                    <p className="text-[7px] text-slate-500 uppercase font-black">Último Cobro</p>
-                                    <p className="font-bold text-white mt-0.5">
-                                      {lastCharge ? new Date(lastCharge).toLocaleDateString() : 'Sin registros'}
-                                    </p>
-                                  </div>
-                                  <div>
-                                    <p className="text-[7px] text-slate-500 uppercase font-black">Servicios Realizados</p>
-                                    <p className="font-bold text-white mt-0.5">{clientJobs.length} servicios</p>
-                                  </div>
-                                </div>
-                              </div>
-
-                              <div className="mt-4 flex gap-2">
-                                <button 
-                                  onClick={() => simulateRecurrenceCharge(client)}
-                                  className="flex-1 bg-white/5 hover:bg-white/10 text-white font-black uppercase text-[8px] py-2.5 rounded-xl border border-white/10 active:scale-95 transition-all flex items-center justify-center gap-1"
-                                >
-                                  <Icon name="credit-card" className="w-3 h-3 text-[#F5C518]" />
-                                  Cobrar Recurrencia
-                                </button>
-                                <button 
-                                  onClick={() => scheduleNextClean(client)}
-                                  className="flex-1 bg-[#F5C518]/15 hover:bg-[#F5C518]/25 text-[#F5C518] font-black uppercase text-[8px] py-2.5 rounded-xl border border-[#F5C518]/20 active:scale-95 transition-all flex items-center justify-center gap-1"
-                                >
-                                  <Icon name="calendar" className="w-3 h-3" />
-                                  Agendar Limpieza
-                                </button>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Standard Memberships pricing list */}
-                  <div className="space-y-3 pt-4">
-                    <h3 className="text-[10px] font-black uppercase tracking-wider text-slate-400 px-1">PLANES DISPONIBLES</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      {MBS.filter(m => m.id !== 'none').map(m => (
-                        <div key={m.id} className="g p-6 border-l-4 bg-[rgba(255,255,255,0.04)] border-[rgba(255,255,255,0.08)] flex flex-col justify-between min-h-[200px]" style={{ borderColor: m.color }}>
-                          <div className="flex justify-between items-center mb-4">
-                            <h3 className="text-lg font-black uppercase italic text-white font-display">{m.name}</h3>
-                            <p className="text-2xl font-black" style={{ color: m.color }}>{fmt$(m.price)}<span className="text-[9px] text-slate-500">/mo</span></p>
-                          </div>
-                          <ul className="space-y-2 mb-4 flex-1">{m.perks?.map((p, i) => (<li key={i} className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">✓ {p}</li>))}</ul>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                /* SaaS Billing Tab */
-                <div className="space-y-5 animate-in fade-in">
-                  <div className="g p-8 border-t-4 border-[#F5C518] text-center relative overflow-hidden bg-black/40 shadow-[0_0_50px_rgba(245,197,24,0.1)]">
-                    <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(245,197,24,0.15),transparent)]"></div>
-                    <div className="relative z-10 space-y-4">
-                      <div className="w-16 h-16 bg-gradient-to-br from-amber-400 to-amber-600 rounded-2xl mx-auto flex items-center justify-center shadow-[0_0_30px_rgba(245,197,24,0.3)]">
-                        <Icon name="crown" className="w-8 h-8 text-black" />
-                      </div>
-                      <div>
-                        <h2 className="text-2xl font-black uppercase italic text-white tracking-widest">ELEVORE PRO</h2>
-                        <p className="text-[10px] text-amber-500 font-black uppercase tracking-[0.2em] mt-1">SaaS Premium Subscription</p>
-                      </div>
-                      
-                      <div className="py-2">
-                        <span className="text-6xl font-black text-white italic tracking-tighter">$149</span>
-                        <span className="text-slate-500 font-bold uppercase text-[10px] tracking-widest">/month</span>
-                      </div>
-                      
-                      <div className="text-left space-y-3 bg-black/50 p-6 rounded-2xl border border-white/10 max-w-sm mx-auto shadow-inner">
-                        <p className="flex items-center gap-3 text-sm text-slate-300 font-medium"><Icon name="check-circle" className="w-4 h-4 text-[#F5C518]" /> Unlimited Missions & Dispatch</p>
-                        <p className="flex items-center gap-3 text-sm text-slate-300 font-medium"><Icon name="check-circle" className="w-4 h-4 text-[#F5C518]" /> AI Predictive Revenue Engine</p>
-                        <p className="flex items-center gap-3 text-sm text-slate-300 font-medium"><Icon name="check-circle" className="w-4 h-4 text-[#F5C518]" /> Automated Client Portals</p>
-                        <p className="flex items-center gap-3 text-sm text-slate-300 font-medium"><Icon name="check-circle" className="w-4 h-4 text-[#F5C518]" /> Real-time GPS Tracking</p>
-                        <p className="flex items-center gap-3 text-sm text-slate-300 font-medium"><Icon name="check-circle" className="w-4 h-4 text-[#F5C518]" /> WhatsApp Integration</p>
-                      </div>
-
-                      <button onClick={() => { tt('Redirecting to Stripe Checkout... 💳', 'green'); setTimeout(() => window.open('https://stripe.com', '_blank'), 1500); }} className="w-full max-w-sm mx-auto gold py-5 rounded-2xl font-black uppercase text-sm shadow-[0_0_30px_rgba(245,197,24,0.3)] active:scale-95 transition-all flex items-center justify-center gap-2 mt-4 animate-pulse">
-                        <Icon name="credit-card" className="w-5 h-5" />
-                        Upgrade to Pro (Stripe)
-                      </button>
-                      
-                      <p className="text-[8px] text-slate-500 font-bold uppercase tracking-widest pt-3">Secured by Stripe Billing</p>
-                    </div>
-                  </div>
-                  
-                  <div className="g p-6 border border-white/5 bg-black/20">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Current Plan</p>
-                        <p className="text-white font-bold text-sm">Free Trial (MVP)</p>
-                      </div>
-                      <span className="px-3 py-1.5 bg-red-500/20 border border-red-500/30 text-red-400 text-[9px] font-black uppercase tracking-wider rounded-full animate-pulse">Expires in 14 Days</span>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-
-          {role === 'admin' && view === 'settings' && (
-            <div className="space-y-6 animate-in fade-in pb-24">
               <div className="g p-8 border-t-4 border-slate-500 bg-black/40">
                 <h2 className="text-2xl font-black uppercase tracking-widest text-white mb-2">⚙️ Company Settings</h2>
                 <p className="text-[10px] text-slate-400 font-bold uppercase mb-8">Administra la configuracion interna de tu imperio SaaS</p>
@@ -9047,11 +9332,132 @@ Instrucciones generales de formato:
                 
                 <button onClick={saveSettings} className="w-full mt-8 bg-[#F5C518] text-black py-4 rounded-xl font-black uppercase tracking-widest active:scale-95 transition-all">Save Changes</button>
               </div>
+
+              {/* Google Sync & Integration Card */}
+              <div className="g p-8 border-t-4 border-blue-500 bg-black/40 space-y-6">
+                <div>
+                  <h2 className="text-xl font-black uppercase tracking-widest text-white flex items-center gap-2">
+                    <Icon name="link-2" className="w-5 h-5 text-blue-400" /> Google Cloud Link & Sync
+                  </h2>
+                  <p className="text-[10px] text-slate-400 font-bold uppercase mt-0.5">
+                    Sincroniza tus misiones de Elevore con tus calendarios externos en tiempo real
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-2">
+                  {/* Option A: iCal Sync */}
+                  <div className="space-y-3 bg-white/[0.02] p-5 rounded-2xl border border-white/5 flex flex-col justify-between">
+                    <div>
+                      <h3 className="text-xs font-black uppercase text-blue-400 flex items-center gap-1.5">
+                        <Icon name="calendar" className="w-4 h-4" /> Google Calendar (iCal Sync)
+                      </h3>
+                      <p className="text-[7.5px] text-slate-400 uppercase font-bold leading-relaxed mt-1.5">
+                        Suscripción unidireccional automática. Copia este enlace y agrégalo en tu Google Calendar ("Agregar desde URL"). Se actualizará automáticamente en segundo plano.
+                      </p>
+                    </div>
+
+                    <div className="space-y-2 mt-4">
+                      <div className="flex gap-2">
+                        <input
+                          readOnly
+                          className="inp text-[9px] font-mono w-full bg-black/50 border-white/10"
+                          value={`${window.location.origin}/api/calendar-feed?tenant_id=${tenantId || 'default'}`}
+                        />
+                        <button
+                          onClick={() => {
+                            const url = `${window.location.origin}/api/calendar-feed?tenant_id=${tenantId || 'default'}`;
+                            navigator.clipboard.writeText(url);
+                            tt('Enlace iCal copiado ✓', 'green');
+                          }}
+                          className="px-3 bg-blue-600 text-white rounded-xl text-[8px] font-black uppercase hover:bg-blue-700 active:scale-95 transition-all"
+                        >
+                          Copiar
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Option B: Direct OAuth */}
+                  <div className="space-y-3 bg-white/[0.02] p-5 rounded-2xl border border-white/5 flex flex-col justify-between">
+                    <div>
+                      <h3 className="text-xs font-black uppercase text-blue-400 flex items-center gap-1.5">
+                        <Icon name="chrome" className="w-4 h-4" /> Vinculación de Cuenta OAuth
+                      </h3>
+                      <p className="text-[7.5px] text-slate-400 uppercase font-bold leading-relaxed mt-1.5">
+                        Conecta directamente tu cuenta de Google a través de OAuth para integraciones directas bidireccionales y sincronización nativa de eventos.
+                      </p>
+                    </div>
+
+                    <div className="space-y-2 mt-4">
+                      <button
+                        onClick={async () => {
+                          tt('Redirigiendo a Google OAuth...', 'blue');
+                          const { error } = await sb.auth.signInWithOAuth({
+                            provider: 'google',
+                            options: {
+                              scopes: 'https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/calendar',
+                              redirectTo: window.location.origin
+                            }
+                          });
+                          if (error) tt('Error de OAuth: ' + error.message, 'red');
+                        }}
+                        className="w-full py-3 bg-white text-black font-black uppercase text-[9px] rounded-xl hover:bg-slate-200 active:scale-95 transition-all flex items-center justify-center gap-2 shadow-[0_0_15px_rgba(255,255,255,0.15)]"
+                      >
+                        <svg className="w-4 h-4" viewBox="0 0 24 24">
+                          <path
+                            fill="currentColor"
+                            d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+                          />
+                          <path
+                            fill="currentColor"
+                            d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+                          />
+                          <path
+                            fill="currentColor"
+                            d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"
+                          />
+                          <path
+                            fill="currentColor"
+                            d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
+                          />
+                        </svg>
+                        Conectar Google Account
+                      </button>
+                      <span className="text-[6.5px] text-slate-500 uppercase font-bold tracking-wider block text-center mt-1.5">
+                        * Requiere configuración del proveedor en Supabase Console
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           )}
 
-          {role === 'admin' && view === 'payroll' && (
+          {role === 'admin' && view === 'intel' && financeTab === 'payroll' && (
             <div className="space-y-6 animate-in fade-in pb-24">
+              {/* Intel Sub-tabs Switcher */}
+              <div className="flex gap-2 bg-black/45 p-1.5 rounded-2xl border border-white/5 overflow-x-auto nsb">
+                {[
+                  { id: 'summary', name: '📈 Resumen Financiero' },
+                  { id: 'services', name: '💼 Desglose por Servicio' },
+                  { id: 'payroll', name: '👥 Payroll de Equipos' },
+                  { id: 'marketing', name: '🎯 CAC & ROI de Marketing' },
+                  { id: 'inventory', name: '📦 Inventario' }
+                ].map(tab => (
+                  <button
+                    key={tab.id}
+                    onClick={() => setFinanceTab(tab.id)}
+                    className={`px-4 py-2.5 rounded-xl text-[9px] font-black uppercase whitespace-nowrap active:scale-95 transition-all ${
+                      financeTab === tab.id
+                        ? 'bg-[#F5C518] text-black shadow-lg shadow-[#F5C518]/15'
+                        : 'bg-white/5 text-slate-400 hover:text-white hover:bg-white/10'
+                    }`}
+                  >
+                    {tab.name}
+                  </button>
+                ))}
+              </div>
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* Create or Edit Staff Module */}
                 {editingStaff ? (
@@ -9341,8 +9747,30 @@ Instrucciones generales de formato:
           {/* =====================================================================
               👑 ADMIN DASHBOARD PHOTO DRIVE TABS (drive)
               ===================================================================== */}
-          {role === 'admin' && view === 'drive' && (
+          {role === 'admin' && view === 'operations' && operationsTab === 'drive' && (
             <div className="space-y-4 animate-in fade-in pb-24">
+              {/* Operations Sub-tabs Switcher */}
+              <div className="flex gap-2 bg-black/45 p-1.5 rounded-2xl border border-white/5 overflow-x-auto nsb">
+                {[
+                  { id: 'calendar', name: '📅 Calendario de Misiones' },
+                  { id: 'reminders', name: `🔔 Recordatorios (${remindersBadgeCount})` },
+                  { id: 'drive', name: '📸 Photo Drive' },
+                  { id: 'deploy', name: '📝 Nueva Cotización' }
+                ].map(tab => (
+                  <button
+                    key={tab.id}
+                    onClick={() => setOperationsTab(tab.id)}
+                    className={`px-4 py-2.5 rounded-xl text-[9px] font-black uppercase whitespace-nowrap active:scale-95 transition-all ${
+                      operationsTab === tab.id
+                        ? 'bg-[#F5C518] text-black shadow-lg shadow-[#F5C518]/15'
+                        : 'bg-white/5 text-slate-400 hover:text-white hover:bg-white/10'
+                    }`}
+                  >
+                    {tab.name}
+                  </button>
+                ))}
+              </div>
+
               <div className="g p-5 border-t-4 border-blue-500 bg-[rgba(255,255,255,0.04)] border-[rgba(255,255,255,0.08)]">
                 <h2 className="text-xl font-black tracking-widest uppercase text-white font-display">📁 MEDIA STORAGE DRIVE</h2>
               </div>
@@ -9368,8 +9796,30 @@ Instrucciones generales de formato:
           {/* =====================================================================
               👑 ADMIN DASHBOARD NEW ESTIMATE DEPLOY TABS (deploy)
               ===================================================================== */}
-          {role === 'admin' && view === 'deploy' && (
+          {role === 'admin' && view === 'operations' && operationsTab === 'deploy' && (
             <div className="space-y-6 animate-in zoom-in-95 pb-32">
+              {/* Operations Sub-tabs Switcher */}
+              <div className="flex gap-2 bg-black/45 p-1.5 rounded-2xl border border-white/5 overflow-x-auto nsb">
+                {[
+                  { id: 'calendar', name: '📅 Calendario de Misiones' },
+                  { id: 'reminders', name: `🔔 Recordatorios (${remindersBadgeCount})` },
+                  { id: 'drive', name: '📸 Photo Drive' },
+                  { id: 'deploy', name: '📝 Nueva Cotización' }
+                ].map(tab => (
+                  <button
+                    key={tab.id}
+                    onClick={() => setOperationsTab(tab.id)}
+                    className={`px-4 py-2.5 rounded-xl text-[9px] font-black uppercase whitespace-nowrap active:scale-95 transition-all ${
+                      operationsTab === tab.id
+                        ? 'bg-[#F5C518] text-black shadow-lg shadow-[#F5C518]/15'
+                        : 'bg-white/5 text-slate-400 hover:text-white hover:bg-white/10'
+                    }`}
+                  >
+                    {tab.name}
+                  </button>
+                ))}
+              </div>
+
               <div className="flex gap-1 bg-black/40 p-1.5 rounded-xl border border-white/5 overflow-x-auto custom-scroll">
                 {['identity', 'specs', 'add-ons', 'quote', 'money'].map(t => (
                   <button key={t} onClick={() => setDtab(t)} className={`flex-shrink-0 px-4 py-3 rounded-xl text-[9px] uppercase font-black active:scale-95 transition-all ${dtab === t ? 'ton' : 'text-slate-500 hover:text-slate-300'}`}>{t}</button>
@@ -9803,7 +10253,7 @@ Respond ONLY in this exact JSON format (no explanation, no markdown, just raw JS
           {/* =====================================================================
               🎯 CRM RETENCIÓN — Churn Risk & Reactivation Engine
               ===================================================================== */}
-          {role === 'admin' && view === 'crm' && (() => {
+          {role === 'admin' && view === 'crm' && crmTab === 'referrals' && (() => {
             const now = new Date();
             const crmClients = clients.map(c => {
               const cJobs = jobs.filter(j => j.client_name === c.name && j.status === 'paid');
@@ -9818,6 +10268,30 @@ Respond ONLY in this exact JSON format (no explanation, no markdown, just raw JS
             const healthy = crmClients.filter(c => c.churnRisk === 'low');
             return (
               <div className="space-y-5 animate-in fade-in pb-24">
+                {/* CRM Sub-tabs Switcher */}
+                <div className="flex gap-2 bg-black/45 p-1.5 rounded-2xl border border-white/5 overflow-x-auto nsb">
+                  {[
+                    { id: 'dna', name: '👥 DNA de Clientes' },
+                    { id: 'vip', name: '💎 Membresías VIP' },
+                    { id: 'referrals', name: '🎁 Retención & Referidos' }
+                  ].map(tab => (
+                    <button
+                      key={tab.id}
+                      onClick={() => {
+                        setCrmTab(tab.id);
+                        if (tab.id === 'vip') setMembersTab('vip');
+                      }}
+                      className={`px-4 py-2.5 rounded-xl text-[9px] font-black uppercase whitespace-nowrap active:scale-95 transition-all ${
+                        crmTab === tab.id
+                          ? 'bg-[#F5C518] text-black shadow-lg shadow-[#F5C518]/15'
+                          : 'bg-white/5 text-slate-400 hover:text-white hover:bg-white/10'
+                      }`}
+                    >
+                      {tab.name}
+                    </button>
+                  ))}
+                </div>
+
                 <div className="g p-5 border-t-4 border-red-500 bg-[rgba(255,255,255,0.04)]">
                   <h2 className="text-xl font-black tracking-widest uppercase text-white font-display">🎯 CRM RETENCIÓN ENGINE</h2>
                   <p className="text-[8px] text-slate-500 uppercase mt-1">Churn prediction • Re-engagement automation</p>
@@ -9891,7 +10365,7 @@ Respond ONLY in this exact JSON format (no explanation, no markdown, just raw JS
           {/* =====================================================================
               📦 INVENTARIO — Supply & Cost Tracker
               ===================================================================== */}
-          {role === 'admin' && view === 'inventory' && (() => {
+          {role === 'admin' && view === 'intel' && financeTab === 'inventory' && (() => {
             const saveInv = (updated) => { setInventory(updated); localStorage.setItem('elevore_inventory', JSON.stringify(updated)); };
             const addItem = () => { if (!newItem.name.trim()) return; const updated = [...inventory, { ...newItem, id: Date.now() }]; saveInv(updated); setNewItem({ name: '', qty: 0, unit: 'units', minQty: 2, cost: 0 }); tt('Item added ✓'); };
             const updateQty = (id, delta) => { const updated = inventory.map(i => i.id === id ? { ...i, qty: Math.max(0, i.qty + delta) } : i); saveInv(updated); };
@@ -9900,6 +10374,29 @@ Respond ONLY in this exact JSON format (no explanation, no markdown, just raw JS
             const totalValue = inventory.reduce((s, i) => s + (i.qty * i.cost), 0);
             return (
               <div className="space-y-5 animate-in fade-in pb-24">
+                {/* Intel Sub-tabs Switcher */}
+                <div className="flex gap-2 bg-black/45 p-1.5 rounded-2xl border border-white/5 overflow-x-auto nsb">
+                  {[
+                    { id: 'summary', name: '📈 Resumen Financiero' },
+                    { id: 'services', name: '💼 Desglose por Servicio' },
+                    { id: 'payroll', name: '👥 Payroll de Equipos' },
+                    { id: 'marketing', name: '🎯 CAC & ROI de Marketing' },
+                    { id: 'inventory', name: '📦 Inventario' }
+                  ].map(tab => (
+                    <button
+                      key={tab.id}
+                      onClick={() => setFinanceTab(tab.id)}
+                      className={`px-4 py-2.5 rounded-xl text-[9px] font-black uppercase whitespace-nowrap active:scale-95 transition-all ${
+                        financeTab === tab.id
+                          ? 'bg-[#F5C518] text-black shadow-lg shadow-[#F5C518]/15'
+                          : 'bg-white/5 text-slate-400 hover:text-white hover:bg-white/10'
+                      }`}
+                    >
+                      {tab.name}
+                    </button>
+                  ))}
+                </div>
+
                 <div className="g p-5 border-t-4 border-purple-500 bg-[rgba(255,255,255,0.04)]">
                   <h2 className="text-xl font-black tracking-widest uppercase text-white font-display">📦 INVENTARIO DE SUMINISTROS</h2>
                   <p className="text-[8px] text-slate-500 uppercase mt-1">Supply tracking • Cost control per service</p>
@@ -9966,7 +10463,7 @@ Respond ONLY in this exact JSON format (no explanation, no markdown, just raw JS
           {/* =====================================================================
               🔔 RECORDATORIOS — Smart Reminder & Notification System
               ===================================================================== */}
-          {role === 'admin' && view === 'reminders' && (() => {
+          {role === 'admin' && view === 'operations' && operationsTab === 'reminders' && (() => {
             const saveRem = (updated) => { setReminders(updated); localStorage.setItem('elevore_reminders', JSON.stringify(updated)); };
             const addReminder = () => { if (!newRem.title.trim()) return; saveRem([...reminders, { ...newRem, id: Date.now(), done: false }]); setNewRem({ title: '', date: '', time: '', type: 'followup', jobId: '' }); tt('Reminder saved ✓'); };
             const toggleDone = (id) => saveRem(reminders.map(r => r.id === id ? { ...r, done: !r.done } : r));
@@ -9981,6 +10478,28 @@ Respond ONLY in this exact JSON format (no explanation, no markdown, just raw JS
             const typeColors = { followup: 'text-blue-400 bg-blue-500/10 border-blue-500/20', payment: 'text-green-400 bg-green-500/10 border-green-500/20', review: 'text-yellow-400 bg-yellow-500/10 border-yellow-500/20', call: 'text-purple-400 bg-purple-500/10 border-purple-500/20', auto: 'text-amber-400 bg-amber-500/10 border-amber-500/20' };
             return (
               <div className="space-y-5 animate-in fade-in pb-24">
+                {/* Operations Sub-tabs Switcher */}
+                <div className="flex gap-2 bg-black/45 p-1.5 rounded-2xl border border-white/5 overflow-x-auto nsb">
+                  {[
+                    { id: 'calendar', name: '📅 Calendario de Misiones' },
+                    { id: 'reminders', name: `🔔 Recordatorios (${remindersBadgeCount})` },
+                    { id: 'drive', name: '📸 Photo Drive' },
+                    { id: 'deploy', name: '📝 Nueva Cotización' }
+                  ].map(tab => (
+                    <button
+                      key={tab.id}
+                      onClick={() => setOperationsTab(tab.id)}
+                      className={`px-4 py-2.5 rounded-xl text-[9px] font-black uppercase whitespace-nowrap active:scale-95 transition-all ${
+                        operationsTab === tab.id
+                          ? 'bg-[#F5C518] text-black shadow-lg shadow-[#F5C518]/15'
+                          : 'bg-white/5 text-slate-400 hover:text-white hover:bg-white/10'
+                      }`}
+                    >
+                      {tab.name}
+                    </button>
+                  ))}
+                </div>
+
                 <div className="g p-5 border-t-4 border-amber-500 bg-[rgba(255,255,255,0.04)]">
                   <h2 className="text-xl font-black tracking-widest uppercase text-white font-display">🔔 RECORDATORIOS & NOTIFICACIONES</h2>
                   <p className="text-[8px] text-slate-500 uppercase mt-1">Smart alerts • Auto-generated from missions</p>

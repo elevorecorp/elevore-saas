@@ -1,0 +1,219 @@
+{
+  "name": "Elevore - Enviar Correo de Reseña Stateless (Cron)",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "days",
+              "daysInterval": 1
+            }
+          ]
+        }
+      },
+      "id": "cron-trigger",
+      "name": "Cron (Cada Día)",
+      "type": "n8n-nodes-base.cron",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://YOUR_SUPABASE_PROJECT_URL.supabase.co/rest/v1/elevore_missions",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "YOUR_SUPABASE_ANON_KEY"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer YOUR_SUPABASE_ANON_KEY"
+            }
+          ]
+        },
+        "sendQueryParameters": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "status",
+              "value": "eq.paid"
+            },
+            {
+              "name": "review_requested",
+              "value": "eq.false"
+            },
+            {
+              "name": "select",
+              "value": "id,client_name,client_phone,service_type,total_price,specs"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "supabase-query",
+      "name": "Supabase (Misiones Completadas)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        220,
+        0
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "supabase-headers",
+          "name": "Supabase Headers"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "={{ $json }}",
+        "options": {}
+      },
+      "id": "split-batch",
+      "name": "Split In Batches (Por Misión)",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 1,
+      "position": [
+        440,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "fromEmail": "elevorecorporation@gmail.com",
+        "toEmail": "={{ $json.specs.email || $json.specs.client_email || 'cliente@ejemplo.com' }}",
+        "subject": "¡Déjanos tu opinión! Nos ayuda a mejorar 🌟",
+        "emailFormat": "html",
+        "html": "=<!DOCTYPE html>\n<html lang=\"es\">\n<head>\n  <meta charset=\"UTF-8\">\n  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n  <style>\n    body { background-color: #060609; margin: 0; padding: 0; font-family: sans-serif; }\n    .wrapper { background-color: #060609; padding: 40px 0; }\n    .main-table { background-color: #0d0d12; margin: 0 auto; width: 100%; max-width: 600px; border-radius: 24px; border: 1px solid rgba(245, 197, 24, 0.15); color: #ffffff; padding: 30px; text-align: center; }\n    .logo { color: #F5C518; font-size: 28px; font-weight: 900; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 20px; }\n    .title { font-size: 24px; font-weight: 850; margin-bottom: 15px; }\n    .desc { color: #a1a1aa; font-size: 14px; line-height: 1.6; margin-bottom: 30px; }\n    .btn { display: inline-block; background-color: #F5C518; color: #060609 !important; font-weight: 800; text-decoration: none; padding: 15px 30px; border-radius: 12px; font-size: 13px; }\n  </style>\n</head>\n<body>\n  <div class=\"wrapper\">\n    <div class=\"main-table\">\n      <div class=\"logo\">ELEVORE</div>\n      <h1 class=\"title\">¡Hola {{ $json.client_name }}!</h1>\n      <p class=\"desc\">\n        Hace unos días completamos tu servicio de <strong>{{ $json.service_type }}</strong>. Nos encantaría saber si quedaste 100% conforme con el trabajo de nuestro equipo.\n      </p>\n      <a href=\"https://g.page/r/review\" class=\"btn\">Dejar una Reseña ⭐⭐⭐⭐⭐</a>\n    </div>\n  </div>\n</body>\n</html>",
+        "options": {}
+      },
+      "id": "send-email",
+      "name": "Send Email (SMTP) - Review Request",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        660,
+        -100
+      ],
+      "credentials": {
+        "smtp": {
+          "id": "smtp-credentials",
+          "name": "Elevore Gmail SMTP"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "=https://YOUR_SUPABASE_PROJECT_URL.supabase.co/rest/v1/elevore_missions?id=eq.{{ $json.id }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "YOUR_SUPABASE_ANON_KEY"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer YOUR_SUPABASE_ANON_KEY"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "review_requested",
+              "value": "true"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "supabase-update",
+      "name": "Supabase (Marcar Notificado)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        880,
+        -100
+      ]
+    }
+  ],
+  "connections": {
+    "Cron (Cada Día)": {
+      "main": [
+        [
+          {
+            "node": "Supabase (Misiones Completadas)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Supabase (Misiones Completadas)": {
+      "main": [
+        [
+          {
+            "node": "Split In Batches (Por Misión)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split In Batches (Por Misión)": {
+      "main": [
+        [
+          {
+            "node": "Send Email (SMTP) - Review Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Email (SMTP) - Review Request": {
+      "main": [
+        [
+          {
+            "node": "Supabase (Marcar Notificado)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Supabase (Marcar Notificado)": {
+      "main": [
+        [
+          {
+            "node": "Split In Batches (Por Misión)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {},
+  "staticData": null,
+  "pinData": null,
+  "active": true
+}
