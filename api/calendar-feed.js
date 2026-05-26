@@ -1,7 +1,9 @@
-import { createClient } from '@supabase/supabase-js';
+import postgres from 'postgres';
+import { drizzle } from 'drizzle-orm/postgres-js';
+import { eq } from 'drizzle-orm';
+import * as schema from '../src/db/schema.js';
 
-const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || '';
-const supabaseAnonKey = process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || '';
+const connectionString = process.env.DATABASE_URL;
 
 export default async function handler(req, res) {
   // CORS Headers
@@ -19,20 +21,22 @@ export default async function handler(req, res) {
       return res.status(400).send('Error: Missing tenant_id parameter');
     }
 
-    if (!supabaseUrl || !supabaseAnonKey) {
-      return res.status(500).send('Error: Supabase environment variables not configured on server');
+    if (!connectionString) {
+      return res.status(500).send('Error: DATABASE_URL is not configured on the server environment');
     }
 
-    const supabase = createClient(supabaseUrl, supabaseAnonKey);
-    const { data: missions, error } = await supabase
-      .from('elevore_missions')
-      .select('*')
-      .eq('tenant_id', tenant_id);
+    // Initialize Drizzle client
+    const client = postgres(connectionString, { prepare: false });
+    const db = drizzle(client, { schema });
 
-    if (error) {
-      console.error('Supabase error fetching missions:', error);
-      return res.status(500).send('Database error fetching missions');
-    }
+    // Fetch missions using Drizzle ORM
+    const missions = await db
+      .select()
+      .from(schema.elevoreMissions)
+      .where(eq(schema.elevoreMissions.tenantId, tenant_id));
+
+    // Close postgres client to free connection
+    await client.end();
 
     // iCal (RFC 5545) Header
     let ics = [
@@ -70,7 +74,7 @@ export default async function handler(req, res) {
       // Skip lost leads to keep calendar clean
       if (job.status === 'lost') continue;
 
-      const dateStr = job.scheduled_date;
+      const dateStr = job.scheduledDate;
       if (!dateStr) continue;
 
       const start = formatDateToICS(dateStr) || formatDayOnlyToICS(dateStr);
@@ -87,11 +91,10 @@ export default async function handler(req, res) {
       }
 
       const uid = `job-${job.id}@elevore-saas.vercel.app`;
-      const dtstamp = formatDateToICS(job.created_at) || formatDateToICS(new Date()) || '';
+      const dtstamp = formatDateToICS(job.createdAt) || formatDateToICS(new Date()) || '';
       
-      const summary = `[${job.status.toUpperCase()}] ${job.client_name} - ${job.service_type || 'Servicio'}`;
-      const description = `Servicio: ${job.service_type || 'N/A'}\\nCliente: ${job.client_name}\\nTeléfono: ${job.client_phone || 'N/A'}\\nDirección: ${job.address || 'N/A'}\\nEstado: ${job.status}\\nPrecio: $${job.total_price || 0} USD\\nEquipo: ${job.team_assigned || 'Por asignar'}`;
-      const location = job.address || '';
+      const summary = `[${String(job.status).toUpperCase()}] ${job.clientName} - ${job.serviceType || 'Servicio'}`;
+      const description = `Servicio: ${job.serviceType || 'N/A'}\\nCliente: ${job.clientName}\\nEstado: ${job.status}\\nPrecio: $${job.totalPrice || 0} USD`;
 
       ics.push('BEGIN:VEVENT');
       ics.push(`UID:${uid}`);
@@ -116,7 +119,6 @@ export default async function handler(req, res) {
 
       ics.push(`SUMMARY:${summary}`);
       ics.push(`DESCRIPTION:${description}`);
-      if (location) ics.push(`LOCATION:${location}`);
       ics.push('END:VEVENT');
     }
 

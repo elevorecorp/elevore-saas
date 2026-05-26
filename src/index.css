@@ -697,3 +697,10 @@ body {
   width: 300px; height: 300px;
   opacity: 0;
 }
+
+/* ============================================================
+   ✨ FOCUS RESETS (Prevents black backgrounds/outlines on touch)
+   ============================================================ */
+button:focus {
+  outline: none !important;
+}

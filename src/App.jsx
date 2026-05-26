@@ -1,6 +1,8 @@
 import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { sb } from './supabase';
 import * as Icons from 'lucide-react';
+import { InventoryTab } from './components/admin/InventoryTab';
+import { RemindersTab } from './components/admin/RemindersTab';
 
 // =====================================================================
 // 🌟 DYNAMIC ICON ENGINE
@@ -216,6 +218,161 @@ const getDistanceMeters = (lat1, lon1, lat2, lon2) => {
     Math.sin(dLon / 2) * Math.sin(dLon / 2);
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   return Math.round(R * c);
+};
+
+
+const triggerInngestEvent = async (event, data) => {
+  try {
+    const response = await fetch('/api/trigger-event', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ event, data }),
+    });
+    if (!response.ok) {
+      console.warn("Failed to dispatch Inngest event", event, response.status);
+    } else {
+      console.log("Inngest event dispatched successfully:", event);
+    }
+  } catch (error) {
+    console.error("Inngest event trigger error:", error);
+  }
+};
+
+
+const triggerOnMyWayEmail = async (job, bizName) => {
+  const email = job.client_email || job.specs?.email || job.email || '';
+  if (!email) return;
+
+  const svcName = {
+    regular: 'Limpieza Residencial Regular',
+    deep: 'Limpieza Residencial Profunda',
+    moveout: 'Limpieza de Mudanza (Move-Out)',
+    postcon: 'Limpieza Post-Construcción',
+    handyman: 'Servicio Handyman / Mantenimiento'
+  }[job.service_type] || job.service_type || 'Servicio Premium';
+
+  try {
+    await fetch('/api/send-email', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        to: email,
+        subject: `🚀 On our way! Your ${bizName} team is heading over`,
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border-top: 4px solid #10b981;">
+            <h2>Hi ${job.client_name || 'Valued Customer'},</h2>
+            <p>Exciting news! Our service team is currently heading towards your address: <strong>${job.address || ''}</strong>.</p>
+            <p>We will be starting your <strong>${svcName}</strong> service shortly. You can expect us to arrive in approximately 20-30 minutes.</p>
+            <p>If you need to share any entry codes, parking details, or last-minute instructions, please let us know by replying to this message or calling us.</p>
+            <p>Thank you for choosing ${bizName}!</p>
+          </div>
+        `
+      })
+    });
+    console.log("Direct 'On-My-Way' email sent successfully");
+  } catch (error) {
+    console.error("Failed to send direct 'On-My-Way' email:", error);
+  }
+};
+
+
+const triggerRatingSubmitEmail = async (job, val, bizName, reviewLink, sb, tenantId) => {
+  const email = job.client_email || job.specs?.email || job.email || '';
+  if (!email) return;
+
+  try {
+    if (val === 5) {
+      await fetch('/api/send-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          to: email,
+          subject: `Could you do us a quick favor? 🏠`,
+          html: `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 8px;">
+              <h2 style="color: #1a202c; text-align: center;">You made our day! ⭐⭐⭐⭐⭐</h2>
+              <p style="color: #4a5568; font-size: 16px;">Hi ${job.client_name || 'Customer'},</p>
+              <p style="color: #4a5568; font-size: 16px; line-height: 1.5;">Thank you so much for your 5-star rating of our service! As a local business, online reviews mean the world to us and help others find us.</p>
+              <p style="color: #4a5568; font-size: 16px; line-height: 1.5;">Could you take 1 minute to share your experience on Google?</p>
+              <div style="text-align: center; margin: 30px 0;">
+                <a href="${reviewLink}" target="_blank" style="display: inline-block; padding: 15px 30px; background-color: #3b82f6; color: white; font-weight: bold; text-decoration: none; border-radius: 8px; font-size: 16px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);">Write a Google Review</a>
+              </div>
+              <p style="color: #4a5568; font-size: 16px;">We appreciate your support so much!</p>
+              <p style="color: #718096; font-size: 14px;">— The team at ${bizName}</p>
+            </div>
+          `
+        })
+      });
+      console.log("Direct Google Review email sent successfully");
+    } else if (val <= 3 && val > 0 && sb && tenantId) {
+      const { data: admins } = await sb.from('staff_profiles').select('staff_email, email').eq('tenant_id', tenantId).eq('role', 'admin').limit(1);
+      const adminEmail = admins?.[0]?.staff_email || admins?.[0]?.email;
+      if (adminEmail) {
+        await fetch('/api/send-email', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            to: adminEmail,
+            subject: `⚠️ ACTION REQUIRED: Low Customer Rating (${val}/5) ⚠️`,
+            html: `
+              <h3>Attention Admin,</h3>
+              <p>A client has left a low rating for service ID: <strong>${job.id}</strong></p>
+              <ul>
+                <li><strong>Client:</strong> ${job.client_name}</li>
+                <li><strong>Phone:</strong> ${job.client_phone}</li>
+                <li><strong>Rating:</strong> ${val}/5 Stars</li>
+                <li><strong>Service:</strong> ${job.service_type}</li>
+                <li><strong>Team Assigned:</strong> ${job.team_assigned || "Unassigned"}</li>
+              </ul>
+              <p>Please contact the client to resolve any issues and protect our service quality reputation.</p>
+            `
+          })
+        });
+        console.log("Direct low rating admin alert email sent successfully");
+      }
+    }
+  } catch (error) {
+    console.error("Failed to send rating email:", error);
+  }
+};
+
+
+const triggerFeedbackRequestEmail = async (job, bizName) => {
+  const email = job.client_email || job.specs?.email || job.email || '';
+  if (!email) return;
+
+  const ratingUrl = `https://elevore-saas.vercel.app/?jid=${job.id}`;
+
+  try {
+    await fetch('/api/send-email', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        to: email,
+        subject: `How did we do? Rate your service with ${bizName} ✨`,
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 8px;">
+            <h2 style="color: #1a202c; text-align: center;">Thank you for choosing ${bizName}!</h2>
+            <p style="color: #4a5568; font-size: 16px; line-height: 1.5;">Hi ${job.client_name || 'valued customer'},</p>
+            <p style="color: #4a5568; font-size: 16px; line-height: 1.5;">We completed your <strong>${job.service_type || 'service'}</strong>. We'd love to know how we did! Please take 5 seconds to rate your experience:</p>
+            <div style="text-align: center; margin: 30px 0;">
+              <a href="${ratingUrl}&rating=5" style="display: inline-block; padding: 12px 24px; margin: 5px; background-color: #fbbf24; color: black; font-weight: bold; text-decoration: none; border-radius: 8px; font-size: 18px;">⭐⭐⭐⭐⭐ Excellent</a>
+              <br/><br/>
+              <a href="${ratingUrl}&rating=4" style="display: inline-block; padding: 10px 20px; margin: 5px; background-color: #f3f4f6; color: #4a5568; text-decoration: none; border-radius: 8px;">⭐⭐⭐⭐ Good</a>
+              <a href="${ratingUrl}&rating=3" style="display: inline-block; padding: 10px 20px; margin: 5px; background-color: #f3f4f6; color: #4a5568; text-decoration: none; border-radius: 8px;">⭐⭐⭐ Okay</a>
+              <a href="${ratingUrl}&rating=1" style="display: inline-block; padding: 10px 20px; margin: 5px; background-color: #f3f4f6; color: #4a5568; text-decoration: none; border-radius: 8px;">⭐ Disappointed</a>
+            </div>
+            <p style="color: #718096; font-size: 12px; text-align: center;">Clicking any button will take you to your client portal to submit comments.</p>
+          </div>
+        `
+      })
+    });
+    console.log("Direct feedback request email sent successfully");
+  } catch (error) {
+    console.error("Failed to send direct feedback request email:", error);
+  }
 };
 
 
@@ -1416,10 +1573,16 @@ function Portal({ cjid }) {
     if (job) {
       triggerN8nEmail({ ...job, status: 'paid', final_signature: sig });
       await checkAndScheduleNextMission({ ...job, final_signature: sig, status: 'paid' });
+      triggerFeedbackRequestEmail({ ...job, status: 'paid', final_signature: sig }, tenantSettings?.business_full_name || "Elevore Premium Services");
     }
     load();
   };
-  const submitRating = async () => { await sb.from('elevore_missions').update({ client_rating: rating }).eq('id', cjid); setRDone(true); tt('⭐ Thank you!'); };
+  const submitRating = async () => { 
+    await sb.from('elevore_missions').update({ client_rating: rating }).eq('id', cjid); 
+    setRDone(true); 
+    tt('⭐ Thank you!'); 
+    triggerRatingSubmitEmail(job, rating, tenantSettings?.business_full_name || "Elevore Premium Services", tenantSettings?.google_review_link || "https://g.page/r/review", sb, job.tenant_id);
+  };
 
   // Uber-Style Timeline Steps calculation
   const steps = [
@@ -1869,10 +2032,10 @@ function Portal({ cjid }) {
                         <button 
                           onClick={async () => {
                             const val = m.tempRating;
-                            if (!val) return;
                             await sb.from('elevore_missions').update({ client_rating: val }).eq('id', m.id);
                             setClientMissions(prev => prev.map(x => x.id === m.id ? { ...x, client_rating: val } : x));
                             tt('⭐ Thank you!');
+                            triggerRatingSubmitEmail(m, val, tenantSettings?.business_full_name || "Elevore Premium Services", tenantSettings?.google_review_link || "https://g.page/r/review", sb, m.tenant_id);
                           }}
                           disabled={!m.tempRating}
                           className={`w-full py-1.5 rounded-lg font-black uppercase text-[7px] ${m.tempRating ? 'bg-[#F5C518] text-black' : 'bg-white/5 text-slate-500'}`}
@@ -2634,7 +2797,7 @@ function AIAdvisor({ jobs, clients, staff, isStaff, activeUser, onClose, tt, onO
     if (saved === 'http://localhost:11434') return 'http://127.0.0.1:11434';
     return saved || 'http://127.0.0.1:11434';
   });
-  const [ollamaModel, setOllamaModel] = useState(() => localStorage.getItem('elevore_ollama_model') || 'llama3');
+  const [ollamaModel, setOllamaModel] = useState(() => localStorage.getItem('elevore_ollama_model') || 'llama3.2');
   const [geminiModel, setGeminiModel] = useState(() => localStorage.getItem('elevore_gemini_model') || 'gemini-2.5-flash');
   const [geminiKey, setGeminiKey] = useState(() => localStorage.getItem('elevore_gemini_key') || '');
   const [showSettings, setShowSettings] = useState(false);
@@ -2999,7 +3162,7 @@ Habla en español. Sé directo, estratégico y orientado a resultados. Si el CEO
                       1. Abre tu terminal y ejecuta:
                     </p>
                     <code className="block bg-black p-1.5 rounded text-[7px] font-mono text-green-400 break-all select-all">
-                      $env:OLLAMA_ORIGINS="*" ; ollama run {ollamaModel || 'llama3'}
+                      $env:OLLAMA_ORIGINS="*" ; ollama run {ollamaModel || 'llama3.2'}
                     </code>
                   </div>
                 </div>
@@ -3222,7 +3385,7 @@ function PublicLeadForm({ refCode }) {
       // Extract tenant from URL (?t=tenantId encoded in referral link)
       const urlParams = new URLSearchParams(window.location.search);
       const tenantFromUrl = urlParams.get('t');
-      await sb.from('elevore_missions').insert([{
+      const { data: inserted, error } = await sb.from('elevore_missions').insert([{
         client_name: form.name,
         client_phone: form.phone,
         address: form.address,
@@ -3232,7 +3395,10 @@ function PublicLeadForm({ refCode }) {
         tenant_id: tenantFromUrl || null,
         specs: { referred_by: referrer, referral_discount: 25, referred_by_client_name: referrer },
         created_at: new Date().toISOString()
-      }]);
+      }]).select();
+      if (inserted && inserted[0]) {
+        triggerInngestEvent('elevore/quote.created', { jobId: inserted[0].id });
+      }
       setSubmitted(true);
     } catch (err) {
       alert('Error submitting request. Please try again.');
@@ -5198,6 +5364,13 @@ export default function App() {
   const [user, setUser] = useState(null);
   const [tenantSettings, setTenantSettings] = useState(null);
   
+  const getPayoutPct = (worker) => {
+    if (worker && worker.payout_pct !== undefined && worker.payout_pct !== null) {
+      return Number(worker.payout_pct) / 100;
+    }
+    return tenantSettings?.staff_pay_pct !== undefined ? Number(tenantSettings.staff_pay_pct) : DEFAULT_CFG.STAFF_PAY;
+  };
+  
   // Custom states
   const [activeMapAddress, setMapAddress] = useState('');
   const [aiOpen, setAIOpen] = useState(false);
@@ -5235,6 +5408,7 @@ export default function App() {
   const [prefEntryCode, setPrefEntryCode] = useState('');
   const [prefProducts, setPrefProducts] = useState('');
   const [prefNotes, setPrefNotes] = useState('');
+  const [prefLang, setPrefLang] = useState('en');
   const [selectedJobs, setSelectedJobs] = useState([]);
   const [agendaView, setAgendaView] = useState('calendar');
   const [calMonth, setCalMonth] = useState(new Date().getMonth());
@@ -5333,7 +5507,7 @@ Instrucciones:
       const geminiModel = localStorage.getItem('elevore_gemini_model') || 'gemini-2.5-flash';
       const geminiKey = localStorage.getItem('elevore_gemini_key') || '';
       const ollamaUrl = localStorage.getItem('elevore_ollama_url') || 'http://127.0.0.1:11434';
-      const ollamaModel = localStorage.getItem('elevore_ollama_model') || 'llama3';
+      const ollamaModel = localStorage.getItem('elevore_ollama_model') || 'llama3.2';
 
       let message = '';
       if (aiProvider === 'gemini') {
@@ -5437,6 +5611,7 @@ Instrucciones:
       setPrefEntryCode(prefs.entryCode || '');
       setPrefProducts(prefs.products || '');
       setPrefNotes(prefs.notes || '');
+      setPrefLang(selectedClient.specs?.lang || 'en');
       setDrawerTab('preferences');
     }
   }, [selectedClient]);
@@ -5447,6 +5622,7 @@ Instrucciones:
     try {
       const updatedSpecs = {
         ...(selectedClient.specs || {}),
+        lang: prefLang,
         preferences: {
           pets: prefPets,
           entryCode: prefEntryCode,
@@ -5658,8 +5834,18 @@ Instrucciones:
       const fd = { 'weekly': 7, 'bi-weekly': 14, 'monthly': 30, 'one-time': null }[state.frequency];
       let nv = null; if (fd && state.date) { const d = new Date(state.date); d.setDate(d.getDate() + fd); nv = d.toISOString().split('T')[0]; }
       const payload = { client_name: state.name, client_phone: state.phone, address: state.address, service_type: state.svc, total_price: state.totalPrice || pricing.total, deposit_paid: state.deposit, team_assigned: state.team, status: state.status, specs: { ...state, referral: refCode || null }, scheduled_date: state.date || null, notes: state.notes || null, next_visit: nv, membership_plan: state.membership || null, urgency_expires: state.urgencyHours ? new Date(Date.now() + state.urgencyHours * 3600000).toISOString() : null, tenant_id: tenantId };
-      const { error: jErr } = editId ? await sb.from('elevore_missions').update(payload).eq('id', editId) : await sb.from('elevore_missions').insert([payload]);
+      const { data: insertedJobs, error: jErr } = editId 
+        ? await sb.from('elevore_missions').update(payload).eq('id', editId).select() 
+        : await sb.from('elevore_missions').insert([payload]).select();
       if (jErr) { tt('Mission Error: ' + jErr.message, 'red'); setLoad(false); return; }
+      
+      // Trigger Quote Chase if it is a new estimate/lead
+      if (!editId && insertedJobs && insertedJobs[0]) {
+        const job = insertedJobs[0];
+        if (job.status === 'lead' || job.status === 'estimate') {
+          triggerInngestEvent('elevore/quote.created', { jobId: job.id });
+        }
+      }
       setState(INIT); setEdit(null);
       log(`${editId ? 'Updated' : 'New'}: ${state.name} — ${fmt$(state.totalPrice || pricing.total)}`);
       tt(editId ? 'Updated! ⚡' : 'Deployed! 🚀');
@@ -5733,6 +5919,14 @@ Instrucciones:
       triggerN8nEmail({ ...job, ...patch });
       checkAndScheduleNextMission({ ...job, ...patch });
     }
+    if (patch.status === 'paid') {
+      triggerInngestEvent('elevore/mission.paid', { jobId: job.id });
+      triggerFeedbackRequestEmail(job, tenantSettings?.business_full_name || "Elevore Premium Services");
+    }
+    if (patch.status === 'in_progress') {
+      triggerInngestEvent('elevore/mission.in_progress', { jobId: job.id });
+      triggerOnMyWayEmail(job, tenantSettings?.business_full_name || "Elevore Premium Services");
+    }
     refresh();
   };
   
@@ -5741,12 +5935,16 @@ Instrucciones:
     const { error: missionErr } = await sb.from('elevore_missions').update(patch).eq('id', jid);
     if (missionErr) throw missionErr;
     tt(type === 'check_in_time' ? '▶ Checked in!' : '⏹ Checked out!');
+    if (patch.status === 'in_progress') {
+      triggerInngestEvent('elevore/mission.in_progress', { jobId: jid });
+      triggerOnMyWayEmail(jobData, tenantSettings?.business_full_name || "Elevore Premium Services");
+    }
     log(type === 'check_in_time' ? `Check-in: ${jid}` : `Check-out: ${jid}`);
     
     // If checking out, calculate and add earnings dynamically to employee wallet
     if (type === 'check_out_time' && activeEmployee) {
       const currentWorker = staff.find(s => s.id === activeEmployee.id) || activeEmployee;
-      const pct = currentWorker?.payout_pct !== undefined ? (Number(currentWorker.payout_pct) / 100) : DEFAULT_CFG.STAFF_PAY;
+      const pct = getPayoutPct(currentWorker);
       const share = Math.round(jobData.total_price * pct);
       const isFast = Math.round((new Date(time) - new Date(jobData.check_in_time)) / 60000) <= 180;
       const netEarned = share + (isFast ? 5 : 0);
@@ -5842,12 +6040,12 @@ Instrucciones:
   const calcBonus = job => { if (job.status !== 'paid') return 0; const mins = job.check_in_time && job.check_out_time ? Math.round((new Date(job.check_out_time) - new Date(job.check_in_time)) / 60000) : null; return (job.final_signature && mins && mins <= 180 && (job.client_rating || 0) >= 4) ? 5 : 0; };
   const realProfit = job => {
     const w = staff.find(s => s.name === job.team_assigned);
-    const pct = w && w.payout_pct !== undefined ? (Number(w.payout_pct) / 100) : DEFAULT_CFG.STAFF_PAY;
+    const pct = getPayoutPct(w);
     return Math.round((job.deposit_paid || 0) - ((job.deposit_paid || 0) * pct) - (job.specs?.expenses || 0) - calcBonus(job));
   };
   const passQC = job => update(job, { status: 'paid', specs: { ...(job.specs || {}), quality_passed: true, quality_passed_at: new Date().toISOString() } }, 'QC Passed ✓');
   const markLost = async job => { const r = prompt('Lost reason (price/no-answer/competitor/timing):') || 'unknown'; await update(job, { status: 'lost', specs: { ...(job.specs || {}), lost_reason: r, lost_at: new Date().toISOString() } }, 'Marked lost'); };
-  const rebook = job => { setState({ ...INIT, ...(job.specs || {}), name: job.client_name, phone: job.client_phone, address: job.address, status: 'scheduled', deposit: 0, date: job.next_visit || '' }); setEdit(null); setView('deploy'); setDtab('money'); };
+  const rebook = job => { setState({ ...INIT, ...(job.specs || {}), name: job.client_name, phone: job.client_phone, address: job.address, status: 'scheduled', deposit: 0, date: job.next_visit || '' }); setEdit(null); setView('operations'); setOperationsTab('deploy'); setDtab('money'); };
 
   const scheduleNextClean = async (client) => {
     try {
@@ -5937,13 +6135,14 @@ Instrucciones:
     if (!newStaffName || !newStaffPIN || !newStaffEmail) return tt('Name, Email and PIN required', 'red');
     
     // Add locally for robust fallback
+    const defaultPayout = tenantSettings?.staff_pay_pct !== undefined ? Math.round(tenantSettings.staff_pay_pct * 100) : 40;
     const newWorker = {
       id: String(Date.now()), // use timestamp to avoid ID collision
       name: newStaffName,
       staff_email: newStaffEmail,
       role: newStaffRole,
       passcode: newStaffPIN,
-      payout_pct: 40,
+      payout_pct: defaultPayout,
       wallet_balance: 0,
       total_earned: 0
     };
@@ -5956,7 +6155,7 @@ Instrucciones:
         staff_email: newStaffEmail,
         role: newStaffRole,
         passcode: newStaffPIN,
-        payout_pct: 40,
+        payout_pct: defaultPayout,
         wallet_balance: 0,
         total_earned: 0,
         tenant_id: tenantId
@@ -6057,7 +6256,7 @@ Instrucciones:
     const bonuses = jobs.reduce((a, b) => a + calcBonus(b), 0);
     const netPayAllocated = jobs.filter(j => j.status === 'paid').reduce((acc, job) => {
       const w = staff.find(s => s.name === job.team_assigned);
-      const pct = w && w.payout_pct !== undefined ? (Number(w.payout_pct) / 100) : DEFAULT_CFG.STAFF_PAY;
+      const pct = getPayoutPct(w);
       return acc + Math.round((job.deposit_paid || 0) * pct);
     }, 0);
     const net = Math.max(0, Math.round(col - netPayAllocated - exp - bonuses));
@@ -6164,7 +6363,7 @@ Instrucciones:
 
     const payroll = jobs.filter(j => j.status === 'paid').map(j => {
       const w = staff.find(s => s.name === j.team_assigned);
-      const pct = w && w.payout_pct !== undefined ? (Number(w.payout_pct) / 100) : DEFAULT_CFG.STAFF_PAY;
+      const pct = getPayoutPct(w);
       return { name: j.team_assigned || 'Unassigned', amount: Math.round((j.deposit_paid || 0) * pct + calcBonus(j)) };
     }).reduce((acc, { name, amount }) => { acc[name] = (acc[name] || 0) + amount; return acc; }, {});
     const todayJobs = jobs.filter(j => j.scheduled_date === new Date().toISOString().split('T')[0]);
@@ -6315,7 +6514,7 @@ Instrucciones generales de formato:
       const geminiModel = localStorage.getItem('elevore_gemini_model') || 'gemini-2.5-flash';
       const geminiKey = localStorage.getItem('elevore_gemini_key') || '';
       const ollamaUrl = localStorage.getItem('elevore_ollama_url') || 'http://127.0.0.1:11434';
-      const ollamaModel = localStorage.getItem('elevore_ollama_model') || 'llama3';
+      const ollamaModel = localStorage.getItem('elevore_ollama_model') || 'llama3.2';
 
       let message = '';
       if (aiProvider === 'gemini') {
@@ -6800,7 +6999,7 @@ Instrucciones generales de formato:
         : 'No se encontró información de SOPs o notas de clientes relevante a la consulta del usuario.';
 
       const ollamaUrl = localStorage.getItem('elevore_ollama_url') || 'http://127.0.0.1:11434';
-      const ollamaModel = localStorage.getItem('elevore_ollama_model') || 'llama3';
+      const ollamaModel = localStorage.getItem('elevore_ollama_model') || 'llama3.2';
 
       const systemPrompt = view === 'landing' ? `Eres James Sterling, un brillante y sofisticado Consultor de Crecimiento Empresarial de Wall Street y Agente de Ventas de Elevore Empire.
 Tu objetivo en este chat público es convencer al visitante del sitio web de Elevore Empire de registrarse en nuestra plataforma SaaS Premium.
@@ -6976,15 +7175,68 @@ Nómina pagada acumulada por empleado: ${JSON.stringify(finance.payroll)}
     const bizName = tenantSettings?.business_full_name || 'ELEVORE';
     const bizInitial = bizName.charAt(0).toUpperCase();
     const zelle = tenantSettings?.zelle_phone || DEFAULT_CFG.ZELLE;
-    
+
+    const clientObj = clients.find(c => c.name === job.client_name);
+    const lang = clientObj?.specs?.lang || job.specs?.lang || 'es';
+
+    const invoiceI18n = {
+      en: {
+        invoice: 'INVOICE',
+        billTo: 'BILL TO:',
+        service: 'Service',
+        date: 'Date',
+        team: 'Team',
+        checkin: 'Check-in',
+        checkout: 'Check-out',
+        total: 'Total',
+        depositPaid: 'Deposit Paid',
+        balanceDue: 'BALANCE DUE',
+        thanks: 'Thank you for choosing'
+      },
+      es: {
+        invoice: 'FACTURA',
+        billTo: 'FACTURAR A:',
+        service: 'Servicio',
+        date: 'Fecha',
+        team: 'Equipo',
+        checkin: 'Entrada',
+        checkout: 'Salida',
+        total: 'Total',
+        depositPaid: 'Depósito Pagado',
+        balanceDue: 'CANTIDAD DEBIDA',
+        thanks: 'Gracias por elegir a'
+      }
+    };
+
+    const invoiceServices = {
+      en: {
+        regular: 'Regular Cleaning',
+        deep: 'Deep Cleaning',
+        move: 'Move-in/out Cleaning',
+        postcon: 'Post-construction Cleaning',
+        airbnb: 'Airbnb Turnover'
+      },
+      es: {
+        regular: 'Limpieza Regular',
+        deep: 'Limpieza Profunda',
+        move: 'Limpieza de Mudanza',
+        postcon: 'Limpieza Post-construcción',
+        airbnb: 'Giro de Airbnb'
+      }
+    };
+
+    const t = invoiceI18n[lang] || invoiceI18n.es;
+    const svcName = (invoiceServices[lang] || invoiceServices.es)[job.service_type] || String(job.service_type || '').toUpperCase();
+    const dateFormatted = job.scheduled_date ? new Date(job.scheduled_date + 'T00:00:00').toLocaleDateString(lang === 'es' ? 'es-ES' : 'en-US') : '';
+
     w.document.write(`<html><head><style>body{font-family:sans-serif;padding:40px;max-width:600px;margin:auto}.h{border-bottom:4px solid #22c55e;padding-bottom:15px;display:flex;justify-content:space-between;align-items:center}.row{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #eee}.total{background:#000;color:#fff;padding:30px;border-radius:15px;margin-top:20px}.sig{border:2px solid #eee;border-radius:8px;margin-top:15px;padding:8px;text-align:center}</style></head><body>
-<div class="h"><div><h1 style="font-style:italic;margin:0;display:flex;align-items:center;gap:10px"><div style="width:40px;height:40px;background:#000;color:#fff;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:24px;">${bizInitial}</div>${bizName}</h1></div><div style="text-align:right"><h2 style="margin:0">INVOICE #${job.id?.slice(0, 8).toUpperCase()}</h2><p style="margin:0;color:#666;font-size:11px">${new Date().toLocaleDateString()}</p></div></div>
-<div style="margin-top:20px"><h3>BILL TO:</h3><p><b>${job.client_name}</b></p><p>${job.address}</p><p>${job.client_phone || ''}</p></div>
-<div style="margin-top:15px"><div class="row"><span>Service</span><span>${job.service_type?.toUpperCase()}</span></div><div class="row"><span>Date</span><span>${fmtD(job.scheduled_date)}</span></div><div class="row"><span>Team</span><span>${job.team_assigned || 'TBD'}</span></div>${job.check_in_time ? `<div class="row"><span>Check-in</span><span>${new Date(job.check_in_time).toLocaleTimeString()}</span></div>` : ''}${job.check_out_time ? `<div class="row"><span>Check-out</span><span>${new Date(job.check_out_time).toLocaleTimeString()}</span></div>` : ''}<div class="row"><span>Total</span><span>${fmt$(job.total_price)}</span></div><div class="row"><span>Deposit Paid</span><span>-${fmt$(job.deposit_paid)}</span></div></div>
-<div class="total"><h1 style="margin:0">BALANCE DUE: ${fmt$(job.total_price - job.deposit_paid)}</h1><p>Zelle: ${zelle}</p></div>
-${job.approval_signature ? `<div class="sig"><p style="font-size:10px;color:#999;margin:0">CLIENT APPROVAL</p><img src="${job.approval_signature}" style="max-height:60px"/></div>` : ''}
-${job.final_signature ? `<div class="sig"><p style="font-size:10px;color:#999;margin:0">JOB COMPLETION</p><img src="${job.final_signature}" style="max-height:60px"/></div>` : ''}
-<p style="margin-top:40px;text-align:center;color:#999;font-size:11px">Thank you for choosing ${bizName} ⭐</p>
+<div class="h"><div><h1 style="font-style:italic;margin:0;display:flex;align-items:center;gap:10px"><div style="width:40px;height:40px;background:#000;color:#fff;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:24px;">${bizInitial}</div>${bizName}</h1></div><div style="text-align:right"><h2 style="margin:0">${t.invoice} #${job.id?.slice(0, 8).toUpperCase()}</h2><p style="margin:0;color:#666;font-size:11px">${new Date().toLocaleDateString(lang === 'es' ? 'es-ES' : 'en-US')}</p></div></div>
+<div style="margin-top:20px"><h3>${t.billTo}</h3><p><b>${job.client_name}</b></p><p>${job.address}</p><p>${job.client_phone || ''}</p></div>
+<div style="margin-top:15px"><div class="row"><span>${t.service}</span><span>${svcName}</span></div><div class="row"><span>${t.date}</span><span>${dateFormatted}</span></div><div class="row"><span>${t.team}</span><span>${job.team_assigned || 'TBD'}</span></div>${job.check_in_time ? `<div class="row"><span>${t.checkin}</span><span>${new Date(job.check_in_time).toLocaleTimeString(lang === 'es' ? 'es-ES' : 'en-US')}</span></div>` : ''}${job.check_out_time ? `<div class="row"><span>${t.checkout}</span><span>${new Date(job.check_out_time).toLocaleTimeString(lang === 'es' ? 'es-ES' : 'en-US')}</span></div>` : ''}<div class="row"><span>${t.total}</span><span>${fmt$(job.total_price)}</span></div><div class="row"><span>${t.depositPaid}</span><span>-${fmt$(job.deposit_paid)}</span></div></div>
+<div class="total"><h1 style="margin:0">${t.balanceDue}: ${fmt$(job.total_price - job.deposit_paid)}</h1><p>Zelle: ${zelle}</p></div>
+${job.approval_signature ? `<div class="sig"><p style="font-size:10px;color:#999;margin:0">${lang === 'es' ? 'APROBACIÓN DEL CLIENTE' : 'CLIENT APPROVAL'}</p><img src="${job.approval_signature}" style="max-height:60px"/></div>` : ''}
+${job.final_signature ? `<div class="sig"><p style="font-size:10px;color:#999;margin:0">${lang === 'es' ? 'TRABAJO COMPLETADO' : 'JOB COMPLETION'}</p><img src="${job.final_signature}" style="max-height:60px"/></div>` : ''}
+<p style="margin-top:40px;text-align:center;color:#999;font-size:11px">${t.thanks} ${bizName} ⭐</p>
 <script>window.print();<\/script></body></html>`);
     w.document.close();
   };
@@ -7047,7 +7299,7 @@ Instrucciones generales de formato:
         const geminiModel = localStorage.getItem('elevore_gemini_model') || 'gemini-2.5-flash';
         const geminiKey = localStorage.getItem('elevore_gemini_key') || '';
         const ollamaUrl = localStorage.getItem('elevore_ollama_url') || 'http://127.0.0.1:11434';
-        const ollamaModel = localStorage.getItem('elevore_ollama_model') || 'llama3';
+        const ollamaModel = localStorage.getItem('elevore_ollama_model') || 'llama3.2';
 
         let message = '';
         if (aiProvider === 'gemini') {
@@ -7663,6 +7915,14 @@ Instrucciones generales de formato:
                     <div className="space-y-1"><label className="text-[8px] font-black uppercase text-slate-500 tracking-widest pl-1">Mascotas en Casa</label><input className="inp w-full text-xs" placeholder="Ej. Dos perros" value={prefPets} onChange={e => setPrefPets(e.target.value)} /></div>
                     <div className="space-y-1"><label className="text-[8px] font-black uppercase text-slate-500 tracking-widest pl-1">Preferencias de Productos</label><input className="inp w-full text-xs" placeholder="Ej. Productos ecológicos" value={prefProducts} onChange={e => setPrefProducts(e.target.value)} /></div>
                     <div className="space-y-1"><label className="text-[8px] font-black uppercase text-slate-500 tracking-widest pl-1">Notas Internas para el Staff</label><textarea rows={4} className="inp w-full text-xs resize-none" placeholder="Cuidado extra con el piso..." value={prefNotes} onChange={e => setPrefNotes(e.target.value)} /></div>
+                    <div className="space-y-1">
+                      <label className="text-[8px] font-black uppercase text-slate-500 tracking-widest pl-1">Idioma del Cliente / Client Language</label>
+                      <div className="grid grid-cols-2 gap-1.5">
+                        {[{ l: 'English 🇺🇸', v: 'en' }, { l: 'Español 🇪🇸', v: 'es' }].map(lg => (
+                          <button key={lg.v} onClick={() => setPrefLang(lg.v)} className={`py-2 rounded-xl text-[8px] font-black uppercase border-2 active:scale-95 transition-all ${prefLang === lg.v ? 'bg-amber-500 border-amber-500 text-black' : 'bg-white/5 border-white/5 text-slate-500'}`}>{lg.l}</button>
+                        ))}
+                      </div>
+                    </div>
                     <button onClick={saveClientPreferences} className="w-full py-4 bg-[#F5C518] hover:bg-[#F5C518]/90 text-black text-[10px] font-black uppercase tracking-widest rounded-xl active:scale-95 transition-all shadow-[0_0_20px_rgba(245,197,24,0.15)] flex items-center justify-center gap-2">
                       <Icon name="save" className="w-4 h-4" /> Guardar Preferencias
                     </button>
@@ -7726,7 +7986,7 @@ Instrucciones generales de formato:
               </div>
 
               <div className="p-6 border-t border-white/5 bg-black/40 flex gap-2">
-                <button onClick={() => { setState({ ...INIT, ...selectedClient.specs, name: selectedClient.name, phone: selectedClient.phone, address: selectedClient.address }); setSelectedClient(null); setView('deploy'); setDtab('specs'); tt('Quick booking initialized 🚀'); }} className="flex-1 py-3 bg-[#F5C518] hover:bg-[#F5C518]/90 text-black text-[9px] font-black uppercase rounded-xl active:scale-95 transition-all flex items-center justify-center gap-1.5"><Icon name="calendar" className="w-3.5 h-3.5" />+ Agendar Servicio</button>
+                <button onClick={() => { setState({ ...INIT, ...selectedClient.specs, name: selectedClient.name, phone: selectedClient.phone, address: selectedClient.address }); setSelectedClient(null); setView('operations'); setOperationsTab('deploy'); setDtab('specs'); tt('Quick booking initialized 🚀'); }} className="flex-1 py-3 bg-[#F5C518] hover:bg-[#F5C518]/90 text-black text-[9px] font-black uppercase rounded-xl active:scale-95 transition-all flex items-center justify-center gap-1.5"><Icon name="calendar" className="w-3.5 h-3.5" />+ Agendar Servicio</button>
                 <button onClick={() => { setMapAddress(selectedClient.address); setView('brief'); setSelectedClient(null); tt('🗺️ Showing client map...'); }} className="px-4 py-3 bg-white/5 hover:bg-white/10 text-slate-300 border border-white/10 rounded-xl text-[9px] font-black uppercase active:scale-95 transition-all flex items-center justify-center"><Icon name="navigation" className="w-3.5 h-3.5" /></button>
               </div>
             </div>
@@ -8336,6 +8596,19 @@ Instrucciones generales de formato:
                   </button>
                 </div>
                 
+                {activeMapAddress && (
+                  <div className="space-y-2 animate-in slide-in-from-top-4 duration-300">
+                    <div className="flex justify-between items-center bg-[#F5C518]/10 border border-[#F5C518]/25 p-3 rounded-xl">
+                      <div className="flex items-center gap-2">
+                        <Icon name="navigation" className="w-3.5 h-3.5 text-[#F5C518] animate-pulse" />
+                        <span className="text-[9px] font-black text-white uppercase tracking-widest truncate max-w-[240px]">MAP: {activeMapAddress}</span>
+                      </div>
+                      <button onClick={() => setMapAddress('')} className="text-[8px] font-black text-red-400 hover:text-red-300 uppercase active:scale-95 transition-all">✕ Close</button>
+                    </div>
+                    <MapComponent address={activeMapAddress} />
+                  </div>
+                )}
+                
                 {/* Active Services List instead of Tactical Map */}
                 <div className="space-y-2 max-h-[300px] overflow-y-auto custom-scroll">
                   {(() => {
@@ -8806,6 +9079,18 @@ Instrucciones generales de formato:
                   </div>
                 </div>
               )}
+
+              {financeTab === 'inventory' && (
+                <InventoryTab
+                  inventory={inventory}
+                  setInventory={setInventory}
+                  newItem={newItem}
+                  setNewItem={setNewItem}
+                  financeTab={financeTab}
+                  setFinanceTab={setFinanceTab}
+                  tt={tt}
+                />
+              )}
             </div>
           )}
 
@@ -9039,7 +9324,8 @@ Instrucciones generales de formato:
                                 if (e.target === e.currentTarget) {
                                   setState({ ...INIT, date: dateStr });
                                   setEdit(null);
-                                  setView('deploy');
+                                  setView('operations');
+                                  setOperationsTab('deploy');
                                   setDtab('identity');
                                   tt(`Agendando misión para ${dateStr} 📅`);
                                 }
@@ -9074,8 +9360,19 @@ Instrucciones generales de formato:
                                       onClick={(e) => {
                                         e.stopPropagation();
                                         setEdit(job.id);
-                                        setState({ ...job.specs, totalPrice: job.total_price });
-                                        setView('deploy');
+                                        setState({
+                                          ...INIT,
+                                          ...(job.specs || {}),
+                                          name: job.client_name || '',
+                                          phone: job.client_phone || '',
+                                          address: job.address || '',
+                                          date: job.scheduled_date || '',
+                                          status: job.status || 'lead',
+                                          frequency: job.frequency || 'one-time',
+                                          totalPrice: job.total_price || 0,
+                                        });
+                                        setView('operations');
+                                        setOperationsTab('deploy');
                                         setDtab('identity');
                                         tt(`Editando misión de ${job.client_name} 📝`);
                                       }}
@@ -9169,7 +9466,23 @@ Instrucciones generales de formato:
                               <div className="flex gap-1.5">
                                 <button onClick={() => setChatJob(job)} className="p-2.5 bg-blue-900/30 text-blue-400 rounded-xl hover:bg-blue-600 transition-all"><Icon name="message-square" className="w-4 h-4" /></button>
                                 <button onClick={() => printInvoice(job)} className="p-2.5 bg-slate-800 text-[#F5C518] rounded-xl hover:scale-110 transition-all"><Icon name="file-text" className="w-4 h-4" /></button>
-                                <button onClick={() => { setEdit(job.id); setState({ ...job.specs, totalPrice: job.total_price }); setView('deploy'); setDtab('identity'); }} className="p-2.5 bg-slate-800 text-white rounded-xl hover:bg-blue-600 transition-all"><Icon name="edit-3" className="w-4 h-4" /></button>
+                                <button onClick={() => {
+                                  setEdit(job.id);
+                                  setState({
+                                    ...INIT,
+                                    ...(job.specs || {}),
+                                    name: job.client_name || '',
+                                    phone: job.client_phone || '',
+                                    address: job.address || '',
+                                    date: job.scheduled_date || '',
+                                    status: job.status || 'lead',
+                                    frequency: job.frequency || 'one-time',
+                                    totalPrice: job.total_price || 0,
+                                  });
+                                  setView('operations');
+                                  setOperationsTab('deploy');
+                                  setDtab('identity');
+                                }} className="p-2.5 bg-slate-800 text-white rounded-xl hover:bg-blue-600 transition-all"><Icon name="edit-3" className="w-4 h-4" /></button>
                                 <button onClick={() => { if (confirm('Archive?')) sb.from('elevore_missions').delete().eq('id', job.id).then(() => { tt('Archived ✓'); refresh(); }); }} className="p-2.5 bg-red-900/30 text-red-500 rounded-xl hover:bg-red-600 transition-all"><Icon name="trash-2" className="w-4 h-4" /></button>
                                 <button onClick={() => window.open(`https://wa.me/${job.client_phone?.replace(/\D/g, '') || ''}`)} className="p-2.5 bg-green-600 text-white rounded-xl active:scale-90 transition-all"><Icon name="message-circle" className="w-4 h-4" /></button>
                               </div>
@@ -9265,7 +9578,7 @@ Instrucciones generales de formato:
                       <div className="flex gap-1.5 mt-3 flex-wrap">
                         <button onClick={() => lastJob ? wa(lastJob, 'referral') : tt('No previous job', 'red')} className="flex-1 py-2 bg-pink-600/20 text-pink-400 rounded-xl text-[7px] font-black uppercase active:scale-95">🎁 Ref</button>
                         <button onClick={() => lastJob ? wa(lastJob, 'bundle') : tt('No previous job', 'red')} className="flex-1 py-2 bg-blue-600/20 text-blue-400 rounded-xl text-[7px] font-black uppercase active:scale-95">🎯 Bundle</button>
-                        <button onClick={() => { setState({ ...INIT, ...client.specs, name: client.name, phone: client.phone, email: client.email, birthday: client.birthday, address: client.address }); setView('deploy'); setDtab('specs'); }} className="flex-1 py-2 bg-white/5 text-slate-400 rounded-xl text-[7px] font-black uppercase active:scale-95 hover:text-white transition-all">+ Job</button>
+                        <button onClick={() => { setState({ ...INIT, ...client.specs, name: client.name, phone: client.phone, email: client.email, birthday: client.birthday, address: client.address }); setView('operations'); setOperationsTab('deploy'); setDtab('specs'); }} className="flex-1 py-2 bg-white/5 text-slate-400 rounded-xl text-[7px] font-black uppercase active:scale-95 hover:text-white transition-all">+ Job</button>
                       </div>
                     </div>
                   );
@@ -9486,8 +9799,8 @@ Instrucciones generales de formato:
                         </div>
                         <div>
                           <label className="text-[8px] text-slate-400 uppercase font-black tracking-widest block mb-1">Payout Share %</label>
-                          <input type="number" className="inp text-xs w-full text-amber-500 font-bold" min={0} max={100} value={editingStaff.payout_pct !== undefined ? editingStaff.payout_pct : 40} onChange={e => setEditingStaff({ ...editingStaff, payout_pct: Number(e.target.value) || 0 })} />
-                          <span className="text-[7px] text-slate-500 uppercase font-bold tracking-wider block mt-1">Default is {DEFAULT_CFG.STAFF_PAY * 100}%</span>
+                          <input type="number" className="inp text-xs w-full text-amber-500 font-bold" min={0} max={100} value={editingStaff.payout_pct !== undefined ? editingStaff.payout_pct : (tenantSettings?.staff_pay_pct !== undefined ? Math.round(tenantSettings.staff_pay_pct * 100) : 40)} onChange={e => setEditingStaff({ ...editingStaff, payout_pct: Number(e.target.value) || 0 })} />
+                          <span className="text-[7px] text-slate-500 uppercase font-bold tracking-wider block mt-1">Default is {tenantSettings?.staff_pay_pct !== undefined ? Math.round(tenantSettings.staff_pay_pct * 100) : (DEFAULT_CFG.STAFF_PAY * 100)}%</span>
                         </div>
                       </div>
                       <div>
@@ -9572,7 +9885,7 @@ Instrucciones generales de formato:
                               PIN: <span className="text-[#F5C518] font-bold">{worker.passcode}</span> 
                               {worker.staff_email && ` • Email: ${worker.staff_email}`}
                               {worker.phone && ` • Tel: ${worker.phone}`}
-                              <span className="block mt-1">Payout: {worker.payout_pct !== undefined ? worker.payout_pct : 40}%</span>
+                              <span className="block mt-1">Payout: {worker.payout_pct !== undefined ? worker.payout_pct : (tenantSettings?.staff_pay_pct !== undefined ? Math.round(tenantSettings.staff_pay_pct * 100) : 40)}%</span>
                             </p>
                             <p className="text-[7px] text-slate-500 mt-1">Historial acumulado: {fmt$(worker.total_earned || 0)}</p>
                           </div>
@@ -9878,6 +10191,14 @@ Instrucciones generales de formato:
                         ))}
                       </div>
                     </div>
+                    <div>
+                      <p className="text-[8px] text-slate-400 uppercase font-black mb-2 tracking-wider">Idioma del Cliente / Client Language</p>
+                      <div className="grid grid-cols-2 gap-1.5">
+                        {[{ l: 'English 🇺🇸', v: 'en' }, { l: 'Español 🇪🇸', v: 'es' }].map(lg => (
+                          <button key={lg.v} onClick={() => setState({ ...state, lang: lg.v })} className={`py-2 rounded-xl text-[8px] font-black uppercase border-2 active:scale-95 transition-all ${state.lang === lg.v ? 'bg-amber-500 border-amber-500 text-black' : 'bg-white/5 border-white/5 text-slate-500'}`}>{lg.l}</button>
+                        ))}
+                      </div>
+                    </div>
                   </div>
                 )}
 
@@ -9977,7 +10298,7 @@ Respond ONLY in this exact JSON format (no explanation, no markdown, just raw JS
 
                     let ollamaUrl = localStorage.getItem('elevore_ollama_url') || 'http://127.0.0.1:11434';
                     if (ollamaUrl === 'http://localhost:11434') ollamaUrl = 'http://127.0.0.1:11434';
-                    const ollamaModel = localStorage.getItem('elevore_ollama_model') || 'llama3';
+                    const ollamaModel = localStorage.getItem('elevore_ollama_model') || 'llama3.2';
                     const aiProvider = localStorage.getItem('elevore_ai_provider') || 'ollama';
                     const geminiModel = localStorage.getItem('elevore_gemini_model') || 'gemini-2.5-flash';
                     const geminiKey = localStorage.getItem('elevore_gemini_key') || '';
@@ -10245,7 +10566,26 @@ Respond ONLY in this exact JSON format (no explanation, no markdown, just raw JS
                     className="text-[5.5rem] font-black italic tracking-tighter leading-none text-black bg-transparent border-b border-dashed border-black/25 outline-none w-64 text-center font-display focus:border-black"
                   />
                 </div>
-                <button onClick={deploy} className="w-full bg-slate-900 text-white py-5 rounded-2xl font-black text-sm uppercase italic active:scale-95 transition-all shadow-xl shadow-slate-900/10 tracking-widest font-display">{editId ? 'Update Estimate ⚡' : 'Execute Deploy 🚀'}</button>
+                <div className="flex gap-2">
+                  <button onClick={deploy} className="flex-1 bg-slate-900 text-white py-5 rounded-2xl font-black text-sm uppercase italic active:scale-95 transition-all shadow-xl shadow-slate-900/10 tracking-widest font-display">{editId ? 'Update Estimate ⚡' : 'Execute Deploy 🚀'}</button>
+                  <button onClick={async () => {
+                    const { generateQuotePDF } = await import('./utils/pdfGenerator');
+                    generateQuotePDF({
+                      name: state.name,
+                      phone: state.phone,
+                      address: state.address,
+                      svc: state.svc,
+                      beds: state.beds,
+                      baths: state.baths,
+                      sqft: state.sqft,
+                      qp: state.totalPrice || pricing.total,
+                      lang: state.lang || 'en'
+                    });
+                    tt('Presupuesto PDF Descargado ✓', 'green');
+                  }} className="px-5 bg-[#fbbf24] text-black py-5 rounded-2xl font-black text-sm uppercase active:scale-95 transition-all shadow-xl shadow-[#fbbf24]/10 tracking-widest flex items-center justify-center gap-2">
+                    <Icon name="file-text" className="w-5 h-5" /> PDF
+                  </button>
+                </div>
               </div>
             </div>
           )}
@@ -10362,215 +10702,23 @@ Respond ONLY in this exact JSON format (no explanation, no markdown, just raw JS
             );
           })()}
 
-          {/* =====================================================================
-              📦 INVENTARIO — Supply & Cost Tracker
-              ===================================================================== */}
-          {role === 'admin' && view === 'intel' && financeTab === 'inventory' && (() => {
-            const saveInv = (updated) => { setInventory(updated); localStorage.setItem('elevore_inventory', JSON.stringify(updated)); };
-            const addItem = () => { if (!newItem.name.trim()) return; const updated = [...inventory, { ...newItem, id: Date.now() }]; saveInv(updated); setNewItem({ name: '', qty: 0, unit: 'units', minQty: 2, cost: 0 }); tt('Item added ✓'); };
-            const updateQty = (id, delta) => { const updated = inventory.map(i => i.id === id ? { ...i, qty: Math.max(0, i.qty + delta) } : i); saveInv(updated); };
-            const removeItem = (id) => { if (confirm('Remove item?')) { saveInv(inventory.filter(i => i.id !== id)); tt('Removed ✓'); } };
-            const lowStock = inventory.filter(i => i.qty <= i.minQty);
-            const totalValue = inventory.reduce((s, i) => s + (i.qty * i.cost), 0);
-            return (
-              <div className="space-y-5 animate-in fade-in pb-24">
-                {/* Intel Sub-tabs Switcher */}
-                <div className="flex gap-2 bg-black/45 p-1.5 rounded-2xl border border-white/5 overflow-x-auto nsb">
-                  {[
-                    { id: 'summary', name: '📈 Resumen Financiero' },
-                    { id: 'services', name: '💼 Desglose por Servicio' },
-                    { id: 'payroll', name: '👥 Payroll de Equipos' },
-                    { id: 'marketing', name: '🎯 CAC & ROI de Marketing' },
-                    { id: 'inventory', name: '📦 Inventario' }
-                  ].map(tab => (
-                    <button
-                      key={tab.id}
-                      onClick={() => setFinanceTab(tab.id)}
-                      className={`px-4 py-2.5 rounded-xl text-[9px] font-black uppercase whitespace-nowrap active:scale-95 transition-all ${
-                        financeTab === tab.id
-                          ? 'bg-[#F5C518] text-black shadow-lg shadow-[#F5C518]/15'
-                          : 'bg-white/5 text-slate-400 hover:text-white hover:bg-white/10'
-                      }`}
-                    >
-                      {tab.name}
-                    </button>
-                  ))}
-                </div>
-
-                <div className="g p-5 border-t-4 border-purple-500 bg-[rgba(255,255,255,0.04)]">
-                  <h2 className="text-xl font-black tracking-widest uppercase text-white font-display">📦 INVENTARIO DE SUMINISTROS</h2>
-                  <p className="text-[8px] text-slate-500 uppercase mt-1">Supply tracking • Cost control per service</p>
-                </div>
-                {/* KPIs */}
-                <div className="grid grid-cols-3 gap-3">
-                  {[
-                    { label: 'Total Items', val: inventory.length, color: 'text-white' },
-                    { label: 'Stock Bajo', val: lowStock.length, color: 'text-red-400' },
-                    { label: 'Valor Total', val: `$${totalValue.toFixed(0)}`, color: 'text-green-400' },
-                  ].map(k => (
-                    <div key={k.label} className="g p-4 text-center bg-[rgba(255,255,255,0.04)]">
-                      <p className={`text-2xl font-black ${k.color}`}>{k.val}</p>
-                      <p className="text-[7px] text-slate-500 uppercase font-black mt-1">{k.label}</p>
-                    </div>
-                  ))}
-                </div>
-                {/* Low Stock Alert */}
-                {lowStock.length > 0 && (
-                  <div className="g p-4 border border-red-500/30 bg-red-500/5">
-                    <p className="text-[8px] font-black text-red-400 uppercase tracking-widest mb-2">⚠️ STOCK BAJO — Reponer pronto</p>
-                    <div className="flex flex-wrap gap-2">
-                      {lowStock.map(i => <span key={i.id} className="text-[7px] bg-red-500/10 text-red-300 px-2 py-1 rounded-lg border border-red-500/20 font-black">{i.name}: {i.qty} {i.unit}</span>)}
-                    </div>
-                  </div>
-                )}
-                {/* Add Item */}
-                <div className="g p-5 space-y-3 bg-[rgba(255,255,255,0.04)]">
-                  <p className="text-[9px] font-black text-[#F5C518] uppercase tracking-widest">+ AÑADIR ITEM</p>
-                  <div className="grid grid-cols-2 gap-2">
-                    <input className="inp text-xs uppercase" placeholder="Nombre del producto" value={newItem.name} onChange={e => setNewItem({...newItem, name: e.target.value})} />
-                    <input type="text" className="inp text-xs" placeholder="Unit (ej. bottles, units)" value={newItem.unit} onChange={e => setNewItem({...newItem, unit: e.target.value})} />
-                    <input type="number" className="inp text-xs" placeholder="Cantidad" value={newItem.qty} onChange={e => setNewItem({...newItem, qty: parseInt(e.target.value)||0})} />
-                    <input type="number" className="inp text-xs" placeholder="Stock mínimo" value={newItem.minQty} onChange={e => setNewItem({...newItem, minQty: parseInt(e.target.value)||0})} />
-                    <input type="number" className="inp text-xs" placeholder="Costo unitario $" value={newItem.cost} onChange={e => setNewItem({...newItem, cost: parseFloat(e.target.value)||0})} />
-                  </div>
-                  <button onClick={addItem} className="w-full bg-[#F5C518] text-black py-3 rounded-xl font-black uppercase text-[9px] active:scale-95">Agregar al Inventario ✓</button>
-                </div>
-                {/* Stock List */}
-                <div className="space-y-2">
-                  {inventory.length === 0 && <div className="g p-8 text-center text-slate-500 text-[9px] font-black uppercase">No hay items. Añade tu primer suministro ↑</div>}
-                  {inventory.map(item => (
-                    <div key={item.id} className={`g p-4 flex items-center justify-between border ${item.qty <= item.minQty ? 'border-red-500/30 bg-red-500/5' : 'border-white/5 bg-[rgba(255,255,255,0.03)]'}`}>
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2">
-                          <h4 className="text-sm font-black text-white uppercase">{item.name}</h4>
-                          {item.qty <= item.minQty && <span className="text-[5px] bg-red-500/20 text-red-400 border border-red-500/20 px-1.5 py-0.5 rounded font-black uppercase">LOW</span>}
-                        </div>
-                        <p className="text-[7px] text-slate-500 mt-0.5">Min: {item.minQty} {item.unit} • ${item.cost}/unit • Valor: ${(item.qty * item.cost).toFixed(2)}</p>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <button onClick={() => updateQty(item.id, -1)} className="w-8 h-8 bg-white/10 rounded-lg text-white font-bold active:scale-95 text-sm">−</button>
-                        <span className={`text-lg font-black w-8 text-center ${item.qty <= item.minQty ? 'text-red-400' : 'text-white'}`}>{item.qty}</span>
-                        <button onClick={() => updateQty(item.id, 1)} className="w-8 h-8 bg-white/10 rounded-lg text-white font-bold active:scale-95 text-sm">+</button>
-                        <button onClick={() => removeItem(item.id)} className="w-8 h-8 bg-red-900/30 text-red-400 rounded-lg active:scale-95 ml-1 text-xs font-black">✕</button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            );
-          })()}
 
           {/* =====================================================================
               🔔 RECORDATORIOS — Smart Reminder & Notification System
               ===================================================================== */}
-          {role === 'admin' && view === 'operations' && operationsTab === 'reminders' && (() => {
-            const saveRem = (updated) => { setReminders(updated); localStorage.setItem('elevore_reminders', JSON.stringify(updated)); };
-            const addReminder = () => { if (!newRem.title.trim()) return; saveRem([...reminders, { ...newRem, id: Date.now(), done: false }]); setNewRem({ title: '', date: '', time: '', type: 'followup', jobId: '' }); tt('Reminder saved ✓'); };
-            const toggleDone = (id) => saveRem(reminders.map(r => r.id === id ? { ...r, done: !r.done } : r));
-            const deleteRem = (id) => saveRem(reminders.filter(r => r.id !== id));
-            const upcoming = reminders.filter(r => !r.done).sort((a,b) => new Date(a.date+'T'+(a.time||'00:00')) - new Date(b.date+'T'+(b.time||'00:00')));
-            const done = reminders.filter(r => r.done);
-            // Auto-generated reminders from jobs
-            const autoRem = jobs.filter(j => j.scheduled_date && j.status === 'scheduled').map(j => {
-              const d = new Date(j.scheduled_date); d.setDate(d.getDate() - 1);
-              return { id: 'auto_'+j.id, title: `📅 Recordar a ${j.client_name} — servicio mañana`, date: d.toISOString().split('T')[0], type: 'auto', phone: j.client_phone, job: j, auto: true };
-            });
-            const typeColors = { followup: 'text-blue-400 bg-blue-500/10 border-blue-500/20', payment: 'text-green-400 bg-green-500/10 border-green-500/20', review: 'text-yellow-400 bg-yellow-500/10 border-yellow-500/20', call: 'text-purple-400 bg-purple-500/10 border-purple-500/20', auto: 'text-amber-400 bg-amber-500/10 border-amber-500/20' };
-            return (
-              <div className="space-y-5 animate-in fade-in pb-24">
-                {/* Operations Sub-tabs Switcher */}
-                <div className="flex gap-2 bg-black/45 p-1.5 rounded-2xl border border-white/5 overflow-x-auto nsb">
-                  {[
-                    { id: 'calendar', name: '📅 Calendario de Misiones' },
-                    { id: 'reminders', name: `🔔 Recordatorios (${remindersBadgeCount})` },
-                    { id: 'drive', name: '📸 Photo Drive' },
-                    { id: 'deploy', name: '📝 Nueva Cotización' }
-                  ].map(tab => (
-                    <button
-                      key={tab.id}
-                      onClick={() => setOperationsTab(tab.id)}
-                      className={`px-4 py-2.5 rounded-xl text-[9px] font-black uppercase whitespace-nowrap active:scale-95 transition-all ${
-                        operationsTab === tab.id
-                          ? 'bg-[#F5C518] text-black shadow-lg shadow-[#F5C518]/15'
-                          : 'bg-white/5 text-slate-400 hover:text-white hover:bg-white/10'
-                      }`}
-                    >
-                      {tab.name}
-                    </button>
-                  ))}
-                </div>
-
-                <div className="g p-5 border-t-4 border-amber-500 bg-[rgba(255,255,255,0.04)]">
-                  <h2 className="text-xl font-black tracking-widest uppercase text-white font-display">🔔 RECORDATORIOS & NOTIFICACIONES</h2>
-                  <p className="text-[8px] text-slate-500 uppercase mt-1">Smart alerts • Auto-generated from missions</p>
-                </div>
-                {/* Auto-generated from jobs */}
-                {autoRem.length > 0 && (
-                  <div className="space-y-2">
-                    <p className="text-[8px] font-black text-amber-400 uppercase tracking-widest px-1">⚡ AUTO-GENERADOS — Servicios de Mañana</p>
-                    {autoRem.map(r => (
-                      <div key={r.id} className="g p-4 border border-amber-500/20 bg-amber-500/5 flex items-center justify-between">
-                        <div>
-                          <p className="text-[10px] font-black text-white">{r.title}</p>
-                          <p className="text-[7px] text-slate-500 mt-0.5">Fecha: {r.date}</p>
-                        </div>
-                        <button onClick={() => { const ph = (r.phone||'').replace(/\D/g,''); const ph2 = ph.length===10?'1'+ph:ph; window.open(`https://wa.me/${ph2}?text=${encodeURIComponent(`Hi ${r.job.client_name}! 🔔 Recordatorio — mañana tenemos tu servicio de ${r.job.service_type?.toUpperCase()} con Elevore. ¿Tienes alguna pregunta?`)}`, '_blank'); tt('WA sent ✓'); }} className="px-3 py-2 bg-amber-500 text-black text-[7px] font-black uppercase rounded-xl active:scale-95">📱 WA</button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-                {/* Add Reminder */}
-                <div className="g p-5 space-y-3 bg-[rgba(255,255,255,0.04)]">
-                  <p className="text-[9px] font-black text-[#F5C518] uppercase tracking-widest">+ NUEVO RECORDATORIO</p>
-                  <input className="inp text-xs" placeholder="Título del recordatorio..." value={newRem.title} onChange={e => setNewRem({...newRem, title: e.target.value})} />
-                  <div className="grid grid-cols-2 gap-2">
-                    <input type="date" className="inp text-xs" value={newRem.date} onChange={e => setNewRem({...newRem, date: e.target.value})} />
-                    <input type="time" className="inp text-xs" value={newRem.time} onChange={e => setNewRem({...newRem, time: e.target.value})} />
-                  </div>
-                  <div className="grid grid-cols-4 gap-1">
-                    {['followup', 'payment', 'review', 'call'].map(t => (
-                      <button key={t} onClick={() => setNewRem({...newRem, type: t})} className={`py-2 rounded-xl text-[7px] font-black uppercase border transition-all active:scale-95 ${newRem.type === t ? 'bg-[#F5C518] text-black border-[#F5C518]' : 'bg-white/5 border-white/5 text-slate-400'}`}>{t}</button>
-                    ))}
-                  </div>
-                  <button onClick={addReminder} className="w-full bg-[#F5C518] text-black py-3 rounded-xl font-black uppercase text-[9px] active:scale-95">Guardar Recordatorio 🔔</button>
-                </div>
-                {/* Pending */}
-                {upcoming.length > 0 && (
-                  <div className="space-y-2">
-                    <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest px-1">⏰ PENDIENTES ({upcoming.length})</p>
-                    {upcoming.map(r => (
-                      <div key={r.id} className={`g p-4 border flex items-center gap-3 ${typeColors[r.type] || typeColors.followup}`}>
-                        <button onClick={() => toggleDone(r.id)} className="w-6 h-6 rounded-lg border-2 border-current flex items-center justify-center flex-shrink-0">
-                          <Icon name="check" className="w-3.5 h-3.5 opacity-0" />
-                        </button>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-[10px] font-black text-white truncate">{r.title}</p>
-                          <p className="text-[7px] text-slate-500 mt-0.5">{r.date} {r.time && `• ${r.time}`} • {r.type.toUpperCase()}</p>
-                        </div>
-                        <button onClick={() => deleteRem(r.id)} className="text-slate-600 hover:text-red-400 transition-colors flex-shrink-0"><Icon name="x" className="w-4 h-4" /></button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-                {/* Done */}
-                {done.length > 0 && (
-                  <div className="space-y-2">
-                    <p className="text-[8px] font-black text-slate-600 uppercase tracking-widest px-1">✅ COMPLETADOS ({done.length})</p>
-                    {done.map(r => (
-                      <div key={r.id} className="g p-3 border border-white/5 flex items-center gap-3 opacity-40">
-                        <button onClick={() => toggleDone(r.id)} className="w-6 h-6 rounded-lg bg-green-600 flex items-center justify-center flex-shrink-0"><Icon name="check" className="w-3.5 h-3.5 text-white" /></button>
-                        <p className="text-[9px] text-slate-500 line-through flex-1">{r.title}</p>
-                        <button onClick={() => deleteRem(r.id)} className="text-slate-700 hover:text-red-400"><Icon name="x" className="w-4 h-4" /></button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-                {reminders.length === 0 && autoRem.length === 0 && (
-                  <div className="g p-10 text-center text-slate-500 text-[9px] font-black uppercase">No hay recordatorios. Crea el primero ↑</div>
-                )}
-              </div>
-            );
-          })()}
+          {role === 'admin' && view === 'operations' && operationsTab === 'reminders' && (
+            <RemindersTab
+              reminders={reminders}
+              setReminders={setReminders}
+              newRem={newRem}
+              setNewRem={setNewRem}
+              jobs={jobs}
+              remindersBadgeCount={remindersBadgeCount}
+              operationsTab={operationsTab}
+              setOperationsTab={setOperationsTab}
+              tt={tt}
+            />
+          )}
 
         </main>
 

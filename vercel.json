@@ -1,4 +1,18 @@
 {
   "name": "elevore-saas",
-  "framework": "vite"
+  "framework": "vite",
+  "crons": [
+    {
+      "path": "/api/cron-quote-chase",
+      "schedule": "0 9 * * *"
+    },
+    {
+      "path": "/api/cron-win-back",
+      "schedule": "0 9 * * *"
+    },
+    {
+      "path": "/api/cron-weekly-payroll",
+      "schedule": "0 20 * * 0"
+    }
+  ]
 }
