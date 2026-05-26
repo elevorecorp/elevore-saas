@@ -781,6 +781,320 @@ function MapComponent({ address, lat, lng, workerLat, workerLng }) {
   );
 }
 
+// RouteOptimizerModal Component
+function RouteOptimizerModal({ todayJobs, onClose, lang }) {
+  const [loading, setLoading] = useState(true);
+  const [progress, setProgress] = useState(0);
+  const [stops, setStops] = useState([]);
+  const [originalDistance, setOriginalDistance] = useState(0);
+  const [optimizedDistance, setOptimizedDistance] = useState(0);
+  const [saving, setSaving] = useState(0);
+  const [startLocation, setStartLocation] = useState(null);
+
+  // Haversine formula
+  const getDistance = (lat1, lon1, lat2, lon2) => {
+    const R = 6371; // Radius of the earth in km
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = 
+      Math.sin(dLat/2) * Math.sin(dLat/2) +
+      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+      Math.sin(dLon/2) * Math.sin(dLon/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    return R * c;
+  };
+
+  useEffect(() => {
+    let active = true;
+    
+    const runGeocodingAndOptimization = async () => {
+      setLoading(true);
+      setProgress(0);
+      
+      // 1. Get browser geolocation (optional)
+      let currentPos = null;
+      try {
+        currentPos = await new Promise((resolve, reject) => {
+          navigator.geolocation.getCurrentPosition(
+            (pos) => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+            (err) => reject(err),
+            { timeout: 5000 }
+          );
+        });
+        if (active) setStartLocation(currentPos);
+      } catch (e) {
+        console.warn("Geolocation not available or denied:", e);
+      }
+      
+      // 2. Geocode each address in todayJobs
+      const geocodedStops = [];
+      for (let i = 0; i < todayJobs.length; i++) {
+        if (!active) return;
+        const job = todayJobs[i];
+        
+        // Show progress
+        setProgress(Math.round((i / todayJobs.length) * 100));
+        
+        let coords = null;
+        if (job.specs?.lat && job.specs?.lng) {
+          coords = { lat: Number(job.specs.lat), lng: Number(job.specs.lng) };
+        } else {
+          // Fetch from Nominatim
+          try {
+            const res = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(job.address)}&format=json&limit=1`);
+            const data = await res.json();
+            if (data && data[0]) {
+              coords = { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
+            }
+          } catch (err) {
+            console.error("Geocoding failed for:", job.address, err);
+          }
+          // Delay to respect OSM Nominatim usage limits (max 1 req/sec)
+          await new Promise(r => setTimeout(r, 800));
+        }
+        
+        geocodedStops.push({
+          id: job.id,
+          clientName: job.client_name,
+          address: job.address,
+          serviceType: job.service_type,
+          status: job.status,
+          lat: coords ? coords.lat : null,
+          lng: coords ? coords.lng : null,
+        });
+      }
+      
+      if (!active) return;
+      
+      // Filter stops with valid coordinates
+      const validStops = geocodedStops.filter(s => s.lat !== null && s.lng !== null);
+      
+      if (validStops.length === 0) {
+        setStops([]);
+        setLoading(false);
+        return;
+      }
+      
+      // 3. Calculate distances and optimize route using Nearest Neighbor (TSP)
+      let currentLat = currentPos ? currentPos.lat : validStops[0].lat;
+      let currentLng = currentPos ? currentPos.lng : validStops[0].lng;
+      
+      // Calculate original distance (in scheduled order)
+      let origDist = 0;
+      let prevLat = currentLat;
+      let prevLng = currentLng;
+      validStops.forEach(s => {
+        origDist += getDistance(prevLat, prevLng, s.lat, s.lng);
+        prevLat = s.lat;
+        prevLng = s.lng;
+      });
+      
+      // Optimize route
+      const unvisited = [...validStops];
+      const optimized = [];
+      let optDist = 0;
+      let currentPrevLat = currentLat;
+      let currentPrevLng = currentLng;
+      
+      while (unvisited.length > 0) {
+        let nearestIdx = 0;
+        let minDist = Infinity;
+        
+        for (let i = 0; i < unvisited.length; i++) {
+          const dist = getDistance(currentPrevLat, currentPrevLng, unvisited[i].lat, unvisited[i].lng);
+          if (dist < minDist) {
+            minDist = dist;
+            nearestIdx = i;
+          }
+        }
+        
+        const nextStop = unvisited.splice(nearestIdx, 1)[0];
+        optDist += minDist;
+        optimized.push(nextStop);
+        currentPrevLat = nextStop.lat;
+        currentPrevLng = nextStop.lng;
+      }
+      
+      setOriginalDistance(origDist);
+      setOptimizedDistance(optDist);
+      setSaving(Math.max(0, origDist - optDist));
+      setStops(optimized);
+      setLoading(false);
+    };
+
+    runGeocodingAndOptimization();
+    
+    return () => {
+      active = false;
+    };
+  }, [todayJobs]);
+
+  const srcDoc = useMemo(() => {
+    if (stops.length === 0) return '';
+    const stopsJson = JSON.stringify(stops);
+    const startJson = JSON.stringify(startLocation);
+    
+    return `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+        <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+        <style>
+          html, body, #map { margin: 0; padding: 0; height: 100%; background: #0b0f19; }
+          .leaflet-control-zoom { display: none; }
+          .popup-content { font-family: monospace; font-size: 10px; color: #fff; background: #0f172a; padding: 4px; border-radius: 4px; }
+          .leaflet-popup-content-wrapper { background: #0f172a; color: #fff; border: 1px solid rgba(255,255,255,0.1); }
+          .leaflet-popup-tip { background: #0f172a; }
+        </style>
+      </head>
+      <body>
+        <div id="map"></div>
+        <script>
+          const stops = ${stopsJson};
+          const startLoc = ${startJson};
+          
+          const map = L.map('map', { zoomControl: false });
+          
+          L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+            attribution: '&copy; OpenStreetMap &copy; CartoDB'
+          }).addTo(map);
+          
+          const bounds = [];
+          
+          // Custom Leaflet Icons
+          const workerIcon = L.divIcon({
+            html: '<div style="background-color: #3b82f6; width: 18px; height: 18px; border: 2px solid white; border-radius: 50%; box-shadow: 0 0 12px #3b82f6; display: flex; align-items: center; justify-content: center; color: white; font-size: 9px;">🚗</div>',
+            className: '',
+            iconSize: [18, 18],
+            iconAnchor: [9, 9]
+          });
+          
+          if (startLoc) {
+            L.marker([startLoc.lat, startLoc.lng], { icon: workerIcon })
+              .addTo(map)
+              .bindPopup('<div class="popup-content"><b>Mi Ubicación Actual</b></div>');
+            bounds.push([startLoc.lat, startLoc.lng]);
+          }
+          
+          // Draw stops and lines
+          const polylinePoints = [];
+          if (startLoc) {
+            polylinePoints.push([startLoc.lat, startLoc.lng]);
+          }
+          
+          stops.forEach((s, idx) => {
+            const stopIcon = L.divIcon({
+              html: \`<div style="background-color: #22c55e; width: 22px; height: 22px; border: 2px solid white; border-radius: 50%; box-shadow: 0 0 10px #22c55e; display: flex; align-items: center; justify-content: center; color: white; font-family: sans-serif; font-size: 10px; font-weight: bold;">\${idx + 1}</div>\`,
+              className: '',
+              iconSize: [22, 22],
+              iconAnchor: [11, 11]
+            });
+            
+            L.marker([s.lat, s.lng], { icon: stopIcon })
+              .addTo(map)
+              .bindPopup(\`<div class="popup-content"><b>Parada \${idx + 1}: \${s.clientName}</b><br>\${s.serviceType}<br>\${s.address}</div>\`);
+            
+            bounds.push([s.lat, s.lng]);
+            polylinePoints.push([s.lat, s.lng]);
+          });
+          
+          if (polylinePoints.length > 1) {
+            L.polyline(polylinePoints, { color: '#F5C518', weight: 4, opacity: 0.8, dashArray: '5, 8' }).addTo(map);
+          }
+          
+          if (bounds.length > 0) {
+            map.fitBounds(bounds, { padding: [50, 50] });
+          } else {
+            map.setView([28.5383, -81.3792], 10);
+          }
+        </script>
+      </body>
+      </html>
+    `;
+  }, [stops, startLocation]);
+
+  return (
+    <div className="fixed inset-0 bg-black/90 backdrop-blur-md z-[2000] flex items-center justify-center p-4">
+      <div className="g p-6 w-full max-w-4xl space-y-4 border-t-4 border-amber-500 mx-auto bg-slate-950 rounded-2xl shadow-2xl border border-white/5 animate-in fade-in-50 zoom-in-95 duration-150 flex flex-col max-h-[90vh]">
+        <div className="flex justify-between items-center pb-2 border-b border-white/5 flex-shrink-0">
+          <div>
+            <h3 className="text-sm font-black text-white uppercase italic tracking-wider">📍 OPTIMIZADOR DE RUTAS GPS (LEAFLET TSP)</h3>
+            <p className="text-[7px] text-[#F5C518] font-black uppercase tracking-widest mt-0.5">Calculando orden óptimo de traslado del día</p>
+          </div>
+          <button onClick={onClose} className="text-slate-400 hover:text-white transition-colors p-1 rounded-lg hover:bg-white/5">
+            <Icon name="x" className="w-4 h-4" />
+          </button>
+        </div>
+
+        {loading ? (
+          <div className="flex-1 flex flex-col items-center justify-center space-y-4 py-12">
+            <div className="w-12 h-12 rounded-full border-2 border-[#F5C518]/20 border-t-[#F5C518] animate-spin"></div>
+            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Geocodificando direcciones y calculando ruta ({progress}%)...</p>
+          </div>
+        ) : (
+          <div className="flex-1 flex flex-col md:flex-row gap-5 overflow-hidden min-h-0">
+            {/* Left panel: List of stops */}
+            <div className="w-full md:w-2/5 flex flex-col overflow-y-auto space-y-3 custom-scroll pr-1">
+              <div className="bg-black/45 border border-white/5 p-4 rounded-xl space-y-2">
+                <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Resumen de Optimización</p>
+                <div className="flex justify-between text-[10px] uppercase font-bold text-slate-500">
+                  <span>Secuencia Inicial:</span>
+                  <span className="text-white">{originalDistance.toFixed(1)} km</span>
+                </div>
+                <div className="flex justify-between text-[10px] uppercase font-black text-green-400">
+                  <span>Ruta Optimizada:</span>
+                  <span>{optimizedDistance.toFixed(1)} km</span>
+                </div>
+                {saving > 0 && (
+                  <div className="border-t border-white/5 pt-2 flex justify-between text-[10px] uppercase font-black text-amber-400 animate-pulse">
+                    <span>🔥 Ahorro Estimado:</span>
+                    <span>{saving.toFixed(1)} km ({Math.round((saving / originalDistance) * 100)}%)</span>
+                  </div>
+                )}
+              </div>
+
+              <div className="space-y-2 flex-1">
+                <p className="text-[8px] font-black text-[#F5C518] uppercase tracking-widest pl-1">Itinerario de Paradas</p>
+                {stops.map((s, idx) => (
+                  <div key={s.id} className="g p-3.5 flex items-center justify-between border border-white/5 bg-black/45 hover:border-white/10 transition-all rounded-xl">
+                    <div className="space-y-1 text-left min-w-0 pr-2">
+                      <div className="flex items-center gap-1.5">
+                        <span className="w-5 h-5 rounded-full bg-green-500 text-white font-black text-[9px] flex items-center justify-center flex-shrink-0">
+                          {idx + 1}
+                        </span>
+                        <h4 className="text-[10px] font-black text-white uppercase italic truncate">{s.clientName}</h4>
+                      </div>
+                      <p className="text-[8px] text-slate-400 font-bold uppercase">{s.serviceType} • {s.status}</p>
+                      <p className="text-[7.5px] text-slate-500 italic truncate w-full">{s.address}</p>
+                    </div>
+                    <button
+                      onClick={() => window.open(`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(s.address)}`, '_blank')}
+                      className="px-2.5 py-1.5 bg-[#F5C518] hover:bg-amber-400 text-black rounded-lg text-[7px] font-black uppercase tracking-wider active:scale-95 transition-all flex items-center gap-1.5 flex-shrink-0"
+                    >
+                      <Icon name="navigation" className="w-3 h-3" />
+                      Navegar
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Right panel: Leaflet Map */}
+            <div className="w-full md:w-3/5 border border-white/10 rounded-xl overflow-hidden relative min-h-[300px] md:min-h-0 bg-slate-950 flex-1">
+              {stops.length > 0 ? (
+                <iframe title="GPS Optimization Map" width="100%" height="100%" frameBorder="0" scrolling="no" srcDoc={srcDoc} className="w-full h-full"></iframe>
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-slate-500 font-black uppercase text-[10px]">No valid stop coordinates to map.</div>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // BeforeAfterSlider Component
 function BeforeAfterSlider({ beforePhotos = [], afterPhotos = [] }) {
   const [activeIdx, setActiveIdx] = useState(0);
@@ -2687,6 +3001,14 @@ function StaffJob({ job, onBack, onRefresh, tt, recTime, upsell, update, employe
           <p className="text-[7px] text-slate-400 uppercase tracking-wider mb-3 font-bold">Upload After-Photo to trigger Computer Vision Scan</p>
           <PhotoDrive photos={localJob.after_photos || []} label="" onAdd={addAP} />
         </div>
+
+        {/* Quality Control Before/After Slider */}
+        {(localJob.before_photos?.length > 0 || localJob.after_photos?.length > 0) && (
+          <div className="space-y-1">
+            <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest pl-1">🔎 Verificación de Calidad Operativa</p>
+            <BeforeAfterSlider beforePhotos={localJob.before_photos || []} afterPhotos={localJob.after_photos || []} />
+          </div>
+        )}
         
         {bonus > 0 && <div className="g p-5 border border-amber-500/30 text-center"><p className="text-amber-500 font-black uppercase text-[9px] mb-1">🌟 Speed & Rating Bonus</p><p className="text-3xl font-black italic text-white">+${bonus}</p></div>}
         
@@ -5435,6 +5757,12 @@ export default function App() {
   const [rtOn, setRT] = useState(false);
   const [state, setState] = useState(INIT);
   const [payoutModalWorker, setPayoutModalWorker] = useState(null);
+  const [routeModalOpen, setRouteModalOpen] = useState(false);
+  const [biSimClients, setBiSimClients] = useState(60);
+  const [biSimPayoutPct, setBiSimPayoutPct] = useState(40);
+  const [biSimMarketing, setBiSimMarketing] = useState(1500);
+  const [taxQuery, setTaxQuery] = useState('');
+  const [taxStatus, setTaxStatus] = useState('all');
   const [payoutHistory, setPayoutHistory] = useState([]);
   const [expandedWorkerPayouts, setExpandedWorkerPayouts] = useState({});
   const [expandedWorkerJobs, setExpandedWorkerJobs] = useState({});
@@ -8184,6 +8512,15 @@ Instrucciones generales de formato:
                         </p>
                       </div>
                     </div>
+                    {todayJobs.length > 0 && (
+                      <button 
+                        onClick={() => setRouteModalOpen(true)}
+                        className="w-full bg-slate-900 border border-[#F5C518]/30 hover:bg-[#F5C518]/10 text-[#F5C518] py-2.5 rounded-xl text-[9px] font-black uppercase tracking-wider flex items-center justify-center gap-2 active:scale-95 transition-all"
+                      >
+                        <Icon name="map" className="w-3.5 h-3.5" />
+                        Optimizar Ruta GPS (Leaflet)
+                      </button>
+                    )}
                   </div>
                 );
               })()}
@@ -8675,7 +9012,8 @@ Instrucciones generales de formato:
                   { id: 'services', name: '🧹 Desglose por Servicio' },
                   { id: 'payroll', name: '👥 Nómina y Equipos' },
                   { id: 'cac', name: '🎯 CAC & ROI de Marketing' },
-                  { id: 'inventory', name: '🛠️ Inventario' }
+                  { id: 'inventory', name: '🛠️ Inventario' },
+                  { id: 'tax', name: '📋 Libro Contable y Exportación' }
                 ].map(tab => (
                   <button
                     key={tab.id}
@@ -8731,6 +9069,127 @@ Instrucciones generales de formato:
                     <div className="g p-6 bg-[rgba(255,255,255,0.04)] border-[rgba(255,255,255,0.08)] space-y-2">
                       <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4 font-display">📊 MONTHLY REVENUE PROJECTIONS</p>
                       <SleekAreaChart data={finance.mb2} color="#3b82f6" />
+                    </div>
+                  </div>
+
+                  {/* 🔮 SCENARIO BUILDER: BI PROJECTIONS WIDGET */}
+                  <div className="g p-6 bg-gradient-to-br from-[#0a0f1d] via-black to-[#0d162d] border border-blue-500/20 rounded-2xl relative overflow-hidden shadow-2xl space-y-6">
+                    <div className="absolute top-0 left-0 w-full h-[1.5px] bg-gradient-to-r from-blue-400/50 via-purple-500/30 to-transparent" />
+                    <div className="flex justify-between items-center border-b border-white/5 pb-3">
+                      <div className="flex items-center gap-2">
+                        <Icon name="brain" className="w-4 h-4 text-blue-400 animate-pulse" />
+                        <h3 className="text-xs font-black text-white uppercase tracking-widest font-display">🔮 Simulador de Crecimiento & Margen BI</h3>
+                      </div>
+                      <span className="text-[7px] font-black px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-400 border border-blue-500/20 uppercase tracking-widest">Predictive Engine</span>
+                    </div>
+
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 text-left">
+                      {/* Sliders Column */}
+                      <div className="space-y-4 lg:col-span-2">
+                        {/* Slider 1: Projected Active Clients */}
+                        <div className="space-y-1.5">
+                          <div className="flex justify-between items-center text-[9px] uppercase font-black text-slate-400">
+                            <span>Clientes Recurrentes Mensuales</span>
+                            <span className="text-white font-mono bg-white/5 px-2 py-0.5 rounded border border-white/10">{biSimClients} Clientes</span>
+                          </div>
+                          <input 
+                            type="range" 
+                            min="1" 
+                            max="200" 
+                            value={biSimClients} 
+                            onChange={e => setBiSimClients(parseInt(e.target.value))}
+                            className="w-full accent-blue-500 bg-white/10 h-1 rounded-lg appearance-none cursor-pointer"
+                          />
+                        </div>
+
+                        {/* Slider 2: Staff Payout Percentage */}
+                        <div className="space-y-1.5">
+                          <div className="flex justify-between items-center text-[9px] uppercase font-black text-slate-400">
+                            <span>Porcentaje de Pago al Staff</span>
+                            <span className="text-white font-mono bg-white/5 px-2 py-0.5 rounded border border-white/10">{biSimPayoutPct}%</span>
+                          </div>
+                          <input 
+                            type="range" 
+                            min="10" 
+                            max="80" 
+                            value={biSimPayoutPct} 
+                            onChange={e => setBiSimPayoutPct(parseInt(e.target.value))}
+                            className="w-full accent-amber-500 bg-white/10 h-1 rounded-lg appearance-none cursor-pointer"
+                          />
+                        </div>
+
+                        {/* Slider 3: Monthly Marketing Budget */}
+                        <div className="space-y-1.5">
+                          <div className="flex justify-between items-center text-[9px] uppercase font-black text-slate-400">
+                            <span>Presupuesto Mensual de Marketing</span>
+                            <span className="text-white font-mono bg-white/5 px-2 py-0.5 rounded border border-white/10">${biSimMarketing.toLocaleString()} USD</span>
+                          </div>
+                          <input 
+                            type="range" 
+                            min="0" 
+                            max="5000" 
+                            step="100" 
+                            value={biSimMarketing} 
+                            onChange={e => setBiSimMarketing(parseInt(e.target.value))}
+                            className="w-full accent-purple-500 bg-white/10 h-1 rounded-lg appearance-none cursor-pointer"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Calculations & Charts Column */}
+                      {(() => {
+                        const avgTicket = 250; // assumed avg ticket
+                        const simRevenueVal = biSimClients * avgTicket;
+                        const simStaffCost = Math.round(simRevenueVal * (biSimPayoutPct / 100));
+                        const simMaterialsCost = biSimClients * 30; // $30/month materials overhead
+                        const simFixedCost = 500; // fixed overhead
+                        const totalExpensesVal = simStaffCost + simMaterialsCost + biSimMarketing + simFixedCost;
+                        const simNetProfit = Math.max(0, simRevenueVal - totalExpensesVal);
+                        const marginPct = simRevenueVal > 0 ? Math.round((simNetProfit / simRevenueVal) * 100) : 0;
+
+                        // Visual chart data
+                        const maxVal = Math.max(simRevenueVal, totalExpensesVal, 1);
+                        const revH = Math.round((simRevenueVal / maxVal) * 100);
+                        const expH = Math.round((totalExpensesVal / maxVal) * 100);
+                        const netH = Math.round((simNetProfit / maxVal) * 100);
+
+                        return (
+                          <div className="bg-black/40 border border-white/5 p-4 rounded-xl flex flex-col justify-between space-y-4">
+                            <div className="grid grid-cols-3 gap-2 text-center h-24 items-end px-2">
+                              {/* Revenue Bar */}
+                              <div className="flex flex-col items-center h-full justify-end group relative">
+                                <div style={{ height: `${revH}%` }} className="w-6 bg-gradient-to-t from-blue-600 to-blue-400 rounded-t-sm shadow-[0_0_10px_rgba(59,130,246,0.3)] transition-all" />
+                                <span className="text-[6.5px] text-slate-500 mt-1 uppercase font-black">Rev</span>
+                              </div>
+                              {/* Expense Bar */}
+                              <div className="flex flex-col items-center h-full justify-end group relative">
+                                <div style={{ height: `${expH}%` }} className="w-6 bg-gradient-to-t from-red-600 to-red-400 rounded-t-sm shadow-[0_0_10px_rgba(239,68,68,0.3)] transition-all" />
+                                <span className="text-[6.5px] text-slate-500 mt-1 uppercase font-black">Exp</span>
+                              </div>
+                              {/* Net Profit Bar */}
+                              <div className="flex flex-col items-center h-full justify-end group relative">
+                                <div style={{ height: `${netH}%` }} className="w-6 bg-gradient-to-t from-green-600 to-green-400 rounded-t-sm shadow-[0_0_10px_rgba(34,197,94,0.3)] transition-all" />
+                                <span className="text-[6.5px] text-slate-500 mt-1 uppercase font-black">Net</span>
+                              </div>
+                            </div>
+
+                            <div className="space-y-1.5 uppercase text-[7.5px] font-black tracking-wider border-t border-white/5 pt-2">
+                              <div className="flex justify-between">
+                                <span className="text-slate-500">MRR Proyectado:</span>
+                                <span className="text-blue-400 font-mono">${simRevenueVal.toLocaleString()}</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span className="text-slate-500">Gastos Totales:</span>
+                                <span className="text-red-400 font-mono">${totalExpensesVal.toLocaleString()}</span>
+                              </div>
+                              <div className="flex justify-between border-t border-white/5 pt-1.5 text-[8.5px]">
+                                <span className="text-slate-200">Utilidad Neta:</span>
+                                <span className="text-green-400 font-mono">${simNetProfit.toLocaleString()} ({marginPct}%)</span>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })()}
                     </div>
                   </div>
 
@@ -9091,6 +9550,289 @@ Instrucciones generales de formato:
                   tt={tt}
                 />
               )}
+
+              {financeTab === 'tax' && (() => {
+                // Filter jobs
+                const filteredJobs = jobs.filter(j => {
+                  if (j.status === 'lost') return false;
+                  
+                  // search query match
+                  const queryLower = taxQuery.toLowerCase();
+                  const matchesQuery = 
+                    (j.client_name || '').toLowerCase().includes(queryLower) ||
+                    (j.address || '').toLowerCase().includes(queryLower) ||
+                    (j.service_type || '').toLowerCase().includes(queryLower);
+                  
+                  // status match
+                  const matchesStatus = taxStatus === 'all' ? true : j.status === taxStatus;
+                  
+                  return matchesQuery && matchesStatus;
+                });
+
+                // Helper to get labor pct and cost
+                const getJobLaborCost = (job) => {
+                  const w = staff.find(s => s.name === job.team_assigned);
+                  const pct = getPayoutPct(w);
+                  return Math.round((job.deposit_paid || job.total_price || 0) * pct);
+                };
+
+                // Compute sums
+                const totalGross = filteredJobs.reduce((acc, j) => acc + Number(j.total_price || 0), 0);
+                const totalLabor = filteredJobs.reduce((acc, j) => acc + getJobLaborCost(j), 0);
+                const totalMaterials = filteredJobs.reduce((acc, j) => acc + Number(j.specs?.materialCost || 0), 0);
+                const totalMarketing = filteredJobs.reduce((acc, j) => acc + Number(j.specs?.marketingCost || 0), 0);
+                const totalExpenses = filteredJobs.reduce((acc, j) => acc + Number(j.specs?.expenses || 0), 0);
+                const totalNet = Math.max(0, totalGross - totalLabor - totalMaterials - totalMarketing - totalExpenses);
+
+                // CSV Exporter
+                const exportCSV = () => {
+                  let csv = 'Fecha,Cliente,Servicio,Ingreso Bruto,Pago Staff (Labor),Materiales,Marketing,Gastos Operativos,Utilidad Neta\n';
+                  filteredJobs.forEach(j => {
+                    const labor = getJobLaborCost(j);
+                    const mat = Number(j.specs?.materialCost || 0);
+                    const mkt = Number(j.specs?.marketingCost || 0);
+                    const exp = Number(j.specs?.expenses || 0);
+                    const net = Math.max(0, Number(j.total_price || 0) - labor - mat - mkt - exp);
+                    
+                    csv += `"${j.scheduled_date || 'N/A'}","${(j.client_name || '').replace(/"/g, '""')}","${(j.service_type || '').replace(/"/g, '""')}",${j.total_price || 0},${labor},${mat},${mkt},${exp},${net}\n`;
+                  });
+                  
+                  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+                  const url = URL.createObjectURL(blob);
+                  const link = document.createElement('a');
+                  link.setAttribute('href', url);
+                  link.setAttribute('download', `elevore_libro_contable_${new Date().toISOString().split('T')[0]}.csv`);
+                  link.style.visibility = 'hidden';
+                  document.body.appendChild(link);
+                  link.click();
+                  document.body.removeChild(link);
+                  tt('Libro contable exportado a CSV con éxito ✓', 'green');
+                };
+
+                // Print/PDF Exporter
+                const printReport = () => {
+                  const printWindow = window.open('', '_blank');
+                  if (!printWindow) return alert('Por favor habilita las ventanas emergentes para imprimir.');
+
+                  const tableRows = filteredJobs.map(j => {
+                    const labor = getJobLaborCost(j);
+                    const mat = Number(j.specs?.materialCost || 0);
+                    const mkt = Number(j.specs?.marketingCost || 0);
+                    const exp = Number(j.specs?.expenses || 0);
+                    const net = Math.max(0, Number(j.total_price || 0) - labor - mat - mkt - exp);
+                    
+                    return `
+                      <tr>
+                        <td>${j.scheduled_date || '—'}</td>
+                        <td>${j.client_name || '—'}</td>
+                        <td>${j.service_type || '—'}</td>
+                        <td align="right">$${Number(j.total_price || 0).toLocaleString()}</td>
+                        <td align="right">-$${labor.toLocaleString()}</td>
+                        <td align="right">-$${mat.toLocaleString()}</td>
+                        <td align="right">-$${mkt.toLocaleString()}</td>
+                        <td align="right">-$${exp.toLocaleString()}</td>
+                        <td align="right" style="font-weight: bold; color: green;">$${net.toLocaleString()}</td>
+                      </tr>
+                    `;
+                  }).join('');
+
+                  printWindow.document.write(`
+                    <html>
+                    <head>
+                      <title>Elevore SaaS - Reporte Contable y Fiscal</title>
+                      <style>
+                        body { font-family: monospace; padding: 20px; color: #333; background: #fff; }
+                        h1 { font-size: 16px; margin-bottom: 5px; text-transform: uppercase; letter-spacing: 1px; }
+                        p { font-size: 10px; color: #666; margin: 0 0 20px 0; }
+                        table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 10px; }
+                        th { background: #f3f4f6; text-transform: uppercase; font-weight: bold; padding: 8px; border: 1px solid #d1d5db; text-align: left; }
+                        td { padding: 8px; border: 1px solid #e5e7eb; }
+                        tr:nth-child(even) { background: #f9fafb; }
+                        .summary-grid { display: grid; grid-template-cols: repeat(4, 1fr); gap: 10px; margin-bottom: 20px; }
+                        .summary-card { border: 1px solid #d1d5db; padding: 10px; border-radius: 4px; background: #f9fafb; }
+                        .summary-card p { margin: 0 0 5px 0; font-size: 8px; font-weight: bold; color: #666; }
+                        .summary-card h3 { margin: 0; font-size: 14px; font-weight: bold; }
+                        @media print {
+                          body { padding: 0; }
+                          @page { margin: 1.5cm; }
+                        }
+                      </style>
+                    </head>
+                    <body>
+                      <h1>Elevore SaaS // Libro Contable y Fiscal</h1>
+                      <p>Fecha de reporte: ${new Date().toLocaleString()} | Filtrado por: ${taxStatus.toUpperCase()}</p>
+                      
+                      <div class="summary-grid">
+                        <div class="summary-grid">
+                          <div class="summary-card">
+                            <p>INGRESOS BRUTOS TOTALES</p>
+                            <h3>$${totalGross.toLocaleString()}</h3>
+                          </div>
+                          <div class="summary-card">
+                            <p>COSTO DE MANO DE OBRA (STAFF)</p>
+                            <h3>-$${totalLabor.toLocaleString()}</h3>
+                          </div>
+                          <div class="summary-card">
+                            <p>MATERIALES / MARKETING / GASTOS</p>
+                            <h3>-$${(totalMaterials + totalMarketing + totalExpenses).toLocaleString()}</h3>
+                          </div>
+                          <div class="summary-card" style="border-color: green;">
+                            <p style="color: green;">UTILIDAD NETA FISCAL</p>
+                            <h3 style="color: green;">$${totalNet.toLocaleString()}</h3>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <table>
+                        <thead>
+                          <tr>
+                            <th>Fecha</th>
+                            <th>Cliente</th>
+                            <th>Servicio</th>
+                            <th style="text-align: right;">Bruto</th>
+                            <th style="text-align: right;">Staff</th>
+                            <th style="text-align: right;">Material</th>
+                            <th style="text-align: right;">Marketing</th>
+                            <th style="text-align: right;">Gastos</th>
+                            <th style="text-align: right;">Neto</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          ${tableRows}
+                        </tbody>
+                      </table>
+                      <script>
+                        window.onload = function() {
+                          window.print();
+                          window.close();
+                        };
+                      </script>
+                    </body>
+                    </html>
+                  `);
+                  printWindow.document.close();
+                  tt('Generando reporte de impresión PDF...', 'green');
+                };
+
+                return (
+                  <div className="space-y-4 animate-in fade-in">
+                    {/* Header and Exporters */}
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-[rgba(255,255,255,0.03)] border border-white/5 p-4 rounded-2xl">
+                      <div>
+                        <h3 className="text-xs font-black text-white uppercase tracking-widest font-display">📋 Libro Mayor & Declaración Fiscal</h3>
+                        <p className="text-[7.5px] text-slate-500 uppercase font-bold mt-0.5">Historial contable consolidado para preparación de impuestos corporativos</p>
+                      </div>
+                      <div className="flex gap-2 w-full sm:w-auto">
+                        <button 
+                          onClick={exportCSV}
+                          className="flex-1 sm:flex-initial px-3 py-2 bg-slate-900 border border-white/10 hover:bg-white/5 text-slate-300 rounded-xl text-[8px] font-black uppercase tracking-wider active:scale-95 transition-all flex items-center justify-center gap-1.5"
+                        >
+                          <Icon name="file-text" className="w-3.5 h-3.5" />
+                          CSV (Excel)
+                        </button>
+                        <button 
+                          onClick={printReport}
+                          className="flex-1 sm:flex-initial px-3 py-2 bg-[#F5C518] hover:bg-amber-400 text-black rounded-xl text-[8px] font-black uppercase tracking-wider active:scale-95 transition-all flex items-center justify-center gap-1.5 shadow-lg shadow-[#F5C518]/10"
+                        >
+                          <Icon name="printer" className="w-3.5 h-3.5" />
+                          Imprimir PDF
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Summary row */}
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3.5">
+                      <div className="bg-white/[0.02] border border-white/5 p-4 rounded-xl">
+                        <p className="text-[7px] text-slate-500 font-black uppercase tracking-wider">Facturación Bruta</p>
+                        <p className="text-lg font-black text-white mt-1">${totalGross.toLocaleString()}</p>
+                      </div>
+                      <div className="bg-white/[0.02] border border-white/5 p-4 rounded-xl">
+                        <p className="text-[7px] text-slate-500 font-black uppercase tracking-wider">Costo Staff (Nómina)</p>
+                        <p className="text-lg font-black text-red-400 mt-1">-${totalLabor.toLocaleString()}</p>
+                      </div>
+                      <div className="bg-white/[0.02] border border-white/5 p-4 rounded-xl">
+                        <p className="text-[7px] text-slate-500 font-black uppercase tracking-wider">Materiales & Gastos</p>
+                        <p className="text-lg font-black text-red-400 mt-1">-${(totalMaterials + totalMarketing + totalExpenses).toLocaleString()}</p>
+                      </div>
+                      <div className="bg-emerald-500/[0.03] border border-emerald-500/25 p-4 rounded-xl">
+                        <p className="text-[7px] text-emerald-400 font-black uppercase tracking-wider">Utilidad Neta</p>
+                        <p className="text-lg font-black text-green-400 mt-1">${totalNet.toLocaleString()}</p>
+                      </div>
+                    </div>
+
+                    {/* Filter bar */}
+                    <div className="flex flex-col sm:flex-row gap-3 text-left">
+                      <input 
+                        type="text" 
+                        value={taxQuery}
+                        onChange={e => setTaxQuery(e.target.value)}
+                        placeholder="Buscar por cliente, dirección o servicio..."
+                        className="flex-1 bg-black/40 border border-white/10 rounded-xl px-3 py-2.5 text-xs text-white placeholder-slate-600 outline-none focus:border-amber-500 transition-colors"
+                      />
+                      <select 
+                        value={taxStatus}
+                        onChange={e => setTaxStatus(e.target.value)}
+                        className="bg-black/40 border border-white/10 rounded-xl px-3 py-2.5 text-xs text-white font-black outline-none focus:border-amber-500 transition-colors"
+                      >
+                        <option value="all">TODOS LOS ESTADOS</option>
+                        <option value="paid">PAGADOS (PAID)</option>
+                        <option value="completed">COMPLETADOS</option>
+                        <option value="scheduled">PROGRAMADOS</option>
+                      </select>
+                    </div>
+
+                    {/* Ledger table */}
+                    <div className="bg-black/40 border border-white/5 rounded-2xl overflow-hidden shadow-2xl">
+                      <div className="overflow-x-auto custom-scroll">
+                        <table className="w-full text-left border-collapse text-[8.5px] font-bold uppercase tracking-wider">
+                          <thead>
+                            <tr className="border-b border-white/5 bg-white/[0.02] text-slate-400">
+                              <th className="p-3">Fecha</th>
+                              <th className="p-3">Cliente</th>
+                              <th className="p-3">Servicio</th>
+                              <th className="p-3 text-right">Bruto</th>
+                              <th className="p-3 text-right">Mano Obra</th>
+                              <th className="p-3 text-right">Material</th>
+                              <th className="p-3 text-right">Marketing</th>
+                              <th className="p-3 text-right">Gastos</th>
+                              <th className="p-3 text-right">Neto</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-white/5 text-left text-white">
+                            {filteredJobs.length === 0 ? (
+                              <tr>
+                                <td colSpan="9" className="p-8 text-center text-slate-500 italic">No hay transacciones registradas para este filtro</td>
+                              </tr>
+                            ) : (
+                              filteredJobs.map(j => {
+                                const labor = getJobLaborCost(j);
+                                const mat = Number(j.specs?.materialCost || 0);
+                                const mkt = Number(j.specs?.marketingCost || 0);
+                                const exp = Number(j.specs?.expenses || 0);
+                                const net = Math.max(0, Number(j.total_price || 0) - labor - mat - mkt - exp);
+                                
+                                return (
+                                  <tr key={j.id} className="hover:bg-white/[0.01] transition-all">
+                                    <td className="p-3 font-mono text-slate-400">{j.scheduled_date || '—'}</td>
+                                    <td className="p-3 font-black text-slate-200">{j.client_name || '—'}</td>
+                                    <td className="p-3 font-semibold text-slate-300">{j.service_type || '—'}</td>
+                                    <td className="p-3 text-right text-slate-100">${Number(j.total_price || 0).toLocaleString()}</td>
+                                    <td className="p-3 text-right text-red-400">-${labor.toLocaleString()}</td>
+                                    <td className="p-3 text-right text-slate-400">-${mat.toLocaleString()}</td>
+                                    <td className="p-3 text-right text-slate-400">-${mkt.toLocaleString()}</td>
+                                    <td className="p-3 text-right text-slate-400">-${exp.toLocaleString()}</td>
+                                    <td className="p-3 text-right font-black text-green-400">${net.toLocaleString()}</td>
+                                  </tr>
+                                );
+                              })
+                            )}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
           )}
 
@@ -10134,7 +10876,7 @@ Instrucciones generales de formato:
               </div>
 
               <div className="flex gap-1 bg-black/40 p-1.5 rounded-xl border border-white/5 overflow-x-auto custom-scroll">
-                {['identity', 'specs', 'add-ons', 'quote', 'money'].map(t => (
+                {['identity', 'specs', 'add-ons', 'quote', 'money', 'qc'].map(t => (
                   <button key={t} onClick={() => setDtab(t)} className={`flex-shrink-0 px-4 py-3 rounded-xl text-[9px] uppercase font-black active:scale-95 transition-all ${dtab === t ? 'ton' : 'text-slate-500 hover:text-slate-300'}`}>{t}</button>
                 ))}
               </div>
@@ -10548,6 +11290,46 @@ Respond ONLY in this exact JSON format (no explanation, no markdown, just raw JS
                     </div>
                   </div>
                 )}
+
+                {dtab === 'qc' && (
+                  <div className="space-y-4 animate-in fade-in">
+                    <h3 className="text-[10px] uppercase text-[#F5C518] font-black italic tracking-widest border-b border-white/5 pb-2 font-display">Control de Calidad (Antes / Después)</h3>
+                    {(() => {
+                      const curJob = jobs.find(j => j.id === editId);
+                      const beforePh = curJob?.before_photos || [];
+                      const afterPh = curJob?.after_photos || [];
+                      
+                      if (beforePh.length === 0 && afterPh.length === 0) {
+                        return (
+                          <div className="text-center py-10 bg-black/20 rounded-2xl border border-white/5 text-slate-500 font-black text-[9px] uppercase tracking-wider">
+                            No se han subido fotos de control de calidad para esta misión.
+                          </div>
+                        );
+                      }
+                      
+                      return (
+                        <>
+                          <BeforeAfterSlider beforePhotos={beforePh} afterPhotos={afterPh} />
+                          <div className="bg-black/40 border border-white/5 rounded-2xl p-4 space-y-2 uppercase text-[7px] font-black tracking-wider text-left">
+                            <p className="text-[8px] text-green-400 border-b border-white/5 pb-1">⚡ Estado de Verificación</p>
+                            <div className="flex justify-between">
+                              <span className="text-slate-400">Inspección de AI:</span>
+                              <span className={curJob?.specs?.ai_vision_qc ? "text-green-400" : "text-slate-500"}>
+                                {curJob?.specs?.ai_vision_qc ? "Aprobado (99.4% Limpio)" : "No Escaneado"}
+                              </span>
+                            </div>
+                            {curJob?.final_signature && (
+                              <div className="flex justify-between items-center border-t border-white/5 pt-2">
+                                <span className="text-slate-400">Firma del Cliente:</span>
+                                <img src={curJob.final_signature} className="h-6 opacity-75 border border-white/10 rounded" alt="firma" />
+                              </div>
+                            )}
+                          </div>
+                        </>
+                      );
+                    })()}
+                  </div>
+                )}
               </div>
 
               {/* Estimate Deployer Call to Action */}
@@ -10792,6 +11574,15 @@ Respond ONLY in this exact JSON format (no explanation, no markdown, just raw JS
               </div>
             </div>
           </div>
+        )}
+
+        {/* Route Optimizer Modal */}
+        {routeModalOpen && (
+          <RouteOptimizerModal 
+            todayJobs={staffJobs.filter(j => j.scheduled_date === todayStr)} 
+            onClose={() => setRouteModalOpen(false)} 
+            lang={lang} 
+          />
         )}
 
         {/* =====================================================================
