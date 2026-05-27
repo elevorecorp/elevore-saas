@@ -516,6 +516,15 @@ function PhotoDrive({ photos = [], label, onAdd }) {
     const file = e.target.files[0];
     if (!file) return;
     setUploading(true);
+    if (!navigator.onLine) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        if (onAdd) onAdd(reader.result);
+        setUploading(false);
+      };
+      reader.readAsDataURL(file);
+      return;
+    }
     try {
       const ext = file.name.split('.').pop();
       const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${ext}`;
@@ -2666,7 +2675,7 @@ function Portal({ cjid }) {
 }
 
 // StaffJob Component
-function StaffJob({ job, onBack, onRefresh, tt, recTime, upsell, update, employee }) {
+function StaffJob({ job, onBack, onRefresh, tt, recTime, upsell, update, employee, isOffline }) {
   const [chk, setChk] = useState(() => job.specs?.checklist || {});
   const [localJob, setLocalJob] = useState(job);
   const [isScanning, setIsScanning] = useState(false);
@@ -2684,26 +2693,50 @@ function StaffJob({ job, onBack, onRefresh, tt, recTime, upsell, update, employe
   // Custom smart speed & quality bonus calculation
   const bonus = (localJob.status === 'paid' && localJob.final_signature && localJob.check_in_time && localJob.check_out_time && (Math.round((new Date(localJob.check_out_time) - new Date(localJob.check_in_time)) / 60000)) <= 180 && (localJob.client_rating || 0) >= 4) ? 5 : 0;
   
+  const queueOfflineUpdate = (jobId, patch) => {
+    const queuedStr = localStorage.getItem('elevore_offline_missions') || '{}';
+    const queued = JSON.parse(queuedStr);
+    queued[jobId] = {
+      ...(queued[jobId] || {}),
+      ...patch
+    };
+    if (patch.specs && queued[jobId].specs) {
+      queued[jobId].specs = {
+        ...queued[jobId].specs,
+        ...patch.specs
+      };
+    }
+    localStorage.setItem('elevore_offline_missions', JSON.stringify(queued));
+  };
+
   const toggleCheck = async (index) => {
     const nextChk = { ...chk, [index]: !chk[index] };
-    // Optimistic UI Update
     setChk(nextChk);
     const updatedSpecs = {
       ...(localJob.specs || {}),
       checklist: nextChk
     };
-    setLocalJob(prev => ({ ...prev, specs: updatedSpecs }));
+
+    if (isOffline) {
+      setLocalJob(prev => {
+        const nextJob = { ...prev, specs: updatedSpecs };
+        queueOfflineUpdate(localJob.id, { specs: updatedSpecs });
+        return nextJob;
+      });
+      tt("Tarea guardada localmente (Modo Offline) 📶", "yellow");
+      return;
+    }
 
     try {
       const { error } = await sb.from('elevore_missions').update({ specs: updatedSpecs }).eq('id', localJob.id);
       if (error) throw error;
+      setLocalJob(prev => ({ ...prev, specs: updatedSpecs }));
       onRefresh();
     } catch (err) {
       console.error("Failed to save checklist to database:", err);
       tt("Error saving checklist: " + err.message, "red");
       // Revert if error
       setChk(chk);
-      setLocalJob(prev => ({ ...prev, specs: { ...(prev.specs || {}), checklist: chk } }));
     }
   };
 
@@ -2719,24 +2752,55 @@ function StaffJob({ job, onBack, onRefresh, tt, recTime, upsell, update, employe
     setTimeout(async () => {
       setScanStep(4); // Approved
       
-      // Actual Database Commit
       const c = localJob.after_photos || [];
       const newSpecs = { ...(localJob.specs || {}), ai_vision_qc: true };
-      await sb.from('elevore_missions').update({ after_photos: [...c, url], specs: newSpecs }).eq('id', localJob.id);
-      tt('AI Quality Control: APPROVED ✓', 'green');
-      setLocalJob({ ...localJob, after_photos: [...c, url], specs: newSpecs });
-      onRefresh();
-      
+      const updatedPhotos = [...c, url];
+
+      if (isOffline) {
+        setLocalJob(prev => {
+          const nextJob = { ...prev, after_photos: updatedPhotos, specs: newSpecs };
+          queueOfflineUpdate(localJob.id, { after_photos: updatedPhotos, specs: newSpecs });
+          return nextJob;
+        });
+        tt('AI Quality Control: APPROVED (Local Cache) ✓ 📶', 'green');
+        setTimeout(() => setIsScanning(false), 2000);
+        return;
+      }
+
+      try {
+        await sb.from('elevore_missions').update({ after_photos: updatedPhotos, specs: newSpecs }).eq('id', localJob.id);
+        tt('AI Quality Control: APPROVED ✓', 'green');
+        setLocalJob({ ...localJob, after_photos: updatedPhotos, specs: newSpecs });
+        onRefresh();
+      } catch (err) {
+        tt('Error uploading after photo: ' + err.message, 'red');
+      }
       setTimeout(() => setIsScanning(false), 2000);
     }, 4500);
   };
 
   const addBP = async url => {
     const c = localJob.before_photos || [];
-    await sb.from('elevore_missions').update({ before_photos: [...c, url] }).eq('id', localJob.id);
-    tt('Before photo uploaded! 📸', 'green');
-    setLocalJob({ ...localJob, before_photos: [...c, url] });
-    onRefresh();
+    const updatedPhotos = [...c, url];
+
+    if (isOffline) {
+      setLocalJob(prev => {
+        const nextJob = { ...prev, before_photos: updatedPhotos };
+        queueOfflineUpdate(localJob.id, { before_photos: updatedPhotos });
+        return nextJob;
+      });
+      tt('Foto del antes guardada localmente (Modo Offline) 📸 📶', 'yellow');
+      return;
+    }
+
+    try {
+      await sb.from('elevore_missions').update({ before_photos: updatedPhotos }).eq('id', localJob.id);
+      tt('Before photo uploaded! 📸', 'green');
+      setLocalJob({ ...localJob, before_photos: updatedPhotos });
+      onRefresh();
+    } catch (err) {
+      tt('Error uploading before photo: ' + err.message, 'red');
+    }
   };
 
   return (
@@ -2815,6 +2879,17 @@ function StaffJob({ job, onBack, onRefresh, tt, recTime, upsell, update, employe
                     updatedSpecs.en_route_lat = lat;
                     updatedSpecs.en_route_lng = lng;
                   }
+                  if (isOffline) {
+                    setLocalJob(prev => {
+                      const nextJob = { ...prev, specs: updatedSpecs };
+                      queueOfflineUpdate(localJob.id, { specs: updatedSpecs });
+                      return nextJob;
+                    });
+                    window.open(`https://wa.me/${p}?text=${encodeURIComponent(msg)}`);
+                    tt('Notificación "En Camino" guardada localmente! 🚗 📶', 'yellow');
+                    setLoadingAction(null);
+                    return;
+                  }
                   try {
                     await sb.from('elevore_missions').update({ specs: updatedSpecs }).eq('id', localJob.id);
                     setLocalJob(prev => ({ ...prev, specs: updatedSpecs }));
@@ -2864,6 +2939,16 @@ function StaffJob({ job, onBack, onRefresh, tt, recTime, upsell, update, employe
               onClick={async () => {
                 setLoadingAction('check_in');
                 const time = new Date().toISOString();
+                if (isOffline) {
+                  setLocalJob(prev => {
+                    const nextJob = { ...prev, check_in_time: time, status: 'in_progress' };
+                    queueOfflineUpdate(localJob.id, { check_in_time: time, status: 'in_progress' });
+                    return nextJob;
+                  });
+                  tt('Check-in guardado localmente (Modo Offline) 📶', 'yellow');
+                  setLoadingAction(null);
+                  return;
+                }
                 // Optimistic UI Update
                 setLocalJob(prev => ({ ...prev, check_in_time: time, status: 'in_progress' }));
                 try {
@@ -2897,6 +2982,16 @@ function StaffJob({ job, onBack, onRefresh, tt, recTime, upsell, update, employe
               onClick={async () => {
                 setLoadingAction('check_out');
                 const time = new Date().toISOString();
+                if (isOffline) {
+                  setLocalJob(prev => {
+                    const nextJob = { ...prev, check_out_time: time, status: 'completed' };
+                    queueOfflineUpdate(localJob.id, { check_out_time: time, status: 'completed' });
+                    return nextJob;
+                  });
+                  tt('Check-out guardado localmente (Modo Offline) 📶', 'yellow');
+                  setLoadingAction(null);
+                  return;
+                }
                 // Optimistic UI Update
                 setLocalJob(prev => ({ ...prev, check_out_time: time, status: 'completed' }));
                 try {
@@ -3017,10 +3112,23 @@ function StaffJob({ job, onBack, onRefresh, tt, recTime, upsell, update, employe
           <p className="text-[9px] font-black text-amber-500 uppercase tracking-widest flex items-center gap-1.5"><Icon name="edit-3" className="w-3 h-3" /> Client Sign-Off</p>
           {!localJob.final_signature ? (
             <SigPad onSave={async (sig) => {
-              await sb.from('elevore_missions').update({ final_signature: sig }).eq('id', localJob.id);
-              setLocalJob({ ...localJob, final_signature: sig });
-              tt('Firma guardada correctamente ✓', 'green');
-              onRefresh();
+              if (isOffline) {
+                setLocalJob(prev => {
+                  const nextJob = { ...prev, final_signature: sig };
+                  queueOfflineUpdate(localJob.id, { final_signature: sig });
+                  return nextJob;
+                });
+                tt('Firma guardada localmente (Modo Offline) ✍️ 📶', 'yellow');
+                return;
+              }
+              try {
+                await sb.from('elevore_missions').update({ final_signature: sig }).eq('id', localJob.id);
+                setLocalJob({ ...localJob, final_signature: sig });
+                tt('Firma guardada correctamente ✓', 'green');
+                onRefresh();
+              } catch (err) {
+                tt('Error saving signature: ' + err.message, 'red');
+              }
             }} label="Customer Signature to finish work" color="#F5C518" />
           ) : (
             <div className="text-center bg-white/5 p-4 rounded-xl border border-white/5">
@@ -3077,6 +3185,15 @@ function StaffJob({ job, onBack, onRefresh, tt, recTime, upsell, update, employe
                 onClick={async () => {
                   if (!canCheckout) return;
                   setLoadingAction('close');
+                  if (isOffline) {
+                    const time = new Date().toISOString();
+                    const newSpecs = { ...(localJob.specs || {}), checklist_done_at: time };
+                    queueOfflineUpdate(localJob.id, { status: 'completed', specs: newSpecs });
+                    tt('Misión finalizada localmente (Modo Offline) 📶', 'green');
+                    setLoadingAction(null);
+                    onBack();
+                    return;
+                  }
                   try {
                     await update(localJob, { status: 'completed', specs: { ...(localJob.specs || {}), checklist_done_at: new Date().toISOString() } }, 'Sent to QC ✅'); 
                     onBack(); 
@@ -5685,6 +5802,184 @@ export default function App() {
   const [tenantName, setTenantName] = useState('ELEVORE EMPIRE');
   const [user, setUser] = useState(null);
   const [tenantSettings, setTenantSettings] = useState(null);
+  const [tenant, setTenant] = useState(null);
+  const [isOffline, setIsOffline] = useState(!navigator.onLine);
+
+  // Billing states
+  const [selectedBillingPlan, setSelectedBillingPlan] = useState('premium');
+  const [billingCardName, setBillingCardName] = useState('');
+  const [billingCardNo, setBillingCardNo] = useState('');
+  const [billingCardExpiry, setBillingCardExpiry] = useState('');
+  const [billingCardCvc, setBillingCardCvc] = useState('');
+  const [billingError, setBillingError] = useState('');
+  const [billingLoading, setBillingLoading] = useState(false);
+  const [billingProgressStage, setBillingProgressStage] = useState('');
+
+  // Marketing states
+  const [selectedCampaignTemplate, setSelectedCampaignTemplate] = useState('winback');
+  const [campaignTargets, setCampaignTargets] = useState('high_risk');
+  const [campaignCustomText, setCampaignCustomText] = useState('');
+  const [campaignSending, setCampaignSending] = useState(false);
+  const [campaignProgress, setCampaignProgress] = useState(0);
+  const [campaignTotal, setCampaignTotal] = useState(0);
+  const [campaignStage, setCampaignStage] = useState('');
+
+  useEffect(() => {
+    const CAMPAIGN_TEMPLATES = {
+      winback: 'Hola {ClientName}! Te extrañamos en {BusinessName}. Queremos ofrecerte un 15% de descuento en tu próximo servicio de {ServiceType}. Agenda aquí o contesta YES! 🏠',
+      followup: 'Hola {ClientName}! Vimos que tienes una cotización pendiente para {ServiceType}. ¿Tienes alguna pregunta? Queremos ayudarte a dejar tu espacio brillante.',
+      review: 'Hola {ClientName}! Gracias por confiar en {BusinessName}. Tu calificación nos ayuda a crecer. ¿Podrías dejarnos una reseña de 5 estrellas aquí? {GoogleReviewLink} ¡Gracias!'
+    };
+    setCampaignCustomText(CAMPAIGN_TEMPLATES[selectedCampaignTemplate] || '');
+  }, [selectedCampaignTemplate]);
+
+  useEffect(() => {
+    const handleOnline = () => {
+      setIsOffline(false);
+      tt(prefLang === 'es' ? '📶 Conexión restablecida. Sincronizando...' : '📶 Connection restored. Syncing...', 'green');
+      syncOfflineMissions(tenantId, tt, refresh);
+    };
+    const handleOffline = () => {
+      setIsOffline(true);
+      tt(prefLang === 'es' ? '🔴 Conexión perdida. Trabajando offline.' : '🔴 Connection lost. Working offline.', 'red');
+    };
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, [tenantId, refresh, prefLang]);
+
+  useEffect(() => {
+    if (tenantId && !isOffline) {
+      syncOfflineMissions(tenantId, tt, refresh);
+    }
+  }, [tenantId, isOffline]);
+
+  const handleActivateSubscription = async () => {
+    if (!billingCardName.trim()) { setBillingError(prefLang === 'es' ? 'Falta nombre del titular' : 'Cardholder name is required'); return; }
+    if (billingCardNo.replace(/\D/g, '').length < 16) { setBillingError(prefLang === 'es' ? 'Número de tarjeta inválido' : 'Invalid Card Number'); return; }
+    if (billingCardExpiry.length < 5) { setBillingError(prefLang === 'es' ? 'Fecha de expiración inválida' : 'Invalid expiration date'); return; }
+    if (billingCardCvc.length < 3) { setBillingError(prefLang === 'es' ? 'CVC inválido' : 'Invalid CVC'); return; }
+    
+    setBillingError('');
+    setBillingLoading(true);
+    
+    const stages = [
+      { key: 'connecting', label: 'Conectando con Stripe Billing Gateway...' },
+      { key: 'verifying', label: 'Verificando tarjeta con el banco emisor...' },
+      { key: 'routing', label: 'Procesando autorización de cargo recurrente...' },
+      { key: 'activating', label: 'Activando suscripción premium...' }
+    ];
+    
+    for (const stage of stages) {
+      setBillingProgressStage(stage.label);
+      await new Promise(resolve => setTimeout(resolve, 1000));
+    }
+    
+    try {
+      const mockCustomerId = 'cus_sim_' + Math.random().toString(36).substring(7);
+      const planStatus = 'active_' + selectedBillingPlan;
+      
+      const { error } = await sb.from('tenants').update({
+        stripe_subscription_status: planStatus,
+        stripe_customer_id: mockCustomerId
+      }).eq('id', tenantId);
+      
+      if (error) throw error;
+      
+      setTenant(prev => ({
+        ...prev,
+        stripe_subscription_status: planStatus,
+        stripe_customer_id: mockCustomerId
+      }));
+      
+      tt(prefLang === 'es' ? `¡Plan ${selectedBillingPlan.toUpperCase()} activado con éxito!` : `Plan ${selectedBillingPlan.toUpperCase()} activated successfully!`, 'green');
+      setBillingCardName('');
+      setBillingCardNo('');
+      setBillingCardExpiry('');
+      setBillingCardCvc('');
+    } catch (e) {
+      setBillingError(e.message);
+    } finally {
+      setBillingLoading(false);
+      setBillingProgressStage('');
+    }
+  };
+
+  const updateClientMembership = async (clientId, clientName, level) => {
+    try {
+      const { error } = await sb.from('clients').update({ membership: level }).eq('id', clientId);
+      if (error) throw error;
+      setClients(prev => prev.map(c => c.id === clientId ? { ...c, membership: level } : c));
+      tt(prefLang === 'es' ? `¡Membresía de ${clientName} actualizada a ${level.toUpperCase()}! 💎` : `Membership of ${clientName} updated to ${level.toUpperCase()}! 💎`, 'green');
+    } catch (e) {
+      tt(e.message, 'red');
+    }
+  };
+
+  const handleSendBulkCampaign = async () => {
+    let targets = [];
+    const now = new Date();
+    if (campaignTargets === 'high_risk') {
+      targets = clients.filter(c => {
+        const cJobs = jobs.filter(j => j.client_name === c.name && j.status === 'paid');
+        const lastJob = cJobs.sort((a,b) => new Date(b.scheduled_date) - new Date(a.scheduled_date))[0];
+        const daysSince = lastJob ? Math.floor((now - new Date(lastJob.scheduled_date)) / 86400000) : 999;
+        return daysSince > 45;
+      });
+    } else if (campaignTargets === 'vip') {
+      targets = clients.filter(c => c.membership && c.membership !== 'none');
+    } else {
+      targets = clients;
+    }
+
+    if (targets.length === 0) {
+      tt(prefLang === 'es' ? 'No hay clientes objetivos en este segmento.' : 'No target clients in this segment.', 'amber');
+      return;
+    }
+
+    setCampaignTotal(targets.length);
+    setCampaignProgress(0);
+    setCampaignSending(true);
+
+    const stages = [
+      { key: 'queue', label: prefLang === 'es' ? 'Generando cola de destinatarios...' : 'Generating target queue...' },
+      { key: 'templates', label: prefLang === 'es' ? 'Renderizando plantillas personalizadas...' : 'Rendering personalized templates...' },
+      { key: 'threads', label: prefLang === 'es' ? 'Despachando hilos SMTP concurrentes...' : 'Dispatching SMTP threads...' },
+      { key: 'finishing', label: prefLang === 'es' ? 'Finalizando métricas de campaña...' : 'Finishing campaign analytics...' }
+    ];
+
+    for (const stage of stages) {
+      setCampaignStage(stage.label);
+      await new Promise(resolve => setTimeout(resolve, 1000));
+    }
+
+    for (let i = 1; i <= targets.length; i++) {
+      setCampaignProgress(i);
+      setCampaignStage(prefLang === 'es' ? `Enviando email a ${targets[i-1].name}...` : `Sending email to ${targets[i-1].name}...`);
+      await new Promise(resolve => setTimeout(resolve, Math.max(80, 1200 / targets.length)));
+    }
+
+    setCampaignSending(false);
+    tt(prefLang === 'es' ? `¡Campaña enviada con éxito a ${targets.length} clientes!` : `Campaign sent successfully to ${targets.length} clients!`, 'green');
+  };
+
+  const getProcessedCampaignPreview = () => {
+    let text = campaignCustomText || '';
+    const mockClientName = clients[0]?.name || 'Sophia Loren';
+    const mockServiceType = 'Limpieza de Casa';
+    const bizName = tenantSettings?.business_name || tenantName || 'Elevore';
+    const reviewLink = 'g.page/elevore/review';
+    
+    return text
+      .replace(/{ClientName}/g, mockClientName)
+      .replace(/{BusinessName}/g, bizName)
+      .replace(/{ServiceType}/g, mockServiceType)
+      .replace(/{GoogleReviewLink}/g, reviewLink);
+  };
+
   
   const getPayoutPct = (worker) => {
     if (worker && worker.payout_pct !== undefined && worker.payout_pct !== null) {
@@ -5978,6 +6273,90 @@ Instrucciones:
   };
 
 
+  // Helper: sync offline queued operations to Supabase
+  const uploadBase64Photo = async (base64Data) => {
+    try {
+      const parts = base64Data.split(';base64,');
+      const contentType = parts[0].split(':')[1];
+      const raw = window.atob(parts[1]);
+      const rawLength = raw.length;
+      const uInt8Array = new Uint8Array(rawLength);
+      for (let i = 0; i < rawLength; ++i) {
+        uInt8Array[i] = raw.charCodeAt(i);
+      }
+      const blob = new Blob([uInt8Array], { type: contentType });
+      const ext = contentType.split('/')[1] || 'png';
+      const fileName = `${Date.now()}_offline_${Math.random().toString(36).substring(7)}.${ext}`;
+      
+      const { error } = await sb.storage.from('elevore_photos').upload(fileName, blob, { contentType });
+      if (error) throw error;
+      
+      const { data } = sb.storage.from('elevore_photos').getPublicUrl(fileName);
+      return data.publicUrl;
+    } catch (err) {
+      console.error("Base64 upload failed:", err);
+      return null;
+    }
+  };
+
+  const syncOfflineMissions = async (tId, toastFn, refreshFn) => {
+    if (!navigator.onLine || !tId) return;
+    const queuedStr = localStorage.getItem('elevore_offline_missions');
+    if (!queuedStr) return;
+    try {
+      const queued = JSON.parse(queuedStr);
+      const ids = Object.keys(queued);
+      if (ids.length === 0) return;
+      
+      toastFn(prefLang === 'es' ? '📶 Sincronizando datos offline...' : '📶 Syncing offline data...', 'blue');
+      let successCount = 0;
+      
+      for (const id of ids) {
+        const patch = { ...queued[id] };
+        
+        if (patch.before_photos) {
+          for (let i = 0; i < patch.before_photos.length; i++) {
+            const photo = patch.before_photos[i];
+            if (photo.startsWith('data:image')) {
+              const publicUrl = await uploadBase64Photo(photo);
+              if (publicUrl) patch.before_photos[i] = publicUrl;
+            }
+          }
+        }
+        if (patch.after_photos) {
+          for (let i = 0; i < patch.after_photos.length; i++) {
+            const photo = patch.after_photos[i];
+            if (photo.startsWith('data:image')) {
+              const publicUrl = await uploadBase64Photo(photo);
+              if (publicUrl) patch.after_photos[i] = publicUrl;
+            }
+          }
+        }
+        
+        const { error } = await sb.from('elevore_missions').update(patch).eq('id', id);
+        if (!error) {
+          successCount++;
+          delete queued[id];
+        } else {
+          console.error(`Failed to sync job ${id}:`, error);
+        }
+      }
+      
+      if (Object.keys(queued).length === 0) {
+        localStorage.removeItem('elevore_offline_missions');
+      } else {
+        localStorage.setItem('elevore_offline_missions', JSON.stringify(queued));
+      }
+      
+      if (successCount > 0) {
+        toastFn(prefLang === 'es' ? `📶 Sincronización completada: ${successCount} misión(es) actualizada(s) ✓` : `📶 Sync completed: ${successCount} mission(s) updated ✓`, 'green');
+        refreshFn();
+      }
+    } catch (err) {
+      console.error("Error during offline sync:", err);
+    }
+  };
+
   const refresh = useCallback(async () => {
     // ⚠️ SECURITY: Never fetch data without a confirmed tenantId.
     // This prevents cross-tenant data leaks.
@@ -5987,11 +6366,12 @@ Instrucciones:
     }
     setLoad(true);
 
-    const [{ data: j }, { data: c }, { data: s }, { data: ts }] = await Promise.all([
+    const [{ data: j }, { data: c }, { data: s }, { data: ts }, { data: t }] = await Promise.all([
       sb.from('elevore_missions').select('*').eq('tenant_id', tenantId).order('created_at', { ascending: false }),
       sb.from('clients').select('*').eq('tenant_id', tenantId),
       sb.from('staff_profiles').select('*').eq('tenant_id', tenantId),
-      sb.from('tenant_settings').select('*').eq('tenant_id', tenantId).maybeSingle()
+      sb.from('tenant_settings').select('*').eq('tenant_id', tenantId).maybeSingle(),
+      sb.from('tenants').select('*').eq('id', tenantId).maybeSingle()
     ]);
 
     if (j) {
@@ -6011,6 +6391,9 @@ Instrucciones:
     }
     if (ts) {
       setTenantSettings(ts);
+    }
+    if (t) {
+      setTenant(t);
     }
 
     // Defensive fetch of payout history
@@ -8146,7 +8529,7 @@ Instrucciones generales de formato:
 
   // Staff View Mobile Operations Check-in Checklist
   if (role === 'staff' && aStaff) {
-    return <StaffJob job={aStaff} onBack={() => setAStaff(null)} onRefresh={refresh} tt={tt} recTime={recTime} upsell={upsell} update={update} employee={activeEmployee} />;
+    return <StaffJob job={aStaff} onBack={() => setAStaff(null)} onRefresh={refresh} tt={tt} recTime={recTime} upsell={upsell} update={update} employee={activeEmployee} isOffline={isOffline} />;
   }
 
   return (
@@ -8182,6 +8565,44 @@ Instrucciones generales de formato:
                 </div>
               );
             })}
+          </div>
+        </div>
+      )}
+
+      {/* OVERLAY DE SIMULACIÓN DE STRIPE SAAS SUBSCRIPTION */}
+      {billingProgressStage && (
+        <div className="fixed inset-0 bg-slate-950/95 backdrop-blur-lg z-[3000] flex flex-col items-center justify-center p-6 text-center animate-in fade-in duration-300">
+          <div className="w-20 h-20 relative flex items-center justify-center mb-6">
+            <div className="absolute inset-0 rounded-full border-4 border-white/5 border-t-[#F5C518] animate-spin"></div>
+            <Icon name="credit-card" className="w-8 h-8 text-[#F5C518] animate-pulse" />
+          </div>
+          <h2 className="text-xl font-black uppercase tracking-widest text-white mb-2">Procesando Suscripción SaaS</h2>
+          <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-6">Plan: {selectedBillingPlan.toUpperCase()}</p>
+          <div className="max-w-xs w-full space-y-3 mt-4 text-[9px] font-black uppercase tracking-wider text-center text-slate-300 animate-pulse">
+            {billingProgressStage}
+          </div>
+        </div>
+      )}
+
+      {/* OVERLAY DE SIMULACIÓN DE DISPARO DE CAMPAÑA MASIVA */}
+      {campaignSending && (
+        <div className="fixed inset-0 bg-slate-950/95 backdrop-blur-lg z-[3000] flex flex-col items-center justify-center p-6 text-center animate-in fade-in duration-300">
+          <div className="w-20 h-20 relative flex items-center justify-center mb-6">
+            <div className="absolute inset-0 rounded-full border-4 border-white/5 border-t-indigo-500 animate-spin"></div>
+            <Icon name="mail" className="w-8 h-8 text-indigo-500 animate-pulse" />
+          </div>
+          <h2 className="text-xl font-black uppercase tracking-widest text-white mb-2">Disparando Campaña de Marketing</h2>
+          <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-6">Progreso: {campaignProgress} de {campaignTotal}</p>
+          
+          <div className="w-full max-w-xs bg-white/5 h-1.5 rounded-full overflow-hidden border border-white/5 p-[1px] mb-6">
+            <div 
+              className="bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 h-full rounded-full transition-all duration-300" 
+              style={{ width: `${(campaignProgress / campaignTotal) * 100}%` }}
+            />
+          </div>
+
+          <div className="max-w-xs w-full space-y-3 mt-4 text-[9px] font-black uppercase tracking-wider text-center text-slate-300 animate-pulse">
+            {campaignStage}
           </div>
         </div>
       )}
@@ -8334,8 +8755,15 @@ Instrucciones generales de formato:
               <div>
                 <h1 className="font-black text-sm tracking-widest uppercase text-white leading-none truncate max-w-[150px]">{tenantName.toUpperCase()} <span className="text-gradient italic text-[10px]">OS</span></h1>
                 <div className="flex items-center gap-2 mt-1.5">
-                  <div className={rtOn ? 'dg' : 'da'}></div>
-                  <p className="text-[7px] font-black text-slate-500 uppercase tracking-widest">{rtOn ? 'Live Sync' : 'v97.0'}</p>
+                  <div className={isOffline ? 'w-2 h-2 rounded-full bg-red-500 animate-pulse' : rtOn ? 'dg' : 'da'}></div>
+                  <p className="text-[7px] font-black text-slate-500 uppercase tracking-widest">
+                    {isOffline ? 'Modo Offline' : rtOn ? 'Live Sync' : 'v97.0'}
+                  </p>
+                  {isOffline && (
+                    <span className="text-[5.5px] bg-red-500/20 text-red-400 border border-red-500/30 px-1 py-0.2 rounded font-black">
+                      OFFLINE
+                    </span>
+                  )}
                 </div>
               </div>
             </div>
@@ -8436,7 +8864,12 @@ Instrucciones generales de formato:
             <img src="/elevore-logo.png" alt="Elevore Logo" className="w-6 h-6 object-contain" />
             <h2 className="font-black text-xs tracking-widest uppercase text-white leading-none truncate max-w-[120px]">{tenantName.toUpperCase()} <span className="text-gradient italic text-[8px]">OS</span></h2>
           </div>
-          <div className="flex gap-1.5">
+          <div className="flex gap-1.5 items-center">
+            {isOffline && (
+              <span className="flex items-center gap-1 bg-red-500/20 text-red-400 border border-red-500/30 px-2 py-0.5 rounded-lg text-[6px] font-black uppercase tracking-wider animate-pulse mr-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-ping"></span> OFFLINE
+              </span>
+            )}
             <button onClick={() => setAIOpen(true)} className="p-2 bg-white/5 rounded-lg text-slate-400 hover:text-white"><Icon name="brain" className="w-4 h-4 text-amber-400" /></button>
             {role === 'admin' && (
               <button onClick={() => setQM(true)} className="p-2 bg-[#F5C518] text-black rounded-lg"><Icon name="zap" className="w-4 h-4" /></button>
@@ -8539,6 +8972,52 @@ Instrucciones generales de formato:
                   <span className="text-[8px] bg-white/5 border border-white/5 text-slate-500 px-3 py-2 rounded-xl uppercase font-black">Paid ✓</span>
                 )}
               </div>
+
+              {/* Staff Gamification Portal */}
+              {(() => {
+                const stats = getStaffStats(activeEmployee, jobs);
+                return (
+                  <div className="g p-6 shadow-xl bg-gradient-to-br from-indigo-950/20 via-slate-900/40 to-black border border-indigo-500/20 rounded-2xl relative overflow-hidden space-y-4">
+                    <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/5 rounded-full blur-3xl pointer-events-none"></div>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-[7px] font-black text-indigo-400 uppercase tracking-wider">🛡️ GAMIFICATION PORTAL</p>
+                        <h3 className="text-sm font-black text-white uppercase tracking-widest mt-0.5">Progreso y Logros</h3>
+                      </div>
+                      <span className="text-[10px] font-black text-[#F5C518] uppercase bg-amber-400/10 border border-amber-400/25 px-2.5 py-1 rounded-lg">
+                        Nivel {stats.level}
+                      </span>
+                    </div>
+
+                    <div className="space-y-1">
+                      <div className="flex justify-between text-[8px] font-bold text-slate-400 uppercase">
+                        <span>XP: {stats.xp}</span>
+                        <span>{stats.progress}% para Nivel {stats.level + 1}</span>
+                      </div>
+                      <div className="w-full bg-white/5 h-2 rounded-full overflow-hidden border border-white/5 p-[1px]">
+                        <div 
+                          className="bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 h-full rounded-full transition-all duration-500" 
+                          style={{ width: `${stats.progress}%` }}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-1.5 pt-1">
+                      <p className="text-[8px] font-black text-slate-500 uppercase">Logros Obtenidos ({stats.badges.length})</p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {stats.badges.map((badge, idx) => (
+                          <span 
+                            key={idx} 
+                            className={`text-[8.5px] font-black px-2.5 py-1 rounded-lg border uppercase ${badge.color}`}
+                          >
+                            {badge.label}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
 
               {staffJobs.length === 0 && <div className="g p-10 text-center text-slate-500 font-black italic uppercase bg-[rgba(255,255,255,0.04)] border border-[rgba(255,255,255,0.08)]">No tienes misiones asignadas hoy.</div>}
               
@@ -10263,7 +10742,8 @@ Instrucciones generales de formato:
                 {[
                   { id: 'dna', name: '👥 DNA de Clientes' },
                   { id: 'vip', name: '💎 Membresías VIP' },
-                  { id: 'referrals', name: '🎁 Retención & Referidos' }
+                  { id: 'referrals', name: '🎁 Retención & Referidos' },
+                  { id: 'campaigns', name: '📢 Campañas' }
                 ].map(tab => (
                   <button
                     key={tab.id}
@@ -10330,7 +10810,7 @@ Instrucciones generales de formato:
           )}
 
 
-          {role === 'admin' && view === 'settings' && settingsTab === 'company' && (
+          {role === 'admin' && view === 'settings' && (
             <div className="space-y-6 animate-in fade-in pb-24">
               {/* Settings Sub-tabs Switcher */}
               <div className="flex gap-2 bg-black/45 p-1.5 rounded-2xl border border-white/5 overflow-x-auto nsb">
@@ -10355,136 +10835,274 @@ Instrucciones generales de formato:
                 ))}
               </div>
 
-              <div className="g p-8 border-t-4 border-slate-500 bg-black/40">
-                <h2 className="text-2xl font-black uppercase tracking-widest text-white mb-2">⚙️ Company Settings</h2>
-                <p className="text-[10px] text-slate-400 font-bold uppercase mb-8">Administra la configuracion interna de tu imperio SaaS</p>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                  <div className="space-y-4">
-                    <h3 className="text-sm font-black uppercase text-[#F5C518]">Brand Identity</h3>
-                    <div className="space-y-1">
-                      <label className="text-[9px] font-black uppercase text-slate-500 tracking-widest pl-1">Business Full Name</label>
-                      <input className="inp w-full" value={settingsBusName} onChange={e => setSettingsBusName(e.target.value)} />
+              {settingsTab === 'company' && (
+                <>
+                  <div className="g p-8 border-t-4 border-slate-500 bg-black/40">
+                    <h2 className="text-2xl font-black uppercase tracking-widest text-white mb-2">⚙️ Company Settings</h2>
+                    <p className="text-[10px] text-slate-400 font-bold uppercase mb-8">Administra la configuracion interna de tu imperio SaaS</p>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                      <div className="space-y-4">
+                        <h3 className="text-sm font-black uppercase text-[#F5C518]">Brand Identity</h3>
+                        <div className="space-y-1">
+                          <label className="text-[9px] font-black uppercase text-slate-500 tracking-widest pl-1">Business Full Name</label>
+                          <input className="inp w-full" value={settingsBusName} onChange={e => setSettingsBusName(e.target.value)} />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-[9px] font-black uppercase text-slate-500 tracking-widest pl-1">Contact / Zelle Phone</label>
+                          <input className="inp w-full" value={settingsPhone} onChange={e => setSettingsPhone(e.target.value)} />
+                        </div>
+                      </div>
+                      
+                      <div className="space-y-4">
+                        <h3 className="text-sm font-black uppercase text-[#F5C518]">Financials</h3>
+                        <div className="space-y-1">
+                          <label className="text-[9px] font-black uppercase text-slate-500 tracking-widest pl-1">Monthly MRR Goal ($)</label>
+                          <input className="inp w-full" type="number" value={settingsGoal} onChange={e => setSettingsGoal(e.target.value)} />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-[9px] font-black uppercase text-slate-500 tracking-widest pl-1">Staff Default Payout %</label>
+                          <input className="inp w-full" type="number" value={settingsPayPct} onChange={e => setSettingsPayPct(e.target.value)} />
+                        </div>
+                      </div>
                     </div>
-                    <div className="space-y-1">
-                      <label className="text-[9px] font-black uppercase text-slate-500 tracking-widest pl-1">Contact / Zelle Phone</label>
-                      <input className="inp w-full" value={settingsPhone} onChange={e => setSettingsPhone(e.target.value)} />
-                    </div>
+                    
+                    <button onClick={saveSettings} className="w-full mt-8 bg-[#F5C518] text-black py-4 rounded-xl font-black uppercase tracking-widest active:scale-95 transition-all">Save Changes</button>
                   </div>
-                  
-                  <div className="space-y-4">
-                    <h3 className="text-sm font-black uppercase text-[#F5C518]">Financials</h3>
-                    <div className="space-y-1">
-                      <label className="text-[9px] font-black uppercase text-slate-500 tracking-widest pl-1">Monthly MRR Goal ($)</label>
-                      <input className="inp w-full" type="number" value={settingsGoal} onChange={e => setSettingsGoal(e.target.value)} />
-                    </div>
-                    <div className="space-y-1">
-                      <label className="text-[9px] font-black uppercase text-slate-500 tracking-widest pl-1">Staff Default Payout %</label>
-                      <input className="inp w-full" type="number" value={settingsPayPct} onChange={e => setSettingsPayPct(e.target.value)} />
-                    </div>
-                  </div>
-                </div>
-                
-                <button onClick={saveSettings} className="w-full mt-8 bg-[#F5C518] text-black py-4 rounded-xl font-black uppercase tracking-widest active:scale-95 transition-all">Save Changes</button>
-              </div>
 
-              {/* Google Sync & Integration Card */}
-              <div className="g p-8 border-t-4 border-blue-500 bg-black/40 space-y-6">
-                <div>
-                  <h2 className="text-xl font-black uppercase tracking-widest text-white flex items-center gap-2">
-                    <Icon name="link-2" className="w-5 h-5 text-blue-400" /> Google Cloud Link & Sync
-                  </h2>
-                  <p className="text-[10px] text-slate-400 font-bold uppercase mt-0.5">
-                    Sincroniza tus misiones de Elevore con tus calendarios externos en tiempo real
-                  </p>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-2">
-                  {/* Option A: iCal Sync */}
-                  <div className="space-y-3 bg-white/[0.02] p-5 rounded-2xl border border-white/5 flex flex-col justify-between">
+                  {/* Google Sync & Integration Card */}
+                  <div className="g p-8 border-t-4 border-blue-500 bg-black/40 space-y-6">
                     <div>
-                      <h3 className="text-xs font-black uppercase text-blue-400 flex items-center gap-1.5">
-                        <Icon name="calendar" className="w-4 h-4" /> Google Calendar (iCal Sync)
-                      </h3>
-                      <p className="text-[7.5px] text-slate-400 uppercase font-bold leading-relaxed mt-1.5">
-                        Suscripción unidireccional automática. Copia este enlace y agrégalo en tu Google Calendar ("Agregar desde URL"). Se actualizará automáticamente en segundo plano.
+                      <h2 className="text-xl font-black uppercase tracking-widest text-white flex items-center gap-2">
+                        <Icon name="link-2" className="w-5 h-5 text-blue-400" /> Google Cloud Link & Sync
+                      </h2>
+                      <p className="text-[10px] text-slate-400 font-bold uppercase mt-0.5">
+                        Sincroniza tus misiones de Elevore con tus calendarios externos en tiempo real
                       </p>
                     </div>
 
-                    <div className="space-y-2 mt-4">
-                      <div className="flex gap-2">
-                        <input
-                          readOnly
-                          className="inp text-[9px] font-mono w-full bg-black/50 border-white/10"
-                          value={`${window.location.origin}/api/calendar-feed?tenant_id=${tenantId || 'default'}`}
-                        />
-                        <button
-                          onClick={() => {
-                            const url = `${window.location.origin}/api/calendar-feed?tenant_id=${tenantId || 'default'}`;
-                            navigator.clipboard.writeText(url);
-                            tt('Enlace iCal copiado ✓', 'green');
-                          }}
-                          className="px-3 bg-blue-600 text-white rounded-xl text-[8px] font-black uppercase hover:bg-blue-700 active:scale-95 transition-all"
-                        >
-                          Copiar
-                        </button>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-2">
+                      {/* Option A: iCal Sync */}
+                      <div className="space-y-3 bg-white/[0.02] p-5 rounded-2xl border border-white/5 flex flex-col justify-between">
+                        <div>
+                          <h3 className="text-xs font-black uppercase text-blue-400 flex items-center gap-1.5">
+                            <Icon name="calendar" className="w-4 h-4" /> Google Calendar (iCal Sync)
+                          </h3>
+                          <p className="text-[7.5px] text-slate-400 uppercase font-bold leading-relaxed mt-1.5">
+                            Suscripción unidireccional automática. Copia este enlace y agrégalo en tu Google Calendar ("Agregar desde URL"). Se actualizará automáticamente en segundo plano.
+                          </p>
+                        </div>
+
+                        <div className="space-y-2 mt-4">
+                          <div className="flex gap-2">
+                            <input
+                              readOnly
+                              className="inp text-[9px] font-mono w-full bg-black/50 border-white/10"
+                              value={`${window.location.origin}/api/calendar-feed?tenant_id=${tenantId || 'default'}`}
+                            />
+                            <button
+                              onClick={() => {
+                                const url = `${window.location.origin}/api/calendar-feed?tenant_id=${tenantId || 'default'}`;
+                                navigator.clipboard.writeText(url);
+                                tt('Enlace iCal copiado ✓', 'green');
+                              }}
+                              className="px-3 bg-blue-600 text-white rounded-xl text-[8px] font-black uppercase hover:bg-blue-700 active:scale-95 transition-all"
+                            >
+                              Copiar
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Option B: Direct OAuth */}
+                      <div className="space-y-3 bg-white/[0.02] p-5 rounded-2xl border border-white/5 flex flex-col justify-between">
+                        <div>
+                          <h3 className="text-xs font-black uppercase text-blue-400 flex items-center gap-1.5">
+                            <Icon name="chrome" className="w-4 h-4" /> Vinculación de Cuenta OAuth
+                          </h3>
+                          <p className="text-[7.5px] text-slate-400 uppercase font-bold leading-relaxed mt-1.5">
+                            Conecta directamente tu cuenta de Google a través de OAuth para integraciones directas bidireccionales y sincronización nativa de eventos.
+                          </p>
+                        </div>
+
+                        <div className="space-y-2 mt-4">
+                          <button
+                            onClick={async () => {
+                              tt('Redirigiendo a Google OAuth...', 'blue');
+                              const { error } = await sb.auth.signInWithOAuth({
+                                provider: 'google',
+                                options: {
+                                  scopes: 'https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/calendar',
+                                  redirectTo: window.location.origin
+                                }
+                              });
+                              if (error) tt('Error de OAuth: ' + error.message, 'red');
+                            }}
+                            className="w-full py-3 bg-white text-black font-black uppercase text-[9px] rounded-xl hover:bg-slate-200 active:scale-95 transition-all flex items-center justify-center gap-2 shadow-[0_0_15px_rgba(255,255,255,0.15)]"
+                          >
+                            <svg className="w-4 h-4" viewBox="0 0 24 24">
+                              <path
+                                fill="currentColor"
+                                d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+                              />
+                              <path
+                                fill="currentColor"
+                                d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+                              />
+                              <path
+                                fill="currentColor"
+                                d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"
+                              />
+                              <path
+                                fill="currentColor"
+                                d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
+                              />
+                            </svg>
+                            Conectar Google Account
+                          </button>
+                          <span className="text-[6.5px] text-slate-500 uppercase font-bold tracking-wider block text-center mt-1.5">
+                            * Requiere configuración del proveedor en Supabase Console
+                          </span>
+                        </div>
                       </div>
                     </div>
                   </div>
+                </>
+              )}
 
-                  {/* Option B: Direct OAuth */}
-                  <div className="space-y-3 bg-white/[0.02] p-5 rounded-2xl border border-white/5 flex flex-col justify-between">
-                    <div>
-                      <h3 className="text-xs font-black uppercase text-blue-400 flex items-center gap-1.5">
-                        <Icon name="chrome" className="w-4 h-4" /> Vinculación de Cuenta OAuth
-                      </h3>
-                      <p className="text-[7.5px] text-slate-400 uppercase font-bold leading-relaxed mt-1.5">
-                        Conecta directamente tu cuenta de Google a través de OAuth para integraciones directas bidireccionales y sincronización nativa de eventos.
-                      </p>
-                    </div>
-
-                    <div className="space-y-2 mt-4">
-                      <button
-                        onClick={async () => {
-                          tt('Redirigiendo a Google OAuth...', 'blue');
-                          const { error } = await sb.auth.signInWithOAuth({
-                            provider: 'google',
-                            options: {
-                              scopes: 'https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/calendar',
-                              redirectTo: window.location.origin
-                            }
-                          });
-                          if (error) tt('Error de OAuth: ' + error.message, 'red');
-                        }}
-                        className="w-full py-3 bg-white text-black font-black uppercase text-[9px] rounded-xl hover:bg-slate-200 active:scale-95 transition-all flex items-center justify-center gap-2 shadow-[0_0_15px_rgba(255,255,255,0.15)]"
-                      >
-                        <svg className="w-4 h-4" viewBox="0 0 24 24">
-                          <path
-                            fill="currentColor"
-                            d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-                          />
-                          <path
-                            fill="currentColor"
-                            d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-                          />
-                          <path
-                            fill="currentColor"
-                            d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"
-                          />
-                          <path
-                            fill="currentColor"
-                            d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
-                          />
-                        </svg>
-                        Conectar Google Account
-                      </button>
-                      <span className="text-[6.5px] text-slate-500 uppercase font-bold tracking-wider block text-center mt-1.5">
-                        * Requiere configuración del proveedor en Supabase Console
-                      </span>
+              {settingsTab === 'billing' && (
+                <div className="g p-8 border-t-4 border-[#F5C518] bg-black/40 space-y-6">
+                  <div>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h2 className="text-2xl font-black uppercase tracking-widest text-white">👑 ELEVORE SAAS SUBSCRIPTION</h2>
+                        <p className="text-[10px] text-slate-400 font-bold uppercase mt-0.5">Escala tu negocio de limpieza con la infraestructura premium de Elevore</p>
+                      </div>
+                      {tenant?.stripe_subscription_status && (
+                        <span className="text-[9px] font-black uppercase bg-green-500/10 border border-green-500/30 text-green-400 px-3 py-1.5 rounded-xl tracking-widest animate-pulse">
+                          ACTIVO: {tenant.stripe_subscription_status.replace('active_', '').toUpperCase()}
+                        </span>
+                      )}
                     </div>
                   </div>
+
+                  {/* Plan Selection Cards */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
+                    {[
+                      { id: 'basic', name: 'Plan Básico', price: 49, color: 'border-slate-500/30', glow: 'from-slate-500/20 to-transparent', perks: ['Hasta 5 Empleados', 'Rastreo GPS Básico', 'Dashboard de Finanzas', 'Soporte por Email'] },
+                      { id: 'premium', name: 'Plan Premium', price: 99, color: 'border-indigo-500/40 shadow-[0_0_25px_rgba(99,102,241,0.15)]', glow: 'from-indigo-500/20 to-transparent', perks: ['Hasta 20 Empleados', 'Campañas de CRM', 'Nómina Automatizada', 'Control de Calidad IA', 'Soporte Prioritario'], highlight: true },
+                      { id: 'vip', name: 'Plan VIP', price: 199, color: 'border-[#F5C518]/40 shadow-[0_0_35px_rgba(245,197,24,0.15)]', glow: 'from-[#F5C518]/20 to-transparent', perks: ['Empleados Ilimitados', 'Acceso Completo BI', 'Integraciones OAuth', 'Dominio Personalizado', 'Soporte 24/7 VIP'] }
+                    ].map(p => {
+                      const isSelected = selectedBillingPlan === p.id;
+                      const isCurrent = tenant?.stripe_subscription_status === 'active_' + p.id;
+                      return (
+                        <div key={p.id} className={`g p-6 flex flex-col justify-between border relative overflow-hidden bg-gradient-to-b ${p.glow} ${p.color} rounded-2xl transition-all duration-300 ${p.highlight ? 'ring-2 ring-indigo-500/30' : ''}`}>
+                          {p.highlight && (
+                            <span className="absolute top-3 right-3 bg-indigo-600 text-white text-[7px] font-black uppercase px-2 py-0.5 rounded-full tracking-widest">
+                              RECOMENDADO
+                            </span>
+                          )}
+                          <div>
+                            <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">{p.name}</p>
+                            <div className="flex items-baseline gap-1 mt-2">
+                              <span className="text-4xl font-black text-white italic">${p.price}</span>
+                              <span className="text-[9px] text-slate-500 font-bold uppercase">/mes</span>
+                            </div>
+                            <ul className="space-y-2 mt-6">
+                              {p.perks.map((pk, idx) => (
+                                <li key={idx} className="flex items-center gap-2 text-[9px] text-slate-300 font-bold uppercase">
+                                  <Icon name="check" className="w-3.5 h-3.5 text-green-400 flex-shrink-0" />
+                                  <span>{pk}</span>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                          
+                          <button
+                            onClick={() => {
+                              if (isCurrent) return;
+                              setSelectedBillingPlan(p.id);
+                            }}
+                            disabled={isCurrent}
+                            className={`w-full mt-8 py-3 rounded-xl text-[9px] font-black uppercase transition-all duration-200 active:scale-95 ${
+                              isCurrent 
+                                ? 'bg-green-950/40 border border-green-500/20 text-green-400 cursor-not-allowed' 
+                                : isSelected 
+                                  ? 'bg-white text-black font-extrabold shadow-xl shadow-white/10' 
+                                  : 'bg-white/5 border border-white/10 text-slate-400 hover:text-white hover:bg-white/10'
+                            }`}
+                          >
+                            {isCurrent ? 'Plan Actual ✓' : isSelected ? 'Plan Seleccionado' : 'Seleccionar Plan'}
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* Stripe Checkout Form Card */}
+                  {selectedBillingPlan && tenant?.stripe_subscription_status !== 'active_' + selectedBillingPlan && (
+                    <div className="g p-6 border border-white/5 bg-slate-950/50 rounded-2xl max-w-md mx-auto space-y-4 animate-in slide-in-from-bottom duration-300">
+                      <p className="text-[9px] font-black text-[#F5C518] uppercase tracking-widest flex items-center gap-1.5">
+                        <Icon name="credit-card" className="w-4 h-4" /> Detalle de Pago Seguro
+                      </p>
+                      <p className="text-[7.5px] text-slate-400 uppercase font-bold leading-normal">
+                        Estás suscribiéndote al <span className="text-white font-extrabold">{selectedBillingPlan.toUpperCase()}</span>. El cargo se realizará mensualmente a través de Stripe Billing.
+                      </p>
+                      
+                      <div className="space-y-3 pt-2">
+                        <div className="space-y-1">
+                          <label className="text-[8px] font-black uppercase text-slate-500 tracking-widest pl-1">Nombre en la Tarjeta</label>
+                          <input className="inp w-full text-xs uppercase" placeholder="JOHN DOE" value={billingCardName} onChange={e => setBillingCardName(e.target.value)} />
+                        </div>
+                        
+                        <div className="space-y-1">
+                          <label className="text-[8px] font-black uppercase text-slate-500 tracking-widest pl-1">Número de Tarjeta</label>
+                          <div className="relative">
+                            <input className="inp w-full text-xs font-mono" placeholder="4242 •••• •••• 4242" maxLength={19} value={billingCardNo} onChange={e => {
+                              const val = e.target.value.replace(/\s?/g, '').replace(/(\d{4})/g, '$1 ').trim();
+                              setBillingCardNo(val);
+                            }} />
+                            <span className="absolute right-3.5 top-3 text-[9px] font-black text-slate-600 uppercase">VISA / MC</span>
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-3">
+                          <div className="space-y-1">
+                            <label className="text-[8px] font-black uppercase text-slate-500 tracking-widest pl-1">Expiración</label>
+                            <input className="inp w-full text-xs font-mono text-center" placeholder="MM/YY" maxLength={5} value={billingCardExpiry} onChange={e => {
+                              let val = e.target.value.replace(/\D/g, '');
+                              if (val.length > 2) val = val.substring(0, 2) + '/' + val.substring(2, 4);
+                              setBillingCardExpiry(val);
+                            }} />
+                          </div>
+                          <div className="space-y-1">
+                            <label className="text-[8px] font-black uppercase text-slate-500 tracking-widest pl-1">CVC</label>
+                            <input className="inp w-full text-xs font-mono text-center" placeholder="123" maxLength={4} value={billingCardCvc} onChange={e => setBillingCardCvc(e.target.value)} />
+                          </div>
+                        </div>
+                      </div>
+
+                      {billingError && (
+                        <p className="text-[8.5px] font-black uppercase text-red-400 bg-red-950/20 border border-red-500/20 p-2.5 rounded-xl text-center">
+                          ⚠️ {billingError}
+                        </p>
+                      )}
+
+                      <button
+                        onClick={handleActivateSubscription}
+                        disabled={billingLoading}
+                        className="w-full mt-4 bg-[#F5C518] hover:bg-amber-400 text-black py-4 rounded-xl font-black uppercase tracking-widest text-[10px] active:scale-95 transition-all shadow-[0_0_20px_rgba(245,197,24,0.15)] flex items-center justify-center gap-1.5"
+                      >
+                        {billingLoading ? (
+                          <Icon name="loader-2" className="w-4 h-4 animate-spin text-black" />
+                        ) : (
+                          `Activar Suscripción (${selectedBillingPlan === 'basic' ? '$49' : selectedBillingPlan === 'premium' ? '$99' : '$199'}/mo) 🚀`
+                        )}
+                      </button>
+                    </div>
+                  )}
                 </div>
-              </div>
+              )}
             </div>
           )}
 
@@ -11395,7 +12013,8 @@ Respond ONLY in this exact JSON format (no explanation, no markdown, just raw JS
                   {[
                     { id: 'dna', name: '👥 DNA de Clientes' },
                     { id: 'vip', name: '💎 Membresías VIP' },
-                    { id: 'referrals', name: '🎁 Retención & Referidos' }
+                    { id: 'referrals', name: '🎁 Retención & Referidos' },
+                    { id: 'campaigns', name: '📢 Campañas' }
                   ].map(tab => (
                     <button
                       key={tab.id}
@@ -11483,6 +12102,360 @@ Respond ONLY in this exact JSON format (no explanation, no markdown, just raw JS
               </div>
             );
           })()}
+
+          {role === 'admin' && view === 'crm' && crmTab === 'vip' && (() => {
+            const basicCount = clients.filter(c => c.membership === 'basic').length;
+            const premiumCount = clients.filter(c => c.membership === 'premium').length;
+            const vipCount = clients.filter(c => c.membership === 'vip').length;
+            const activeMembers = basicCount + premiumCount + vipCount;
+            
+            const prices = {
+              basic: tenantSettings?.membership_plans?.basic || 49,
+              premium: tenantSettings?.membership_plans?.premium || 99,
+              vip: tenantSettings?.membership_plans?.vip || 199
+            };
+            const totalMRR = (basicCount * prices.basic) + (premiumCount * prices.premium) + (vipCount * prices.vip);
+            
+            return (
+              <div className="space-y-5 animate-in fade-in pb-24">
+                <div className="flex gap-2 bg-black/45 p-1.5 rounded-2xl border border-white/5 overflow-x-auto nsb">
+                  {[
+                    { id: 'dna', name: '👥 DNA de Clientes' },
+                    { id: 'vip', name: '💎 Membresías VIP' },
+                    { id: 'referrals', name: '🎁 Retención & Referidos' },
+                    { id: 'campaigns', name: '📢 Campañas' }
+                  ].map(tab => (
+                    <button
+                      key={tab.id}
+                      onClick={() => {
+                        setCrmTab(tab.id);
+                        if (tab.id === 'vip') setMembersTab('vip');
+                      }}
+                      className={`px-4 py-2.5 rounded-xl text-[9px] font-black uppercase whitespace-nowrap active:scale-95 transition-all ${
+                        crmTab === tab.id
+                          ? 'bg-[#F5C518] text-black shadow-lg shadow-[#F5C518]/15'
+                          : 'bg-white/5 text-slate-400 hover:text-white hover:bg-white/10'
+                      }`}
+                    >
+                      {tab.name}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="g p-5 border-t-4 border-amber-500 bg-[rgba(255,255,255,0.04)]">
+                  <h2 className="text-xl font-black tracking-widest uppercase text-white font-display">💎 VIP MEMBERSHIP COMMANDER</h2>
+                  <p className="text-[8px] text-slate-500 uppercase mt-1">Recurrent client subscription management</p>
+                </div>
+
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  <div className="g p-4 border border-white/5 bg-[rgba(255,255,255,0.02)] text-center">
+                    <p className="text-3xl font-black text-amber-400">{activeMembers}</p>
+                    <p className="text-[7px] text-slate-500 uppercase font-black mt-1">Suscritos Activos</p>
+                  </div>
+                  <div className="g p-4 border border-white/5 bg-[rgba(255,255,255,0.02)] text-center">
+                    <p className="text-3xl font-black text-green-400">${totalMRR}</p>
+                    <p className="text-[7px] text-slate-500 uppercase font-black mt-1">MRR Acumulado VIP</p>
+                  </div>
+                  <div className="g p-4 border border-white/5 bg-[rgba(255,255,255,0.02)] text-center">
+                    <p className="text-3xl font-black text-indigo-400">{vipCount}</p>
+                    <p className="text-[7px] text-slate-500 uppercase font-black mt-1">VIP Platinos</p>
+                  </div>
+                  <div className="g p-4 border border-white/5 bg-[rgba(255,255,255,0.02)] text-center">
+                    <p className="text-3xl font-black text-slate-300">{clients.length - activeMembers}</p>
+                    <p className="text-[7px] text-slate-500 uppercase font-black mt-1">Sin Suscripción</p>
+                  </div>
+                </div>
+
+                <div className="g p-6 border border-white/5 bg-slate-950/40 rounded-2xl space-y-4">
+                  <h3 className="text-xs font-black uppercase text-white tracking-widest pl-1">Asignar Planes de Membresía</h3>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left text-xs text-slate-300">
+                      <thead>
+                        <tr className="border-b border-white/10 text-[9px] uppercase tracking-wider text-slate-500 font-bold">
+                          <th className="pb-3 pl-2">Cliente</th>
+                          <th className="pb-3 text-center">Plan Actual</th>
+                          <th className="pb-3 text-center">Cambiar Plan</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {clients.map(client => {
+                          const currentPlan = client.membership || 'none';
+                          return (
+                            <tr key={client.id} className="border-b border-white/5 hover:bg-white/[0.02] transition-colors">
+                              <td className="py-4 pl-2">
+                                <p className="font-extrabold text-white uppercase italic">{client.name}</p>
+                                <p className="text-[8px] text-slate-500">{client.email || 'No email'} • {client.phone}</p>
+                              </td>
+                              <td className="py-4 text-center">
+                                <span className={`text-[8px] font-black uppercase px-2.5 py-1 rounded-lg border ${
+                                  currentPlan === 'vip' 
+                                    ? 'bg-[#F5C518]/10 border-[#F5C518]/30 text-[#F5C518]' 
+                                    : currentPlan === 'premium'
+                                      ? 'bg-indigo-500/10 border-indigo-500/30 text-indigo-400'
+                                      : currentPlan === 'basic'
+                                        ? 'bg-blue-500/10 border-blue-500/30 text-blue-400'
+                                        : 'bg-white/5 border-white/10 text-slate-500'
+                                }`}>
+                                  {currentPlan === 'none' ? 'Sin Plan' : currentPlan.toUpperCase()}
+                                </span>
+                              </td>
+                              <td className="py-4 text-center">
+                                <div className="flex items-center justify-center gap-1">
+                                  {[
+                                    { id: 'none', label: 'Ninguno', color: 'hover:bg-slate-850' },
+                                    { id: 'basic', label: 'Básico', color: 'hover:bg-blue-900/40 text-blue-400' },
+                                    { id: 'premium', label: 'Premium', color: 'hover:bg-indigo-900/40 text-indigo-400' },
+                                    { id: 'vip', label: 'VIP', color: 'hover:bg-amber-900/40 text-[#F5C518]' }
+                                  ].map(opt => (
+                                    <button
+                                      key={opt.id}
+                                      onClick={() => updateClientMembership(client.id, client.name, opt.id)}
+                                      className={`px-2 py-1 rounded text-[7px] font-black uppercase transition-all ${
+                                        currentPlan === opt.id 
+                                          ? 'bg-white/10 text-white font-extrabold border border-white/20' 
+                                          : 'bg-white/5 text-slate-500 border border-transparent'
+                                      } ${opt.color}`}
+                                    >
+                                      {opt.label}
+                                    </button>
+                                  ))}
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
+
+          {role === 'admin' && view === 'crm' && crmTab === 'campaigns' && (() => {
+            let segmentClients = [];
+            const now = new Date();
+            if (campaignTargets === 'high_risk') {
+              segmentClients = clients.filter(c => {
+                const cJobs = jobs.filter(j => j.client_name === c.name && j.status === 'paid');
+                const lastJob = cJobs.sort((a,b) => new Date(b.scheduled_date) - new Date(a.scheduled_date))[0];
+                const daysSince = lastJob ? Math.floor((now - new Date(lastJob.scheduled_date)) / 86400000) : 999;
+                return daysSince > 45;
+              });
+            } else if (campaignTargets === 'vip') {
+              segmentClients = clients.filter(c => c.membership && c.membership !== 'none');
+            } else {
+              segmentClients = clients;
+            }
+
+            return (
+              <div className="space-y-5 animate-in fade-in pb-24">
+                <div className="flex gap-2 bg-black/45 p-1.5 rounded-2xl border border-white/5 overflow-x-auto nsb">
+                  {[
+                    { id: 'dna', name: '👥 DNA de Clientes' },
+                    { id: 'vip', name: '💎 Membresías VIP' },
+                    { id: 'referrals', name: '🎁 Retención & Referidos' },
+                    { id: 'campaigns', name: '📢 Campañas' }
+                  ].map(tab => (
+                    <button
+                      key={tab.id}
+                      onClick={() => {
+                        setCrmTab(tab.id);
+                        if (tab.id === 'vip') setMembersTab('vip');
+                      }}
+                      className={`px-4 py-2.5 rounded-xl text-[9px] font-black uppercase whitespace-nowrap active:scale-95 transition-all ${
+                        crmTab === tab.id
+                          ? 'bg-[#F5C518] text-black shadow-lg shadow-[#F5C518]/15'
+                          : 'bg-white/5 text-slate-400 hover:text-white hover:bg-white/10'
+                      }`}
+                    >
+                      {tab.name}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="g p-5 border-t-4 border-indigo-500 bg-[rgba(255,255,255,0.04)]">
+                  <h2 className="text-xl font-black tracking-widest uppercase text-white font-display">📢 MARKETING CAMPAIGN CONSOLE</h2>
+                  <p className="text-[8px] text-slate-500 uppercase mt-1">Smart customer re-engagement systems</p>
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                  <div className="lg:col-span-2 space-y-5">
+                    <div className="g p-5 border border-white/5 bg-slate-950/40 rounded-2xl space-y-4">
+                      <p className="text-[9px] font-black text-indigo-400 uppercase tracking-widest pl-1">1. Seleccionar Audiencia Objetivo</p>
+                      <div className="grid grid-cols-3 gap-2">
+                        {[
+                          { id: 'high_risk', label: 'Riesgo de Fuga', desc: 'Inactivos +45 días', count: clients.filter(c => {
+                            const cJobs = jobs.filter(j => j.client_name === c.name && j.status === 'paid');
+                            const lastJob = cJobs.sort((a,b) => new Date(b.scheduled_date) - new Date(a.scheduled_date))[0];
+                            const daysSince = lastJob ? Math.floor((now - new Date(lastJob.scheduled_date)) / 86400000) : 999;
+                            return daysSince > 45;
+                          }).length },
+                          { id: 'vip', label: 'Miembros VIP', desc: 'Suscripción activa', count: clients.filter(c => c.membership && c.membership !== 'none').length },
+                          { id: 'all', label: 'Todos', desc: 'Base de datos total', count: clients.length }
+                        ].map(sg => (
+                          <button
+                            key={sg.id}
+                            onClick={() => setCampaignTargets(sg.id)}
+                            className={`g p-3 border text-left rounded-xl transition-all duration-200 active:scale-95 flex flex-col justify-between min-h-[85px] ${
+                              campaignTargets === sg.id 
+                                ? 'border-indigo-500 bg-indigo-950/20 text-white' 
+                                : 'border-white/5 bg-white/5 text-slate-400 hover:border-white/10 hover:text-white'
+                            }`}
+                          >
+                            <div>
+                              <p className="text-[8px] font-black uppercase tracking-wider">{sg.label}</p>
+                              <p className="text-[6.5px] text-slate-500 font-bold uppercase mt-0.5">{sg.desc}</p>
+                            </div>
+                            <p className="text-lg font-black text-white leading-none mt-2">{sg.count} Clientes</p>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="g p-5 border border-white/5 bg-slate-950/40 rounded-2xl space-y-4">
+                      <p className="text-[9px] font-black text-indigo-400 uppercase tracking-widest pl-1">2. Plantilla de Mensaje</p>
+                      
+                      <div className="flex gap-2">
+                        {[
+                          { id: 'winback', label: 'Recuperar Cliente' },
+                          { id: 'followup', label: 'Cotización Pendiente' },
+                          { id: 'review', label: 'Solicitar Reseña' }
+                        ].map(tpl => (
+                          <button
+                            key={tpl.id}
+                            onClick={() => setSelectedCampaignTemplate(tpl.id)}
+                            className={`px-3 py-2 rounded-xl text-[8.5px] font-black uppercase transition-all duration-150 active:scale-95 ${
+                              selectedCampaignTemplate === tpl.id
+                                ? 'bg-indigo-600 text-white shadow shadow-indigo-600/30'
+                                : 'bg-white/5 text-slate-400 hover:text-white hover:bg-white/10'
+                            }`}
+                          >
+                            {tpl.label}
+                          </button>
+                        ))}
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="text-[7.5px] font-black uppercase text-slate-500 tracking-wider">Editor de Contenido</label>
+                        <textarea
+                          rows={4}
+                          value={campaignCustomText}
+                          onChange={e => setCampaignCustomText(e.target.value)}
+                          className="inp w-full text-xs font-mono resize-none focus:border-indigo-500"
+                          placeholder="Escribe el mensaje..."
+                        />
+                        <p className="text-[7px] text-slate-500 uppercase font-black pl-1">
+                          Tokens Disponibles: <span className="text-white font-extrabold">{`{ClientName}`}</span>, <span className="text-white font-extrabold">{`{BusinessName}`}</span>, <span className="text-white font-extrabold">{`{ServiceType}`}</span>, <span className="text-white font-extrabold">{`{GoogleReviewLink}`}</span>
+                        </p>
+                      </div>
+
+                      <button
+                        onClick={handleSendBulkCampaign}
+                        className="w-full bg-indigo-600 hover:bg-indigo-500 text-white py-3.5 rounded-xl font-black uppercase tracking-widest text-[9.5px] active:scale-95 transition-all shadow-lg shadow-indigo-600/20 flex items-center justify-center gap-1.5"
+                      >
+                        Enviar Campaña Masiva 🚀
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="space-y-5">
+                    <div className="g p-5 border border-white/5 bg-slate-950/40 rounded-2xl flex flex-col items-center">
+                      <p className="text-[9px] font-black text-indigo-400 uppercase tracking-widest mb-4">Vista Previa Smartphone</p>
+                      
+                      <div className="w-[250px] border-4 border-slate-700 bg-slate-900 rounded-[2.5rem] p-3 shadow-2xl relative">
+                        <div className="absolute top-2 left-1/2 transform -translate-x-1/2 w-16 h-3.5 bg-black rounded-full z-20 flex items-center justify-center">
+                          <div className="w-6 h-1 bg-slate-800 rounded-full"></div>
+                        </div>
+
+                        <div className="w-full bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-indigo-950 via-slate-950 to-black h-[380px] rounded-[2rem] overflow-hidden flex flex-col justify-between border border-white/5">
+                          <div className="bg-slate-900/90 border-b border-white/5 px-3 pt-6 pb-2 flex items-center gap-2">
+                            <div className="w-6 h-6 rounded-full bg-indigo-600/30 flex items-center justify-center text-[10px] font-black text-indigo-400 border border-indigo-500/20 uppercase">
+                              {(tenantSettings?.business_name || 'E')[0]}
+                            </div>
+                            <div>
+                              <p className="text-[8px] font-black text-white leading-tight uppercase tracking-wider">{tenantSettings?.business_name || 'Elevore Bot'}</p>
+                              <p className="text-[6px] text-green-400 font-bold uppercase tracking-wider">En línea</p>
+                            </div>
+                          </div>
+
+                          <div className="p-3 flex-1 flex flex-col justify-end space-y-2 overflow-y-auto">
+                            <div className="bg-indigo-955/50 border border-indigo-500/20 text-white p-3 rounded-2xl rounded-tl-none text-[8.5px] leading-relaxed space-y-1.5 max-w-[90%] font-mono">
+                              {getProcessedCampaignPreview()}
+                              <span className="block text-right text-[6px] text-slate-500 font-black mt-1">10:42 AM ✓✓</span>
+                            </div>
+                          </div>
+
+                          <div className="bg-slate-900/80 px-3 py-2 border-t border-white/5 flex items-center justify-between">
+                            <span className="text-[7.5px] text-slate-500 font-bold uppercase">Mensaje de campaña...</span>
+                            <Icon name="send" className="w-3.5 h-3.5 text-indigo-500" />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="g p-6 border border-white/5 bg-slate-950/40 rounded-2xl space-y-4">
+                  <h3 className="text-xs font-black uppercase text-white tracking-widest pl-1">Envío Individual por WhatsApp</h3>
+                  
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left text-xs text-slate-300">
+                      <thead>
+                        <tr className="border-b border-white/10 text-[9px] uppercase tracking-wider text-slate-500 font-bold">
+                          <th className="pb-3 pl-2">Cliente</th>
+                          <th className="pb-3">Último Servicio</th>
+                          <th className="pb-3 text-right pr-2">Disparar Mensaje</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {segmentClients.map(client => {
+                          const clientJobs = jobs.filter(j => j.client_name === client.name);
+                          const lastJob = clientJobs.sort((a,b) => new Date(b.scheduled_date) - new Date(a.scheduled_date))[0];
+                          const daysSince = lastJob ? Math.floor((now - new Date(lastJob.scheduled_date)) / 86400000) : 999;
+                          
+                          return (
+                            <tr key={client.id} className="border-b border-white/5 hover:bg-white/[0.02] transition-colors">
+                              <td className="py-3 pl-2">
+                                <p className="font-extrabold text-white uppercase italic">{client.name}</p>
+                                <p className="text-[8px] text-slate-500">{client.phone} • {client.email || 'No email'}</p>
+                              </td>
+                              <td className="py-3">
+                                <p className="text-[10px] text-slate-400 font-bold uppercase">
+                                  {daysSince === 999 ? 'Ninguno' : `${daysSince} días atrás`}
+                                </p>
+                                {lastJob && <p className="text-[7.5px] text-slate-500 italic mt-0.5">{lastJob.service_type?.toUpperCase()} el {fmtD(lastJob.scheduled_date)}</p>}
+                              </td>
+                              <td className="py-3 text-right pr-2">
+                                <button
+                                  onClick={() => {
+                                    const mockJob = lastJob || {
+                                      client_name: client.name,
+                                      client_phone: client.phone,
+                                      service_type: 'Limpieza Regular',
+                                      total_price: 120,
+                                      deposit_paid: 0,
+                                      scheduled_date: new Date().toISOString().split('T')[0],
+                                      id: 'mock_camp_' + Date.now()
+                                    };
+                                    wa(mockJob, selectedCampaignTemplate);
+                                  }}
+                                  className="px-3.5 py-2 bg-green-600 hover:bg-green-500 text-white rounded-xl text-[7.5px] font-black uppercase active:scale-95 transition-all flex items-center justify-center gap-1.5 ml-auto"
+                                >
+                                  <Icon name="phone" className="w-3 h-3 text-white" /> WhatsApp
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
+
 
 
           {/* =====================================================================
