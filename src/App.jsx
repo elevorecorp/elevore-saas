@@ -6028,39 +6028,6 @@ export default function App() {
   const [campaignTotal, setCampaignTotal] = useState(0);
   const [campaignStage, setCampaignStage] = useState('');
 
-  useEffect(() => {
-    const CAMPAIGN_TEMPLATES = {
-      winback: 'Hola {ClientName}! Te extrañamos en {BusinessName}. Queremos ofrecerte un 15% de descuento en tu próximo servicio de {ServiceType}. Agenda aquí o contesta YES! 🏠',
-      followup: 'Hola {ClientName}! Vimos que tienes una cotización pendiente para {ServiceType}. ¿Tienes alguna pregunta? Queremos ayudarte a dejar tu espacio brillante.',
-      review: 'Hola {ClientName}! Gracias por confiar en {BusinessName}. Tu calificación nos ayuda a crecer. ¿Podrías dejarnos una reseña de 5 estrellas aquí? {GoogleReviewLink} ¡Gracias!'
-    };
-    setCampaignCustomText(CAMPAIGN_TEMPLATES[selectedCampaignTemplate] || '');
-  }, [selectedCampaignTemplate]);
-
-  useEffect(() => {
-    const handleOnline = () => {
-      setIsOffline(false);
-      tt(prefLang === 'es' ? '📶 Conexión restablecida. Sincronizando...' : '📶 Connection restored. Syncing...', 'green');
-      syncOfflineMissions(tenantId, tt, refresh);
-    };
-    const handleOffline = () => {
-      setIsOffline(true);
-      tt(prefLang === 'es' ? '🔴 Conexión perdida. Trabajando offline.' : '🔴 Connection lost. Working offline.', 'red');
-    };
-    window.addEventListener('online', handleOnline);
-    window.addEventListener('offline', handleOffline);
-    return () => {
-      window.removeEventListener('online', handleOnline);
-      window.removeEventListener('offline', handleOffline);
-    };
-  }, [tenantId, refresh, prefLang]);
-
-  useEffect(() => {
-    if (tenantId && !isOffline) {
-      syncOfflineMissions(tenantId, tt, refresh);
-    }
-  }, [tenantId, isOffline]);
-
   const handleActivateSubscription = async () => {
     if (!billingCardName.trim()) { setBillingError(prefLang === 'es' ? 'Falta nombre del titular' : 'Cardholder name is required'); return; }
     if (billingCardNo.replace(/\D/g, '').length < 16) { setBillingError(prefLang === 'es' ? 'Número de tarjeta inválido' : 'Invalid Card Number'); return; }
@@ -6612,6 +6579,39 @@ Instrucciones:
 
     setLoad(false);
   }, [tenantId]);
+
+  useEffect(() => {
+    const CAMPAIGN_TEMPLATES = {
+      winback: 'Hola {ClientName}! Te extrañamos en {BusinessName}. Queremos ofrecerte un 15% de descuento en tu próximo servicio de {ServiceType}. Agenda aquí o contesta YES! 🏠',
+      followup: 'Hola {ClientName}! Vimos que tienes una cotización pendiente para {ServiceType}. ¿Tienes alguna pregunta? Queremos ayudarte a dejar tu espacio brillante.',
+      review: 'Hola {ClientName}! Gracias por confiar en {BusinessName}. Tu calificación nos ayuda a crecer. ¿Podrías dejarnos una reseña de 5 estrellas aquí? {GoogleReviewLink} ¡Gracias!'
+    };
+    setCampaignCustomText(CAMPAIGN_TEMPLATES[selectedCampaignTemplate] || '');
+  }, [selectedCampaignTemplate]);
+
+  useEffect(() => {
+    const handleOnline = () => {
+      setIsOffline(false);
+      tt(prefLang === 'es' ? '📶 Conexión restablecida. Sincronizando...' : '📶 Connection restored. Syncing...', 'green');
+      syncOfflineMissions(tenantId, tt, refresh);
+    };
+    const handleOffline = () => {
+      setIsOffline(true);
+      tt(prefLang === 'es' ? '🔴 Conexión perdida. Trabajando offline.' : '🔴 Connection lost. Working offline.', 'red');
+    };
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, [tenantId, refresh, prefLang]);
+
+  useEffect(() => {
+    if (tenantId && !isOffline) {
+      syncOfflineMissions(tenantId, tt, refresh);
+    }
+  }, [tenantId, isOffline]);
 
   const handleLoginSuccess = (assignedRole, assignedTenantId, authUser, activeEmp, tName) => {
     setRole(assignedRole);
