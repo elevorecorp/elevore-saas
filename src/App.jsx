@@ -801,15 +801,24 @@ function RouteOptimizerModal({ todayJobs, onClose, lang }) {
   const [optimizedDistance, setOptimizedDistance] = useState(0);
   const [saving, setSaving] = useState(0);
   const [startLocation, setStartLocation] = useState(null);
+  const [error, setError] = useState(null);
 
   // Haversine formula
   const getDistance = (lat1, lon1, lat2, lon2) => {
+    if (
+      lat1 === null || lat1 === undefined || isNaN(Number(lat1)) ||
+      lon1 === null || lon1 === undefined || isNaN(Number(lon1)) ||
+      lat2 === null || lat2 === undefined || isNaN(Number(lat2)) ||
+      lon2 === null || lon2 === undefined || isNaN(Number(lon2))
+    ) {
+      return 0;
+    }
     const R = 6371; // Radius of the earth in km
-    const dLat = (lat2 - lat1) * Math.PI / 180;
-    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const dLat = (Number(lat2) - Number(lat1)) * Math.PI / 180;
+    const dLon = (Number(lon2) - Number(lon1)) * Math.PI / 180;
     const a = 
       Math.sin(dLat/2) * Math.sin(dLat/2) +
-      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+      Math.cos(Number(lat1) * Math.PI / 180) * Math.cos(Number(lat2) * Math.PI / 180) * 
       Math.sin(dLon/2) * Math.sin(dLon/2);
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
     return R * c;
@@ -819,118 +828,138 @@ function RouteOptimizerModal({ todayJobs, onClose, lang }) {
     let active = true;
     
     const runGeocodingAndOptimization = async () => {
-      setLoading(true);
-      setProgress(0);
-      
-      // 1. Get browser geolocation (optional)
-      let currentPos = null;
       try {
-        currentPos = await new Promise((resolve, reject) => {
-          navigator.geolocation.getCurrentPosition(
-            (pos) => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
-            (err) => reject(err),
-            { timeout: 5000 }
-          );
-        });
-        if (active) setStartLocation(currentPos);
-      } catch (e) {
-        console.warn("Geolocation not available or denied:", e);
-      }
-      
-      // 2. Geocode each address in todayJobs
-      const geocodedStops = [];
-      for (let i = 0; i < todayJobs.length; i++) {
-        if (!active) return;
-        const job = todayJobs[i];
+        setLoading(true);
+        setError(null);
+        setProgress(0);
         
-        // Show progress
-        setProgress(Math.round((i / todayJobs.length) * 100));
-        
-        let coords = null;
-        if (job.specs?.lat && job.specs?.lng) {
-          coords = { lat: Number(job.specs.lat), lng: Number(job.specs.lng) };
-        } else {
-          // Fetch from Nominatim
+        // 1. Get browser geolocation (optional)
+        let currentPos = null;
+        if (navigator && navigator.geolocation) {
           try {
-            const res = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(job.address)}&format=json&limit=1`);
-            const data = await res.json();
-            if (data && data[0]) {
-              coords = { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
+            currentPos = await new Promise((resolve, reject) => {
+              navigator.geolocation.getCurrentPosition(
+                (pos) => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+                (err) => reject(err),
+                { timeout: 5000 }
+              );
+            });
+            if (active) setStartLocation(currentPos);
+          } catch (e) {
+            console.warn("Geolocation not available or denied:", e);
+          }
+        }
+        
+        // 2. Geocode each address in todayJobs
+        const geocodedStops = [];
+        for (let i = 0; i < todayJobs.length; i++) {
+          if (!active) return;
+          const job = todayJobs[i];
+          if (!job) continue;
+          
+          // Show progress
+          setProgress(Math.round((i / todayJobs.length) * 100));
+          
+          let coords = null;
+          if (job.specs?.lat && job.specs?.lng) {
+            coords = { lat: Number(job.specs.lat), lng: Number(job.specs.lng) };
+          } else if (job.address) {
+            // Fetch from Nominatim
+            try {
+              const res = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(job.address)}&format=json&limit=1`);
+              const data = await res.json();
+              if (data && data[0]) {
+                coords = { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
+              }
+            } catch (err) {
+              console.error("Geocoding failed for:", job.address, err);
             }
-          } catch (err) {
-            console.error("Geocoding failed for:", job.address, err);
+            // Delay to respect OSM Nominatim usage limits (max 1 req/sec)
+            await new Promise(r => setTimeout(r, 800));
           }
-          // Delay to respect OSM Nominatim usage limits (max 1 req/sec)
-          await new Promise(r => setTimeout(r, 800));
+          
+          geocodedStops.push({
+            id: job.id,
+            clientName: job.client_name || 'Desconocido',
+            address: job.address || 'Sin dirección',
+            serviceType: job.service_type || 'Servicio',
+            status: job.status || 'Pendiente',
+            lat: coords ? coords.lat : null,
+            lng: coords ? coords.lng : null,
+          });
         }
         
-        geocodedStops.push({
-          id: job.id,
-          clientName: job.client_name,
-          address: job.address,
-          serviceType: job.service_type,
-          status: job.status,
-          lat: coords ? coords.lat : null,
-          lng: coords ? coords.lng : null,
+        if (!active) return;
+        
+        // Filter stops with valid coordinates (defensive checks)
+        const validStops = geocodedStops.filter(s => 
+          s.lat !== null && s.lat !== undefined && !isNaN(Number(s.lat)) &&
+          s.lng !== null && s.lng !== undefined && !isNaN(Number(s.lng))
+        );
+        
+        if (validStops.length === 0) {
+          setStops([]);
+          setLoading(false);
+          return;
+        }
+        
+        // 3. Calculate distances and optimize route using Nearest Neighbor (TSP)
+        const hasStart = currentPos && currentPos.lat !== null && currentPos.lat !== undefined && !isNaN(Number(currentPos.lat));
+        let currentLat = hasStart ? currentPos.lat : validStops[0].lat;
+        let currentLng = hasStart ? currentPos.lng : validStops[0].lng;
+        
+        // Calculate original distance (in scheduled order)
+        let origDist = 0;
+        let prevLat = currentLat;
+        let prevLng = currentLng;
+        validStops.forEach(s => {
+          origDist += getDistance(prevLat, prevLng, s.lat, s.lng);
+          prevLat = s.lat;
+          prevLng = s.lng;
         });
-      }
-      
-      if (!active) return;
-      
-      // Filter stops with valid coordinates
-      const validStops = geocodedStops.filter(s => s.lat !== null && s.lng !== null);
-      
-      if (validStops.length === 0) {
-        setStops([]);
-        setLoading(false);
-        return;
-      }
-      
-      // 3. Calculate distances and optimize route using Nearest Neighbor (TSP)
-      let currentLat = currentPos ? currentPos.lat : validStops[0].lat;
-      let currentLng = currentPos ? currentPos.lng : validStops[0].lng;
-      
-      // Calculate original distance (in scheduled order)
-      let origDist = 0;
-      let prevLat = currentLat;
-      let prevLng = currentLng;
-      validStops.forEach(s => {
-        origDist += getDistance(prevLat, prevLng, s.lat, s.lng);
-        prevLat = s.lat;
-        prevLng = s.lng;
-      });
-      
-      // Optimize route
-      const unvisited = [...validStops];
-      const optimized = [];
-      let optDist = 0;
-      let currentPrevLat = currentLat;
-      let currentPrevLng = currentLng;
-      
-      while (unvisited.length > 0) {
-        let nearestIdx = 0;
-        let minDist = Infinity;
         
-        for (let i = 0; i < unvisited.length; i++) {
-          const dist = getDistance(currentPrevLat, currentPrevLng, unvisited[i].lat, unvisited[i].lng);
-          if (dist < minDist) {
-            minDist = dist;
-            nearestIdx = i;
+        // Optimize route
+        const unvisited = [...validStops];
+        const optimized = [];
+        let optDist = 0;
+        let currentPrevLat = currentLat;
+        let currentPrevLng = currentLng;
+        
+        while (unvisited.length > 0) {
+          let nearestIdx = -1;
+          let minDist = Infinity;
+          
+          for (let i = 0; i < unvisited.length; i++) {
+            const dist = getDistance(currentPrevLat, currentPrevLng, unvisited[i].lat, unvisited[i].lng);
+            if (dist < minDist) {
+              minDist = dist;
+              nearestIdx = i;
+            }
           }
+          
+          if (nearestIdx === -1) {
+            // Safety fallback if no nearest neighbor found (e.g. dist calculation error)
+            nearestIdx = 0;
+            minDist = 0;
+          }
+          
+          const nextStop = unvisited.splice(nearestIdx, 1)[0];
+          optDist += minDist;
+          optimized.push(nextStop);
+          currentPrevLat = nextStop.lat;
+          currentPrevLng = nextStop.lng;
         }
         
-        const nextStop = unvisited.splice(nearestIdx, 1)[0];
-        optDist += minDist;
-        optimized.push(nextStop);
-        currentPrevLat = nextStop.lat;
-        currentPrevLng = nextStop.lng;
+        setOriginalDistance(origDist || 0);
+        setOptimizedDistance(optDist || 0);
+        setSaving(Math.max(0, (origDist || 0) - (optDist || 0)));
+        setStops(optimized);
+        setLoading(false);
+      } catch (err) {
+        console.error("Error calculating optimized route:", err);
+        setError(err.message || "Error calculating route");
+        setLoading(false);
       }
-      
-      setOriginalDistance(origDist);
-      setOptimizedDistance(optDist);
-      setSaving(Math.max(0, origDist - optDist));
-      setStops(optimized);
-      setLoading(false);
     };
 
     runGeocodingAndOptimization();
@@ -981,7 +1010,7 @@ function RouteOptimizerModal({ todayJobs, onClose, lang }) {
             iconAnchor: [9, 9]
           });
           
-          if (startLoc) {
+          if (startLoc && startLoc.lat !== null && startLoc.lng !== null) {
             L.marker([startLoc.lat, startLoc.lng], { icon: workerIcon })
               .addTo(map)
               .bindPopup('<div class="popup-content"><b>Mi Ubicación Actual</b></div>');
@@ -990,7 +1019,7 @@ function RouteOptimizerModal({ todayJobs, onClose, lang }) {
           
           // Draw stops and lines
           const polylinePoints = [];
-          if (startLoc) {
+          if (startLoc && startLoc.lat !== null && startLoc.lng !== null) {
             polylinePoints.push([startLoc.lat, startLoc.lng]);
           }
           
@@ -1002,12 +1031,14 @@ function RouteOptimizerModal({ todayJobs, onClose, lang }) {
               iconAnchor: [11, 11]
             });
             
-            L.marker([s.lat, s.lng], { icon: stopIcon })
-              .addTo(map)
-              .bindPopup(\`<div class="popup-content"><b>Parada \${idx + 1}: \${s.clientName}</b><br>\${s.serviceType}<br>\${s.address}</div>\`);
-            
-            bounds.push([s.lat, s.lng]);
-            polylinePoints.push([s.lat, s.lng]);
+            if (s.lat !== null && s.lng !== null) {
+              L.marker([s.lat, s.lng], { icon: stopIcon })
+                .addTo(map)
+                .bindPopup(\`<div class="popup-content"><b>Parada \${idx + 1}: \${s.clientName}</b><br>\${s.serviceType}<br>\${s.address}</div>\`);
+              
+              bounds.push([s.lat, s.lng]);
+              polylinePoints.push([s.lat, s.lng]);
+            }
           });
           
           if (polylinePoints.length > 1) {
@@ -1038,7 +1069,15 @@ function RouteOptimizerModal({ todayJobs, onClose, lang }) {
           </button>
         </div>
 
-        {loading ? (
+        {error ? (
+          <div className="flex-1 flex flex-col items-center justify-center space-y-4 py-12 text-center">
+            <Icon name="alert-triangle" className="w-12 h-12 text-red-500 animate-pulse" />
+            <p className="text-[10px] font-black text-slate-300 uppercase tracking-widest">Error al calcular la ruta: {error}</p>
+            <button onClick={onClose} className="px-5 py-2.5 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-[9px] font-black uppercase tracking-wider transition-all active:scale-95">
+              Cerrar
+            </button>
+          </div>
+        ) : loading ? (
           <div className="flex-1 flex flex-col items-center justify-center space-y-4 py-12">
             <div className="w-12 h-12 rounded-full border-2 border-[#F5C518]/20 border-t-[#F5C518] animate-spin"></div>
             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Geocodificando direcciones y calculando ruta ({progress}%)...</p>
@@ -5944,7 +5983,7 @@ export default function App() {
   if (cjid) return <Portal cjid={cjid} />;
   if (refCode) return <PublicLeadForm refCode={refCode} />;
 
-  const [view, setView] = useState('landing');
+  const [view, setView] = useState(urlP.get('view') || 'landing');
   const [role, setRole] = useState('admin');
   const [pass, setPass] = useState('');
   const [jobs, setJobs] = useState([]);
@@ -12791,7 +12830,7 @@ Respond ONLY in this exact JSON format (no explanation, no markdown, just raw JS
           <RouteOptimizerModal 
             todayJobs={staffJobs.filter(j => j.scheduled_date === todayStr)} 
             onClose={() => setRouteModalOpen(false)} 
-            lang={lang} 
+            lang="es" 
           />
         )}
 
