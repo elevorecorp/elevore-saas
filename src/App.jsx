@@ -4,6 +4,7 @@ import * as Icons from 'lucide-react';
 import { InventoryTab } from './components/admin/InventoryTab';
 import { RemindersTab } from './components/admin/RemindersTab';
 import { MapTab } from './components/admin/MapTab';
+import { PublicQuoteProposal } from './components/PublicQuoteProposal';
 
 // =====================================================================
 // 🌟 DYNAMIC ICON ENGINE
@@ -5985,7 +5986,9 @@ export default function App() {
   const urlP = new URLSearchParams(window.location.search);
   const cjid = urlP.get('mision');
   const refCode = urlP.get('ref');
+  const quoteId = urlP.get('propuesta') || urlP.get('quote') || urlP.get('cotizacion');
 
+  if (quoteId) return <PublicQuoteProposal quoteId={quoteId} />;
   if (cjid) return <Portal cjid={cjid} />;
   if (refCode) return <PublicLeadForm refCode={refCode} />;
 
@@ -7388,6 +7391,7 @@ Instrucciones:
     try {
       const bal = (job.total_price || 0) - (job.deposit_paid || 0);
       const portal = `${location.origin}${location.pathname}?mision=${job.id}`;
+      const quoteUrl = `${location.origin}${location.pathname}?quote=${job.id}`;
       const ref = `${location.origin}${location.pathname}?ref=${job.client_name?.replace(/\s/g, '_')}&t=${tenantId}`;
       const zelle = tenantSettings?.zelle_phone || DEFAULT_CFG.ZELLE;
 
@@ -7399,7 +7403,8 @@ Detalles del Trabajo:
 - Precio total: ${fmt$(job.total_price)}
 - Depósito pagado: ${fmt$(job.deposit_paid)}
 - Balance pendiente: ${fmt$(bal)}
-- Enlace del Portal del Cliente: ${portal}
+- Enlace del Portal del Cliente (Seguimiento en Vivo): ${portal}
+- Enlace de la Propuesta de Cotización Interactiva (Good-Better-Best): ${quoteUrl}
 - Código de Referido del Cliente: ${ref}
 - Teléfono de Zelle de la empresa: ${zelle}
 - Tipo de Mensaje a generar: ${type}
@@ -7409,14 +7414,14 @@ Instrucciones para el Tipo de Mensaje "${type}":
 - reminder: Recordatorio amigable del servicio programado y del balance pendiente.
 - review: Agradecimiento por el servicio terminado y solicitud de dejar una reseña en Google: ${DEFAULT_CFG.GOOGLE} de 5 estrellas.
 - referral: Invitar al cliente a referir a un amigo para que ambos obtengan $25 de descuento utilizando su enlace: ${ref}.
-- quote: Enviar la cotización detallada, el precio total, el balance pendiente, el enlace para firmar digitalmente y aprobar en su portal: ${portal}.
+- quote: Enviar la cotización detallada, el precio total, el balance pendiente, el enlace para elegir su plan (Good-Better-Best), personalizar aditivos y firmar digitalmente en su propuesta interactiva: ${quoteUrl}.
 - portal: Enlace de seguimiento en tiempo real del servicio en su portal: ${portal}.
 - retention: Reactivación de cliente ofreciéndole un 10% de descuento si reserva esta semana.
 - winback: Mensaje especial para recuperar un cliente inactivo ofreciéndole 15% de descuento.
 - bundle: Oferta especial de venta cruzada (ej. agregar limpieza profunda de horno o ventanas por $50 adicionales).
-- urgency: Alerta de que su cotización en el portal (${portal}) está por expirar y debe firmar para asegurar el precio.
+- urgency: Alerta de que su propuesta de cotización interactiva (${quoteUrl}) está por expirar y debe firmar para asegurar el precio.
 - birthday: Mensaje de feliz cumpleaños ofreciendo un bono especial de $25 de descuento aplicable en su próximo servicio.
-- follow1 / follow2 / final: Mensajes de seguimiento para leads que aún no han firmado su cotización en el portal (${portal}).
+- follow1 / follow2 / final: Mensajes de seguimiento para leads que aún no han firmado su propuesta de cotización interactiva (${quoteUrl}).
 - membership: Ofrecer un plan recurrente (membresía) para ahorrar dinero en base a su historial.
 - qcfix: Preguntar de forma proactiva si hay algo del servicio que requiera atención para corregirlo inmediatamente.
 
