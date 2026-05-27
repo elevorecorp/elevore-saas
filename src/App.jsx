@@ -3,6 +3,7 @@ import { sb } from './supabase';
 import * as Icons from 'lucide-react';
 import { InventoryTab } from './components/admin/InventoryTab';
 import { RemindersTab } from './components/admin/RemindersTab';
+import { MapTab } from './components/admin/MapTab';
 
 // =====================================================================
 // 🌟 DYNAMIC ICON ENGINE
@@ -10375,6 +10376,7 @@ Instrucciones generales de formato:
                     { id: 'calendar', name: '📅 Calendario de Misiones' },
                     { id: 'reminders', name: `🔔 Recordatorios (${remindersBadgeCount})` },
                     { id: 'drive', name: '📸 Photo Drive' },
+                    { id: 'map', name: '🗺️ IA Dispatcher' },
                     { id: 'deploy', name: '📝 Nueva Cotización' }
                   ].map(tab => (
                     <button
@@ -11428,6 +11430,7 @@ Instrucciones generales de formato:
                   { id: 'calendar', name: '📅 Calendario de Misiones' },
                   { id: 'reminders', name: `🔔 Recordatorios (${remindersBadgeCount})` },
                   { id: 'drive', name: '📸 Photo Drive' },
+                  { id: 'map', name: '🗺️ IA Dispatcher' },
                   { id: 'deploy', name: '📝 Nueva Cotización' }
                 ].map(tab => (
                   <button
@@ -11466,6 +11469,16 @@ Instrucciones generales de formato:
             </div>
           )}
 
+          {role === 'admin' && view === 'operations' && operationsTab === 'map' && (
+            <MapTab
+              jobs={jobs}
+              staff={staff}
+              operationsTab={operationsTab}
+              setOperationsTab={setOperationsTab}
+              tt={tt}
+            />
+          )}
+
           {/* =====================================================================
               👑 ADMIN DASHBOARD NEW ESTIMATE DEPLOY TABS (deploy)
               ===================================================================== */}
@@ -11477,6 +11490,7 @@ Instrucciones generales de formato:
                   { id: 'calendar', name: '📅 Calendario de Misiones' },
                   { id: 'reminders', name: `🔔 Recordatorios (${remindersBadgeCount})` },
                   { id: 'drive', name: '📸 Photo Drive' },
+                  { id: 'map', name: '🗺️ IA Dispatcher' },
                   { id: 'deploy', name: '📝 Nueva Cotización' }
                 ].map(tab => (
                   <button

@@ -72,7 +72,6 @@ export const RemindersTab = ({
     call: 'text-purple-400 bg-purple-500/10 border-purple-500/20',
     auto: 'text-amber-400 bg-amber-500/10 border-amber-500/20',
   };
-
   return (
     <div className="space-y-5 animate-in fade-in pb-24">
       {/* Operations Sub-tabs Switcher */}
@@ -81,6 +80,7 @@ export const RemindersTab = ({
           { id: 'calendar', name: '📅 Calendario de Misiones' },
           { id: 'reminders', name: `🔔 Recordatorios (${remindersBadgeCount})` },
           { id: 'drive', name: '📸 Photo Drive' },
+          { id: 'map', name: '🗺️ IA Dispatcher' },
           { id: 'deploy', name: '📝 Nueva Cotización' },
         ].map((tab) => (
           <button
