@@ -18,10 +18,15 @@ export default async function handler(req, res) {
 
   try {
     const { messages = [], model = 'gemini-2.5-flash' } = req.body || {};
-    const apiKey = req.headers['x-gemini-key'] || req.headers['authorization']?.replace('Bearer ', '') || process.env.GEMINI_API_KEY;
+    const apiKey = req.headers['x-gemini-key'] || 
+                   req.headers['authorization']?.replace('Bearer ', '') || 
+                   process.env.GEMINI_API_KEY ||
+                   process.env.VITE_GEMINI_KEY ||
+                   process.env.GEMINI_KEY ||
+                   process.env.VITE_GEMINI_API_KEY;
 
     if (!apiKey) {
-      return res.status(400).json({ error: 'GEMINI_API_KEY is not configured on the server environment. Please configure it in Vercel or enter it in your App settings.' });
+      return res.status(400).json({ error: 'GEMINI_API_KEY is not configured on the server environment. Please configure it in Vercel (as GEMINI_API_KEY or VITE_GEMINI_KEY) and trigger a Redeploy, or enter it locally in settings.' });
     }
 
     // Extract system instruction and format messages for Gemini API
