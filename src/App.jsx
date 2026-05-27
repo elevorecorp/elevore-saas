@@ -10152,6 +10152,59 @@ Instrucciones generales de formato:
                     </div>
                   </div>
 
+                  {/* Lead Conversion Funnel */}
+                  <div className="bg-black/35 border border-white/5 p-6 rounded-2xl space-y-4">
+                    <div className="flex justify-between items-center border-b border-white/5 pb-2">
+                      <p className="text-[9px] font-black text-amber-500 uppercase tracking-widest font-mono">📊 EMBÚDO DE CONVERSIÓN DE VENTAS (LEADS FUNNEL)</p>
+                      <span className="text-[7.5px] text-slate-500 uppercase font-mono">Conversión de Embudo en Tiempo Real</span>
+                    </div>
+                    
+                    {(() => {
+                      const totalLeads = jobs.length;
+                      const estimatesSent = jobs.filter(j => j.status === 'lead' || j.status === 'scheduled' || j.status === 'in_progress' || j.status === 'completed' || j.status === 'paid').length;
+                      const approved = jobs.filter(j => j.status === 'scheduled' || j.status === 'in_progress' || j.status === 'completed' || j.status === 'paid').length;
+                      const completed = jobs.filter(j => j.status === 'completed' || j.status === 'paid').length;
+
+                      const pctEstimates = totalLeads > 0 ? Math.round((estimatesSent / totalLeads) * 100) : 0;
+                      const pctApproved = totalLeads > 0 ? Math.round((approved / totalLeads) * 100) : 0;
+                      const pctCompleted = totalLeads > 0 ? Math.round((completed / totalLeads) * 100) : 0;
+
+                      const stages = [
+                        { name: '1. Leads Totales Registrados', count: totalLeads, pct: 100, color: 'from-[#F5C518] to-amber-500', width: 'w-full' },
+                        { name: '2. Cotizaciones Enviadas', count: estimatesSent, pct: pctEstimates, color: 'from-amber-500 to-orange-500', width: 'w-[90%] md:w-[85%]' },
+                        { name: '3. Servicios Agendados / Aprobados', count: approved, pct: pctApproved, color: 'from-orange-500 to-blue-500', width: 'w-[80%] md:w-[70%]' },
+                        { name: '4. Trabajos Completados / Cobrados', count: completed, pct: pctCompleted, color: 'from-blue-500 to-emerald-500', width: 'w-[70%] md:w-[55%]' }
+                      ];
+
+                      return (
+                        <div className="space-y-4 pt-2">
+                          <div className="flex flex-col items-center space-y-3">
+                            {stages.map((stage, idx) => (
+                              <div key={idx} className="w-full flex flex-col items-center">
+                                <div className={`${stage.width} transition-all duration-500 hover:scale-[1.015]`}>
+                                  <div className={`p-3 bg-gradient-to-r ${stage.color} text-black font-black uppercase text-[8px] rounded-xl flex items-center justify-between shadow-lg`}>
+                                    <div className="flex items-center gap-2">
+                                      <span className="bg-black/15 text-[8.5px] px-2 py-0.5 rounded font-mono font-black">{idx + 1}</span>
+                                      <span>{stage.name}</span>
+                                    </div>
+                                    <div className="text-right font-mono font-black text-[9.5px]">
+                                      <span>{stage.count} ({stage.pct}%)</span>
+                                    </div>
+                                  </div>
+                                </div>
+                                {idx < stages.length - 1 && (
+                                  <div className="w-0.5 h-3 bg-white/10 relative my-0.5 flex items-center justify-center">
+                                    <div className="absolute w-1.5 h-1.5 rounded-full bg-[#F5C518]"></div>
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })()}
+                  </div>
+
                   <div className="overflow-x-auto">
                     <table className="w-full text-left text-[9px] uppercase font-bold tracking-wider">
                       <thead>
