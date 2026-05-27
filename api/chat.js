@@ -48,39 +48,54 @@ export default async function handler(req, res) {
       }
     }
 
-    // Call the Google Gemini API endpoint using standard fetch
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        contents,
-        ...(systemInstruction && { systemInstruction }),
-        safetySettings: [
-          {
-            category: 'HARM_CATEGORY_HARASSMENT',
-            threshold: 'BLOCK_NONE'
-          },
-          {
-            category: 'HARM_CATEGORY_HATE_SPEECH',
-            threshold: 'BLOCK_NONE'
-          },
-          {
-            category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT',
-            threshold: 'BLOCK_NONE'
-          },
-          {
-            category: 'HARM_CATEGORY_DANGEROUS_CONTENT',
-            threshold: 'BLOCK_NONE'
+    // Helper to request Gemini API
+    const callGemini = async (mdl) => {
+      const targetUrl = `https://generativelanguage.googleapis.com/v1beta/models/${mdl}:generateContent?key=${apiKey}`;
+      return fetch(targetUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          contents,
+          ...(systemInstruction && { systemInstruction }),
+          safetySettings: [
+            {
+              category: 'HARM_CATEGORY_HARASSMENT',
+              threshold: 'BLOCK_NONE'
+            },
+            {
+              category: 'HARM_CATEGORY_HATE_SPEECH',
+              threshold: 'BLOCK_NONE'
+            },
+            {
+              category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT',
+              threshold: 'BLOCK_NONE'
+            },
+            {
+              category: 'HARM_CATEGORY_DANGEROUS_CONTENT',
+              threshold: 'BLOCK_NONE'
+            }
+          ],
+          generationConfig: {
+            temperature: 0.7
           }
-        ],
-        generationConfig: {
-          temperature: 0.7
-        }
-      })
-    });
+        })
+      });
+    };
+
+    let activeModel = model;
+    let response = await callGemini(activeModel);
+
+    // If 503 (high demand) or 429 (rate limit) and we used gemini-2.5-flash, fallback to gemini-1.5-flash
+    if (!response.ok && activeModel === 'gemini-2.5-flash') {
+      const errText = await response.clone().text();
+      if (response.status === 503 || response.status === 429 || errText.includes('high demand') || errText.includes('UNAVAILABLE')) {
+        console.warn(`[FALLBACK] gemini-2.5-flash unavailable (Status ${response.status}). Retrying with gemini-1.5-flash...`);
+        activeModel = 'gemini-1.5-flash';
+        response = await callGemini(activeModel);
+      }
+    }
 
     if (!response.ok) {
       const errorText = await response.text();
