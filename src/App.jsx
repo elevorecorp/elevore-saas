@@ -3231,8 +3231,8 @@ function AIAdvisor({ jobs, clients, staff, isStaff, activeUser, onClose, tt, onO
     ? `¡Hola ${activeUser}! Soy tu **Manual de Operaciones con IA**. Estoy aquí para ayudarte en tu trabajo de campo. 🛠️ Pregúntame cómo limpiar orificios, parchar drywall, remover manchas de alfombras, o cómo actuar frente a un cliente difícil.`
     : `¡Hola ${activeUser}! Soy tu **Asesor de IA Elevore**. Estoy conectado a tu base de datos en tiempo real. 📊 ¿En qué puedo ayudarte hoy?`;
 
-  // Local and cloud settings for LLM provider (Ollama & Gemini)
-  const [aiProvider, setAIProvider] = useState(() => localStorage.getItem('elevore_ai_provider') || 'ollama');
+  // Local and cloud settings for LLM provider (Antigravity, Gemini & Ollama)
+  const [aiProvider, setAIProvider] = useState(() => localStorage.getItem('elevore_ai_provider') || 'antigravity');
   const [ollamaUrl, setOllamaUrl] = useState(() => {
     const saved = localStorage.getItem('elevore_ollama_url');
     if (saved === 'http://localhost:11434') return 'http://127.0.0.1:11434';
@@ -3317,13 +3317,14 @@ function AIAdvisor({ jobs, clients, staff, isStaff, activeUser, onClose, tt, onO
     const controller = new AbortController();
     const id = setTimeout(() => controller.abort(), 4000);
     try {
-      if (aiProvider === 'gemini') {
+      if (aiProvider === 'gemini' || aiProvider === 'antigravity') {
+        const headers = { 'Content-Type': 'application/json' };
+        if (aiProvider === 'gemini') {
+          headers['x-gemini-key'] = geminiKey;
+        }
         const res = await fetch('/api/chat', {
           method: 'POST',
-          headers: { 
-            'Content-Type': 'application/json',
-            'x-gemini-key': geminiKey
-          },
+          headers,
           body: JSON.stringify({
             model: geminiModel,
             messages: [{ role: 'user', content: 'hi' }]
@@ -3333,11 +3334,11 @@ function AIAdvisor({ jobs, clients, staff, isStaff, activeUser, onClose, tt, onO
         clearTimeout(id);
         if (res.ok) {
           setConnStatus('connected');
-          tt(`Conectado a Gemini exitosamente en la nube (Vercel API)`, 'green');
+          tt(aiProvider === 'antigravity' ? 'Conectado a Antigravity AI Cloud (Vercel)' : 'Conectado a Gemini exitosamente en la nube (Vercel API)', 'green');
         } else {
           setConnStatus('error');
           const errData = await res.json().catch(() => ({}));
-          tt(`Error al conectar con Gemini Vercel API: ${errData.error || `HTTP ${res.status}`}`, 'red');
+          tt(`Error: ${errData.error || `HTTP ${res.status}`}`, 'red');
         }
         return;
       }
@@ -3419,17 +3420,23 @@ Habla en español. Sé directo, estratégico y orientado a resultados. Si el CEO
     const timeoutId = setTimeout(() => controller.abort(), timeoutDuration);
 
     try {
-      if (aiProvider === 'gemini') {
+      if (aiProvider === 'gemini' || aiProvider === 'antigravity') {
+        const headers = { 'Content-Type': 'application/json' };
+        if (aiProvider === 'gemini') {
+          headers['x-gemini-key'] = geminiKey;
+        }
+
+        const promptOverride = aiProvider === 'antigravity'
+          ? `Eres Antigravity AI, el cerebro operativo inteligente de Elevore. Tu sello distintivo es la precisión analítica, la empatía en el servicio y la automatización estratégica. Ayudas como el copiloto e inteligencia central del negocio.\n\n${systemPrompt}`
+          : systemPrompt;
+
         const res = await fetch('/api/chat', {
           method: 'POST',
-          headers: { 
-            'Content-Type': 'application/json',
-            'x-gemini-key': geminiKey
-          },
+          headers,
           body: JSON.stringify({
             model: geminiModel,
             messages: [
-              { role: 'system', content: systemPrompt },
+              { role: 'system', content: promptOverride },
               ...messages.slice(-8).map(m => ({
                 role: m.from === 'user' ? 'user' : 'assistant',
                 content: m.text
@@ -3444,11 +3451,11 @@ Habla en español. Sé directo, estratégico y orientado a resultados. Si el CEO
 
         if (!res.ok) {
           const errData = await res.json().catch(() => ({}));
-          return `⚠️ Error de Conexión a Gemini (Vercel API): ${errData.error || `HTTP ${res.status}`}`;
+          return `⚠️ Error de Conexión a ${aiProvider === 'antigravity' ? 'Antigravity AI' : 'Gemini'} (Vercel API): ${errData.error || `HTTP ${res.status}`}`;
         }
 
         const data = await res.json();
-        return data.text || 'Lo siento, Gemini no devolvió ningún contenido.';
+        return data.text || 'Lo siento, la IA no devolvió ningún contenido.';
       }
 
       // --- OLLAMA LOCAL AI CALL ---
@@ -3557,25 +3564,32 @@ Habla en español. Sé directo, estratégico y orientado a resultados. Si el CEO
             <div className="space-y-2.5">
               <div className="space-y-1">
                 <label className="text-[7px] font-bold text-slate-400 uppercase block">Proveedor de IA (AI Provider)</label>
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-3 gap-2">
                   <button 
                     type="button"
-                    onClick={() => { setAIProvider('ollama'); setConnStatus('idle'); }} 
-                    className={`py-1.5 rounded-lg text-[8px] font-black uppercase transition-all ${aiProvider === 'ollama' ? 'bg-[#F5C518] text-black' : 'bg-white/5 text-slate-400 hover:text-white'}`}
+                    onClick={() => { setAIProvider('antigravity'); setConnStatus('idle'); }} 
+                    className={`py-1.5 rounded-lg text-[8px] font-black uppercase transition-all ${aiProvider === 'antigravity' ? 'bg-[#F5C518] text-black' : 'bg-white/5 text-slate-400 hover:text-white'}`}
                   >
-                    Ollama (Local PC)
+                    🚀 Antigravity
                   </button>
                   <button 
                     type="button"
                     onClick={() => { setAIProvider('gemini'); setConnStatus('idle'); }} 
                     className={`py-1.5 rounded-lg text-[8px] font-black uppercase transition-all ${aiProvider === 'gemini' ? 'bg-[#F5C518] text-black' : 'bg-white/5 text-slate-400 hover:text-white'}`}
                   >
-                    Gemini (Nube 24/7)
+                    Gemini (Nube)
+                  </button>
+                  <button 
+                    type="button"
+                    onClick={() => { setAIProvider('ollama'); setConnStatus('idle'); }} 
+                    className={`py-1.5 rounded-lg text-[8px] font-black uppercase transition-all ${aiProvider === 'ollama' ? 'bg-[#F5C518] text-black' : 'bg-white/5 text-slate-400 hover:text-white'}`}
+                  >
+                    Ollama (Local)
                   </button>
                 </div>
               </div>
 
-              {aiProvider === 'ollama' ? (
+              {aiProvider === 'ollama' && (
                 <div className="space-y-2.5 animate-in fade-in duration-200">
                   <div className="grid grid-cols-2 gap-2">
                     <div className="space-y-1">
@@ -3607,7 +3621,9 @@ Habla en español. Sé directo, estratégico y orientado a resultados. Si el CEO
                     </code>
                   </div>
                 </div>
-              ) : (
+              )}
+
+              {aiProvider === 'gemini' && (
                 <div className="space-y-2.5 animate-in fade-in duration-200">
                   <div className="grid grid-cols-2 gap-2">
                     <div className="space-y-1">
@@ -3636,7 +3652,24 @@ Habla en español. Sé directo, estratégico y orientado a resultados. Si el CEO
                   <div className="p-2.5 rounded-xl bg-green-950/20 border border-green-500/20 space-y-1 text-green-400">
                     <p className="text-[7.5px] uppercase font-black">☁️ Proveedor de Nube Activo (24/7)</p>
                     <p className="text-[7px] leading-normal uppercase text-slate-400">
-                      La IA se ejecutará permanentemente en la nube. Ingresa tu <code className="text-white font-mono font-bold bg-white/5 px-1 py-0.5 rounded">API Key</code> arriba para usarla de forma directa sin configurar variables del servidor, o bien configúrala como <code className="text-white font-mono font-bold bg-white/5 px-1 py-0.5 rounded">GEMINI_API_KEY</code> en tu panel de Vercel.
+                      La IA se ejecutará permanentemente en la nube utilizando tu API Key local. Ingresa tu <code className="text-white font-mono font-bold bg-white/5 px-1 py-0.5 rounded">API Key</code> arriba para usarla de forma directa sin configurar variables del servidor.
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {aiProvider === 'antigravity' && (
+                <div className="space-y-2.5 animate-in fade-in duration-200">
+                  <div className="p-3 bg-cyan-950/20 border border-cyan-500/20 rounded-xl space-y-1.5 text-cyan-400">
+                    <p className="text-[7.5px] uppercase font-black tracking-widest flex items-center gap-1.5 font-mono">
+                      <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-ping inline-block" />
+                      🚀 Antigravity AI Cloud Engine (Default)
+                    </p>
+                    <p className="text-[7.5px] leading-normal uppercase text-slate-400 font-mono">
+                      Conexión nativa de alto rendimiento administrada por el servidor Vercel. No requiere configurar llaves locales en el navegador ni correr servicios en tu PC.
+                    </p>
+                    <p className="text-[6.5px] leading-normal text-slate-500 font-mono">
+                      * Requiere la variable <code className="text-white bg-white/5 px-1 rounded">GEMINI_API_KEY</code> en tu panel de control de Vercel.
                     </p>
                   </div>
                 </div>
@@ -6300,20 +6333,21 @@ Instrucciones:
 3. El mensaje debe ser directo, tener emojis y no sonar robótico.
 4. Devuelve únicamente el texto del mensaje de WhatsApp, sin introducciones ni comillas ni formatos markdown.`;
 
-      const aiProvider = localStorage.getItem('elevore_ai_provider') || 'ollama';
+      const aiProvider = localStorage.getItem('elevore_ai_provider') || 'antigravity';
       const geminiModel = localStorage.getItem('elevore_gemini_model') || 'gemini-2.5-flash';
       const geminiKey = localStorage.getItem('elevore_gemini_key') || '';
       const ollamaUrl = localStorage.getItem('elevore_ollama_url') || 'http://127.0.0.1:11434';
       const ollamaModel = localStorage.getItem('elevore_ollama_model') || 'llama3.2';
 
       let message = '';
-      if (aiProvider === 'gemini') {
+      if (aiProvider === 'gemini' || aiProvider === 'antigravity') {
+        const headers = { 'Content-Type': 'application/json' };
+        if (aiProvider === 'gemini') {
+          headers['x-gemini-key'] = geminiKey;
+        }
         const res = await fetch('/api/chat', {
           method: 'POST',
-          headers: { 
-            'Content-Type': 'application/json',
-            'x-gemini-key': geminiKey
-          },
+          headers,
           body: JSON.stringify({
             model: geminiModel,
             messages: [{ role: 'user', content: prompt }]
@@ -7430,20 +7464,21 @@ Instrucciones generales de formato:
 2. Usa emojis de forma moderada para hacerlo visualmente atractivo.
 3. Devuelve ÚNICAMENTE el texto final para copiar y enviar en WhatsApp, sin introducciones ni comentarios ni markdown.`;
 
-      const aiProvider = localStorage.getItem('elevore_ai_provider') || 'ollama';
+      const aiProvider = localStorage.getItem('elevore_ai_provider') || 'antigravity';
       const geminiModel = localStorage.getItem('elevore_gemini_model') || 'gemini-2.5-flash';
       const geminiKey = localStorage.getItem('elevore_gemini_key') || '';
       const ollamaUrl = localStorage.getItem('elevore_ollama_url') || 'http://127.0.0.1:11434';
       const ollamaModel = localStorage.getItem('elevore_ollama_model') || 'llama3.2';
 
       let message = '';
-      if (aiProvider === 'gemini') {
+      if (aiProvider === 'gemini' || aiProvider === 'antigravity') {
+        const headers = { 'Content-Type': 'application/json' };
+        if (aiProvider === 'gemini') {
+          headers['x-gemini-key'] = geminiKey;
+        }
         const res = await fetch('/api/chat', {
           method: 'POST',
-          headers: { 
-            'Content-Type': 'application/json',
-            'x-gemini-key': geminiKey
-          },
+          headers,
           body: JSON.stringify({
             model: geminiModel,
             messages: [{ role: 'user', content: prompt }]
@@ -8002,24 +8037,30 @@ Nómina pagada acumulada por empleado: ${JSON.stringify(finance.payroll)}
 
       let res;
       let usedProvider = 'ollama';
-      const aiProvider = localStorage.getItem('elevore_ai_provider') || 'ollama';
+      const aiProvider = localStorage.getItem('elevore_ai_provider') || 'antigravity';
       const geminiModel = localStorage.getItem('elevore_gemini_model') || 'gemini-2.5-flash';
       const geminiKey = localStorage.getItem('elevore_gemini_key') || '';
 
-      const shouldForceGemini = (view === 'landing' || aiProvider === 'gemini');
+      const shouldForceGemini = (view === 'landing' || aiProvider === 'gemini' || aiProvider === 'antigravity');
 
       if (shouldForceGemini) {
-        usedProvider = 'gemini';
+        usedProvider = aiProvider;
+        const headers = { 'Content-Type': 'application/json' };
+        if (aiProvider === 'gemini') {
+          headers['x-gemini-key'] = geminiKey;
+        }
+
+        const promptOverride = aiProvider === 'antigravity'
+          ? `Eres Antigravity AI, el procesador de lenguaje de Elevore Command. Traduces lenguaje natural del usuario a comandos válidos estructurados.\n\n${systemPrompt}`
+          : systemPrompt;
+
         res = await fetch('/api/chat', {
           method: 'POST',
-          headers: { 
-            'Content-Type': 'application/json',
-            'x-gemini-key': geminiKey
-          },
+          headers,
           body: JSON.stringify({
             model: geminiModel,
             messages: [
-              { role: 'system', content: systemPrompt },
+              { role: 'system', content: promptOverride },
               ...copilotMsgs.map(m => ({ role: m.role, content: m.content })),
               { role: 'user', content: userText }
             ]
@@ -8043,13 +8084,10 @@ Nómina pagada acumulada por empleado: ${JSON.stringify(finance.payroll)}
           });
         } catch (ollamaErr) {
           console.warn("Local Ollama connection failed, falling back to Gemini Cloud:", ollamaErr);
-          usedProvider = 'gemini';
+          usedProvider = 'antigravity';
           res = await fetch('/api/chat', {
             method: 'POST',
-            headers: { 
-              'Content-Type': 'application/json',
-              'x-gemini-key': geminiKey
-            },
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               model: geminiModel,
               messages: [
@@ -8215,20 +8253,21 @@ Instrucciones generales de formato:
 2. Usa emojis de forma moderada para hacerlo visualmente atractivo.
 3. Devuelve ÚNICAMENTE el texto final para copiar y enviar en WhatsApp, sin introducciones ni comentarios ni markdown.`;
 
-        const aiProvider = localStorage.getItem('elevore_ai_provider') || 'ollama';
+        const aiProvider = localStorage.getItem('elevore_ai_provider') || 'antigravity';
         const geminiModel = localStorage.getItem('elevore_gemini_model') || 'gemini-2.5-flash';
         const geminiKey = localStorage.getItem('elevore_gemini_key') || '';
         const ollamaUrl = localStorage.getItem('elevore_ollama_url') || 'http://127.0.0.1:11434';
         const ollamaModel = localStorage.getItem('elevore_ollama_model') || 'llama3.2';
 
         let message = '';
-        if (aiProvider === 'gemini') {
+        if (aiProvider === 'gemini' || aiProvider === 'antigravity') {
+          const headers = { 'Content-Type': 'application/json' };
+          if (aiProvider === 'gemini') {
+            headers['x-gemini-key'] = geminiKey;
+          }
           const res = await fetch('/api/chat', {
             method: 'POST',
-            headers: { 
-              'Content-Type': 'application/json',
-              'x-gemini-key': geminiKey
-            },
+            headers,
             body: JSON.stringify({
               model: geminiModel,
               messages: [{ role: 'user', content: prompt }]
@@ -11884,7 +11923,7 @@ Respond ONLY in this exact JSON format (no explanation, no markdown, just raw JS
                     let ollamaUrl = localStorage.getItem('elevore_ollama_url') || 'http://127.0.0.1:11434';
                     if (ollamaUrl === 'http://localhost:11434') ollamaUrl = 'http://127.0.0.1:11434';
                     const ollamaModel = localStorage.getItem('elevore_ollama_model') || 'llama3.2';
-                    const aiProvider = localStorage.getItem('elevore_ai_provider') || 'ollama';
+                    const aiProvider = localStorage.getItem('elevore_ai_provider') || 'antigravity';
                     const geminiModel = localStorage.getItem('elevore_gemini_model') || 'gemini-2.5-flash';
                     const geminiKey = localStorage.getItem('elevore_gemini_key') || '';
 
@@ -11894,13 +11933,14 @@ Respond ONLY in this exact JSON format (no explanation, no markdown, just raw JS
 
                     try {
                       let raw = '';
-                      if (aiProvider === 'gemini') {
+                      if (aiProvider === 'gemini' || aiProvider === 'antigravity') {
+                        const headers = { 'Content-Type': 'application/json' };
+                        if (aiProvider === 'gemini') {
+                          headers['x-gemini-key'] = geminiKey;
+                        }
                         const res = await fetch('/api/chat', {
                           method: 'POST',
-                          headers: { 
-                            'Content-Type': 'application/json',
-                            'x-gemini-key': geminiKey
-                          },
+                          headers,
                           body: JSON.stringify({
                             model: geminiModel,
                             messages: [
