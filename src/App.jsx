@@ -11686,6 +11686,7 @@ Instrucciones generales de formato:
               operationsTab={operationsTab}
               setOperationsTab={setOperationsTab}
               tt={tt}
+              refresh={refresh}
             />
           )}
 
