@@ -3231,8 +3231,8 @@ function AIAdvisor({ jobs, clients, staff, isStaff, activeUser, onClose, tt, onO
     ? `¡Hola ${activeUser}! Soy tu **Manual de Operaciones con IA**. Estoy aquí para ayudarte en tu trabajo de campo. 🛠️ Pregúntame cómo limpiar orificios, parchar drywall, remover manchas de alfombras, o cómo actuar frente a un cliente difícil.`
     : `¡Hola ${activeUser}! Soy tu **Asesor de IA Elevore**. Estoy conectado a tu base de datos en tiempo real. 📊 ¿En qué puedo ayudarte hoy?`;
 
-  // Local and cloud settings for LLM provider (Antigravity, Gemini & Ollama)
-  const [aiProvider, setAIProvider] = useState(() => localStorage.getItem('elevore_ai_provider') || 'antigravity');
+  // Local settings for LLM provider (Ollama)
+  const [aiProvider, setAIProvider] = useState(() => localStorage.getItem('elevore_ai_provider') || 'ollama');
   const [ollamaUrl, setOllamaUrl] = useState(() => {
     const saved = localStorage.getItem('elevore_ollama_url');
     if (saved === 'http://localhost:11434') return 'http://127.0.0.1:11434';
@@ -3561,119 +3561,38 @@ Habla en español. Sé directo, estratégico y orientado a resultados. Si el CEO
               <button onClick={() => setShowSettings(false)} className="text-slate-500 hover:text-white text-[9px] font-bold uppercase">Cerrar</button>
             </div>
             
-            <div className="space-y-2.5">
-              <div className="space-y-1">
-                <label className="text-[7px] font-bold text-slate-400 uppercase block">Proveedor de IA (AI Provider)</label>
-                <div className="grid grid-cols-3 gap-2">
-                  <button 
-                    type="button"
-                    onClick={() => { setAIProvider('antigravity'); setConnStatus('idle'); }} 
-                    className={`py-1.5 rounded-lg text-[8px] font-black uppercase transition-all ${aiProvider === 'antigravity' ? 'bg-[#F5C518] text-black' : 'bg-white/5 text-slate-400 hover:text-white'}`}
-                  >
-                    🚀 Antigravity
-                  </button>
-                  <button 
-                    type="button"
-                    onClick={() => { setAIProvider('gemini'); setConnStatus('idle'); }} 
-                    className={`py-1.5 rounded-lg text-[8px] font-black uppercase transition-all ${aiProvider === 'gemini' ? 'bg-[#F5C518] text-black' : 'bg-white/5 text-slate-400 hover:text-white'}`}
-                  >
-                    Gemini (Nube)
-                  </button>
-                  <button 
-                    type="button"
-                    onClick={() => { setAIProvider('ollama'); setConnStatus('idle'); }} 
-                    className={`py-1.5 rounded-lg text-[8px] font-black uppercase transition-all ${aiProvider === 'ollama' ? 'bg-[#F5C518] text-black' : 'bg-white/5 text-slate-400 hover:text-white'}`}
-                  >
-                    Ollama (Local)
-                  </button>
-                </div>
-              </div>
-
-              {aiProvider === 'ollama' && (
-                <div className="space-y-2.5 animate-in fade-in duration-200">
-                  <div className="grid grid-cols-2 gap-2">
-                    <div className="space-y-1">
-                      <label className="text-[7px] font-bold text-slate-400 uppercase block">Host de Ollama</label>
-                      <input
-                        value={ollamaUrl}
-                        onChange={e => { setOllamaUrl(e.target.value); setConnStatus('idle'); }}
-                        placeholder="http://127.0.0.1:11434"
-                        className="inp text-[10px] py-1.5"
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <label className="text-[7px] font-bold text-slate-400 uppercase block">Modelo local</label>
-                      <input
-                        value={ollamaModel}
-                        onChange={e => { setOllamaModel(e.target.value); setConnStatus('idle'); }}
-                        placeholder="llama3"
-                        className="inp text-[10px] py-1.5"
-                      />
-                    </div>
-                  </div>
-                  <div className="p-2 rounded-xl bg-black/40 border border-white/5 space-y-1">
-                    <p className="text-[7px] text-[#F5C518] uppercase font-bold">Instrucciones para IA Local:</p>
-                    <p className="text-[7px] text-slate-400 leading-normal uppercase">
-                      1. Abre tu terminal y ejecuta:
-                    </p>
-                    <code className="block bg-black p-1.5 rounded text-[7px] font-mono text-green-400 break-all select-all">
-                      $env:OLLAMA_ORIGINS="*" ; ollama run {ollamaModel || 'llama3.2'}
-                    </code>
-                  </div>
-                </div>
-              )}
-
-              {aiProvider === 'gemini' && (
-                <div className="space-y-2.5 animate-in fade-in duration-200">
-                  <div className="grid grid-cols-2 gap-2">
-                    <div className="space-y-1">
-                      <label className="text-[7px] font-bold text-slate-400 uppercase block">Modelo de Gemini</label>
-                      <select
-                        value={geminiModel}
-                        onChange={e => { setGeminiModel(e.target.value); setConnStatus('idle'); }}
-                        className="inp text-[10px] py-1.5 w-full bg-slate-900 border-white/10 text-white"
-                      >
-                        <option value="gemini-2.5-flash">Gemini 2.5 Flash (Más rápido, recomendado)</option>
-                        <option value="gemini-1.5-flash">Gemini 1.5 Flash (Estándar)</option>
-                        <option value="gemini-1.5-pro">Gemini 1.5 Pro (Complejo)</option>
-                      </select>
-                    </div>
-                    <div className="space-y-1">
-                      <label className="text-[7px] font-bold text-slate-400 uppercase block">Clave API de Gemini</label>
-                      <input
-                        type="password"
-                        value={geminiKey}
-                        onChange={e => { setGeminiKey(e.target.value); setConnStatus('idle'); }}
-                        placeholder="Ingresa tu API Key de Gemini..."
-                        className="inp text-[10px] py-1.5 w-full bg-slate-900 border-white/10 text-white placeholder-slate-600"
-                      />
-                    </div>
-                  </div>
-                  <div className="p-2.5 rounded-xl bg-green-950/20 border border-green-500/20 space-y-1 text-green-400">
-                    <p className="text-[7.5px] uppercase font-black">☁️ Proveedor de Nube Activo (24/7)</p>
-                    <p className="text-[7px] leading-normal uppercase text-slate-400">
-                      La IA se ejecutará permanentemente en la nube utilizando tu API Key local. Ingresa tu <code className="text-white font-mono font-bold bg-white/5 px-1 py-0.5 rounded">API Key</code> arriba para usarla de forma directa sin configurar variables del servidor.
-                    </p>
-                  </div>
-                </div>
-              )}
-
-              {aiProvider === 'antigravity' && (
-                <div className="space-y-2.5 animate-in fade-in duration-200">
-                  <div className="p-3 bg-cyan-950/20 border border-cyan-500/20 rounded-xl space-y-1.5 text-cyan-400">
-                    <p className="text-[7.5px] uppercase font-black tracking-widest flex items-center gap-1.5 font-mono">
-                      <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-ping inline-block" />
-                      🚀 Antigravity AI Cloud Engine (Default)
-                    </p>
-                    <p className="text-[7.5px] leading-normal uppercase text-slate-400 font-mono">
-                      Conexión nativa de alto rendimiento administrada por el servidor Vercel. No requiere configurar llaves locales en el navegador ni correr servicios en tu PC.
-                    </p>
-                    <p className="text-[6.5px] leading-normal text-slate-500 font-mono">
-                      * Requiere la variable <code className="text-white bg-white/5 px-1 rounded">GEMINI_API_KEY</code> en tu panel de control de Vercel.
-                    </p>
-                  </div>
-                </div>
-              )}
+             <div className="space-y-2.5">
+               <div className="space-y-2.5 animate-in fade-in duration-200">
+                 <div className="grid grid-cols-2 gap-2">
+                   <div className="space-y-1">
+                     <label className="text-[7px] font-bold text-slate-400 uppercase block">Host de Ollama</label>
+                     <input
+                       value={ollamaUrl}
+                       onChange={e => { setOllamaUrl(e.target.value); setConnStatus('idle'); }}
+                       placeholder="http://127.0.0.1:11434"
+                       className="inp text-[10px] py-1.5"
+                     />
+                   </div>
+                   <div className="space-y-1">
+                     <label className="text-[7px] font-bold text-slate-400 uppercase block">Modelo local</label>
+                     <input
+                       value={ollamaModel}
+                       onChange={e => { setOllamaModel(e.target.value); setConnStatus('idle'); }}
+                       placeholder="llama3"
+                       className="inp text-[10px] py-1.5"
+                     />
+                   </div>
+                 </div>
+                 <div className="p-2 rounded-xl bg-black/40 border border-white/5 space-y-1">
+                   <p className="text-[7px] text-[#F5C518] uppercase font-bold">Instrucciones para IA Local:</p>
+                   <p className="text-[7px] text-slate-400 leading-normal uppercase">
+                     1. Abre tu terminal y ejecuta:
+                   </p>
+                   <code className="block bg-black p-1.5 rounded text-[7px] font-mono text-green-400 break-all select-all">
+                     $env:OLLAMA_ORIGINS="*" ; ollama run {ollamaModel || 'llama3.2'}
+                   </code>
+                 </div>
+               </div>
             </div>
 
             <div className="flex gap-2 pt-1">
