@@ -4987,12 +4987,13 @@ function LiveToasts() {
 }
 
 // Animated stat
-function AnimatedStat({ end, prefix = '', suffix = '', label, delay = 0 }) {
-  const [val, ref] = useCountUp(end, 1800);
+function AnimatedStat({ end, prefix = '', suffix = '', label, delay = 0, decimals = 0 }) {
+  const multiplier = Math.pow(10, decimals);
+  const [val, ref] = useCountUp(end * multiplier, 1800);
   return (
     <div ref={ref} className="text-center">
       <div className="text-4xl md:text-5xl font-black italic glow-text tracking-tighter">
-        {prefix}{val.toLocaleString()}{suffix}
+        {prefix}{(val / multiplier).toFixed(decimals)}{suffix}
       </div>
       <div className="text-[10px] text-slate-500 uppercase tracking-[0.2em] font-bold mt-2">{label}</div>
     </div>
@@ -5047,6 +5048,9 @@ function LandingPage({ onLogin, onSignup }) {
   const [activeModal, setActiveModal] = useState(null);
   const [billingAnnual, setBillingAnnual] = useState(false);
   const [showVideoDemo, setShowVideoDemo] = useState(false);
+  const [activeStep, setActiveStep] = useState(0);
+  const [isAutoplay, setIsAutoplay] = useState(true);
+
   const openModal = (key) => setActiveModal(key);
   const closeModal = () => setActiveModal(null);
 
@@ -5074,20 +5078,68 @@ function LandingPage({ onLogin, onSignup }) {
     return () => window.removeEventListener('keydown', handler);
   }, []);
 
-  const features = [
-    { icon: 'brain', color: 'from-amber-500/20 to-amber-500/5', border: 'border-amber-500/30', text: 'amber-400', label: 'Predictive AI Engine', desc: 'Identifies VIP upsell opportunities automatically and forecasts monthly revenue with 94% accuracy. Your personal CFO never sleeps.', big: true },
-    { icon: 'camera', color: 'from-purple-500/20 to-purple-500/5', border: 'border-purple-500/30', text: 'purple-400', label: 'AI Vision QC', desc: 'Computer vision scans every after-photo ensuring 99.4% quality pass rate before client sees it.' },
-    { icon: 'truck', color: 'from-blue-500/20 to-blue-500/5', border: 'border-blue-500/30', text: 'blue-400', label: 'On-My-Way GPS', desc: 'Auto-notifies clients with real-time tracking link the moment staff departs — Uber-style.' },
-    { icon: 'message-circle', color: 'from-green-500/20 to-green-500/5', border: 'border-green-500/30', text: 'green-400', label: 'WhatsApp CRM', desc: 'One-click AI scripts for dead leads, 5-star review requests, and quote follow-ups. Close more with less effort.', big: true },
-    { icon: 'edit-3', color: 'from-rose-500/20 to-rose-500/5', border: 'border-rose-500/30', text: 'rose-400', label: 'Digital Signatures', desc: 'Clients sign off on-site with finger — legally binding proof before staff leaves.' },
-    { icon: 'zap', color: 'from-yellow-500/20 to-yellow-500/5', border: 'border-yellow-500/30', text: 'yellow-400', label: 'Good-Better-Best Quotes', desc: 'Psychology-driven 3-tier pricing sent via WhatsApp. 80% pick the middle = +35% revenue.' },
-  ];
-  const testimonials = [
-    { name: 'Carlos R.', biz: 'Pristine Cleaning Co.', loc: 'Orlando, FL', text: 'We went from $8K/mo to $31K/mo in 4 months. The AI upsell engine paid for itself in week 1.', stars: 5, avatar: 'CR', avatarColor: 'from-amber-500 to-orange-600' },
-    { name: 'Maria S.', biz: 'Elite Handyman Services', loc: 'Tampa, FL', text: 'My clients love the GPS tracking and signature feature. Zero disputes since we launched. Game changer.', stars: 5, avatar: 'MS', avatarColor: 'from-purple-500 to-pink-600' },
-    { name: 'David K.', biz: 'Apex Property Services', loc: 'Miami, FL', text: 'The quote matrix alone increased our average job value by 40%. Insane ROI from day one.', stars: 5, avatar: 'DK', avatarColor: 'from-blue-500 to-cyan-600' },
+  // Autoplay for the interactive operations preview
+  useEffect(() => {
+    if (!isAutoplay) return;
+    const timer = setInterval(() => {
+      setActiveStep((s) => (s + 1) % 6);
+    }, 5000);
+    return () => clearInterval(timer);
+  }, [isAutoplay]);
+
+  const previewSteps = [
+    {
+      title: 'AI Smart Dispatch',
+      desc: 'System matches the best crew based on location and schedule, sending the job details directly to their mobile app.',
+      icon: 'zap',
+      badge: 'Step 1: Automated Dispatch'
+    },
+    {
+      title: 'GPS En Route & Uber-Style Map',
+      desc: 'When the crew leaves, a text message is automatically sent to the client with a real-time tracking link.',
+      icon: 'map-pin',
+      badge: 'Step 2: Customer Notifications'
+    },
+    {
+      title: 'Geofenced Check-In',
+      desc: 'Crew checks in on arrival. Geolocation verification ensures they are at the correct address before starting.',
+      icon: 'clock',
+      badge: 'Step 3: Geofence Verification'
+    },
+    {
+      title: 'AI-Powered Quality Control',
+      desc: 'Crew uploads before/after photos. Elevore AI scans the images to guarantee quality and prevent customer disputes.',
+      icon: 'camera',
+      badge: 'Step 4: Quality Assurance'
+    },
+    {
+      title: 'On-Site Digital Sign-Off',
+      desc: 'Customer signs off directly on the worker’s phone or via a secure SMS link, creating a legally binding record.',
+      icon: 'edit-3',
+      badge: 'Step 5: Client Sign-Off'
+    },
+    {
+      title: 'Auto-Billing & Stripe Payment',
+      desc: 'Invoicing is automatic. Stripe processes the payment immediately and a review request is sent via WhatsApp.',
+      icon: 'credit-card',
+      badge: 'Step 6: Automated Settlement'
+    }
   ];
 
+  const features = [
+    { icon: 'calendar', color: 'from-amber-500/20 to-amber-500/5', border: 'border-amber-500/30', text: 'amber-400', label: 'Mission Calendar & Smart Dispatch', desc: 'Drag-and-drop calendar automatically optimizes travel routes, schedules recurring visits, and notifies crews instantly.', big: true },
+    { icon: 'camera', color: 'from-purple-500/20 to-purple-500/5', border: 'border-purple-500/30', text: 'purple-400', label: 'Before & After Photo Drive', desc: 'Provide undeniable proof of quality. Workers upload photos directly from the job site, automatically organized in the client history.' },
+    { icon: 'edit-3', color: 'from-blue-500/20 to-blue-500/5', border: 'border-blue-500/30', text: 'blue-400', label: 'Digital Signatures On-Site', desc: 'Secure legally binding sign-offs on the crew’s smartphone right after completion. Never worry about payment disputes again.' },
+    { icon: 'message-square', color: 'from-green-500/20 to-green-500/5', border: 'border-green-500/30', text: 'green-400', label: 'WhatsApp CRM & Auto Follow-ups', desc: 'Automate customer communications. Send customized quote follow-ups, arrival notices, and 5-star review request links.', big: true },
+    { icon: 'brain', color: 'from-rose-500/20 to-rose-500/5', border: 'border-rose-500/30', text: 'rose-400', label: 'AI Revenue Predictor', desc: 'Analyze historical demand and seasons to identify upsell opportunities and predict monthly revenue with 94% accuracy.' },
+    { icon: 'layout-dashboard', color: 'from-yellow-500/20 to-yellow-500/5', border: 'border-yellow-500/30', text: 'yellow-400', label: 'Real-Time Operations Dashboard', desc: 'Monitor your entire operation at a glance. Live dispatch states, active job timers, GPS locations, and daily gross revenues.' },
+  ];
+
+  const testimonials = [
+    { name: 'Carlos R.', biz: 'Pristine Cleaning Co.', loc: 'Orlando, FL', text: 'Our scheduling was a nightmare. Since Elevore, the dispatch system handles our 12 crews automatically, saving us 15+ hours/week. Growth went from 0 to 45%.', stars: 5, avatar: 'CR', avatarColor: 'from-amber-500 to-orange-600' },
+    { name: 'Maria S.', biz: 'Elite Handyman Services', loc: 'Tampa, FL', text: 'Before/after photo drives completely saved us. When a client claims we missed a spot, we send the timestamped photo. Zero disputes this year.', stars: 5, avatar: 'MS', avatarColor: 'from-purple-500 to-pink-600' },
+    { name: 'David K.', biz: 'Apex Property Services', loc: 'Miami, FL', text: 'The Good-Better-Best pricing matrix is pure magic. 80% of our residential clients choose the middle option, boosting average job value by 38%.', stars: 5, avatar: 'DK', avatarColor: 'from-blue-500 to-cyan-600' },
+  ];
 
   return (
     <div className="min-h-screen bg-[#030303] text-white selection:bg-[#F5C518] selection:text-black overflow-x-hidden land">
@@ -5152,11 +5204,11 @@ function LandingPage({ onLogin, onSignup }) {
             <span className="text-[#F5C518] text-[10px] font-black uppercase tracking-[0.3em]">The #1 OS for Elite Service Companies</span>
           </div>
           <h1 className="reveal delay-100 text-5xl sm:text-7xl md:text-[96px] font-black leading-[0.88] tracking-tighter">
-            Run Your Empire<br />
+            Run Your Service Operations<br />
             <span className="glow-text italic">on Autopilot.</span>
           </h1>
           <p className="reveal delay-200 text-slate-400 text-lg md:text-xl max-w-2xl mx-auto leading-relaxed">
-            AI dispatch, GPS fleet tracking, digital contracts, predictive revenue — everything your cleaning or handyman company needs to <strong className="text-white font-black">operate like a Fortune 500.</strong>
+            AI dispatch, GPS routing, before/after drives, and live tracking — built specifically to scale cleaning, handyman, and property maintenance companies.
           </p>
           <div className="reveal delay-300 flex flex-col sm:flex-row items-center justify-center gap-4">
             <button onClick={onSignup} className="btn-gold group w-full sm:w-auto px-10 py-5 text-sm uppercase tracking-widest flex items-center justify-center gap-2">
@@ -5176,155 +5228,306 @@ function LandingPage({ onLogin, onSignup }) {
             </button>
           </div>
           <p className="text-[10px] text-slate-600 uppercase tracking-widest font-bold">No credit card required • Cancel anytime • Setup in 2 minutes</p>
-          <div className="reveal delay-400 grid grid-cols-3 gap-6 pt-12 max-w-2xl mx-auto border-t border-white/5">
-            <AnimatedStat end={500} suffix="+" label="Active Businesses" />
-            <AnimatedStat end={94} suffix="%" label="Revenue Accuracy" />
-            <AnimatedStat end={31} prefix="$" suffix="K" label="Avg Client MRR" />
-          </div>
-          {/* Mini dashboard preview */}
-          <div className="reveal delay-500 relative max-w-2xl mx-auto mt-4">
-            <div className="dashboard-preview p-5 text-left">
-              <div className="flex items-center gap-2 mb-4 pb-3 border-b border-white/5">
-                <div className="w-3 h-3 rounded-full bg-red-500/60" />
-                <div className="w-3 h-3 rounded-full bg-yellow-500/60" />
-                <div className="w-3 h-3 rounded-full bg-green-500/60" />
-                <span className="text-[9px] text-slate-600 uppercase font-black tracking-widest ml-3">Elevore Empire — Live Dashboard</span>
-                <div className="ml-auto flex items-center gap-1.5">
-                  <div className="w-1.5 h-1.5 bg-green-400 rounded-full" />
-                  <span className="text-[8px] text-green-400 font-black uppercase">Live</span>
-                </div>
-              </div>
-              <div className="grid grid-cols-4 gap-3 mb-4">
-                {[{label:'MRR',val:'$8,420',change:'+12%'},{label:'Active Jobs',val:'14',change:'3 today'},{label:'Team',val:'6 staff',change:'All on route'},{label:'AI Upsells',val:'7',change:'+$2,100'}].map((m,i) => (
-                  <div key={i} className="bg-white/[0.03] border border-white/5 rounded-xl p-2.5">
-                    <div className="text-[8px] text-slate-500 uppercase font-black tracking-wider">{m.label}</div>
-                    <div className="text-sm font-black text-white mt-0.5">{m.val}</div>
-                    <div className="text-[8px] text-green-400 font-bold">{m.change}</div>
-                  </div>
-                ))}
-              </div>
-              <div className="space-y-2">
-                {[{name:'Rodriguez Residence',status:'En Route',dot:'bg-blue-400',price:'$380'},{name:'Smith Property Deep',status:'In Service',dot:'bg-amber-400',price:'$520'},{name:'Johnson Move-Out',status:'Completed ✓',dot:'bg-green-400',price:'$890'}].map((job,i) => (
-                  <div key={i} className="flex items-center justify-between bg-white/[0.02] border border-white/5 rounded-xl px-3 py-2">
-                    <div className="flex items-center gap-2.5">
-                      <div className={`w-1.5 h-1.5 rounded-full ${job.dot}`} />
-                      <span className="text-[10px] font-bold text-slate-300">{job.name}</span>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <span className="text-[8px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-white/5 text-slate-400">{job.status}</span>
-                      <span className="text-[10px] font-black text-[#F5C518]">{job.price}</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
+          
+          {/* Interactive Operations Preview Section */}
+          <div className="pt-16 pb-8">
+            <div className="text-center mb-12 space-y-3">
+              <p className="text-[10px] font-black uppercase tracking-[0.3em] text-[#F5C518]">Demostración Interactiva</p>
+              <h2 className="text-3xl md:text-4xl font-black tracking-tighter">
+                Mira cómo una misión se completa<br />
+                <span className="glow-text italic">en piloto automático.</span>
+              </h2>
             </div>
-            <div className="absolute -bottom-8 left-1/2 -translate-x-1/2 w-2/3 h-8 bg-[#F5C518]/10 blur-2xl rounded-full" />
-          </div>
-        </div>
-      </section>
-
-      {/* ═══ VIDEO SHOWCASE SECTION (between hero and marquee) ═══ */}
-      <section className="py-20 px-6 relative overflow-hidden">
-        <div className="absolute inset-0" style={{ background: 'radial-gradient(ellipse at 50% 100%, rgba(245,197,24,0.05) 0%, transparent 60%)' }} />
-        <div className="max-w-5xl mx-auto">
-          <div className="text-center mb-10 space-y-3">
-            <p className="text-[10px] font-black uppercase tracking-[0.3em] text-[#F5C518]">Míralo en acción</p>
-            <h2 className="text-3xl md:text-4xl font-black tracking-tighter">El OS que convierte equipos de limpieza<br/><span className="glow-text italic">en máquinas de revenue.</span></h2>
-          </div>
-          {/* Video thumbnail with play CTA */}
-          <div
-            className="relative rounded-3xl overflow-hidden border border-white/10 cursor-pointer group"
-            style={{ boxShadow: '0 0 80px rgba(245,197,24,0.08), 0 30px 60px rgba(0,0,0,0.6)' }}
-            onClick={() => setShowVideoDemo(true)}
-          >
-            {/* Simulated video thumbnail — dashboard mockup */}
-            <div className="bg-[#06060e] aspect-[16/7] flex flex-col relative overflow-hidden">
-              <div className="absolute inset-0" style={{ background: 'radial-gradient(ellipse at 30% 50%, rgba(245,197,24,0.06) 0%, transparent 50%), radial-gradient(ellipse at 70% 30%, rgba(99,102,241,0.05) 0%, transparent 40%)' }} />
-              {/* MacOS chrome */}
-              <div className="flex items-center gap-2 px-5 py-3 border-b border-white/5 flex-shrink-0">
-                <div className="w-2.5 h-2.5 rounded-full bg-red-500/60" />
-                <div className="w-2.5 h-2.5 rounded-full bg-yellow-500/60" />
-                <div className="w-2.5 h-2.5 rounded-full bg-green-500/60" />
-                <div className="flex-1 mx-4 bg-white/5 rounded-lg px-3 py-1 text-[9px] text-slate-600 font-mono">elevore.app/dashboard</div>
-                <div className="flex items-center gap-1.5">
-                  <div className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse" />
-                  <span className="text-[8px] text-green-400 font-black uppercase">Live</span>
-                </div>
-              </div>
-              {/* Content */}
-              <div className="flex-1 p-5 grid grid-cols-4 gap-4">
-                {/* Left: metrics */}
-                <div className="col-span-3 space-y-3">
-                  <div className="grid grid-cols-4 gap-3">
-                    {[
-                      {l:'MRR',v:'$31,420',c:'+28%',col:'text-green-400'},
-                      {l:'Empleados',v:'8 activos',c:'GPS en ruta',col:'text-blue-400'},
-                      {l:'AI Upsells',v:'23 hoy',c:'+$8,400',col:'text-[#F5C518]'},
-                      {l:'Rating',v:'4.9 ⭐',c:'127 reviews',col:'text-purple-400'}
-                    ].map((m,i) => (
-                      <div key={i} className="bg-white/[0.04] border border-white/5 rounded-xl p-3">
-                        <div className="text-[8px] text-slate-500 uppercase font-black">{m.l}</div>
-                        <div className="text-lg font-black text-white mt-0.5">{m.v}</div>
-                        <div className={`text-[8px] font-bold ${m.col}`}>{m.c}</div>
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-stretch text-left">
+              <div className="lg:col-span-5 flex flex-col justify-between space-y-3">
+                {previewSteps.map((step, idx) => {
+                  const isActive = activeStep === idx;
+                  return (
+                    <button
+                      key={idx}
+                      onClick={() => {
+                        setActiveStep(idx);
+                        setIsAutoplay(false);
+                      }}
+                      className={`p-4 rounded-2xl border transition-all duration-300 flex items-start gap-4 w-full group ${
+                        isActive
+                          ? 'bg-white/[0.04] border-[#F5C518]/30'
+                          : 'bg-transparent border-transparent'
+                      }`}
+                    >
+                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 border ${isActive ? 'bg-[#F5C518]/10 border-[#F5C518]/30 text-[#F5C518]' : 'bg-white/5 border-white/5 text-slate-500'}`}>
+                        <Icon name={step.icon} className="w-4 h-4" />
                       </div>
-                    ))}
-                  </div>
-                  <div className="bg-white/[0.02] border border-white/5 rounded-xl p-4">
-                    <div className="flex justify-between items-center mb-3">
-                      <span className="text-xs font-black text-white">Revenue — Últimos 12 Meses</span>
-                      <span className="text-xs text-[#F5C518] font-black">+128% vs año anterior</span>
-                    </div>
-                    <div className="flex items-end gap-1.5 h-16">
-                      {[18,30,25,50,44,65,58,80,72,88,82,100].map((h,i)=>(
-                        <div key={i} className="flex-1 rounded-t" style={{ height:`${h}%`, background: i===11?'linear-gradient(0deg,#F5C518,#d97706)':'rgba(255,255,255,0.07)', boxShadow:i===11?'0 0 12px rgba(245,197,24,0.4)':'none' }}/>
-                      ))}
-                    </div>
+                      <div>
+                        <span className={`text-[8px] font-mono tracking-widest uppercase ${isActive ? 'text-[#F5C518]' : 'text-slate-600'}`}>Paso {(idx + 1).toString().padStart(2, '0')}</span>
+                        <h3 className={`text-sm font-black ${isActive ? 'text-white' : 'text-slate-400'}`}>{step.title}</h3>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+              <div className="lg:col-span-7 bg-[#0b0b12] border border-white/10 rounded-3xl p-6 flex flex-col justify-between min-h-[420px] relative overflow-hidden shadow-2xl">
+                <div className="absolute inset-0 bg-gradient-to-tr from-blue-500/2 via-transparent to-[#F5C518]/2 pointer-events-none" />
+                
+                {/* Header Chrome bar */}
+                <div className="flex items-center gap-2 mb-6 pb-4 border-b border-white/5 flex-shrink-0">
+                  <div className="w-2.5 h-2.5 rounded-full bg-red-500/40" />
+                  <div className="w-2.5 h-2.5 rounded-full bg-yellow-500/50" />
+                  <div className="w-2.5 h-2.5 rounded-full bg-green-500/60" />
+                  <span className="text-[9px] text-slate-500 font-mono ml-4 uppercase tracking-widest">
+                    {previewSteps[activeStep].badge}
+                  </span>
+                  <div className="ml-auto flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 bg-[#F5C518] rounded-full animate-pulse" />
+                    <span className="text-[7.5px] font-black uppercase text-slate-500 tracking-widest">Elevore OS v2.0</span>
                   </div>
                 </div>
-                {/* Right: job list */}
-                <div className="bg-white/[0.02] border border-white/5 rounded-xl p-3 space-y-2">
-                  <p className="text-[8px] font-black text-slate-500 uppercase tracking-wider mb-2">Misiones Hoy</p>
-                  {[
-                    {n:'Rodriguez Residence',s:'En Ruta',c:'bg-blue-400'},
-                    {n:'Smith Deep Clean',s:'En Servicio',c:'bg-[#F5C518]'},
-                    {n:'Johnson Move-Out',s:'Completado ✓',c:'bg-green-400'},
-                    {n:'Miller Office',s:'Agendado',c:'bg-slate-600'}
-                  ].map((j,i) => (
-                    <div key={i} className="flex items-center gap-2">
-                      <div className={`w-1.5 h-1.5 rounded-full ${j.c} flex-shrink-0`} />
-                      <span className="text-[8px] font-bold text-slate-400 truncate">{j.n}</span>
+
+                {/* Dynamic Screen View Content */}
+                <div className="flex-1 flex items-center justify-center p-2">
+                  {activeStep === 0 && (
+                    <div className="w-full max-w-md space-y-4 animate-scale">
+                      <div className="bg-[#12121c] border border-white/5 rounded-2xl p-4 space-y-3 shadow-xl text-left">
+                        <div className="flex justify-between items-center">
+                          <span className="text-[10px] font-black text-amber-400 uppercase tracking-widest bg-amber-400/10 border border-amber-400/20 px-2 py-0.5 rounded-md">AI Dispatch Active</span>
+                          <span className="text-[9px] text-slate-500">Mission #4921</span>
+                        </div>
+                        <h4 className="text-sm font-black text-white">Deep Clean & Sanitation</h4>
+                        <p className="text-[10px] text-slate-400">Rodriguez Residence • 3,200 sqft</p>
+                        
+                        <div className="border-t border-white/5 pt-3 space-y-2">
+                          <div className="flex justify-between items-center text-[10px]">
+                            <span className="text-slate-500">Optimized Travel Time:</span>
+                            <span className="text-green-400 font-bold">14 mins (Saved 8 mins)</span>
+                          </div>
+                          <div className="flex justify-between items-center text-[10px]">
+                            <span className="text-slate-500">Auto-Assigned Crew:</span>
+                            <span className="text-white font-bold">Elite Alpha (Carlos & Jose)</span>
+                          </div>
+                        </div>
+
+                        <div className="bg-green-500/10 border border-green-500/20 rounded-xl p-3 flex items-center gap-3">
+                          <div className="w-6 h-6 rounded-full bg-green-500/20 flex items-center justify-center text-green-400">
+                            <Icon name="check" className="w-3.5 h-3.5" />
+                          </div>
+                          <span className="text-[9.5px] text-green-400 font-bold leading-none">Mission successfully dispatched to Staff App</span>
+                        </div>
+                      </div>
                     </div>
+                  )}
+
+                  {activeStep === 1 && (
+                    <div className="w-full max-w-md space-y-4 animate-scale">
+                      {/* SMS Bubble */}
+                      <div className="bg-[#262635] border border-white/10 rounded-2xl p-3 max-w-[85%] ml-auto text-left shadow-lg">
+                        <p className="text-[11px] text-slate-300">
+                          Hello Maria! The Pristine Crew is en route to your residence. Track their arrival in real-time here: 
+                          <span className="text-blue-400 underline block mt-0.5">https://elevore.app/track/m_4921</span>
+                        </p>
+                      </div>
+
+                      {/* Mini Map */}
+                      <div className="bg-[#12121c] border border-white/5 rounded-2xl p-3 relative h-44 overflow-hidden shadow-xl">
+                        <div className="absolute inset-0 bg-[#0a0a0f]" />
+                        {/* Grid background for abstract map */}
+                        <div className="absolute inset-0 dot-grid opacity-30" />
+                        
+                        {/* Map lines */}
+                        <svg className="absolute inset-0 w-full h-full" style={{ stroke: 'rgba(255,255,255,0.05)', strokeWidth: 2 }}>
+                          <line x1="10%" y1="20%" x2="90%" y2="20%" />
+                          <line x1="30%" y1="10%" x2="30%" y2="90%" />
+                          <line x1="70%" y1="10%" x2="70%" y2="90%" />
+                          <path d="M 30,120 Q 150,120 150,60 T 300,60" fill="none" stroke="#F5C518" strokeWidth="2.5" strokeDasharray="6" className="animate-pulse" />
+                        </svg>
+
+                        {/* Map pins */}
+                        <div className="absolute top-1/2 left-[10%] -translate-y-1/2 flex flex-col items-center">
+                          <div className="w-5 h-5 rounded-full bg-blue-500/20 border border-blue-500 flex items-center justify-center z-10 animate-bounce">
+                            <Icon name="truck" className="w-2.5 h-2.5 text-blue-400" />
+                          </div>
+                          <span className="text-[7px] text-slate-400 mt-1 font-black bg-black/80 px-1 py-0.5 rounded border border-white/5 uppercase">Crew</span>
+                        </div>
+
+                        <div className="absolute top-[28%] left-[78%] -translate-y-1/2 flex flex-col items-center">
+                          <div className="w-5 h-5 rounded-full bg-[#F5C518]/20 border border-[#F5C518] flex items-center justify-center z-10">
+                            <Icon name="home" className="w-2.5 h-2.5 text-[#F5C518]" />
+                          </div>
+                          <span className="text-[7px] text-[#F5C518] mt-1 font-black bg-black/80 px-1 py-0.5 rounded border border-[#F5C518]/20 uppercase">Job Site</span>
+                        </div>
+
+                        {/* Floating Card */}
+                        <div className="absolute bottom-2 left-2 right-2 bg-black/90 border border-white/10 rounded-xl p-2.5 flex items-center justify-between text-left">
+                          <div>
+                            <p className="text-[8px] text-slate-500 uppercase font-black">Estimated Arrival</p>
+                            <p className="text-xs font-black text-white mt-0.5">8 minutes</p>
+                          </div>
+                          <span className="text-[9px] font-black uppercase text-green-400 bg-green-500/10 px-2 py-1 rounded-lg">On The Way</span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {activeStep === 2 && (
+                    <div className="w-full max-w-md space-y-3 animate-scale text-left">
+                      <div className="bg-[#12121c] border border-white/5 rounded-2xl p-4 space-y-3 shadow-xl">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[9px] text-slate-500">Live Location Geofence</span>
+                          <div className="flex items-center gap-1.5">
+                            <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
+                            <span className="text-[9px] text-green-400 font-bold uppercase">Within Range</span>
+                          </div>
+                        </div>
+                        
+                        <div className="p-3 bg-white/[0.02] border border-white/5 rounded-xl space-y-2">
+                          <p className="text-[9px] text-slate-400 uppercase font-bold">Location Checked</p>
+                          <p className="text-xs font-black text-white">452 Pine St, Orlando, FL</p>
+                          <p className="text-[8.5px] text-slate-500">Accuracy: ±4 meters • Verified by GPS</p>
+                        </div>
+
+                        <div className="flex gap-2">
+                          <button className="w-full py-3 bg-green-600 text-white rounded-xl text-xs font-black uppercase tracking-wider flex items-center justify-center gap-2">
+                            <Icon name="check-circle" className="w-4 h-4" />
+                            Geofence Check-In Success
+                          </button>
+                        </div>
+                        <p className="text-[8px] text-center text-slate-500 uppercase tracking-widest">Logged at 08:58 AM • Autostarted timer</p>
+                      </div>
+                    </div>
+                  )}
+
+                  {activeStep === 3 && (
+                    <div className="w-full max-w-md animate-scale space-y-3 text-left">
+                      <div className="bg-[#12121c] border border-white/5 rounded-2xl p-4 shadow-xl space-y-3">
+                        <div className="flex justify-between items-center">
+                          <span className="text-[9px] font-black uppercase text-purple-400 bg-purple-400/10 px-2 py-0.5 rounded-md">Computer Vision AI QC</span>
+                          <span className="text-[9.5px] text-green-400 font-bold">Score: 99.6% PASS</span>
+                        </div>
+
+                        {/* Split photo simulation */}
+                        <div className="relative rounded-xl overflow-hidden aspect-[16/9] border border-white/5 group">
+                          <div className="absolute inset-0 bg-slate-900 flex">
+                            {/* Left photo (dirty) */}
+                            <div className="w-1/2 h-full bg-[#1b1919] relative flex items-center justify-center overflow-hidden">
+                              <div className="text-[8px] font-black uppercase tracking-widest text-red-500 absolute top-2 left-2 bg-black/80 px-1.5 py-0.5 rounded border border-red-500/20">Before</div>
+                              <svg className="w-16 h-16 opacity-30 text-amber-700" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1">
+                                <circle cx="12" cy="12" r="10" />
+                                <line x1="8" y1="12" x2="16" y2="12" />
+                              </svg>
+                            </div>
+                            {/* Right photo (clean) */}
+                            <div className="w-1/2 h-full bg-[#112415] border-l border-[#F5C518] relative flex items-center justify-center overflow-hidden">
+                              <div className="text-[8px] font-black uppercase tracking-widest text-green-400 absolute top-2 right-2 bg-black/80 px-1.5 py-0.5 rounded border border-green-500/20">After</div>
+                              <svg className="w-16 h-16 opacity-75 text-green-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+                                <polyline points="22 4 12 14.01 9 11.01" />
+                              </svg>
+                            </div>
+                          </div>
+
+                          {/* Scanner Bar Effect */}
+                          <div className="absolute top-0 bottom-0 w-0.5 bg-[#F5C518] shadow-[0_0_15px_#F5C518] left-1/2 animate-scan" />
+                        </div>
+
+                        <p className="text-[9px] text-slate-500 leading-normal text-center">AI automatically compares shapes, shines, and dust parameters to confirm job completion parameters.</p>
+                      </div>
+                    </div>
+                  )}
+
+                  {activeStep === 4 && (
+                    <div className="w-full max-w-md animate-scale text-left">
+                      <div className="bg-[#12121c] border border-white/5 rounded-2xl p-4 shadow-xl space-y-4">
+                        <div>
+                          <h4 className="text-xs font-black text-white uppercase tracking-wider">Customer Sign-Off Required</h4>
+                          <p className="text-[9.5px] text-slate-500 mt-0.5">Please sign below to confirm mission check-out approval.</p>
+                        </div>
+
+                        {/* Signature pad simulation */}
+                        <div className="bg-black border border-white/10 rounded-xl h-28 relative overflow-hidden flex items-center justify-center">
+                          <svg className="absolute inset-0 w-full h-full pointer-events-none">
+                            <path
+                              d="M 50,70 C 80,60 110,40 140,55 C 170,70 190,65 220,50 C 240,40 260,35 280,45"
+                              fill="none"
+                              stroke="#F5C518"
+                              strokeWidth="2.5"
+                              strokeLinecap="round"
+                              strokeDasharray="400"
+                              strokeDashoffset="400"
+                              className="animate-draw-sig"
+                              style={{ strokeDasharray: 400, strokeDashoffset: 400 }}
+                            />
+                          </svg>
+                          <span className="absolute bottom-2 right-3 text-[8px] font-mono text-slate-600">Maria Rodriguez</span>
+                        </div>
+
+                        <div className="flex gap-2">
+                          <div className="w-full py-3 bg-[#F5C518]/10 border border-[#F5C518]/30 rounded-xl text-center text-xs font-black uppercase text-[#F5C518]">
+                            ✓ Signed and Timestamped (11:32 AM)
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {activeStep === 5 && (
+                    <div className="w-full max-w-md animate-scale space-y-4 text-left">
+                      <div className="bg-[#12121c] border border-white/5 rounded-2xl p-4 shadow-xl space-y-3">
+                        <div className="flex justify-between items-center border-b border-white/5 pb-2">
+                          <span className="text-[9px] text-slate-500 font-bold uppercase">Stripe Charge Success</span>
+                          <span className="text-[10px] text-green-400 font-black">+$380.00</span>
+                        </div>
+
+                        <div className="space-y-1.5">
+                          <div className="flex justify-between text-[9px]">
+                            <span className="text-slate-500">Service Fee:</span>
+                            <span className="text-white">$380.00</span>
+                          </div>
+                          <div className="flex justify-between text-[9px]">
+                            <span className="text-slate-500">Payment Method:</span>
+                            <span className="text-white">Visa ending in 4242</span>
+                          </div>
+                          <div className="flex justify-between text-[9px] font-bold">
+                            <span className="text-slate-400">Total Charged:</span>
+                            <span className="text-green-400">$380.00</span>
+                          </div>
+                        </div>
+
+                        <div className="bg-green-500/10 border border-green-500/20 rounded-xl p-2.5 flex items-center justify-between">
+                          <span className="text-[9.5px] text-green-400 font-bold">Invoice Paid via Auto-Stripe</span>
+                          <Icon name="check-circle" className="w-4 h-4 text-green-400" />
+                        </div>
+
+                        <div className="border-t border-white/5 pt-3 text-center space-y-2">
+                          <p className="text-[9px] text-slate-500 uppercase tracking-widest font-black">WhatsApp Review request Sent</p>
+                          <div className="flex justify-center gap-1">
+                            {[1,2,3,4,5].map((s) => (
+                              <span key={s} className="text-[#F5C518] text-sm animate-pulse" style={{ animationDelay: `${s*150}ms` }}>★</span>
+                            ))}
+                          </div>
+                          <p className="text-[8.5px] italic text-slate-400">"Excellent service! 5 stars."</p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Progress Indicator Dots */}
+                <div className="flex justify-center gap-2 mt-6 pt-4 border-t border-white/5 flex-shrink-0">
+                  {previewSteps.map((_, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => {
+                        setActiveStep(idx);
+                        setIsAutoplay(false);
+                      }}
+                      className={`w-2 h-2 rounded-full transition-all duration-300 ${
+                        activeStep === idx ? 'bg-[#F5C518] w-6' : 'bg-white/10 hover:bg-white/20'
+                      }`}
+                      aria-label={`Jump to step ${idx + 1}`}
+                    />
                   ))}
                 </div>
               </div>
             </div>
-            {/* Hover overlay */}
-            <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300" style={{ backdropFilter: 'blur(4px)' }}>
-              <div className="flex flex-col items-center gap-4">
-                <div className="w-20 h-20 rounded-full bg-[#F5C518] flex items-center justify-center" style={{ boxShadow:'0 0 60px rgba(245,197,24,0.6)' }}>
-                  <svg width="28" height="28" viewBox="0 0 24 24" fill="black"><path d="M5 3l14 9-14 9V3z"/></svg>
-                </div>
-                <p className="text-white font-black text-xl tracking-tight">Ver Demo Completo</p>
-              </div>
-            </div>
-            {/* Bottom gradient */}
-            <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-[#030303] to-transparent pointer-events-none" />
-          </div>
-          {/* Feature callouts below video */}
-          <div className="grid grid-cols-3 gap-4 mt-6">
-            {[
-              { icon: '🤖', label: 'AI Revenue Engine', desc: 'Predicción automática de ingresos y upsells.' },
-              { icon: '📍', label: 'GPS Fleet Tracking', desc: 'Monitoreo en tiempo real de todo el equipo.' },
-              { icon: '💬', label: 'WhatsApp CRM', desc: 'Scripts automáticos para cerrar más deals.' },
-            ].map((f, i) => (
-              <div key={i} className="flex items-start gap-3 p-4 rounded-2xl bg-white/[0.02] border border-white/5">
-                <span className="text-2xl flex-shrink-0">{f.icon}</span>
-                <div>
-                  <p className="text-xs font-black text-white">{f.label}</p>
-                  <p className="text-[10px] text-slate-500 mt-0.5">{f.desc}</p>
-                </div>
-              </div>
-            ))}
           </div>
         </div>
       </section>
@@ -5371,10 +5574,10 @@ function LandingPage({ onLogin, onSignup }) {
           <div className="space-y-0 relative">
             <div className="absolute left-7 md:left-10 top-10 bottom-10 w-px bg-gradient-to-b from-[#F5C518]/40 via-blue-500/20 to-transparent" />
             {[
-              { step:'01', icon:'user-plus', title:'Create Your Account', desc:'Sign up free in 30 seconds. No credit card. Instant access to the full platform.', color:'text-amber-400', bg:'bg-amber-400/10', border:'border-amber-400/20' },
-              { step:'02', icon:'settings', title:'Configure Your Business', desc:'Add your services, pricing, team members, and brand in minutes with our guided setup wizard.', color:'text-blue-400', bg:'bg-blue-400/10', border:'border-blue-400/20' },
-              { step:'03', icon:'users', title:'Invite Your Team', desc:'Each staff member gets a secure PIN. They access only their missions — nothing confidential.', color:'text-purple-400', bg:'bg-purple-400/10', border:'border-purple-400/20' },
-              { step:'04', icon:'trending-up', title:'Watch Revenue Grow', desc:'The AI engine starts analyzing patterns immediately. Most operators see +30% revenue in 30 days.', color:'text-green-400', bg:'bg-green-400/10', border:'border-green-400/20' },
+              { step:'01', icon:'user-plus', title:'Register Your Company', desc:'Set up your organization, upload your brand logo, and customize your company profile in under 2 minutes.', color:'text-amber-400', bg:'bg-amber-400/10', border:'border-amber-400/20' },
+              { step:'02', icon:'settings', title:'Add Your Team & Services', desc:'Set up custom service pricing tiers with our Good-Better-Best pricing matrix, and assign secure entry PINs to your crews.', color:'text-blue-400', bg:'bg-blue-400/10', border:'border-blue-400/20' },
+              { step:'03', icon:'users', title:'Deploy Your First Mission', desc:'Send interactive quote estimates to clients via SMS/WhatsApp. Once approved, the system auto-assigns and route-optimizes the mission.', color:'text-purple-400', bg:'bg-purple-400/10', border:'border-purple-400/20' },
+              { step:'04', icon:'trending-up', title:'Watch Revenue Grow with AI', desc:'Our predictive AI scans job histories to recommend up-sells, predict month-end MRR, and auto-follow up on recurring client accounts.', color:'text-green-400', bg:'bg-green-400/10', border:'border-green-400/20' },
             ].map((s, i) => (
               <div key={i} className={`reveal delay-${i*100} flex gap-6 md:gap-10 pb-10 relative`}>
                 <div className={`relative flex-shrink-0 w-14 h-14 md:w-20 md:h-20 rounded-2xl ${s.bg} border ${s.border} flex items-center justify-center z-10`}>
@@ -5479,9 +5682,9 @@ function LandingPage({ onLogin, onSignup }) {
           {/* Pricing Cards */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-center mb-20">
             {[
-              { name:'Starter', price:'$0', annualPrice:'$0', annualNote:'', period:'/mo', desc:'For solo operators just getting started.', features:['Up to 5 missions/mo','Basic Client Database','Staff PIN Access','WhatsApp Templates'], cta:'Start Free', action:onSignup, highlight:false },
-              { name:'Empire Pro', price:'$149', annualPrice:'$119', annualNote:'/mo — billed $1,428/yr', period:'/mo', desc:'The full arsenal. Unlimited everything.', features:['Unlimited Missions','AI Revenue Engine','GPS Fleet Tracking','Digital Signatures','AI Vision QC','WhatsApp CRM','Good-Better-Best Quotes','Photo Storage','Priority Support'], cta:'Start 14-Day Trial', action:onSignup, highlight:true },
-              { name:'Enterprise', price:'Custom', annualPrice:'Custom', annualNote:'', period:'', desc:'For franchises and multi-location ops.', features:['Everything in Pro','Dedicated Account Manager','Custom Integrations','White-label Option','SLA Agreement'], cta:'Contact Sales', action:() => openModal('Contact'), highlight:false },
+              { name:'Starter', price:'$0', annualPrice:'$0', annualNote:'', period:'/mo', desc:'For solo service operators just starting out.', features:['Up to 5 missions/mo','Basic Crew App Access','Client Hub & Contacts','WhatsApp & SMS Templates'], cta:'Start Free', action:onSignup, highlight:false },
+              { name:'Empire Pro', price:'$149', annualPrice:'$119', annualNote:'/mo — billed $1,428/yr', period:'/mo', desc:'The full service business operating system. Unlimited everything.', features:['Unlimited Missions','AI-Optimized Route Dispatch','Real-Time GPS Fleet Tracking','On-Site Digital Signatures','AI Quality Assurance (QC)','WhatsApp CRM & Autoreply','Good-Better-Best Price Matrix','Unlimited Before/After Photo Drive','Priority Support'], cta:'Start 14-Day Trial', action:onSignup, highlight:true },
+              { name:'Enterprise', price:'Custom', annualPrice:'Custom', annualNote:'', period:'', desc:'For franchises and multi-location franchises.', features:['Everything in Pro','Dedicated Account Manager','Franchise Multi-Tenant Hub','Custom Integrations & APIs','White-Label Client Portals','Uptime SLA Agreement'], cta:'Contact Sales', action:() => openModal('Contact'), highlight:false },
             ].map((plan, i) => (
               <div key={i} className={`reveal delay-${i*100} rounded-3xl p-8 flex flex-col relative overflow-hidden transition-all duration-500 ${plan.highlight ? 'holo-card border-2 border-[#F5C518] shadow-[0_0_100px_rgba(245,197,24,0.2)] md:-translate-y-4 scale-105 hover:scale-[1.07]' : 'bg-white/[0.03] border border-white/8 hover:-translate-y-2 hover:border-white/15'}`}>
                 {plan.highlight && (
@@ -5531,21 +5734,21 @@ function LandingPage({ onLogin, onSignup }) {
                 <tbody>
                   {[
                     { feature:'Missions / Month', vals:['Up to 5','Unlimited','Unlimited'] },
-                    { feature:'AI Revenue Engine', vals:[false, true, true] },
-                    { feature:'GPS Fleet Tracking', vals:[false, true, true] },
-                    { feature:'WhatsApp CRM', vals:['Templates only', 'Full AI Scripts', 'Full AI Scripts'] },
-                    { feature:'Digital Signatures', vals:[false, true, true] },
-                    { feature:'AI Vision QC', vals:[false, true, true] },
-                    { feature:'Good-Better-Best Quotes', vals:[false, true, true] },
-                    { feature:'Photo Storage', vals:['1 GB', '100 GB', 'Unlimited'] },
-                    { feature:'Staff Members', vals:['1', 'Up to 20', 'Unlimited'] },
-                    { feature:'Client Database', vals:['Basic', 'Full CRM', 'Full CRM'] },
-                    { feature:'Analytics & Reports', vals:[false, true, true] },
-                    { feature:'API Access', vals:[false, false, true] },
-                    { feature:'White-label', vals:[false, false, true] },
+                    { feature:'AI Dispatch Optimization', vals:[false, true, true] },
+                    { feature:'Real-time GPS Tracking', vals:[false, true, true] },
+                    { feature:'WhatsApp CRM & AI Scripts', vals:['Templates only', 'Full AI Automation', 'Full AI Automation'] },
+                    { feature:'On-Site Digital Signatures', vals:[false, true, true] },
+                    { feature:'Computer Vision AI QC', vals:[false, true, true] },
+                    { feature:'Good-Better-Best Quote Engine', vals:[false, true, true] },
+                    { feature:'Photo Drive Storage', vals:['1 GB', '100 GB', 'Unlimited'] },
+                    { feature:'Staff PIN Access Accounts', vals:['1', 'Up to 20', 'Unlimited'] },
+                    { feature:'Client Management CRM', vals:['Basic', 'Advanced', 'Advanced'] },
+                    { feature:'Business BI Analytics', vals:[false, true, true] },
+                    { feature:'Custom API Integrations', vals:[false, false, true] },
+                    { feature:'White-label Client Portals', vals:[false, false, true] },
                     { feature:'Dedicated Account Manager', vals:[false, false, true] },
-                    { feature:'SLA / Uptime Guarantee', vals:[false, false, true] },
-                    { feature:'Support', vals:['Community','Priority Email','24/7 Dedicated'] },
+                    { feature:'Uptime SLA Agreement', vals:[false, false, true] },
+                    { feature:'Support Options', vals:['Community Support','Priority Support','24/7 Dedicated Support'] },
                   ].map((row, ri) => (
                     <tr key={ri} className={`border-b border-white/5 ${ri % 2 === 0 ? '' : 'bg-white/[0.01]'} hover:bg-white/[0.03] transition-colors group`}>
                       <td className="p-4 text-slate-300 font-bold">{row.feature}</td>
@@ -5584,9 +5787,9 @@ function LandingPage({ onLogin, onSignup }) {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {[
               {
-                tag: 'Revenue',
+                tag: 'Pricing Tactics',
                 tagColor: 'text-amber-400 bg-amber-400/10 border-amber-400/20',
-                title: 'The Good-Better-Best Pricing Method That Added $35K in 90 Days',
+                title: 'How the Good-Better-Best Method Added $35K in 90 Days',
                 excerpt: 'How psychology-driven 3-tier pricing changes the conversation entirely. When clients see three options, 80% choose the middle — and that middle is where your margin lives.',
                 readTime: '6 min read',
                 author: 'Jose M.',
@@ -5598,8 +5801,8 @@ function LandingPage({ onLogin, onSignup }) {
               {
                 tag: 'Operations',
                 tagColor: 'text-blue-400 bg-blue-400/10 border-blue-400/20',
-                title: 'Why GPS Tracking Reduced Client Disputes by 100% for Elite Handyman',
-                excerpt: 'Maria S. shares how the On-My-Way notification feature transformed client trust. No more "where is your team?" calls — just real-time Uber-style tracking.',
+                title: 'GPS Dispatch: The Secret to Zero Client Complaints',
+                excerpt: 'Maria S. shares how real-time Uber-style fleet tracking transformed client trust and eliminated scheduling calls entirely.',
                 readTime: '4 min read',
                 author: 'Maria S.',
                 authorRole: 'CEO, Elite Handyman',
@@ -5608,10 +5811,10 @@ function LandingPage({ onLogin, onSignup }) {
                 featured: false,
               },
               {
-                tag: 'AI',
+                tag: 'AI Growth',
                 tagColor: 'text-green-400 bg-green-400/10 border-green-400/20',
-                title: 'AI Upsell Engine: The Feature That Pays for Itself on Day 1',
-                excerpt: 'A deep dive into how Elevore\'s predictive AI scans job history to surface upsell opportunities at exactly the right moment — before, during, and after each service.',
+                title: 'AI-Powered Upselling: From $300 to $890 Average Job Value',
+                excerpt: 'A deep dive into how Elevore\'s predictive AI engine scans job history to surface smart upsell options before, during, and after each service.',
                 readTime: '8 min read',
                 author: 'David K.',
                 authorRole: 'CEO, Apex Property',
@@ -5683,8 +5886,8 @@ function LandingPage({ onLogin, onSignup }) {
             </div>
             500+ Businesses Growing Right Now
           </div>
-          <h2 className="reveal delay-100 text-4xl md:text-6xl font-black tracking-tighter">Ready to Build Your <span className="glow-text italic">Empire?</span></h2>
-          <p className="reveal delay-200 text-slate-400 text-xl">Join the fastest-growing SaaS for service businesses. Setup takes 2 minutes. Results in days.</p>
+          <h2 className="reveal delay-100 text-4xl md:text-6xl font-black tracking-tighter">Ready to Automate Your<br /><span className="glow-text italic">Service Operations?</span></h2>
+          <p className="reveal delay-200 text-slate-400 text-xl font-bold">Join the fastest-growing SaaS for service businesses. Setup takes 2 minutes. Results in days.</p>
           <div className="reveal delay-300">
             <button onClick={onSignup} className="btn-gold group px-14 py-6 text-lg uppercase tracking-widest flex items-center gap-3 mx-auto">
               Launch Your Empire →

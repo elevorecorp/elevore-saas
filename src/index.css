@@ -704,3 +704,30 @@ body {
 button:focus {
   outline: none !important;
 }
+
+/* ============================================================
+   ✨ CUSTOM ANIMATIONS FOR INTERACTIVE OPERATIONS PREVIEW
+   ============================================================ */
+@keyframes scan {
+  0%, 100% { top: 0%; opacity: 0.8; }
+  50% { top: 100%; opacity: 0.8; }
+}
+.animate-scan {
+  animation: scan 3s infinite linear;
+}
+
+@keyframes draw-sig {
+  to { stroke-dashoffset: 0; }
+}
+.animate-draw-sig {
+  animation: draw-sig 2.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+@keyframes scale {
+  from { transform: scale(0.95); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+.animate-scale {
+  animation: scale 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
