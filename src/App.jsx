@@ -7757,7 +7757,7 @@ Instrucciones generales de formato:
         }
         if (targetJob && team_name) {
           tt(`Reasignando trabajo de ${targetJob.client_name} a ${team_name}... 👥`, 'green');
-          const { error } = await sb.from('jobs').update({ team_assigned: team_name }).eq('id', targetJob.id);
+          const { error } = await sb.from('elevore_missions').update({ team_assigned: team_name }).eq('id', targetJob.id);
           if (!error) {
             tt(`Trabajo de ${targetJob.client_name} reasignado a ${team_name} exitosamente! 🚀`, 'green');
             refresh();
@@ -10796,6 +10796,7 @@ Instrucciones generales de formato:
                                           status: job.status || 'lead',
                                           frequency: job.frequency || 'one-time',
                                           totalPrice: job.total_price || 0,
+                                          team: job.team_assigned || '',
                                         });
                                         setView('operations');
                                         setOperationsTab('deploy');
@@ -10904,6 +10905,7 @@ Instrucciones generales de formato:
                                     status: job.status || 'lead',
                                     frequency: job.frequency || 'one-time',
                                     totalPrice: job.total_price || 0,
+                                    team: job.team_assigned || '',
                                   });
                                   setView('operations');
                                   setOperationsTab('deploy');
