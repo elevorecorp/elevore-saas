@@ -804,6 +804,7 @@ function RouteOptimizerModal({ todayJobs, onClose, lang }) {
   const [saving, setSaving] = useState(0);
   const [startLocation, setStartLocation] = useState(null);
   const [error, setError] = useState(null);
+  const [routeGeometry, setRouteGeometry] = useState([]);
 
   // Haversine formula
   const getDistance = (lat1, lon1, lat2, lon2) => {
@@ -834,6 +835,7 @@ function RouteOptimizerModal({ todayJobs, onClose, lang }) {
         setLoading(true);
         setError(null);
         setProgress(0);
+        setRouteGeometry([]);
         
         // 1. Get browser geolocation (optional)
         let currentPos = null;
@@ -904,35 +906,72 @@ function RouteOptimizerModal({ todayJobs, onClose, lang }) {
           setLoading(false);
           return;
         }
-        
-        // 3. Calculate distances and optimize route using Nearest Neighbor (TSP)
+
+        // Build coordinates array for matrix routing
+        const coords = [];
         const hasStart = currentPos && currentPos.lat !== null && currentPos.lat !== undefined && !isNaN(Number(currentPos.lat));
-        let currentLat = hasStart ? currentPos.lat : validStops[0].lat;
-        let currentLng = hasStart ? currentPos.lng : validStops[0].lng;
+        
+        if (hasStart) {
+          coords.push({ lat: currentPos.lat, lng: currentPos.lng, isStart: true });
+        }
+        
+        validStops.forEach((stop) => {
+          stop.matrixIndex = coords.length;
+          coords.push(stop);
+        });
+
+        // 3. Fetch OSRM Distance Matrix
+        let distanceMatrix = null;
+        try {
+          const coordsString = coords.map(c => `${c.lng},${c.lat}`).join(';');
+          const url = `https://router.project-osrm.org/table/v1/driving/${coordsString}?annotations=distance`;
+          const res = await fetch(url);
+          if (res.ok) {
+            const data = await res.json();
+            if (data && data.distances) {
+              distanceMatrix = data.distances.map(row => row.map(d => d === null ? Infinity : d / 1000));
+              console.log("OSRM Road Distance Matrix loaded successfully.");
+            }
+          }
+        } catch (e) {
+          console.warn("Failed to load OSRM distance matrix, using Haversine straight line:", e);
+        }
+
+        // Helper to get distance (from OSRM matrix or fallback to Haversine)
+        const getMatrixDistance = (fromIdx, toIdx, fromLat, fromLng, toLat, toLng) => {
+          if (distanceMatrix && distanceMatrix[fromIdx] && distanceMatrix[fromIdx][toIdx] !== undefined) {
+            return distanceMatrix[fromIdx][toIdx];
+          }
+          return getDistance(fromLat, fromLng, toLat, toLng);
+        };
         
         // Calculate original distance (in scheduled order)
         let origDist = 0;
-        let prevLat = currentLat;
-        let prevLng = currentLng;
+        let prevLat = hasStart ? currentPos.lat : validStops[0].lat;
+        let prevLng = hasStart ? currentPos.lng : validStops[0].lng;
+        let prevIdx = 0;
+        
         validStops.forEach(s => {
-          origDist += getDistance(prevLat, prevLng, s.lat, s.lng);
+          origDist += getMatrixDistance(prevIdx, s.matrixIndex, prevLat, prevLng, s.lat, s.lng);
           prevLat = s.lat;
           prevLng = s.lng;
+          prevIdx = s.matrixIndex;
         });
         
-        // Optimize route
+        // Optimize route using Nearest Neighbor (TSP)
         const unvisited = [...validStops];
         const optimized = [];
         let optDist = 0;
-        let currentPrevLat = currentLat;
-        let currentPrevLng = currentLng;
+        let currentPrevLat = hasStart ? currentPos.lat : validStops[0].lat;
+        let currentPrevLng = hasStart ? currentPos.lng : validStops[0].lng;
+        let currentPrevIdx = 0;
         
         while (unvisited.length > 0) {
           let nearestIdx = -1;
           let minDist = Infinity;
           
           for (let i = 0; i < unvisited.length; i++) {
-            const dist = getDistance(currentPrevLat, currentPrevLng, unvisited[i].lat, unvisited[i].lng);
+            const dist = getMatrixDistance(currentPrevIdx, unvisited[i].matrixIndex, currentPrevLat, currentPrevLng, unvisited[i].lat, unvisited[i].lng);
             if (dist < minDist) {
               minDist = dist;
               nearestIdx = i;
@@ -940,7 +979,6 @@ function RouteOptimizerModal({ todayJobs, onClose, lang }) {
           }
           
           if (nearestIdx === -1) {
-            // Safety fallback if no nearest neighbor found (e.g. dist calculation error)
             nearestIdx = 0;
             minDist = 0;
           }
@@ -950,12 +988,40 @@ function RouteOptimizerModal({ todayJobs, onClose, lang }) {
           optimized.push(nextStop);
           currentPrevLat = nextStop.lat;
           currentPrevLng = nextStop.lng;
+          currentPrevIdx = nextStop.matrixIndex;
+        }
+
+        // 4. Fetch the real street-routing path geometry
+        let routeGeom = [];
+        try {
+          const orderedCoords = [];
+          if (hasStart) {
+            orderedCoords.push(currentPos);
+          }
+          optimized.forEach(s => orderedCoords.push({ lat: s.lat, lng: s.lng }));
+          
+          if (orderedCoords.length > 1) {
+            const coordsString = orderedCoords.map(c => `${c.lng},${c.lat}`).join(';');
+            const url = `https://router.project-osrm.org/route/v1/driving/${coordsString}?overview=full&geometries=geojson`;
+            const res = await fetch(url);
+            if (res.ok) {
+              const data = await res.json();
+              if (data && data.routes && data.routes[0] && data.routes[0].geometry) {
+                routeGeom = data.routes[0].geometry.coordinates.map(coord => [coord[1], coord[0]]);
+                console.log("OSRM Road Routing Geometry loaded successfully.");
+              }
+            }
+          }
+        } catch (e) {
+          console.warn("Failed to load OSRM routing geometry:", e);
         }
         
+        if (!active) return;
         setOriginalDistance(origDist || 0);
         setOptimizedDistance(optDist || 0);
         setSaving(Math.max(0, (origDist || 0) - (optDist || 0)));
         setStops(optimized);
+        setRouteGeometry(routeGeom);
         setLoading(false);
       } catch (err) {
         console.error("Error calculating optimized route:", err);
@@ -1020,9 +1086,10 @@ function RouteOptimizerModal({ todayJobs, onClose, lang }) {
           }
           
           // Draw stops and lines
-          const polylinePoints = [];
+          const roadPoints = ${JSON.stringify(routeGeometry)};
+          const fallbackPoints = [];
           if (startLoc && startLoc.lat !== null && startLoc.lng !== null) {
-            polylinePoints.push([startLoc.lat, startLoc.lng]);
+            fallbackPoints.push([startLoc.lat, startLoc.lng]);
           }
           
           stops.forEach((s, idx) => {
@@ -1039,12 +1106,13 @@ function RouteOptimizerModal({ todayJobs, onClose, lang }) {
                 .bindPopup(\`<div class="popup-content"><b>Parada \${idx + 1}: \${s.clientName}</b><br>\${s.serviceType}<br>\${s.address}</div>\`);
               
               bounds.push([s.lat, s.lng]);
-              polylinePoints.push([s.lat, s.lng]);
+              fallbackPoints.push([s.lat, s.lng]);
             }
           });
           
-          if (polylinePoints.length > 1) {
-            L.polyline(polylinePoints, { color: '#F5C518', weight: 4, opacity: 0.8, dashArray: '5, 8' }).addTo(map);
+          const drawPoints = roadPoints && roadPoints.length > 0 ? roadPoints : fallbackPoints;
+          if (drawPoints.length > 1) {
+            L.polyline(drawPoints, { color: '#F5C518', weight: 4, opacity: 0.8, dashArray: '5, 8' }).addTo(map);
           }
           
           if (bounds.length > 0) {

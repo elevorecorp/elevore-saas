@@ -151,16 +151,51 @@ export const MapTab = ({ jobs, staff, operationsTab, setOperationsTab, tt, refre
         let bestDist = 0;
         let bestJobsToday = 0;
         let bestRating = 5;
-
         // Run weighted multi-criteria selection for each crew member
         for (const crew of activeCrews) {
-          // Mock proximity (randomized around a base for Team Alpha / Team Beta / others)
+          // Mock proximity base (based on central location coordinate + seed offset)
           const seed = (crew.name || '').charCodeAt(0) || 10;
           const sLat = 28.5383 + (Math.sin(seed) * 0.05);
           const sLng = -81.3792 + (Math.cos(seed) * 0.05);
           
-          // Use OSRM mock distance
-          const distKm = Math.abs(28.5383 - sLat) * 111 + Math.abs(-81.3792 - sLng) * 111 + (Math.random() * 3);
+          // Default fallback distance
+          let distKm = Math.abs(28.5383 - sLat) * 111 + Math.abs(-81.3792 - sLng) * 111;
+          
+          // Get real job coordinates
+          let jobLat = job.specs?.lat;
+          let jobLng = job.specs?.lng;
+          
+          if (!jobLat || !jobLng) {
+            // Geocode on the fly using Nominatim if specs are missing
+            try {
+              const geoRes = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(job.address)}&format=json&limit=1`);
+              if (geoRes.ok) {
+                const geoData = await geoRes.json();
+                if (geoData && geoData[0]) {
+                  jobLat = parseFloat(geoData[0].lat);
+                  jobLng = parseFloat(geoData[0].lon);
+                }
+              }
+            } catch (e) {
+              console.warn("Geocoding failed during autopilot matching:", e);
+            }
+          }
+          
+          // Fetch OSRM real road distance
+          if (jobLat && jobLng) {
+            try {
+              const url = `https://router.project-osrm.org/route/v1/driving/${sLng},${sLat};${jobLng},${jobLat}?overview=false`;
+              const routeRes = await fetch(url);
+              if (routeRes.ok) {
+                const routeData = await routeRes.json();
+                if (routeData && routeData.routes && routeData.routes[0]) {
+                  distKm = routeData.routes[0].distance / 1000;
+                }
+              }
+            } catch (e) {
+              console.warn("OSRM road calculation failed during dispatch matching:", e);
+            }
+          }
           
           // Workload/fatigue count for today
           const jobsToday = jobs.filter(j => j.team_assigned === crew.name && j.scheduled_date && j.scheduled_date.startsWith(selectedDate)).length;
@@ -171,7 +206,6 @@ export const MapTab = ({ jobs, staff, operationsTab, setOperationsTab, tt, refre
           const avgRating = ratedJobs.length > 0 ? (ratedJobs.reduce((sum, j) => sum + j.client_rating, 0) / ratedJobs.length) : 4.6;
 
           // Composite match score: lower is better
-          // Formula: Distance (km) * 2.5 + Scheduled jobs today * 12 + Rating penalty * 15
           const suitScore = (distKm * 2.5) + (jobsToday * 12.0) + ((5 - avgRating) * 15.0);
 
           setTerminalLogs(prev => [

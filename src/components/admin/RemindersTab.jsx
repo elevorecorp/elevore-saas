@@ -81,6 +81,7 @@ export const RemindersTab = ({
           { id: 'reminders', name: `🔔 Recordatorios (${remindersBadgeCount})` },
           { id: 'drive', name: '📸 Photo Drive' },
           { id: 'map', name: '🗺️ IA Dispatcher' },
+          { id: 'meetings', name: '🎙️ Reuniones IA' },
           { id: 'deploy', name: '📝 Nueva Cotización' },
         ].map((tab) => (
           <button
