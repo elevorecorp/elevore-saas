@@ -6205,6 +6205,14 @@ export default function App() {
   const [cfoCloseRate, setCfoCloseRate] = useState(35);
   const [cfoPayrollPct, setCfoPayrollPct] = useState(40);
   const [cfoLeadsPerMonth, setCfoLeadsPerMonth] = useState(250);
+  const [cfoPlaybooks, setCfoPlaybooks] = useState({
+    gpsOptimization: false,
+    dynamicPricing: false,
+    cartRecovery: false,
+    performancePay: false
+  });
+  const [monteCarloResult, setMonteCarloResult] = useState(null);
+  const [isSimulatingMonteCarlo, setIsSimulatingMonteCarlo] = useState(false);
 
   const [quickMode, setQM] = useState(false);
   const [chatJob, setChatJob] = useState(null);
@@ -10958,68 +10966,134 @@ Instrucciones generales de formato:
               })()}
 
               {financeTab === 'cfo' && (() => {
-                // CFO logic here
-                const projectedMonthlyRev = Math.round(cfoLeadsPerMonth * (cfoCloseRate / 100) * cfoTicketSize);
-                const projectedJobsCount = Math.round(cfoLeadsPerMonth * (cfoCloseRate / 100));
-                const laborCost = Math.round(projectedMonthlyRev * (cfoPayrollPct / 100));
+                // CFO logic here with Playbook modifiers
+                const activeTicketSize = Math.round(cfoPlaybooks.dynamicPricing ? cfoTicketSize * 1.12 : cfoTicketSize);
+                const activeCloseRate = Math.min(100, cfoPlaybooks.cartRecovery ? cfoCloseRate + 8 : cfoCloseRate);
+                const activePayrollPct = cfoPlaybooks.performancePay ? 38 : cfoPayrollPct;
+                const activeMaterialPct = cfoPlaybooks.gpsOptimization ? 0.055 : 0.08;
+
+                const projectedMonthlyRev = Math.round(cfoLeadsPerMonth * (activeCloseRate / 100) * activeTicketSize);
+                const projectedJobsCount = Math.round(cfoLeadsPerMonth * (activeCloseRate / 100));
+                const laborCost = Math.round(projectedMonthlyRev * (activePayrollPct / 100));
                 const marketingCost = cfoLeadsPerMonth * 15; // $15 per lead
-                const materialCost = Math.round(projectedMonthlyRev * 0.08); // 8% of revenue
+                const materialCost = Math.round(projectedMonthlyRev * activeMaterialPct);
                 const fixedCosts = 2500; // Fixed overhead
                 const totalCosts = laborCost + marketingCost + materialCost + fixedCosts;
                 const ebitda = projectedMonthlyRev - totalCosts;
                 const ebitdaMargin = projectedMonthlyRev > 0 ? ((ebitda / projectedMonthlyRev) * 100).toFixed(1) : '0';
 
-                const marginPerLead = ((cfoCloseRate / 100) * cfoTicketSize) * (1 - (cfoPayrollPct / 100) - 0.08) - 15;
+                const marginPerLead = ((activeCloseRate / 100) * activeTicketSize) * (1 - (activePayrollPct / 100) - activeMaterialPct) - 15;
                 const breakEvenLeads = marginPerLead > 0 ? Math.ceil(fixedCosts / marginPerLead) : null;
 
-                // Monthly Forecast data for SVG (Mes 1, Mes 2, Mes 3)
-                const leadsM2 = cfoLeadsPerMonth * 1.12;
-                const revM2 = Math.round(leadsM2 * (cfoCloseRate / 100) * cfoTicketSize);
-                const costM2 = Math.round(revM2 * (cfoPayrollPct / 100)) + Math.round(leadsM2 * 15) + Math.round(revM2 * 0.08) + fixedCosts;
-
-                const leadsM3 = cfoLeadsPerMonth * 1.25;
-                const revM3 = Math.round(leadsM3 * (cfoCloseRate / 100) * cfoTicketSize);
-                const costM3 = Math.round(revM3 * (cfoPayrollPct / 100)) + Math.round(leadsM3 * 15) + Math.round(revM3 * 0.08) + fixedCosts;
-
-                // For chart scaling
-                const maxVal = Math.max(projectedMonthlyRev, revM2, revM3, totalCosts, costM2, costM3, 10000) * 1.15;
+                // Waterfall SVG calculations
+                const scale = projectedMonthlyRev > 0 ? 95 / projectedMonthlyRev : 1;
+                const wBaseline = 130;
                 
-                const getY = (val) => 180 - (val / maxVal) * 140;
+                // Heights
+                const hRev = Math.round(projectedMonthlyRev * scale);
+                const hLabor = Math.round(laborCost * scale);
+                const hMktg = Math.round(marketingCost * scale);
+                const hMat = Math.round(materialCost * scale);
+                const hFixed = Math.round(fixedCosts * scale);
+                const hEbitda = Math.round(Math.abs(ebitda) * scale);
 
-                // Advisory Heuristic Messages
+                // Y coordinates (stepping down)
+                const yRev = wBaseline - hRev;
+                const yLabor = yRev;
+                const yMktg = yLabor + hLabor;
+                const yMat = yMktg + hMktg;
+                const yFixed = yMat + hMat;
+                const yEbitda = ebitda >= 0 ? wBaseline - hEbitda : wBaseline;
+
+                // Sensitivity values for 5x5 Heatmap Matrix
+                const ticketVals = [
+                  Math.round(cfoTicketSize * 0.8),
+                  Math.round(cfoTicketSize * 0.9),
+                  cfoTicketSize,
+                  Math.round(cfoTicketSize * 1.1),
+                  Math.round(cfoTicketSize * 1.2)
+                ];
+                const closeVals = [
+                  Math.max(5, cfoCloseRate - 10),
+                  Math.max(5, cfoCloseRate - 5),
+                  cfoCloseRate,
+                  Math.min(100, cfoCloseRate + 5),
+                  Math.min(100, cfoCloseRate + 10)
+                ];
+
+                const runMonteCarlo = () => {
+                  setIsSimulatingMonteCarlo(true);
+                  setTimeout(() => {
+                    let profitableCount = 0;
+                    let netSum = 0;
+                    const results = [];
+                    for (let i = 0; i < 1000; i++) {
+                      const simTicket = activeTicketSize * (1 + (Math.random() - 0.5) * 0.1);
+                      const simClose = Math.max(5, Math.min(100, activeCloseRate + (Math.random() - 0.5) * 10));
+                      const simPayroll = Math.max(10, Math.min(90, activePayrollPct + (Math.random() - 0.5) * 6));
+                      const simLeads = Math.max(10, cfoLeadsPerMonth * (1 + (Math.random() - 0.5) * 0.25));
+                      const simMaterialPct = activeMaterialPct * (1 + (Math.random() - 0.5) * 0.2);
+                      const simFixed = fixedCosts * (1 + (Math.random() - 0.5) * 0.1);
+
+                      const rev = simLeads * (simClose / 100) * simTicket;
+                      const cost = (rev * (simPayroll / 100)) + (simLeads * 15) + (rev * simMaterialPct) + simFixed;
+                      const net = rev - cost;
+
+                      if (net > 0) profitableCount++;
+                      netSum += net;
+                      results.push(net);
+                    }
+                    results.sort((a, b) => a - b);
+                    const worstCase = Math.round(results[50]); // 5th percentile
+                    const expectedCase = Math.round(results[500]); // 50th percentile
+                    const bestCase = Math.round(results[950]); // 95th percentile
+                    const winPct = ((profitableCount / 1000) * 100).toFixed(1);
+
+                    setMonteCarloResult({
+                      winPct,
+                      worstCase,
+                      expectedCase,
+                      bestCase
+                    });
+                    setIsSimulatingMonteCarlo(false);
+                    tt('Simulación Monte Carlo completada con 1,000 escenarios ✓', 'green');
+                  }, 1000);
+                };
+
+                // Advisory logic
                 const getAdvisory = () => {
-                  if (cfoPayrollPct > 55) {
+                  if (activePayrollPct > 55) {
                     return {
                       type: 'warning',
                       title: 'Costos de Nómina Excesivos',
-                      desc: 'La comisión asignada al staff supera el 55%. Sugerimos reajustar al rango del 40-45% y compensar con un sistema de incentivos basado en propinas cobradas directamente al cliente en el checkout para proteger el margen del negocio.'
+                      desc: 'La comisión asignada al staff supera el 55%. Considera indexar parte del pago a las calificaciones de los clientes (Playbook Nómina por Desempeño) para reducir la base fija y mejorar la calidad del servicio.'
                     };
                   }
                   if (parseFloat(ebitdaMargin) < 15) {
                     return {
                       type: 'danger',
                       title: 'Margen de Utilidad Crítico',
-                      desc: `Tu margen EBITDA de ${ebitdaMargin}% está por debajo del mínimo saludable (15%). Te sugerimos incrementar el Ticket Promedio a un mínimo de $200 USD o refinar la segmentación de leads para aumentar tu Tasa de Cierre.`
+                      desc: `Margen EBITDA de ${ebitdaMargin}% es bajo. Activa los Playbooks de Precios Dinámicos e Inteligencia de Rutas GPS para elevar instantáneamente la rentabilidad sin perder volumen.`
                     };
                   }
-                  if (cfoCloseRate < 25) {
+                  if (activeCloseRate < 25) {
                     return {
                       type: 'info',
-                      title: 'Optimización de Conversión de Ventas',
-                      desc: `Tasa de cierre del ${cfoCloseRate}%. Puedes disparar la rentabilidad implementando seguimientos automatizados mediante n8n a prospectos que no han completado el checkout en las últimas 24 horas.`
+                      title: 'Fuga de Leads Cotizados',
+                      desc: 'Tu conversión es menor del 25%. Activa el Playbook de Recuperación de Leads para enviar alertas dinámicas automáticas vía WhatsApp a los clientes que abandonaron el proceso de checkout.'
                     };
                   }
                   if (parseFloat(ebitdaMargin) >= 30) {
                     return {
                       type: 'success',
-                      title: 'Salud Financiera Excelente',
-                      desc: `¡Felicidades, socio! Tu margen de ganancia neta es de ${ebitdaMargin}%. Con esta rentabilidad, puedes reinvertir agresivamente un 15% adicional de tu flujo de caja en campañas de marketing para acelerar el volumen de leads.`
+                      title: 'Desempeño Financiero Extraordinario',
+                      desc: `¡Felicidades, socio! Tu margen del ${ebitdaMargin}% es óptimo. Te sugerimos aumentar tu presupuesto de publicidad para capturar más leads y escalar este modelo altamente rentable.`
                     };
                   }
                   return {
                     type: 'success',
-                    title: 'Operación Balanceada',
-                    desc: 'Tus métricas financieras actuales muestran un crecimiento equilibrado y saludable. Mantén la disciplina de control de gastos de inventario para sostener este ritmo operativo.'
+                    title: 'Operación Financiera Saludable',
+                    desc: 'El balance de ingresos y egresos actuales se encuentra dentro de los márgenes recomendados del sector. Monitorea periódicamente las desviaciones en insumos.'
                   };
                 };
 
@@ -11027,229 +11101,438 @@ Instrucciones generales de formato:
 
                 return (
                   <div className="space-y-6 animate-in fade-in pb-12 text-left">
-                    {/* Top KPI row */}
+                    {/* Top KPI cockpit */}
                     <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                       
-                      <div className="p-4 border border-white/5 bg-black/45 rounded-2xl flex flex-col justify-between">
-                        <span className="text-[7.5px] font-black text-slate-500 uppercase tracking-widest">Ingresos Proyectados</span>
+                      <div className="p-4.5 border border-white/5 bg-black/45 backdrop-blur-md rounded-2xl flex flex-col justify-between shadow-xl">
+                        <span className="text-[7.5px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-1">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                          Facturación Mensual Est.
+                        </span>
                         <div className="mt-2 flex items-baseline gap-1">
-                          <span className="text-xl font-black text-white">${Math.round(projectedMonthlyRev).toLocaleString()}</span>
-                          <span className="text-[7px] text-slate-400 font-bold uppercase">/ mes</span>
+                          <span className="text-xl font-black text-white">${projectedMonthlyRev.toLocaleString()}</span>
+                          <span className="text-[7px] text-slate-400 font-bold uppercase">USD</span>
                         </div>
-                        <span className="text-[7px] text-slate-500 mt-1 uppercase font-semibold">Proyección basada en {projectedJobsCount} servicios</span>
+                        <span className="text-[7px] text-slate-500 mt-1 uppercase font-semibold">Basado en {projectedJobsCount} misiones/mes</span>
                       </div>
 
-                      <div className="p-4 border border-white/5 bg-black/45 rounded-2xl flex flex-col justify-between">
-                        <span className="text-[7.5px] font-black text-slate-500 uppercase tracking-widest">Ganancia Neta (EBITDA)</span>
+                      <div className="p-4.5 border border-white/5 bg-black/45 backdrop-blur-md rounded-2xl flex flex-col justify-between shadow-xl">
+                        <span className="text-[7.5px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-1">
+                          <span className={`w-1.5 h-1.5 rounded-full ${ebitda >= 0 ? 'bg-green-500' : 'bg-red-500 animate-ping'}`}></span>
+                          Flujo Neto EBITDA
+                        </span>
                         <div className="mt-2 flex items-baseline gap-1">
                           <span className={`text-xl font-black ${ebitda >= 0 ? 'text-green-400' : 'text-red-500'}`}>
-                            {ebitda >= 0 ? '+' : ''}${Math.round(ebitda).toLocaleString()}
+                            {ebitda >= 0 ? '+' : ''}${ebitda.toLocaleString()}
                           </span>
-                          <span className="text-[7px] text-slate-400 font-bold uppercase">/ mes</span>
+                          <span className="text-[7px] text-slate-400 font-bold uppercase">USD</span>
                         </div>
-                        <span className="text-[7px] text-slate-500 mt-1 uppercase font-semibold">
-                          {ebitda >= 0 ? 'Flujo de caja positivo' : 'Operando a pérdida'}
+                        <span className={`text-[7px] mt-1 uppercase font-semibold ${ebitda >= 0 ? 'text-green-500/70' : 'text-red-400/70'}`}>
+                          {ebitda >= 0 ? 'Generando Caja Positiva' : 'Pérdida en Operación'}
                         </span>
                       </div>
 
-                      <div className="p-4 border border-white/5 bg-black/45 rounded-2xl flex flex-col justify-between">
-                        <span className="text-[7.5px] font-black text-slate-500 uppercase tracking-widest">Margen de Rentabilidad</span>
+                      <div className="p-4.5 border border-white/5 bg-black/45 backdrop-blur-md rounded-2xl flex flex-col justify-between shadow-xl">
+                        <span className="text-[7.5px] font-black text-slate-500 uppercase tracking-widest">Margen EBITDA Real</span>
                         <div className="mt-2 flex items-baseline gap-1">
                           <span className={`text-xl font-black ${parseFloat(ebitdaMargin) >= 30 ? 'text-amber-400' : parseFloat(ebitdaMargin) >= 15 ? 'text-green-400' : 'text-red-500'}`}>
                             {ebitdaMargin}%
                           </span>
                         </div>
-                        <span className="text-[7px] text-slate-500 mt-1 uppercase font-semibold">
-                          EBITDA Objetivo: 20% +
-                        </span>
+                        <span className="text-[7px] text-slate-500 mt-1 uppercase font-semibold">Margen objetivo: 25% +</span>
                       </div>
 
-                      <div className="p-4 border border-white/5 bg-black/45 rounded-2xl flex flex-col justify-between">
+                      <div className="p-4.5 border border-white/5 bg-black/45 backdrop-blur-md rounded-2xl flex flex-col justify-between shadow-xl">
                         <span className="text-[7.5px] font-black text-slate-500 uppercase tracking-widest">Punto de Equilibrio</span>
                         <div className="mt-2 flex items-baseline gap-1">
                           <span className="text-xl font-black text-white">
                             {breakEvenLeads ? `${breakEvenLeads}` : 'N/D'}
                           </span>
-                          <span className="text-[7px] text-slate-400 font-bold uppercase"> leads/mes</span>
+                          <span className="text-[7px] text-slate-400 font-bold uppercase"> prospectos/mes</span>
                         </div>
-                        <span className="text-[7px] text-slate-500 mt-1 uppercase font-semibold">
-                          {breakEvenLeads ? 'Leads mínimos para no perder' : 'Margen unitario negativo'}
-                        </span>
+                        <span className="text-[7px] text-slate-500 mt-1 uppercase font-semibold">Leads para no perder capital</span>
                       </div>
 
                     </div>
 
-                    {/* Main Layout grid */}
+                    {/* Cockpit main grid */}
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                       
-                      {/* Left Side: Sandbox Controllers */}
-                      <div className="lg:col-span-1 p-5 border border-white/5 bg-black/45 rounded-2xl space-y-6">
-                        <div>
-                          <h4 className="text-[10px] font-black text-white uppercase tracking-widest pb-3 border-b border-white/5">🎛️ Controles del Sandbox</h4>
-                          <p className="text-[7.5px] text-slate-500 uppercase font-black mt-1.5 leading-relaxed">
-                            Modifica las variables operativas en tiempo real para simular la rentabilidad de tu negocio de limpieza.
-                          </p>
+                      {/* Left: Sandbox & Toggles */}
+                      <div className="space-y-6">
+                        
+                        {/* Sandbox sliders */}
+                        <div className="p-5 border border-white/5 bg-black/45 rounded-2xl space-y-5 shadow-lg">
+                          <div>
+                            <h4 className="text-[10px] font-black text-white uppercase tracking-widest pb-2.5 border-b border-white/5 flex justify-between items-center">
+                              <span>🎛️ Moduladores Operativos</span>
+                              <span className="text-[7px] text-[#F5C518] font-bold uppercase">Sandbox</span>
+                            </h4>
+                          </div>
+
+                          <div className="space-y-3.5">
+                            {/* Input 1 */}
+                            <div className="space-y-1">
+                              <div className="flex justify-between items-center text-[8px] font-black uppercase text-slate-400">
+                                <span>💵 Ticket Base</span>
+                                <span className="text-white bg-white/5 px-2 py-0.5 rounded text-[8.5px]">${cfoTicketSize} USD</span>
+                              </div>
+                              <input
+                                type="range"
+                                min="50"
+                                max="500"
+                                step="5"
+                                value={cfoTicketSize}
+                                onChange={e => setCfoTicketSize(parseInt(e.target.value))}
+                                className="w-full accent-[#F5C518] bg-white/10 h-1 rounded-lg cursor-pointer animate-none"
+                              />
+                            </div>
+
+                            {/* Input 2 */}
+                            <div className="space-y-1">
+                              <div className="flex justify-between items-center text-[8px] font-black uppercase text-slate-400">
+                                <span>🎯 Conversión Base</span>
+                                <span className="text-white bg-white/5 px-2 py-0.5 rounded text-[8.5px]">{cfoCloseRate}%</span>
+                              </div>
+                              <input
+                                type="range"
+                                min="5"
+                                max="100"
+                                step="1"
+                                value={cfoCloseRate}
+                                onChange={e => setCfoCloseRate(parseInt(e.target.value))}
+                                className="w-full accent-[#F5C518] bg-white/10 h-1 rounded-lg cursor-pointer animate-none"
+                              />
+                            </div>
+
+                            {/* Input 3 */}
+                            <div className="space-y-1">
+                              <div className="flex justify-between items-center text-[8px] font-black uppercase text-slate-400">
+                                <span>👥 Comisión Nómina</span>
+                                <span className="text-white bg-white/5 px-2 py-0.5 rounded text-[8.5px]">{cfoPayrollPct}%</span>
+                              </div>
+                              <input
+                                type="range"
+                                min="20"
+                                max="75"
+                                step="1"
+                                value={cfoPayrollPct}
+                                onChange={e => setCfoPayrollPct(parseInt(e.target.value))}
+                                className="w-full accent-[#F5C518] bg-white/10 h-1 rounded-lg cursor-pointer animate-none"
+                              />
+                            </div>
+
+                            {/* Input 4 */}
+                            <div className="space-y-1">
+                              <div className="flex justify-between items-center text-[8px] font-black uppercase text-slate-400">
+                                <span>📣 Leads Mensuales</span>
+                                <span className="text-white bg-white/5 px-2 py-0.5 rounded text-[8.5px]">{cfoLeadsPerMonth} leads</span>
+                              </div>
+                              <input
+                                type="range"
+                                min="20"
+                                max="1000"
+                                step="10"
+                                value={cfoLeadsPerMonth}
+                                onChange={e => setCfoLeadsPerMonth(parseInt(e.target.value))}
+                                className="w-full accent-[#F5C518] bg-white/10 h-1 rounded-lg cursor-pointer animate-none"
+                              />
+                            </div>
+                          </div>
                         </div>
 
-                        <div className="space-y-4">
-                          {/* Slider 1: Ticket size */}
-                          <div className="space-y-1.5">
-                            <div className="flex justify-between items-center text-[8.5px] font-black uppercase text-slate-400">
-                              <span>💵 Ticket Promedio</span>
-                              <span className="text-white bg-white/5 px-2 py-0.5 rounded">${cfoTicketSize} USD</span>
-                            </div>
-                            <input
-                              type="range"
-                              min="50"
-                              max="500"
-                              step="5"
-                              value={cfoTicketSize}
-                              onChange={e => setCfoTicketSize(parseInt(e.target.value))}
-                              className="w-full accent-[#F5C518] bg-white/10 h-1 rounded-lg cursor-pointer animate-none"
-                            />
-                            <p className="text-[7px] text-slate-500 uppercase font-semibold">Precio promedio cobrado al cliente por limpieza</p>
+                        {/* Executable Playbooks */}
+                        <div className="p-5 border border-white/5 bg-black/45 rounded-2xl space-y-4 shadow-lg">
+                          <div>
+                            <h4 className="text-[10px] font-black text-white uppercase tracking-widest pb-2.5 border-b border-white/5">
+                              🧠 Estrategias Ejecutables (Playbooks)
+                            </h4>
+                            <p className="text-[7.5px] text-slate-500 uppercase font-black mt-1">Activa optimizaciones reales del SaaS y simula el impacto neto.</p>
                           </div>
 
-                          {/* Slider 2: Close rate */}
-                          <div className="space-y-1.5">
-                            <div className="flex justify-between items-center text-[8.5px] font-black uppercase text-slate-400">
-                              <span>🎯 Tasa de Cierre</span>
-                              <span className="text-white bg-white/5 px-2 py-0.5 rounded">{cfoCloseRate}%</span>
-                            </div>
-                            <input
-                              type="range"
-                              min="5"
-                              max="100"
-                              step="1"
-                              value={cfoCloseRate}
-                              onChange={e => setCfoCloseRate(parseInt(e.target.value))}
-                              className="w-full accent-[#F5C518] bg-white/10 h-1 rounded-lg cursor-pointer animate-none"
-                            />
-                            <p className="text-[7px] text-slate-500 uppercase font-semibold">Porcentaje de leads cotizados que contratan</p>
-                          </div>
+                          <div className="space-y-2">
+                            {/* Playbook 1 */}
+                            <button
+                              onClick={() => setCfoPlaybooks(prev => ({ ...prev, gpsOptimization: !prev.gpsOptimization }))}
+                              className={`w-full p-3 border rounded-xl text-left transition-all ${
+                                cfoPlaybooks.gpsOptimization 
+                                  ? 'bg-[#F5C518]/10 border-[#F5C518] text-white animate-pulse' 
+                                  : 'bg-black/20 border-white/5 text-slate-400 hover:border-white/10 hover:text-white'
+                              }`}
+                            >
+                              <div className="flex justify-between items-center">
+                                <span className="text-[9px] font-black uppercase tracking-wider">🗺️ Inteligencia de Rutas GPS</span>
+                                <span className={`text-[7px] font-black px-1.5 py-0.5 rounded uppercase ${cfoPlaybooks.gpsOptimization ? 'bg-emerald-500/20 text-emerald-400' : 'bg-slate-800 text-slate-500'}`}>
+                                  {cfoPlaybooks.gpsOptimization ? 'ACTIVO' : 'INACTIVO'}
+                                </span>
+                              </div>
+                              <p className="text-[7px] text-slate-500 uppercase mt-1">Ahorro en gasolina y traslados: reduce coste de insumos del 8% al 5.5%.</p>
+                            </button>
 
-                          {/* Slider 3: Payroll percentage */}
-                          <div className="space-y-1.5">
-                            <div className="flex justify-between items-center text-[8.5px] font-black uppercase text-slate-400">
-                              <span>👥 Comisión de Nómina</span>
-                              <span className="text-white bg-white/5 px-2 py-0.5 rounded">{cfoPayrollPct}%</span>
-                            </div>
-                            <input
-                              type="range"
-                              min="20"
-                              max="75"
-                              step="1"
-                              value={cfoPayrollPct}
-                              onChange={e => setCfoPayrollPct(parseInt(e.target.value))}
-                              className="w-full accent-[#F5C518] bg-white/10 h-1 rounded-lg cursor-pointer animate-none"
-                            />
-                            <p className="text-[7px] text-slate-500 uppercase font-semibold">Parte del ticket del cliente que va a los trabajadores</p>
-                          </div>
+                            {/* Playbook 2 */}
+                            <button
+                              onClick={() => setCfoPlaybooks(prev => ({ ...prev, dynamicPricing: !prev.dynamicPricing }))}
+                              className={`w-full p-3 border rounded-xl text-left transition-all ${
+                                cfoPlaybooks.dynamicPricing 
+                                  ? 'bg-[#F5C518]/10 border-[#F5C518] text-white animate-pulse' 
+                                  : 'bg-black/20 border-white/5 text-slate-400 hover:border-white/10 hover:text-white'
+                              }`}
+                            >
+                              <div className="flex justify-between items-center">
+                                <span className="text-[9px] font-black uppercase tracking-wider">⚡ Precios Dinámicos</span>
+                                <span className={`text-[7px] font-black px-1.5 py-0.5 rounded uppercase ${cfoPlaybooks.dynamicPricing ? 'bg-emerald-500/20 text-emerald-400' : 'bg-slate-800 text-slate-500'}`}>
+                                  {cfoPlaybooks.dynamicPricing ? 'ACTIVO' : 'INACTIVO'}
+                                </span>
+                              </div>
+                              <p className="text-[7px] text-slate-500 uppercase mt-1">Recargo dinámico del 12% en horas pico automáticamente.</p>
+                            </button>
 
-                          {/* Slider 4: Monthly Leads */}
-                          <div className="space-y-1.5">
-                            <div className="flex justify-between items-center text-[8.5px] font-black uppercase text-slate-400">
-                              <span>📣 Prospectos (Leads) / Mes</span>
-                              <span className="text-white bg-white/5 px-2 py-0.5 rounded">{cfoLeadsPerMonth} leads</span>
-                            </div>
-                            <input
-                              type="range"
-                              min="20"
-                              max="1000"
-                              step="10"
-                              value={cfoLeadsPerMonth}
-                              onChange={e => setCfoLeadsPerMonth(parseInt(e.target.value))}
-                              className="w-full accent-[#F5C518] bg-white/10 h-1 rounded-lg cursor-pointer animate-none"
-                            />
-                            <p className="text-[7px] text-slate-500 uppercase font-semibold">Total de solicitudes de cotización recibidas al mes</p>
+                            {/* Playbook 3 */}
+                            <button
+                              onClick={() => setCfoPlaybooks(prev => ({ ...prev, cartRecovery: !prev.cartRecovery }))}
+                              className={`w-full p-3 border rounded-xl text-left transition-all ${
+                                cfoPlaybooks.cartRecovery 
+                                  ? 'bg-[#F5C518]/10 border-[#F5C518] text-white animate-pulse' 
+                                  : 'bg-black/20 border-white/5 text-slate-400 hover:border-white/10 hover:text-white'
+                              }`}
+                            >
+                              <div className="flex justify-between items-center">
+                                <span className="text-[9px] font-black uppercase tracking-wider">💬 Recuperación de Cotizaciones</span>
+                                <span className={`text-[7px] font-black px-1.5 py-0.5 rounded uppercase ${cfoPlaybooks.cartRecovery ? 'bg-emerald-500/20 text-emerald-400' : 'bg-slate-800 text-slate-500'}`}>
+                                  {cfoPlaybooks.cartRecovery ? 'ACTIVO' : 'INACTIVO'}
+                                </span>
+                              </div>
+                              <p className="text-[7px] text-slate-500 uppercase mt-1">Automatización vía WhatsApp para rescatar leads: +8% conversión.</p>
+                            </button>
+
+                            {/* Playbook 4 */}
+                            <button
+                              onClick={() => setCfoPlaybooks(prev => ({ ...prev, performancePay: !prev.performancePay }))}
+                              className={`w-full p-3 border rounded-xl text-left transition-all ${
+                                cfoPlaybooks.performancePay 
+                                  ? 'bg-[#F5C518]/10 border-[#F5C518] text-white animate-pulse' 
+                                  : 'bg-black/20 border-white/5 text-slate-400 hover:border-white/10 hover:text-white'
+                              }`}
+                            >
+                              <div className="flex justify-between items-center">
+                                <span className="text-[9px] font-black uppercase tracking-wider">🏆 Nómina por Desempeño</span>
+                                <span className={`text-[7px] font-black px-1.5 py-0.5 rounded uppercase ${cfoPlaybooks.performancePay ? 'bg-emerald-500/20 text-emerald-400' : 'bg-slate-800 text-slate-500'}`}>
+                                  {cfoPlaybooks.performancePay ? 'ACTIVO' : 'INACTIVO'}
+                                </span>
+                              </div>
+                              <p className="text-[7px] text-slate-500 uppercase mt-1">Fija base del staff al 38%. Compensaciones atadas a reseñas de 5 estrellas.</p>
+                            </button>
                           </div>
                         </div>
 
                       </div>
 
-                      {/* Right Side: Projections & Advisor */}
-                      <div className="lg:col-span-2 space-y-6">
+                      {/* Middle: SVG Waterfall & Monte Carlo */}
+                      <div className="space-y-6">
                         
-                        {/* SVGs Forecasting chart */}
-                        <div className="p-5 border border-white/5 bg-black/45 rounded-2xl">
-                          <h4 className="text-[10px] font-black text-white uppercase tracking-widest pb-3 border-b border-white/5">📈 Proyección Trimestral de Flujo de Caja</h4>
-                          <p className="text-[7.5px] text-slate-500 uppercase font-black mt-1.5 mb-4">
-                            Ingresos Estimados vs Costos Operativos Totales (Simulación de Crecimiento +12% y +25%)
+                        {/* Waterfall Chart */}
+                        <div className="p-5 border border-white/5 bg-black/45 rounded-2xl shadow-lg">
+                          <h4 className="text-[10px] font-black text-white uppercase tracking-widest pb-2.5 border-b border-white/5">
+                            📊 Gráfico de Cascada de Flujo de Caja
+                          </h4>
+                          <p className="text-[7.5px] text-slate-500 uppercase font-black mt-1 mb-4">
+                            Deconstrucción del Ingreso Bruto Mensual (USD)
                           </p>
 
-                          <div className="relative">
-                            <svg className="w-full h-48 overflow-visible" viewBox="0 0 300 200">
-                              <defs>
-                                <linearGradient id="goldGradCfo" x1="0" y1="0" x2="0" y2="1">
-                                  <stop offset="0%" stopColor="#F5C518" stopOpacity="0.25"/>
-                                  <stop offset="100%" stopColor="#F5C518" stopOpacity="0"/>
-                                </linearGradient>
-                              </defs>
+                          <div className="relative flex justify-center">
+                            <svg className="w-full h-40 overflow-visible" viewBox="0 0 280 150">
+                              {/* Horizontal Grid lines */}
+                              <line x1="10" y1="30" x2="270" y2="30" stroke="rgba(255,255,255,0.03)" strokeWidth="1" />
+                              <line x1="10" y1="80" x2="270" y2="80" stroke="rgba(255,255,255,0.03)" strokeWidth="1" />
+                              <line x1="10" y1="130" x2="270" y2="130" stroke="rgba(255,255,255,0.15)" strokeWidth="1.5" />
 
-                              {/* Grid lines */}
-                              <line x1="40" y1="40" x2="280" y2="40" stroke="rgba(255,255,255,0.03)" strokeWidth="1" />
-                              <line x1="40" y1="110" x2="280" y2="110" stroke="rgba(255,255,255,0.03)" strokeWidth="1" />
-                              <line x1="40" y1="180" x2="280" y2="180" stroke="rgba(255,255,255,0.08)" strokeWidth="1.5" />
+                              {/* Bars */}
+                              {/* Rev */}
+                              <rect x="15" y={yRev} width="22" height={hRev || 1} rx="3" fill="#10B981" fillOpacity="0.85" stroke="#10B981" strokeWidth="1" />
+                              <text x="26" y={yRev - 4} className="text-[5.5px] fill-emerald-400 font-bold" textAnchor="middle">${projectedMonthlyRev >= 1000 ? `${(projectedMonthlyRev/1000).toFixed(1)}k` : projectedMonthlyRev}</text>
+                              
+                              {/* Labor */}
+                              <rect x="59" y={yLabor} width="22" height={hLabor || 1} rx="3" fill="#EF4444" fillOpacity="0.85" stroke="#EF4444" strokeWidth="1" />
+                              <text x="70" y={yLabor + hLabor + 8} className="text-[5.5px] fill-red-400 font-bold" textAnchor="middle">-${laborCost >= 1000 ? `${(laborCost/1000).toFixed(1)}k` : laborCost}</text>
 
-                              {/* Y Axis Labels */}
-                              <text x="32" y="44" className="text-[6px] fill-slate-500 font-bold" textAnchor="end">${Math.round(maxVal).toLocaleString()}</text>
-                              <text x="32" y="114" className="text-[6px] fill-slate-500 font-bold" textAnchor="end">${Math.round(maxVal/2).toLocaleString()}</text>
-                              <text x="32" y="184" className="text-[6px] fill-slate-500 font-bold" textAnchor="end">$0</text>
+                              {/* Marketing */}
+                              <rect x="103" y={yMktg} width="22" height={hMktg || 1} rx="3" fill="#EF4444" fillOpacity="0.85" stroke="#EF4444" strokeWidth="1" />
+                              <text x="114" y={yMktg + hMktg + 8} className="text-[5.5px] fill-red-400 font-bold" textAnchor="middle">-${marketingCost >= 1000 ? `${(marketingCost/1000).toFixed(1)}k` : marketingCost}</text>
 
-                              {/* X Axis Labels */}
-                              <text x="60" y="196" className="text-[7px] fill-slate-400 font-black text-center" textAnchor="middle">MES 1</text>
-                              <text x="160" y="196" className="text-[7px] fill-slate-400 font-black text-center" textAnchor="middle">MES 2</text>
-                              <text x="260" y="196" className="text-[7px] fill-slate-400 font-black text-center" textAnchor="middle">MES 3</text>
+                              {/* Materials */}
+                              <rect x="147" y={yMat} width="22" height={hMat || 1} rx="3" fill="#EF4444" fillOpacity="0.85" stroke="#EF4444" strokeWidth="1" />
+                              <text x="158" y={yMat + hMat + 8} className="text-[5.5px] fill-red-400 font-bold" textAnchor="middle">-${materialCost >= 1000 ? `${(materialCost/1000).toFixed(1)}k` : materialCost}</text>
 
-                              {/* Revenue Area (Gold) */}
-                              <path
-                                d={`M 60 180 L 60 ${getY(projectedMonthlyRev)} L 160 ${getY(revM2)} L 260 ${getY(revM3)} L 260 180 Z`}
-                                fill="url(#goldGradCfo)"
-                              />
+                              {/* Fixed */}
+                              <rect x="191" y={yFixed} width="22" height={hFixed || 1} rx="3" fill="#EF4444" fillOpacity="0.85" stroke="#EF4444" strokeWidth="1" />
+                              <text x="202" y={yFixed + hFixed + 8} className="text-[5.5px] fill-red-400 font-bold" textAnchor="middle">-${fixedCosts >= 1000 ? `${(fixedCosts/1000).toFixed(1)}k` : fixedCosts}</text>
 
-                              {/* Revenue Line (Gold) */}
-                              <path
-                                d={`M 60 ${getY(projectedMonthlyRev)} L 160 ${getY(revM2)} L 260 ${getY(revM3)}`}
-                                fill="none"
-                                stroke="#F5C518"
-                                strokeWidth="2.5"
-                                strokeLinecap="round"
-                              />
+                              {/* EBITDA */}
+                              <rect x="235" y={yEbitda} width="22" height={hEbitda || 1} rx="3" fill={ebitda >= 0 ? '#3B82F6' : '#DC2626'} fillOpacity="0.85" stroke={ebitda >= 0 ? '#3B82F6' : '#DC2626'} strokeWidth="1" />
+                              <text x="246" y={yEbitda - 4} className={`text-[5.5px] font-bold ${ebitda >= 0 ? 'fill-blue-400' : 'fill-red-400'}`}>${ebitda >= 1000 ? `${(ebitda/1000).toFixed(1)}k` : ebitda}</text>
 
-                              {/* Total Costs Line (Dashed) */}
-                              <path
-                                d={`M 60 ${getY(totalCosts)} L 160 ${getY(costM2)} L 260 ${getY(costM3)}`}
-                                fill="none"
-                                stroke="#EF4444"
-                                strokeWidth="1.5"
-                                strokeDasharray="3,3"
-                              />
-
-                              {/* Data Nodes */}
-                              <circle cx="60" cy={getY(projectedMonthlyRev)} r="4" fill="#F5C518" stroke="#111" strokeWidth="1.5" />
-                              <circle cx="160" cy={getY(revM2)} r="4" fill="#F5C518" stroke="#111" strokeWidth="1.5" />
-                              <circle cx="260" cy={getY(revM3)} r="4" fill="#F5C518" stroke="#111" strokeWidth="1.5" />
-
-                              <circle cx="60" cy={getY(totalCosts)} r="3" fill="#EF4444" stroke="#111" strokeWidth="1.2" />
-                              <circle cx="160" cy={getY(costM2)} r="3" fill="#EF4444" stroke="#111" strokeWidth="1.2" />
-                              <circle cx="260" cy={getY(costM3)} r="3" fill="#EF4444" stroke="#111" strokeWidth="1.2" />
+                              {/* Labels below bars */}
+                              <text x="26" y="142" className="text-[5px] fill-slate-500 font-black" textAnchor="middle">INGRESOS</text>
+                              <text x="70" y="142" className="text-[5px] fill-slate-500 font-black" textAnchor="middle">NÓMINA</text>
+                              <text x="114" y="142" className="text-[5px] fill-slate-500 font-black" textAnchor="middle">MKTG</text>
+                              <text x="158" y="142" className="text-[5px] fill-slate-500 font-black" textAnchor="middle">INSUMOS</text>
+                              <text x="202" y="142" className="text-[5px] fill-slate-500 font-black" textAnchor="middle">FIJOS</text>
+                              <text x="246" y="142" className="text-[5px] fill-slate-500 font-black" textAnchor="middle">EBITDA</text>
                             </svg>
                           </div>
+                        </div>
 
-                          <div className="flex justify-center gap-6 mt-2 text-[8px] font-black uppercase">
-                            <div className="flex items-center gap-1.5">
-                              <span className="w-2.5 h-2.5 bg-[#F5C518] rounded-full inline-block"></span>
-                              <span className="text-white">Ingresos Proyectados</span>
+                        {/* Monte Carlo Simulator */}
+                        <div className="p-5 border border-white/5 bg-black/45 rounded-2xl shadow-lg space-y-4">
+                          <div>
+                            <h4 className="text-[10px] font-black text-white uppercase tracking-widest pb-2.5 border-b border-white/5 flex justify-between items-center">
+                              <span>⚡ Simulación Monte Carlo</span>
+                              <span className="text-[7px] text-[#F5C518] font-bold uppercase">Estrés Operativo</span>
+                            </h4>
+                            <p className="text-[7.5px] text-slate-500 uppercase font-black mt-1">Calcula la solidez financiera simulando 1,000 fluctuaciones aleatorias del mercado.</p>
+                          </div>
+
+                          {isSimulatingMonteCarlo ? (
+                            <div className="py-6 flex flex-col items-center justify-center space-y-3">
+                              <div className="w-6 h-6 border-2 border-[#F5C518] border-t-transparent rounded-full animate-spin"></div>
+                              <span className="text-[7.5px] font-black text-slate-400 uppercase tracking-widest animate-pulse">Analizando 1,000 escenarios estocásticos...</span>
                             </div>
-                            <div className="flex items-center gap-1.5">
-                              <span className="w-2.5 h-0.5 border-t border-dashed border-[#EF4444] inline-block"></span>
-                              <span className="text-white">Costos de Operación</span>
+                          ) : monteCarloResult ? (
+                            <div className="space-y-4 animate-in fade-in">
+                              <div className="flex justify-between items-center p-3 border border-white/5 bg-white/[0.02] rounded-xl">
+                                <div>
+                                  <p className="text-[8px] font-black text-slate-500 uppercase">Probabilidad Rentabilidad</p>
+                                  <p className="text-lg font-black text-emerald-400 mt-0.5">{monteCarloResult.winPct}%</p>
+                                </div>
+                                <div className="text-right">
+                                  <span className={`text-[7px] font-black px-2 py-0.5 rounded uppercase ${
+                                    parseFloat(monteCarloResult.winPct) >= 90 ? 'bg-emerald-500/20 text-emerald-400' :
+                                    parseFloat(monteCarloResult.winPct) >= 70 ? 'bg-amber-500/20 text-amber-400' : 'bg-red-500/20 text-red-400 animate-pulse'
+                                  }`}>
+                                    {parseFloat(monteCarloResult.winPct) >= 90 ? 'Riesgo Bajo' :
+                                     parseFloat(monteCarloResult.winPct) >= 70 ? 'Riesgo Moderado' : 'Riesgo Crítico'}
+                                  </span>
+                                </div>
+                              </div>
+
+                              <div className="grid grid-cols-3 gap-2 text-center">
+                                <div className="p-2 border border-white/5 bg-black/20 rounded-lg">
+                                  <p className="text-[6.5px] text-slate-500 font-bold uppercase">Peor Escenario (5%)</p>
+                                  <p className={`text-[9.5px] font-black mt-0.5 ${monteCarloResult.worstCase >= 0 ? 'text-slate-300' : 'text-red-400'}`}>
+                                    ${monteCarloResult.worstCase.toLocaleString()}
+                                  </p>
+                                </div>
+                                <div className="p-2 border border-white/5 bg-black/20 rounded-lg">
+                                  <p className="text-[6.5px] text-slate-500 font-bold uppercase">Esperado (50%)</p>
+                                  <p className="text-[9.5px] font-black text-white mt-0.5">
+                                    ${monteCarloResult.expectedCase.toLocaleString()}
+                                  </p>
+                                </div>
+                                <div className="p-2 border border-white/5 bg-black/20 rounded-lg">
+                                  <p className="text-[6.5px] text-slate-500 font-bold uppercase">Mejor Escenario (95%)</p>
+                                  <p className="text-[9.5px] font-black text-emerald-400 mt-0.5">
+                                    ${monteCarloResult.bestCase.toLocaleString()}
+                                  </p>
+                                </div>
+                              </div>
+
+                              <button
+                                onClick={runMonteCarlo}
+                                className="w-full py-2.5 bg-white/5 hover:bg-white/10 text-white font-black uppercase text-[8px] tracking-wider rounded-xl transition-all border border-white/5"
+                              >
+                                Re-Simular Escenarios 🎲
+                              </button>
+                            </div>
+                          ) : (
+                            <div className="py-4 text-center">
+                              <p className="text-[7.5px] text-slate-500 uppercase font-semibold mb-3">Ejecuta el algoritmo para modelar inflación, insumos y demanda inestable.</p>
+                              <button
+                                onClick={runMonteCarlo}
+                                className="w-full py-3 bg-gradient-to-r from-[#F5C518] to-amber-500 text-black font-black uppercase text-[8px] tracking-widest rounded-xl hover:from-[#F5C518]/90 hover:to-amber-500/90 active:scale-[0.98] transition-all shadow-lg shadow-amber-500/10"
+                              >
+                                ⚡ Simular 1,000 Escenarios de Estrés
+                              </button>
+                            </div>
+                          )}
+                        </div>
+
+                      </div>
+
+                      {/* Right: Heatmap sensitivity & advice */}
+                      <div className="space-y-6">
+                        
+                        {/* Sensitivity Heatmap Matrix */}
+                        <div className="p-5 border border-white/5 bg-black/45 rounded-2xl shadow-lg space-y-4">
+                          <div>
+                            <h4 className="text-[10px] font-black text-white uppercase tracking-widest pb-2.5 border-b border-white/5 flex justify-between items-center">
+                              <span>🧮 Matriz de Sensibilidad</span>
+                              <span className="text-[7px] text-[#F5C518] font-bold uppercase">Margen EBITDA</span>
+                            </h4>
+                            <p className="text-[7.5px] text-slate-500 uppercase font-black mt-1">Cruza Ticket Promedio (filas) y Tasa de Conversión (columnas). Toca una celda para aplicarla.</p>
+                          </div>
+
+                          <div className="space-y-2">
+                            {/* Grid layout for 5x5 */}
+                            <div className="grid grid-cols-6 gap-1 text-center font-bold text-[6px]">
+                              {/* Corner cell */}
+                              <div className="flex items-center justify-center text-slate-600 uppercase font-black leading-none">Ticket \ Conv</div>
+                              {closeVals.map((cVal, idx) => (
+                                <div key={idx} className="p-1 bg-white/5 text-slate-300 rounded uppercase font-black">{cVal}%</div>
+                              ))}
+
+                              {ticketVals.map((tVal, rIdx) => (
+                                <React.Fragment key={rIdx}>
+                                  {/* Row header */}
+                                  <div className="p-1 bg-white/5 text-slate-300 rounded flex items-center justify-center font-black">${tVal}</div>
+                                  
+                                  {closeVals.map((cVal, cIdx) => {
+                                    // Calculate EBITDA for this combination
+                                    const sRev = cfoLeadsPerMonth * (cVal / 100) * tVal;
+                                    const sCost = (sRev * (activePayrollPct / 100)) + (cfoLeadsPerMonth * 15) + (sRev * activeMaterialPct) + fixedCosts;
+                                    const sEbitda = sRev - sCost;
+                                    const sMargin = sRev > 0 ? Math.round((sEbitda / sRev) * 100) : -100;
+
+                                    const isCurrent = tVal === cfoTicketSize && cVal === cfoCloseRate;
+
+                                    // HSL coloring: Greenish if positive margin, Reddish if negative
+                                    let hue = 0;
+                                    let sat = 65;
+                                    let light = 18;
+                                    if (sMargin >= 0) {
+                                      hue = Math.min(130, Math.round(sMargin * 3.2));
+                                      light = 20;
+                                    } else {
+                                      hue = Math.max(0, 10 + sMargin * 1.5);
+                                      sat = 60;
+                                      light = 22;
+                                    }
+
+                                    return (
+                                      <button
+                                        key={cIdx}
+                                        onClick={() => {
+                                          setCfoTicketSize(tVal);
+                                          setCfoCloseRate(cVal);
+                                          tt(`Sandbox configurado a $${tVal} USD / ${cVal}% Conversión ✓`, 'green');
+                                        }}
+                                        style={{
+                                          backgroundColor: `hsla(${hue}, ${sat}%, ${light}%, ${isCurrent ? '0.9' : '0.45'})`,
+                                          borderColor: isCurrent ? '#F5C518' : `hsla(${hue}, 80%, 40%, 0.6)`
+                                        }}
+                                        className={`p-1.5 border rounded text-[7.5px] font-black tracking-tighter text-white transition-all hover:scale-105 active:scale-95 flex flex-col justify-center items-center ${isCurrent ? 'ring-1 ring-[#F5C518]' : 'border-white/5'}`}
+                                      >
+                                        <span>{sMargin}%</span>
+                                      </button>
+                                    );
+                                  })}
+                                </React.Fragment>
+                              ))}
                             </div>
                           </div>
                         </div>
 
-                        {/* AI Advisor Panel */}
-                        <div className="p-5 border border-white/5 bg-black/45 rounded-2xl">
+                        {/* Advisor Panel */}
+                        <div className="p-5 border border-white/5 bg-black/45 rounded-2xl shadow-lg">
                           <div className="flex items-center gap-2 pb-3 border-b border-white/5">
                             <span className="text-base">🔮</span>
                             <div>
