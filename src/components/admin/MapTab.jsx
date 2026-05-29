@@ -125,18 +125,11 @@ export const MapTab = ({ jobs, staff, operationsTab, setOperationsTab, tt, refre
       return;
     }
 
-    const scripts = [
-      { text: '⚡ RUNNING: /autopilot-dispatch', type: 'cmd' },
-      { text: `[SCAN]: Found ${unassigned.length} unassigned jobs for ${selectedDate}...`, delay: 500 },
-      { text: '[MATCHING]: Running TSP proximity allocation...', delay: 600 }
-    ];
-
     setTerminalLogs(prev => [...prev, { text: '⚡ RUNNING: /autopilot-dispatch', type: 'cmd' }]);
     setIsAiRunning(true);
 
     try {
-      // Proximity mock assignment: alternate between available staff members
-      const activeCrews = staff.filter(s => s.role === 'staff');
+      const activeCrews = staff.filter(s => s.role === 'staff' || s.role === 'operator');
       if (activeCrews.length === 0) {
         setTerminalLogs(prev => [
           ...prev,
@@ -146,36 +139,80 @@ export const MapTab = ({ jobs, staff, operationsTab, setOperationsTab, tt, refre
         return;
       }
 
+      await new Promise(r => setTimeout(r, 500));
+      setTerminalLogs(prev => [...prev, { text: `[SCAN]: Found ${unassigned.length} unassigned jobs. Running multi-criteria matching...`, type: 'info' }]);
       await new Promise(r => setTimeout(r, 600));
-      setTerminalLogs(prev => [...prev, { text: '[GEO]: Loading GPS locations for Team Alpha and Team Beta...', type: 'info' }]);
 
       for (let i = 0; i < unassigned.length; i++) {
         const job = unassigned[i];
-        const crew = activeCrews[i % activeCrews.length];
-
-        await new Promise(r => setTimeout(r, 500));
         
-        // Actually update Supabase
-        const { error: dbErr } = await sb
-          .from('elevore_missions')
-          .update({ team_assigned: crew.name })
-          .eq('id', job.id);
+        let bestCrew = null;
+        let minScore = Infinity;
+        let bestDist = 0;
+        let bestJobsToday = 0;
+        let bestRating = 5;
 
-        if (dbErr) throw dbErr;
+        // Run weighted multi-criteria selection for each crew member
+        for (const crew of activeCrews) {
+          // Mock proximity (randomized around a base for Team Alpha / Team Beta / others)
+          const seed = (crew.name || '').charCodeAt(0) || 10;
+          const sLat = 28.5383 + (Math.sin(seed) * 0.05);
+          const sLng = -81.3792 + (Math.cos(seed) * 0.05);
+          
+          // Use OSRM mock distance
+          const distKm = Math.abs(28.5383 - sLat) * 111 + Math.abs(-81.3792 - sLng) * 111 + (Math.random() * 3);
+          
+          // Workload/fatigue count for today
+          const jobsToday = jobs.filter(j => j.team_assigned === crew.name && j.scheduled_date && j.scheduled_date.startsWith(selectedDate)).length;
+          
+          // Performance average rating
+          const crewJobs = jobs.filter(j => j.team_assigned === crew.name);
+          const ratedJobs = crewJobs.filter(j => j.client_rating > 0);
+          const avgRating = ratedJobs.length > 0 ? (ratedJobs.reduce((sum, j) => sum + j.client_rating, 0) / ratedJobs.length) : 4.6;
 
-        setTerminalLogs(prev => [
-          ...prev, 
-          { text: `[ASSIGNED]: ${job.client_name} -> Routed to ${crew.name} (Dist: ${(4.2 + i * 1.5).toFixed(1)} mi)`, type: 'success' }
-        ]);
+          // Composite match score: lower is better
+          // Formula: Distance (km) * 2.5 + Scheduled jobs today * 12 + Rating penalty * 15
+          const suitScore = (distKm * 2.5) + (jobsToday * 12.0) + ((5 - avgRating) * 15.0);
+
+          setTerminalLogs(prev => [
+            ...prev,
+            { text: `[TELEMETRY]: ${crew.name} -> Proximidad: ${distKm.toFixed(1)}km | Misiones Hoy: ${jobsToday} | Rating: ${avgRating.toFixed(1)}★ | Match Score: ${suitScore.toFixed(1)}`, type: 'sys' }
+          ]);
+
+          if (suitScore < minScore) {
+            minScore = suitScore;
+            bestCrew = crew;
+            bestDist = distKm;
+            bestJobsToday = jobsToday;
+            bestRating = avgRating;
+          }
+        }
+
+        if (bestCrew) {
+          await new Promise(r => setTimeout(r, 600));
+
+          // Write to Supabase
+          const { error: dbErr } = await sb
+            .from('elevore_missions')
+            .update({ team_assigned: bestCrew.name, status: 'scheduled' })
+            .eq('id', job.id);
+
+          if (dbErr) throw dbErr;
+
+          setTerminalLogs(prev => [
+            ...prev, 
+            { text: `[DISPATCHED]: ${job.client_name} -> Asignado a ${bestCrew.name} (Dist: ${bestDist.toFixed(1)}km, Match Score: ${minScore.toFixed(1)}) ✓`, type: 'success' }
+          ]);
+        }
       }
 
       await new Promise(r => setTimeout(r, 450));
-      setTerminalLogs(prev => [...prev, { text: '[SYS]: DB write success. Triggering global telemetry refresh...', type: 'sys' }]);
+      setTerminalLogs(prev => [...prev, { text: '[SYS]: DB write completed successfully.', type: 'sys' }]);
       
       if (refresh) {
         await refresh();
       }
-      tt('¡Misiones asignadas exitosamente con IA!', 'green');
+      tt('¡Despacho autónomo optimizado completado!', 'green');
 
     } catch (err) {
       console.error(err);
@@ -658,6 +695,93 @@ export const MapTab = ({ jobs, staff, operationsTab, setOperationsTab, tt, refre
               </p>
             </div>
           )}
+
+          {/* 🛡️ Crew Fatigue & Client Churn Telemetry */}
+          <div className="g p-5 bg-slate-950/40 border border-white/5 rounded-2xl space-y-4">
+            <div>
+              <h4 className="text-[10px] font-black text-white uppercase tracking-widest pb-2 border-b border-white/5 flex justify-between items-center">
+                <span>🛡️ Telemetría de Fatiga y Churn</span>
+                <span className="text-[6.5px] text-cyan-400 font-mono tracking-widest uppercase">ML Engine</span>
+              </h4>
+            </div>
+
+            {/* Fatigue Indicators */}
+            <div className="space-y-2.5">
+              <span className="text-[7.5px] font-black text-slate-400 uppercase tracking-wider block">👷 Nivel de Fatiga de Cuadrillas</span>
+              <div className="space-y-2">
+                {staff
+                  .filter((s) => s.role === 'staff' || s.role === 'operator')
+                  .map((crew) => {
+                    const jobsCount = jobs.filter(
+                      (j) => j.team_assigned === crew.name && j.scheduled_date && j.scheduled_date.startsWith(selectedDate)
+                    ).length;
+                    
+                    // Fatigue mapping
+                    const level = jobsCount >= 3 ? 'CRÍTICO' : jobsCount === 2 ? 'MODERADO' : 'BAJO';
+                    const barColor = jobsCount >= 3 ? 'bg-red-500' : jobsCount === 2 ? 'bg-amber-500' : 'bg-green-500';
+                    const barPct = jobsCount >= 3 ? '100%' : jobsCount === 2 ? '65%' : '30%';
+
+                    return (
+                      <div key={crew.id} className="p-2 border border-white/5 bg-black/35 rounded-xl space-y-1.5 text-[8.5px]">
+                        <div className="flex justify-between items-center font-bold">
+                          <span className="text-white uppercase font-black">{crew.name}</span>
+                          <span className={`text-[7px] font-black px-1.5 py-0.5 rounded uppercase ${
+                            jobsCount >= 3 ? 'bg-red-500/20 text-red-400' :
+                            jobsCount === 2 ? 'bg-amber-500/20 text-amber-400' : 'bg-green-500/20 text-green-400'
+                          }`}>{level} ({jobsCount} servs)</span>
+                        </div>
+                        <div className="w-full h-1 bg-white/5 rounded-full overflow-hidden">
+                          <div className={`h-full ${barColor}`} style={{ width: barPct }}></div>
+                        </div>
+                      </div>
+                    );
+                  })}
+              </div>
+            </div>
+
+            {/* Churn Risk Indicators */}
+            <div className="space-y-2.5 pt-2 border-t border-white/5">
+              <span className="text-[7.5px] font-black text-slate-400 uppercase tracking-wider block">🚨 Riesgo de Churn (Deserción de Clientes)</span>
+              <div className="space-y-2 max-h-[140px] overflow-y-auto pr-1">
+                {dayJobs.length === 0 ? (
+                  <p className="text-[7.5px] text-slate-500 uppercase italic">Sin servicios asignados para calcular churn.</p>
+                ) : (
+                  dayJobs.map((job) => {
+                    const cRating = job.client_rating || 0;
+                    const hasNext = job.next_visit || false;
+                    let risk = 12;
+                    let reason = 'Retención estable';
+                    if (cRating > 0 && cRating < 4) {
+                      risk += 45;
+                      reason = `Calificación baja anterior (${cRating}★)`;
+                    }
+                    if (!hasNext) {
+                      risk += 20;
+                      if (reason === 'Retención estable') {
+                        reason = 'Sin próxima visita programada';
+                      } else {
+                        reason += ' + Sin recurrencia';
+                      }
+                    }
+
+                    const badgeColor = risk >= 50 ? 'bg-red-500/20 text-red-400' : risk >= 30 ? 'bg-amber-500/20 text-amber-400' : 'bg-green-500/20 text-green-400';
+
+                    return (
+                      <div key={job.id} className="p-2 border border-white/5 bg-black/35 rounded-xl flex justify-between items-center gap-2 text-[8.5px]">
+                        <div className="min-w-0">
+                          <p className="font-black text-white truncate uppercase italic">{job.client_name}</p>
+                          <p className="text-[6.5px] text-slate-500 uppercase truncate mt-0.5">{reason}</p>
+                        </div>
+                        <span className={`text-[7px] font-black px-1.5 py-0.5 rounded uppercase flex-shrink-0 ${badgeColor}`}>
+                          Risk: {risk}%
+                        </span>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </div>
+          </div>
 
           {/* Route details list */}
           <div className="g p-5 bg-slate-950/40 border border-white/5 rounded-2xl space-y-4">
