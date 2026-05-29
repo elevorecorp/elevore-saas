@@ -6199,6 +6199,13 @@ export default function App() {
   const [operationsTab, setOperationsTab] = useState('calendar');
   const [crmTab, setCrmTab] = useState('dna');
   const [settingsTab, setSettingsTab] = useState('company');
+  
+  // AI CFO Sandbox States
+  const [cfoTicketSize, setCfoTicketSize] = useState(180);
+  const [cfoCloseRate, setCfoCloseRate] = useState(35);
+  const [cfoPayrollPct, setCfoPayrollPct] = useState(40);
+  const [cfoLeadsPerMonth, setCfoLeadsPerMonth] = useState(250);
+
   const [quickMode, setQM] = useState(false);
   const [chatJob, setChatJob] = useState(null);
   const [chatMsg, setChatMsg] = useState('');
@@ -9708,7 +9715,8 @@ Instrucciones generales de formato:
                   { id: 'inventory', name: '🛠️ Inventario' },
                   { id: 'tax', name: '📋 Libro Contable y Exportación' },
                   { id: 'productivity', name: '📈 Rendimiento y Calidad' },
-                  { id: 'automation', name: '🤖 Automatización y Mensajería' }
+                  { id: 'automation', name: '🤖 Automatización y Mensajería' },
+                  { id: 'cfo', name: '🔮 AI CFO y Flujo de Caja' }
                 ].map(tab => (
                   <button
                     key={tab.id}
@@ -10942,6 +10950,330 @@ Instrucciones generales de formato:
                             Enviar Mensaje de Prueba a WhatsApp 🚀
                           </button>
                         </div>
+                      </div>
+
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {financeTab === 'cfo' && (() => {
+                // CFO logic here
+                const projectedMonthlyRev = Math.round(cfoLeadsPerMonth * (cfoCloseRate / 100) * cfoTicketSize);
+                const projectedJobsCount = Math.round(cfoLeadsPerMonth * (cfoCloseRate / 100));
+                const laborCost = Math.round(projectedMonthlyRev * (cfoPayrollPct / 100));
+                const marketingCost = cfoLeadsPerMonth * 15; // $15 per lead
+                const materialCost = Math.round(projectedMonthlyRev * 0.08); // 8% of revenue
+                const fixedCosts = 2500; // Fixed overhead
+                const totalCosts = laborCost + marketingCost + materialCost + fixedCosts;
+                const ebitda = projectedMonthlyRev - totalCosts;
+                const ebitdaMargin = projectedMonthlyRev > 0 ? ((ebitda / projectedMonthlyRev) * 100).toFixed(1) : '0';
+
+                const marginPerLead = ((cfoCloseRate / 100) * cfoTicketSize) * (1 - (cfoPayrollPct / 100) - 0.08) - 15;
+                const breakEvenLeads = marginPerLead > 0 ? Math.ceil(fixedCosts / marginPerLead) : null;
+
+                // Monthly Forecast data for SVG (Mes 1, Mes 2, Mes 3)
+                const leadsM2 = cfoLeadsPerMonth * 1.12;
+                const revM2 = Math.round(leadsM2 * (cfoCloseRate / 100) * cfoTicketSize);
+                const costM2 = Math.round(revM2 * (cfoPayrollPct / 100)) + Math.round(leadsM2 * 15) + Math.round(revM2 * 0.08) + fixedCosts;
+
+                const leadsM3 = cfoLeadsPerMonth * 1.25;
+                const revM3 = Math.round(leadsM3 * (cfoCloseRate / 100) * cfoTicketSize);
+                const costM3 = Math.round(revM3 * (cfoPayrollPct / 100)) + Math.round(leadsM3 * 15) + Math.round(revM3 * 0.08) + fixedCosts;
+
+                // For chart scaling
+                const maxVal = Math.max(projectedMonthlyRev, revM2, revM3, totalCosts, costM2, costM3, 10000) * 1.15;
+                
+                const getY = (val) => 180 - (val / maxVal) * 140;
+
+                // Advisory Heuristic Messages
+                const getAdvisory = () => {
+                  if (cfoPayrollPct > 55) {
+                    return {
+                      type: 'warning',
+                      title: 'Costos de Nómina Excesivos',
+                      desc: 'La comisión asignada al staff supera el 55%. Sugerimos reajustar al rango del 40-45% y compensar con un sistema de incentivos basado en propinas cobradas directamente al cliente en el checkout para proteger el margen del negocio.'
+                    };
+                  }
+                  if (parseFloat(ebitdaMargin) < 15) {
+                    return {
+                      type: 'danger',
+                      title: 'Margen de Utilidad Crítico',
+                      desc: `Tu margen EBITDA de ${ebitdaMargin}% está por debajo del mínimo saludable (15%). Te sugerimos incrementar el Ticket Promedio a un mínimo de $200 USD o refinar la segmentación de leads para aumentar tu Tasa de Cierre.`
+                    };
+                  }
+                  if (cfoCloseRate < 25) {
+                    return {
+                      type: 'info',
+                      title: 'Optimización de Conversión de Ventas',
+                      desc: `Tasa de cierre del ${cfoCloseRate}%. Puedes disparar la rentabilidad implementando seguimientos automatizados mediante n8n a prospectos que no han completado el checkout en las últimas 24 horas.`
+                    };
+                  }
+                  if (parseFloat(ebitdaMargin) >= 30) {
+                    return {
+                      type: 'success',
+                      title: 'Salud Financiera Excelente',
+                      desc: `¡Felicidades, socio! Tu margen de ganancia neta es de ${ebitdaMargin}%. Con esta rentabilidad, puedes reinvertir agresivamente un 15% adicional de tu flujo de caja en campañas de marketing para acelerar el volumen de leads.`
+                    };
+                  }
+                  return {
+                    type: 'success',
+                    title: 'Operación Balanceada',
+                    desc: 'Tus métricas financieras actuales muestran un crecimiento equilibrado y saludable. Mantén la disciplina de control de gastos de inventario para sostener este ritmo operativo.'
+                  };
+                };
+
+                const advice = getAdvisory();
+
+                return (
+                  <div className="space-y-6 animate-in fade-in pb-12 text-left">
+                    {/* Top KPI row */}
+                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                      
+                      <div className="p-4 border border-white/5 bg-black/45 rounded-2xl flex flex-col justify-between">
+                        <span className="text-[7.5px] font-black text-slate-500 uppercase tracking-widest">Ingresos Proyectados</span>
+                        <div className="mt-2 flex items-baseline gap-1">
+                          <span className="text-xl font-black text-white">${Math.round(projectedMonthlyRev).toLocaleString()}</span>
+                          <span className="text-[7px] text-slate-400 font-bold uppercase">/ mes</span>
+                        </div>
+                        <span className="text-[7px] text-slate-500 mt-1 uppercase font-semibold">Proyección basada en {projectedJobsCount} servicios</span>
+                      </div>
+
+                      <div className="p-4 border border-white/5 bg-black/45 rounded-2xl flex flex-col justify-between">
+                        <span className="text-[7.5px] font-black text-slate-500 uppercase tracking-widest">Ganancia Neta (EBITDA)</span>
+                        <div className="mt-2 flex items-baseline gap-1">
+                          <span className={`text-xl font-black ${ebitda >= 0 ? 'text-green-400' : 'text-red-500'}`}>
+                            {ebitda >= 0 ? '+' : ''}${Math.round(ebitda).toLocaleString()}
+                          </span>
+                          <span className="text-[7px] text-slate-400 font-bold uppercase">/ mes</span>
+                        </div>
+                        <span className="text-[7px] text-slate-500 mt-1 uppercase font-semibold">
+                          {ebitda >= 0 ? 'Flujo de caja positivo' : 'Operando a pérdida'}
+                        </span>
+                      </div>
+
+                      <div className="p-4 border border-white/5 bg-black/45 rounded-2xl flex flex-col justify-between">
+                        <span className="text-[7.5px] font-black text-slate-500 uppercase tracking-widest">Margen de Rentabilidad</span>
+                        <div className="mt-2 flex items-baseline gap-1">
+                          <span className={`text-xl font-black ${parseFloat(ebitdaMargin) >= 30 ? 'text-amber-400' : parseFloat(ebitdaMargin) >= 15 ? 'text-green-400' : 'text-red-500'}`}>
+                            {ebitdaMargin}%
+                          </span>
+                        </div>
+                        <span className="text-[7px] text-slate-500 mt-1 uppercase font-semibold">
+                          EBITDA Objetivo: 20% +
+                        </span>
+                      </div>
+
+                      <div className="p-4 border border-white/5 bg-black/45 rounded-2xl flex flex-col justify-between">
+                        <span className="text-[7.5px] font-black text-slate-500 uppercase tracking-widest">Punto de Equilibrio</span>
+                        <div className="mt-2 flex items-baseline gap-1">
+                          <span className="text-xl font-black text-white">
+                            {breakEvenLeads ? `${breakEvenLeads}` : 'N/D'}
+                          </span>
+                          <span className="text-[7px] text-slate-400 font-bold uppercase"> leads/mes</span>
+                        </div>
+                        <span className="text-[7px] text-slate-500 mt-1 uppercase font-semibold">
+                          {breakEvenLeads ? 'Leads mínimos para no perder' : 'Margen unitario negativo'}
+                        </span>
+                      </div>
+
+                    </div>
+
+                    {/* Main Layout grid */}
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                      
+                      {/* Left Side: Sandbox Controllers */}
+                      <div className="lg:col-span-1 p-5 border border-white/5 bg-black/45 rounded-2xl space-y-6">
+                        <div>
+                          <h4 className="text-[10px] font-black text-white uppercase tracking-widest pb-3 border-b border-white/5">🎛️ Controles del Sandbox</h4>
+                          <p className="text-[7.5px] text-slate-500 uppercase font-black mt-1.5 leading-relaxed">
+                            Modifica las variables operativas en tiempo real para simular la rentabilidad de tu negocio de limpieza.
+                          </p>
+                        </div>
+
+                        <div className="space-y-4">
+                          {/* Slider 1: Ticket size */}
+                          <div className="space-y-1.5">
+                            <div className="flex justify-between items-center text-[8.5px] font-black uppercase text-slate-400">
+                              <span>💵 Ticket Promedio</span>
+                              <span className="text-white bg-white/5 px-2 py-0.5 rounded">${cfoTicketSize} USD</span>
+                            </div>
+                            <input
+                              type="range"
+                              min="50"
+                              max="500"
+                              step="5"
+                              value={cfoTicketSize}
+                              onChange={e => setCfoTicketSize(parseInt(e.target.value))}
+                              className="w-full accent-[#F5C518] bg-white/10 h-1 rounded-lg cursor-pointer animate-none"
+                            />
+                            <p className="text-[7px] text-slate-500 uppercase font-semibold">Precio promedio cobrado al cliente por limpieza</p>
+                          </div>
+
+                          {/* Slider 2: Close rate */}
+                          <div className="space-y-1.5">
+                            <div className="flex justify-between items-center text-[8.5px] font-black uppercase text-slate-400">
+                              <span>🎯 Tasa de Cierre</span>
+                              <span className="text-white bg-white/5 px-2 py-0.5 rounded">{cfoCloseRate}%</span>
+                            </div>
+                            <input
+                              type="range"
+                              min="5"
+                              max="100"
+                              step="1"
+                              value={cfoCloseRate}
+                              onChange={e => setCfoCloseRate(parseInt(e.target.value))}
+                              className="w-full accent-[#F5C518] bg-white/10 h-1 rounded-lg cursor-pointer animate-none"
+                            />
+                            <p className="text-[7px] text-slate-500 uppercase font-semibold">Porcentaje de leads cotizados que contratan</p>
+                          </div>
+
+                          {/* Slider 3: Payroll percentage */}
+                          <div className="space-y-1.5">
+                            <div className="flex justify-between items-center text-[8.5px] font-black uppercase text-slate-400">
+                              <span>👥 Comisión de Nómina</span>
+                              <span className="text-white bg-white/5 px-2 py-0.5 rounded">{cfoPayrollPct}%</span>
+                            </div>
+                            <input
+                              type="range"
+                              min="20"
+                              max="75"
+                              step="1"
+                              value={cfoPayrollPct}
+                              onChange={e => setCfoPayrollPct(parseInt(e.target.value))}
+                              className="w-full accent-[#F5C518] bg-white/10 h-1 rounded-lg cursor-pointer animate-none"
+                            />
+                            <p className="text-[7px] text-slate-500 uppercase font-semibold">Parte del ticket del cliente que va a los trabajadores</p>
+                          </div>
+
+                          {/* Slider 4: Monthly Leads */}
+                          <div className="space-y-1.5">
+                            <div className="flex justify-between items-center text-[8.5px] font-black uppercase text-slate-400">
+                              <span>📣 Prospectos (Leads) / Mes</span>
+                              <span className="text-white bg-white/5 px-2 py-0.5 rounded">{cfoLeadsPerMonth} leads</span>
+                            </div>
+                            <input
+                              type="range"
+                              min="20"
+                              max="1000"
+                              step="10"
+                              value={cfoLeadsPerMonth}
+                              onChange={e => setCfoLeadsPerMonth(parseInt(e.target.value))}
+                              className="w-full accent-[#F5C518] bg-white/10 h-1 rounded-lg cursor-pointer animate-none"
+                            />
+                            <p className="text-[7px] text-slate-500 uppercase font-semibold">Total de solicitudes de cotización recibidas al mes</p>
+                          </div>
+                        </div>
+
+                      </div>
+
+                      {/* Right Side: Projections & Advisor */}
+                      <div className="lg:col-span-2 space-y-6">
+                        
+                        {/* SVGs Forecasting chart */}
+                        <div className="p-5 border border-white/5 bg-black/45 rounded-2xl">
+                          <h4 className="text-[10px] font-black text-white uppercase tracking-widest pb-3 border-b border-white/5">📈 Proyección Trimestral de Flujo de Caja</h4>
+                          <p className="text-[7.5px] text-slate-500 uppercase font-black mt-1.5 mb-4">
+                            Ingresos Estimados vs Costos Operativos Totales (Simulación de Crecimiento +12% y +25%)
+                          </p>
+
+                          <div className="relative">
+                            <svg className="w-full h-48 overflow-visible" viewBox="0 0 300 200">
+                              <defs>
+                                <linearGradient id="goldGradCfo" x1="0" y1="0" x2="0" y2="1">
+                                  <stop offset="0%" stopColor="#F5C518" stopOpacity="0.25"/>
+                                  <stop offset="100%" stopColor="#F5C518" stopOpacity="0"/>
+                                </linearGradient>
+                              </defs>
+
+                              {/* Grid lines */}
+                              <line x1="40" y1="40" x2="280" y2="40" stroke="rgba(255,255,255,0.03)" strokeWidth="1" />
+                              <line x1="40" y1="110" x2="280" y2="110" stroke="rgba(255,255,255,0.03)" strokeWidth="1" />
+                              <line x1="40" y1="180" x2="280" y2="180" stroke="rgba(255,255,255,0.08)" strokeWidth="1.5" />
+
+                              {/* Y Axis Labels */}
+                              <text x="32" y="44" className="text-[6px] fill-slate-500 font-bold" textAnchor="end">${Math.round(maxVal).toLocaleString()}</text>
+                              <text x="32" y="114" className="text-[6px] fill-slate-500 font-bold" textAnchor="end">${Math.round(maxVal/2).toLocaleString()}</text>
+                              <text x="32" y="184" className="text-[6px] fill-slate-500 font-bold" textAnchor="end">$0</text>
+
+                              {/* X Axis Labels */}
+                              <text x="60" y="196" className="text-[7px] fill-slate-400 font-black text-center" textAnchor="middle">MES 1</text>
+                              <text x="160" y="196" className="text-[7px] fill-slate-400 font-black text-center" textAnchor="middle">MES 2</text>
+                              <text x="260" y="196" className="text-[7px] fill-slate-400 font-black text-center" textAnchor="middle">MES 3</text>
+
+                              {/* Revenue Area (Gold) */}
+                              <path
+                                d={`M 60 180 L 60 ${getY(projectedMonthlyRev)} L 160 ${getY(revM2)} L 260 ${getY(revM3)} L 260 180 Z`}
+                                fill="url(#goldGradCfo)"
+                              />
+
+                              {/* Revenue Line (Gold) */}
+                              <path
+                                d={`M 60 ${getY(projectedMonthlyRev)} L 160 ${getY(revM2)} L 260 ${getY(revM3)}`}
+                                fill="none"
+                                stroke="#F5C518"
+                                strokeWidth="2.5"
+                                strokeLinecap="round"
+                              />
+
+                              {/* Total Costs Line (Dashed) */}
+                              <path
+                                d={`M 60 ${getY(totalCosts)} L 160 ${getY(costM2)} L 260 ${getY(costM3)}`}
+                                fill="none"
+                                stroke="#EF4444"
+                                strokeWidth="1.5"
+                                strokeDasharray="3,3"
+                              />
+
+                              {/* Data Nodes */}
+                              <circle cx="60" cy={getY(projectedMonthlyRev)} r="4" fill="#F5C518" stroke="#111" strokeWidth="1.5" />
+                              <circle cx="160" cy={getY(revM2)} r="4" fill="#F5C518" stroke="#111" strokeWidth="1.5" />
+                              <circle cx="260" cy={getY(revM3)} r="4" fill="#F5C518" stroke="#111" strokeWidth="1.5" />
+
+                              <circle cx="60" cy={getY(totalCosts)} r="3" fill="#EF4444" stroke="#111" strokeWidth="1.2" />
+                              <circle cx="160" cy={getY(costM2)} r="3" fill="#EF4444" stroke="#111" strokeWidth="1.2" />
+                              <circle cx="260" cy={getY(costM3)} r="3" fill="#EF4444" stroke="#111" strokeWidth="1.2" />
+                            </svg>
+                          </div>
+
+                          <div className="flex justify-center gap-6 mt-2 text-[8px] font-black uppercase">
+                            <div className="flex items-center gap-1.5">
+                              <span className="w-2.5 h-2.5 bg-[#F5C518] rounded-full inline-block"></span>
+                              <span className="text-white">Ingresos Proyectados</span>
+                            </div>
+                            <div className="flex items-center gap-1.5">
+                              <span className="w-2.5 h-0.5 border-t border-dashed border-[#EF4444] inline-block"></span>
+                              <span className="text-white">Costos de Operación</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* AI Advisor Panel */}
+                        <div className="p-5 border border-white/5 bg-black/45 rounded-2xl">
+                          <div className="flex items-center gap-2 pb-3 border-b border-white/5">
+                            <span className="text-base">🔮</span>
+                            <div>
+                              <h4 className="text-[10px] font-black text-white uppercase tracking-widest">Consejo Estratégico del AI CFO</h4>
+                              <p className="text-[7.5px] text-slate-500 uppercase font-black mt-0.5">Diagnóstico y Recomendaciones en base al Sandbox</p>
+                            </div>
+                          </div>
+
+                          <div className="mt-4 flex items-start gap-3">
+                            <div className="mt-0.5">
+                              {advice.type === 'danger' && <span className="text-red-500 text-lg">⚠️</span>}
+                              {advice.type === 'warning' && <span className="text-amber-500 text-lg">⚠️</span>}
+                              {advice.type === 'info' && <span className="text-sky-500 text-lg">ℹ️</span>}
+                              {advice.type === 'success' && <span className="text-green-400 text-lg">🏆</span>}
+                            </div>
+                            <div className="space-y-1 text-left">
+                              <p className="text-[9px] font-black text-white uppercase tracking-wider">{advice.title}</p>
+                              <p className="text-[8.5px] text-slate-300 leading-relaxed font-medium">
+                                {advice.desc}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+
                       </div>
 
                     </div>
