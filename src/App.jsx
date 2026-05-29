@@ -7,6 +7,7 @@ import { MapTab } from './components/admin/MapTab';
 import { AICopilotMeetings } from './components/admin/AICopilotMeetings';
 import { SecurityLedger } from './components/admin/SecurityLedger';
 import { PublicQuoteProposal } from './components/PublicQuoteProposal';
+import { HyperDriveTab } from './components/admin/HyperDriveTab';
 
 // =====================================================================
 // 🌟 DYNAMIC ICON ENGINE
@@ -9810,7 +9811,8 @@ Instrucciones generales de formato:
                   { id: 'tax', name: '📋 Libro Contable y Exportación' },
                   { id: 'productivity', name: '📈 Rendimiento y Calidad' },
                   { id: 'automation', name: '🤖 Automatización y Mensajería' },
-                  { id: 'cfo', name: '🔮 AI CFO y Flujo de Caja' }
+                  { id: 'cfo', name: '🔮 AI CFO y Flujo de Caja' },
+                  { id: 'hyperdrive', name: '⚡ HyperDrive (Leads & Booking)' }
                 ].map(tab => (
                   <button
                     key={tab.id}
@@ -11050,6 +11052,15 @@ Instrucciones generales de formato:
                   </div>
                 );
               })()}
+
+              {financeTab === 'hyperdrive' && (
+                <HyperDriveTab
+                  tt={tt}
+                  refresh={refresh}
+                  jobs={jobs}
+                  staff={staff}
+                />
+              )}
 
               {financeTab === 'cfo' && (() => {
                 // CFO logic here with Playbook modifiers
