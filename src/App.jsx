@@ -8,6 +8,7 @@ import { AICopilotMeetings } from './components/admin/AICopilotMeetings';
 import { SecurityLedger } from './components/admin/SecurityLedger';
 import { PublicQuoteProposal } from './components/PublicQuoteProposal';
 import { HyperDriveTab } from './components/admin/HyperDriveTab';
+import PublicBookingWidget from './components/public/PublicBookingWidget';
 
 // =====================================================================
 // 🌟 DYNAMIC ICON ENGINE
@@ -6049,10 +6050,12 @@ export default function App() {
   const cjid = urlP.get('mision');
   const refCode = urlP.get('ref');
   const quoteId = urlP.get('propuesta') || urlP.get('quote') || urlP.get('cotizacion');
+  const showBook = urlP.get('book') === 'true' || urlP.get('reservar') === 'true';
 
   if (quoteId) return <PublicQuoteProposal quoteId={quoteId} />;
   if (cjid) return <Portal cjid={cjid} />;
   if (refCode) return <PublicLeadForm refCode={refCode} />;
+  if (showBook) return <PublicBookingWidget />;
 
   const [view, setView] = useState(urlP.get('view') || 'landing');
   const [role, setRole] = useState('admin');
@@ -6094,51 +6097,36 @@ export default function App() {
   const [campaignStage, setCampaignStage] = useState('');
 
   const handleActivateSubscription = async () => {
-    if (!billingCardName.trim()) { setBillingError(prefLang === 'es' ? 'Falta nombre del titular' : 'Cardholder name is required'); return; }
-    if (billingCardNo.replace(/\D/g, '').length < 16) { setBillingError(prefLang === 'es' ? 'Número de tarjeta inválido' : 'Invalid Card Number'); return; }
-    if (billingCardExpiry.length < 5) { setBillingError(prefLang === 'es' ? 'Fecha de expiración inválida' : 'Invalid expiration date'); return; }
-    if (billingCardCvc.length < 3) { setBillingError(prefLang === 'es' ? 'CVC inválido' : 'Invalid CVC'); return; }
-    
     setBillingError('');
     setBillingLoading(true);
-    
-    const stages = [
-      { key: 'connecting', label: 'Conectando con Stripe Billing Gateway...' },
-      { key: 'verifying', label: 'Verificando tarjeta con el banco emisor...' },
-      { key: 'routing', label: 'Procesando autorización de cargo recurrente...' },
-      { key: 'activating', label: 'Activando suscripción premium...' }
-    ];
-    
-    for (const stage of stages) {
-      setBillingProgressStage(stage.label);
-      await new Promise(resolve => setTimeout(resolve, 1000));
-    }
+    setBillingProgressStage(prefLang === 'es' ? 'Creando sesión de suscripción en Stripe...' : 'Creating Stripe subscription session...');
     
     try {
-      const mockCustomerId = 'cus_sim_' + Math.random().toString(36).substring(7);
-      const planStatus = 'active_' + selectedBillingPlan;
+      const res = await fetch('/api/create-checkout-session', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          mode: 'subscription',
+          tenant_id: tenantId,
+          plan: selectedBillingPlan
+        })
+      });
       
-      const { error } = await sb.from('tenants').update({
-        stripe_subscription_status: planStatus,
-        stripe_customer_id: mockCustomerId
-      }).eq('id', tenantId);
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || (prefLang === 'es' ? 'Error al contactar con el servidor de pagos' : 'Failed to contact checkout server'));
+      }
       
-      if (error) throw error;
-      
-      setTenant(prev => ({
-        ...prev,
-        stripe_subscription_status: planStatus,
-        stripe_customer_id: mockCustomerId
-      }));
-      
-      tt(prefLang === 'es' ? `¡Plan ${selectedBillingPlan.toUpperCase()} activado con éxito!` : `Plan ${selectedBillingPlan.toUpperCase()} activated successfully!`, 'green');
-      setBillingCardName('');
-      setBillingCardNo('');
-      setBillingCardExpiry('');
-      setBillingCardCvc('');
+      if (data.url) {
+        setBillingProgressStage(prefLang === 'es' ? 'Redirigiendo a pasarela de pagos...' : 'Redirecting to checkout gateway...');
+        window.location.href = data.url;
+      } else {
+        throw new Error(prefLang === 'es' ? 'No se pudo generar la URL de redirección' : 'No redirect URL returned by gateway');
+      }
     } catch (e) {
       setBillingError(e.message);
-    } finally {
       setBillingLoading(false);
       setBillingProgressStage('');
     }
@@ -12393,46 +12381,27 @@ Instrucciones generales de formato:
 
                   {/* Stripe Checkout Form Card */}
                   {selectedBillingPlan && tenant?.stripe_subscription_status !== 'active_' + selectedBillingPlan && (
-                    <div className="g p-6 border border-white/5 bg-slate-950/50 rounded-2xl max-w-md mx-auto space-y-4 animate-in slide-in-from-bottom duration-300">
-                      <p className="text-[9px] font-black text-[#F5C518] uppercase tracking-widest flex items-center gap-1.5">
-                        <Icon name="credit-card" className="w-4 h-4" /> Detalle de Pago Seguro
+                    <div className="g p-6 border border-[#F5C518]/25 bg-slate-950/70 rounded-2xl max-w-md mx-auto space-y-4 animate-in slide-in-from-bottom duration-300 shadow-[0_0_30px_rgba(245,197,24,0.05)]">
+                      <p className="text-[9px] font-black text-[#F5C518] uppercase tracking-widest flex items-center gap-1.5 justify-center">
+                        <Icon name="shield-check" className="w-4 h-4 text-[#F5C518]" /> {prefLang === 'es' ? 'Pago Seguro Procesado por Stripe' : 'Secure Stripe Checkout'}
                       </p>
-                      <p className="text-[7.5px] text-slate-400 uppercase font-bold leading-normal">
-                        Estás suscribiéndote al <span className="text-white font-extrabold">{selectedBillingPlan.toUpperCase()}</span>. El cargo se realizará mensualmente a través de Stripe Billing.
-                      </p>
-                      
-                      <div className="space-y-3 pt-2">
-                        <div className="space-y-1">
-                          <label className="text-[8px] font-black uppercase text-slate-500 tracking-widest pl-1">Nombre en la Tarjeta</label>
-                          <input className="inp w-full text-xs uppercase" placeholder="JOHN DOE" value={billingCardName} onChange={e => setBillingCardName(e.target.value)} />
+                      <div className="bg-white/5 p-4 rounded-xl border border-white/5 space-y-2">
+                        <div className="flex justify-between items-center text-[10px] uppercase font-black">
+                          <span className="text-slate-400">{prefLang === 'es' ? 'Plan Seleccionado' : 'Plan Selected'}:</span>
+                          <span className="text-white bg-indigo-950/50 border border-indigo-500/30 px-2 py-0.5 rounded text-[9px]">{selectedBillingPlan.toUpperCase()}</span>
                         </div>
-                        
-                        <div className="space-y-1">
-                          <label className="text-[8px] font-black uppercase text-slate-500 tracking-widest pl-1">Número de Tarjeta</label>
-                          <div className="relative">
-                            <input className="inp w-full text-xs font-mono" placeholder="4242 •••• •••• 4242" maxLength={19} value={billingCardNo} onChange={e => {
-                              const val = e.target.value.replace(/\s?/g, '').replace(/(\d{4})/g, '$1 ').trim();
-                              setBillingCardNo(val);
-                            }} />
-                            <span className="absolute right-3.5 top-3 text-[9px] font-black text-slate-600 uppercase">VISA / MC</span>
-                          </div>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-3">
-                          <div className="space-y-1">
-                            <label className="text-[8px] font-black uppercase text-slate-500 tracking-widest pl-1">Expiración</label>
-                            <input className="inp w-full text-xs font-mono text-center" placeholder="MM/YY" maxLength={5} value={billingCardExpiry} onChange={e => {
-                              let val = e.target.value.replace(/\D/g, '');
-                              if (val.length > 2) val = val.substring(0, 2) + '/' + val.substring(2, 4);
-                              setBillingCardExpiry(val);
-                            }} />
-                          </div>
-                          <div className="space-y-1">
-                            <label className="text-[8px] font-black uppercase text-slate-500 tracking-widest pl-1">CVC</label>
-                            <input className="inp w-full text-xs font-mono text-center" placeholder="123" maxLength={4} value={billingCardCvc} onChange={e => setBillingCardCvc(e.target.value)} />
-                          </div>
+                        <div className="flex justify-between items-center text-[10px] uppercase font-black">
+                          <span className="text-slate-400">{prefLang === 'es' ? 'Inversión Mensual' : 'Monthly Price'}:</span>
+                          <span className="text-[#F5C518] text-sm italic font-black">
+                            ${selectedBillingPlan === 'basic' ? '49' : selectedBillingPlan === 'premium' ? '99' : '199'} USD
+                          </span>
                         </div>
                       </div>
+                      <p className="text-[8px] text-slate-400 uppercase font-bold leading-relaxed text-center">
+                        {prefLang === 'es' 
+                          ? 'Serás redirigido de forma segura a Stripe Checkout para ingresar tu método de pago y activar tu suscripción recurrentemente.'
+                          : 'You will be redirected securely to Stripe Checkout to input your payment method and activate your recurring subscription.'}
+                      </p>
 
                       {billingError && (
                         <p className="text-[8.5px] font-black uppercase text-red-400 bg-red-950/20 border border-red-500/20 p-2.5 rounded-xl text-center">
@@ -12443,12 +12412,18 @@ Instrucciones generales de formato:
                       <button
                         onClick={handleActivateSubscription}
                         disabled={billingLoading}
-                        className="w-full mt-4 bg-[#F5C518] hover:bg-amber-400 text-black py-4 rounded-xl font-black uppercase tracking-widest text-[10px] active:scale-95 transition-all shadow-[0_0_20px_rgba(245,197,24,0.15)] flex items-center justify-center gap-1.5"
+                        className="w-full mt-2 bg-[#F5C518] hover:bg-amber-400 text-black py-4 rounded-xl font-black uppercase tracking-widest text-[10px] active:scale-95 transition-all shadow-[0_0_20px_rgba(245,197,24,0.15)] flex items-center justify-center gap-1.5"
                       >
                         {billingLoading ? (
-                          <Icon name="loader-2" className="w-4 h-4 animate-spin text-black" />
+                          <>
+                            <Icon name="loader-2" className="w-4 h-4 animate-spin text-black" />
+                            <span>{billingProgressStage || (prefLang === 'es' ? 'Procesando...' : 'Processing...')}</span>
+                          </>
                         ) : (
-                          `Activar Suscripción (${selectedBillingPlan === 'basic' ? '$49' : selectedBillingPlan === 'premium' ? '$99' : '$199'}/mo) 🚀`
+                          <>
+                            <Icon name="lock" className="w-3.5 h-3.5" />
+                            <span>{prefLang === 'es' ? 'Iniciar Suscripción con Stripe 🚀' : 'Start Subscription with Stripe 🚀'}</span>
+                          </>
                         )}
                       </button>
                     </div>
