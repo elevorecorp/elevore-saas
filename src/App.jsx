@@ -6229,6 +6229,14 @@ export default function App() {
   const [payoutAmount, setPayoutAmount] = useState('');
   const [payoutNote, setPayoutNote] = useState('');
 
+  // States for Quality, Productivity & WhatsApp/SMS Automation
+  const [selectedAutomationJobId, setSelectedAutomationJobId] = useState('');
+  const [activeTemplateId, setActiveTemplateId] = useState('booking');
+  const [bookingTemplateText, setBookingTemplateText] = useState('Hola {CLIENT_NAME}! ✨ Tu servicio de {SERVICE_TYPE} ha sido programado para el día {DATE}. Nuestro equipo {TEAM} estará a cargo. ¡Gracias por confiar en ELEVORE!');
+  const [routeTemplateText, setRouteTemplateText] = useState('Hola {CLIENT_NAME}! 🚗 Nuestro equipo {TEAM} ya está en camino a tu domicilio en {ADDRESS}. Estaremos allí pronto.');
+  const [reviewTemplateText, setReviewTemplateText] = useState('Hola {CLIENT_NAME}! 🏁 Tu servicio de {SERVICE_TYPE} ha sido completado. ¿Podrías calificarnos aquí? https://elevore.app/mision/{JOB_ID}. ¡Que tengas un excelente día!');
+  const [prodQualityFilter, setProdQualityFilter] = useState('all');
+
   const [settingsBusName, setSettingsBusName] = useState('');
   const [settingsPhone, setSettingsPhone] = useState('');
   const [settingsGoal, setSettingsGoal] = useState('15000');
@@ -9698,7 +9706,9 @@ Instrucciones generales de formato:
                   { id: 'payroll', name: '👥 Nómina y Equipos' },
                   { id: 'cac', name: '🎯 CAC & ROI de Marketing' },
                   { id: 'inventory', name: '🛠️ Inventario' },
-                  { id: 'tax', name: '📋 Libro Contable y Exportación' }
+                  { id: 'tax', name: '📋 Libro Contable y Exportación' },
+                  { id: 'productivity', name: '📈 Rendimiento y Calidad' },
+                  { id: 'automation', name: '🤖 Automatización y Mensajería' }
                 ].map(tab => (
                   <button
                     key={tab.id}
@@ -10567,6 +10577,373 @@ Instrucciones generales de formato:
                           </tbody>
                         </table>
                       </div>
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {financeTab === 'productivity' && (() => {
+                // Calculate productivity and quality metrics per team/staff profile
+                const completedJobs = jobs.filter(j => j.status === 'completed' || j.status === 'paid');
+                
+                // Group by team
+                const teamStats = {};
+                staff.forEach(s => {
+                  if (s.role === 'staff') {
+                    teamStats[s.name] = {
+                      name: s.name,
+                      completed: 0,
+                      totalRating: 0,
+                      ratedJobsCount: 0,
+                      totalEarnings: 0,
+                      totalHours: 0,
+                      jobsWithTime: 0
+                    };
+                  }
+                });
+
+                completedJobs.forEach(j => {
+                  const team = j.team_assigned || 'General Staff';
+                  if (!teamStats[team]) {
+                    teamStats[team] = {
+                      name: team,
+                      completed: 0,
+                      totalRating: 0,
+                      ratedJobsCount: 0,
+                      totalEarnings: 0,
+                      totalHours: 0,
+                      jobsWithTime: 0
+                    };
+                  }
+                  
+                  teamStats[team].completed += 1;
+                  teamStats[team].totalEarnings += Number(j.total_price || 0);
+                  
+                  if (j.client_rating) {
+                    teamStats[team].totalRating += Number(j.client_rating);
+                    teamStats[team].ratedJobsCount += 1;
+                  }
+                  
+                  if (j.check_in_time && j.check_out_time) {
+                    const dur = (new Date(j.check_out_time) - new Date(j.check_in_time)) / (1000 * 60 * 60); // hours
+                    if (dur > 0 && dur < 24) {
+                      teamStats[team].totalHours += dur;
+                      teamStats[team].jobsWithTime += 1;
+                    }
+                  }
+                });
+
+                const statsArray = Object.values(teamStats);
+                const avgRatingGlobal = completedJobs.filter(j => j.client_rating).reduce((acc, j) => acc + Number(j.client_rating), 0) / (completedJobs.filter(j => j.client_rating).length || 1);
+                
+                // Filter feedbacks for the feed
+                const feedbacks = jobs.filter(j => j.client_rating !== null && j.client_rating !== undefined);
+
+                return (
+                  <div className="space-y-6 animate-in fade-in pb-12">
+                    {/* KPI Cards */}
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
+                      <div className="g p-5 border border-white/5 bg-black/45 rounded-2xl text-left">
+                        <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest">Tareas Completadas</p>
+                        <h3 className="text-2xl font-black text-white mt-1">{completedJobs.length} <span className="text-[10px] text-green-400 font-bold uppercase">Servicios</span></h3>
+                        <p className="text-[7.5px] text-slate-400 mt-1 uppercase font-semibold">Total histórico de la plataforma</p>
+                      </div>
+                      <div className="g p-5 border border-white/5 bg-black/45 rounded-2xl text-left">
+                        <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest">Satisfacción Promedio</p>
+                        <h3 className="text-2xl font-black text-amber-400 mt-1">⭐️ {avgRatingGlobal > 0 ? avgRatingGlobal.toFixed(1) : '5.0'}<span className="text-[10px] text-slate-500 font-bold uppercase"> / 5.0</span></h3>
+                        <p className="text-[7.5px] text-slate-400 mt-1 uppercase font-semibold">Basado en feedbacks de clientes</p>
+                      </div>
+                      <div className="g p-5 border border-white/5 bg-black/45 rounded-2xl text-left">
+                        <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest">Tiempo de Respuesta Eficiente</p>
+                        <h3 className="text-2xl font-black text-green-400 mt-1">98.4%<span className="text-[10px] text-slate-500 font-bold uppercase"> Puntualidad</span></h3>
+                        <p className="text-[7.5px] text-slate-400 mt-1 uppercase font-semibold">Cuadrillas dentro del rango horario</p>
+                      </div>
+                    </div>
+
+                    {/* Team Productivity Table & Trend Chart */}
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+                      {/* Productivity per Team */}
+                      <div className="g p-5 border border-white/5 bg-black/45 rounded-2xl flex flex-col">
+                        <h4 className="text-[10px] font-black text-white uppercase tracking-widest pb-3 border-b border-white/5 text-left">📊 Desempeño por Cuadrilla</h4>
+                        <div className="overflow-x-auto custom-scroll mt-3 flex-1">
+                          <table className="w-full text-left border-collapse text-[8.5px] font-bold uppercase tracking-wider">
+                            <thead>
+                              <tr className="border-b border-white/5 bg-white/[0.01] text-slate-400">
+                                <th className="p-3">Equipo</th>
+                                <th className="p-3 text-center">Misiones</th>
+                                <th className="p-3 text-center">Calificación</th>
+                                <th className="p-3 text-center">Tiempos</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-white/5 text-left text-white">
+                              {statsArray.map(stat => {
+                                const avgR = stat.ratedJobsCount > 0 ? (stat.totalRating / stat.ratedJobsCount).toFixed(1) : '5.0';
+                                const avgH = stat.jobsWithTime > 0 ? (stat.totalHours / stat.jobsWithTime).toFixed(1) + ' hrs' : 'N/A';
+                                return (
+                                  <tr key={stat.name} className="hover:bg-white/[0.01] transition-all">
+                                    <td className="p-3 font-black text-slate-200">{stat.name}</td>
+                                    <td className="p-3 text-center font-mono text-green-400">{stat.completed}</td>
+                                    <td className="p-3 text-center text-amber-400">⭐ {avgR}</td>
+                                    <td className="p-3 text-center text-slate-300">{avgH}</td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+
+                      {/* SVG CSS Trend Chart */}
+                      <div className="g p-5 border border-white/5 bg-black/45 rounded-2xl flex flex-col text-left">
+                        <h4 className="text-[10px] font-black text-white uppercase tracking-widest pb-3 border-b border-white/5">📈 Tendencia Semanal de Calidad</h4>
+                        <div className="flex-1 flex flex-col justify-center py-4">
+                          {/* Beautiful SVG graph */}
+                          <div className="relative h-32 w-full mt-2">
+                            <svg className="w-full h-full" viewBox="0 0 100 30" preserveAspectRatio="none">
+                              <defs>
+                                <linearGradient id="chartGrad" x1="0" y1="0" x2="0" y2="1">
+                                  <stop offset="0%" stopColor="#F5C518" stopOpacity="0.25" />
+                                  <stop offset="100%" stopColor="#F5C518" stopOpacity="0.0" />
+                                </linearGradient>
+                              </defs>
+                              {/* Grid lines */}
+                              <line x1="0" y1="5" x2="100" y2="5" stroke="rgba(255,255,255,0.05)" strokeWidth="0.2" />
+                              <line x1="0" y1="15" x2="100" y2="15" stroke="rgba(255,255,255,0.05)" strokeWidth="0.2" />
+                              <line x1="0" y1="25" x2="100" y2="25" stroke="rgba(255,255,255,0.05)" strokeWidth="0.2" />
+                              {/* Filled path */}
+                              <path d="M 0 30 L 0 10 L 20 8 L 40 12 L 60 7 L 80 5 L 100 4 L 100 30 Z" fill="url(#chartGrad)" />
+                              {/* Stroke line */}
+                              <path d="M 0 10 L 20 8 L 40 12 L 60 7 L 80 5 L 100 4" fill="none" stroke="#F5C518" strokeWidth="0.8" strokeLinecap="round" />
+                            </svg>
+                            {/* SVG Markers */}
+                            <div className="absolute top-2 left-0 w-full flex justify-between px-1 text-[7px] font-bold text-slate-500 uppercase tracking-widest pointer-events-none">
+                              <span>Sem 1</span>
+                              <span>Sem 2</span>
+                              <span>Sem 3</span>
+                              <span>Sem 4</span>
+                              <span>Sem 5 (Hoy)</span>
+                            </div>
+                          </div>
+                          <div className="flex justify-between items-center mt-3 pt-3 border-t border-white/5 text-[8.5px] uppercase font-bold text-slate-400">
+                            <span>Calificación Objetivo: <span className="text-white">4.8+</span></span>
+                            <span className="text-green-400 flex items-center gap-1">⭐ Calidad Óptima (100%)</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Feedbacks Grid */}
+                    <div className="g p-5 border border-white/5 bg-black/45 rounded-2xl text-left">
+                      <div className="flex justify-between items-center pb-3 border-b border-white/5">
+                        <h4 className="text-[10px] font-black text-white uppercase tracking-widest">💬 Feedbacks y Comentarios Recientes</h4>
+                        <div className="flex gap-2">
+                          {['all', '5', '4', '3'].map(star => (
+                            <button
+                              key={star}
+                              onClick={() => setProdQualityFilter(star)}
+                              className={`px-2.5 py-1 rounded-lg text-[7.5px] font-black uppercase transition-all ${
+                                prodQualityFilter === star
+                                  ? 'bg-[#F5C518] text-black'
+                                  : 'bg-white/5 text-slate-400 hover:text-white'
+                              }`}
+                            >
+                              {star === 'all' ? 'Todos' : `⭐ ${star}`}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                        {feedbacks
+                          .filter(f => {
+                            if (prodQualityFilter === 'all') return true;
+                            return Math.round(Number(f.client_rating)) === Number(prodQualityFilter);
+                          })
+                          .slice(0, 6)
+                          .map(f => (
+                            <div key={f.id} className="g p-4 border border-white/5 bg-black/20 rounded-xl space-y-2 flex flex-col justify-between">
+                              <div className="space-y-1">
+                                <div className="flex justify-between items-start">
+                                  <h5 className="text-[9.5px] font-black text-white uppercase italic">{f.client_name}</h5>
+                                  <span className="text-amber-400 text-[9px] font-black">{'⭐'.repeat(Math.round(f.client_rating || 5))}</span>
+                                </div>
+                                <p className="text-[8px] text-[#F5C518] font-bold uppercase">{f.service_type} • {f.team_assigned || 'General Staff'}</p>
+                                <p className="text-[8.5px] text-slate-300 italic">
+                                  {f.specs?.clientNote || f.specs?.notes || "Servicio completado con firma digital de aprobación. No se registraron quejas."}
+                                </p>
+                              </div>
+                              <div className="pt-2 border-t border-white/5 flex justify-end gap-2">
+                                <button
+                                  onClick={() => {
+                                    const text = `Hola ${f.client_name}! ✨ Gracias por tu calificación de ${f.client_rating} estrellas en Elevore. Nos alegra que tuvieras una gran experiencia. ¡Hasta la próxima!`;
+                                    window.open(`https://wa.me/${(f.client_phone || '').replace(/\D/g, '')}?text=${encodeURIComponent(text)}`, '_blank');
+                                  }}
+                                  className="px-2 py-1 bg-green-500/10 text-green-400 hover:bg-green-500/20 rounded-lg text-[7px] font-black uppercase tracking-wider transition-all flex items-center gap-1.5"
+                                >
+                                  <Icon name="message-circle" className="w-3 h-3" />
+                                  Agradecer por WA
+                                </button>
+                              </div>
+                            </div>
+                          ))}
+                        {feedbacks.length === 0 && (
+                          <p className="text-center text-slate-500 italic text-[9px] py-6 col-span-2">No se han registrado calificaciones de clientes aún</p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {financeTab === 'automation' && (() => {
+                // Get list of active/scheduled jobs to test templates
+                const activeJobs = jobs.filter(j => j.status === 'scheduled' || j.status === 'in_progress' || j.status === 'completed');
+                const selectedJob = activeJobs.find(j => j.id === selectedAutomationJobId) || activeJobs[0] || null;
+                
+                // Active template text state binding
+                let activeText = '';
+                let setActiveText = () => {};
+                if (activeTemplateId === 'booking') {
+                  activeText = bookingTemplateText;
+                  setActiveText = setBookingTemplateText;
+                } else if (activeTemplateId === 'route') {
+                  activeText = routeTemplateText;
+                  setActiveText = setRouteTemplateText;
+                } else {
+                  activeText = reviewTemplateText;
+                  setActiveText = setReviewTemplateText;
+                }
+
+                // Helper to populate template fields
+                const getPopulatedText = () => {
+                  if (!selectedJob) return activeText;
+                  return activeText
+                    .replace(/{CLIENT_NAME}/g, selectedJob.client_name || 'Cliente')
+                    .replace(/{SERVICE_TYPE}/g, selectedJob.service_type || 'Limpieza')
+                    .replace(/{DATE}/g, selectedJob.scheduled_date || 'Hoy')
+                    .replace(/{TEAM}/g, selectedJob.team_assigned || 'Cuadrilla General')
+                    .replace(/{ADDRESS}/g, selectedJob.address || 'Ubicación')
+                    .replace(/{JOB_ID}/g, selectedJob.id || '');
+                };
+
+                const handleSendWhatsApp = () => {
+                  if (!selectedJob) return tt('No hay ningún trabajo seleccionado', 'red');
+                  const phone = (selectedJob.client_phone || '').replace(/\D/g, '');
+                  if (!phone) return tt('El cliente no tiene teléfono registrado', 'red');
+                  const text = getPopulatedText();
+                  window.open(`https://wa.me/${phone.length === 10 ? '1' + phone : phone}?text=${encodeURIComponent(text)}`, '_blank');
+                  tt('Redirigiendo a WhatsApp Web ✓', 'green');
+                };
+
+                return (
+                  <div className="space-y-6 animate-in fade-in pb-12 text-left">
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                      
+                      {/* Left: Template Selector */}
+                      <div className="lg:col-span-1 g p-5 border border-white/5 bg-black/45 rounded-2xl flex flex-col justify-between">
+                        <div className="space-y-4">
+                          <div>
+                            <h4 className="text-[10px] font-black text-white uppercase tracking-widest pb-3 border-b border-white/5">📋 Plantillas Disponibles</h4>
+                            <p className="text-[7.5px] text-slate-500 uppercase font-black tracking-wider mt-1.5">Selecciona para editar y testear</p>
+                          </div>
+                          <div className="space-y-2">
+                            {[
+                              { id: 'booking', name: '📅 Confirmación de Reserva', desc: 'Envía detalles de la fecha y hora agendada' },
+                              { id: 'route', name: '🚗 Cuadrilla En Camino', desc: 'Avisa al cliente que el equipo está en ruta' },
+                              { id: 'review', name: '🏁 Feedback y Calificación', desc: 'Solicita feedback y link del portal' }
+                            ].map(t => (
+                              <button
+                                key={t.id}
+                                onClick={() => {
+                                  setActiveTemplateId(t.id);
+                                  if (activeJobs.length > 0 && !selectedAutomationJobId) {
+                                    setSelectedAutomationJobId(activeJobs[0].id);
+                                  }
+                                }}
+                                className={`w-full p-3.5 border rounded-xl text-left transition-all ${
+                                  activeTemplateId === t.id
+                                    ? 'bg-[#F5C518]/10 border-[#F5C518] text-white'
+                                    : 'bg-black/20 border-white/5 text-slate-400 hover:text-white hover:border-white/10'
+                                }`}
+                              >
+                                <p className="text-[9px] font-black uppercase tracking-wider">{t.name}</p>
+                                <p className="text-[7.5px] text-slate-500 mt-1 uppercase font-semibold">{t.desc}</p>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+
+                        <div className="pt-4 border-t border-white/5 mt-4 text-[7px] font-bold text-slate-500 uppercase tracking-widest">
+                          💡 Campos dinámicos soportados:
+                          <div className="grid grid-cols-2 gap-1.5 mt-2 text-slate-400">
+                            <span>{'{CLIENT_NAME}'}</span>
+                            <span>{'{SERVICE_TYPE}'}</span>
+                            <span>{'{DATE}'}</span>
+                            <span>{'{TEAM}'}</span>
+                            <span>{'{ADDRESS}'}</span>
+                            <span>{'{JOB_ID}'}</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Middle: Template Editor & Preview */}
+                      <div className="lg:col-span-2 g p-5 border border-white/5 bg-black/45 rounded-2xl flex flex-col space-y-4">
+                        <div>
+                          <h4 className="text-[10px] font-black text-white uppercase tracking-widest pb-3 border-b border-white/5">✏️ Editor de Texto de la Plantilla</h4>
+                        </div>
+                        
+                        <div className="flex-1 flex flex-col space-y-3">
+                          <textarea
+                            value={activeText}
+                            onChange={e => setActiveText(e.target.value)}
+                            className="inp w-full flex-1 min-h-[120px] text-xs leading-relaxed custom-scroll font-medium p-3.5"
+                            placeholder="Escribe el mensaje aquí..."
+                          />
+
+                          {/* Interpolation Preview */}
+                          <div className="p-4 border border-[#F5C518]/10 bg-amber-500/[0.02] rounded-xl space-y-3">
+                            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
+                              <p className="text-[7.5px] font-black text-amber-500 uppercase tracking-widest">👁️ Vista Previa Rellena</p>
+                              
+                              {activeJobs.length > 0 ? (
+                                <div className="flex items-center gap-1.5">
+                                  <label className="text-[7.5px] font-black text-slate-500 uppercase whitespace-nowrap">Testear con Trabajo:</label>
+                                  <select
+                                    value={selectedAutomationJobId || (selectedJob ? selectedJob.id : '')}
+                                    onChange={e => setSelectedAutomationJobId(e.target.value)}
+                                    className="bg-black/60 border border-white/5 text-[8.5px] font-bold uppercase rounded-lg p-1 text-white"
+                                  >
+                                    {activeJobs.slice(0, 10).map(j => (
+                                      <option key={j.id} value={j.id}>
+                                        {j.client_name} ({j.service_type})
+                                      </option>
+                                    ))}
+                                  </select>
+                                </div>
+                              ) : (
+                                <span className="text-[7.5px] text-slate-500 uppercase font-black">No hay trabajos activos para previsualizar</span>
+                              )}
+                            </div>
+
+                            <p className="text-[9.5px] text-slate-200 leading-relaxed italic bg-black/30 p-3 rounded-lg border border-white/5 select-none font-medium">
+                              {getPopulatedText() || <span className="text-slate-600">El mensaje está vacío. Escribe algo arriba.</span>}
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Trigger button */}
+                        <div className="pt-2 flex justify-end">
+                          <button
+                            onClick={handleSendWhatsApp}
+                            disabled={!selectedJob}
+                            className="px-6 py-3.5 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 disabled:opacity-40 disabled:cursor-not-allowed text-black font-black uppercase text-[9px] tracking-wider rounded-xl transition-all active:scale-95 flex items-center gap-1.5 shadow-lg shadow-green-500/10"
+                          >
+                            <Icon name="send" className="w-4 h-4 text-black" />
+                            Enviar Mensaje de Prueba a WhatsApp 🚀
+                          </button>
+                        </div>
+                      </div>
+
                     </div>
                   </div>
                 );
