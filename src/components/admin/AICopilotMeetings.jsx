@@ -12,7 +12,7 @@ const Icon = ({ name, className, style, ...props }) => {
   return <LucideIcon className={className} style={style} {...props} />;
 };
 
-export const AICopilotMeetings = ({ jobs, staff, tt, refresh }) => {
+export const AICopilotMeetings = ({ jobs, staff, tt, refresh, activeUser }) => {
   const [meetingActive, setMeetingActive] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const [transcripts, setTranscripts] = useState([]);
@@ -27,6 +27,16 @@ export const AICopilotMeetings = ({ jobs, staff, tt, refresh }) => {
 
   const ollamaUrl = localStorage.getItem('elevore_ollama_url') || 'http://127.0.0.1:11434';
   const ollamaModel = localStorage.getItem('elevore_ollama_model') || 'llama3.2';
+
+  const getOtherSpeakerName = (idx) => {
+    if (Array.isArray(staff) && staff.length > 0) {
+      const candidates = staff.filter(s => s.name && s.name.toLowerCase() !== (activeUser || '').toLowerCase());
+      if (candidates.length > 0) {
+        return candidates[idx % candidates.length].name;
+      }
+    }
+    return idx === 1 ? 'Team Alpha' : 'Team Beta';
+  };
 
   // Audio wave mock animation
   useEffect(() => {
@@ -68,11 +78,11 @@ export const AICopilotMeetings = ({ jobs, staff, tt, refresh }) => {
       
       // Fallback: Mock Conversations timed intervals
       const mockConversations = [
-        { speaker: 'Administrador (Tú)', text: 'Buenos días equipo. Sincronización de ruta para hoy en Pine St.', time: '10:00:02', delay: 1000 },
-        { speaker: 'Team Alpha', text: 'Vamos en camino a Pine St de Jose Mario. Listos.', time: '10:00:08', delay: 3500 },
-        { speaker: 'Team Beta', text: 'Tránsito pesado en la I-4. Retraso estimado de 10 min para Maria Delgado.', time: '10:00:15', delay: 7000 },
-        { speaker: 'Administrador (Tú)', text: 'Entendido. Ofrezcan limpieza de alfombras a Jose Mario, y notifiquen retraso a Maria Delgado.', time: '10:00:23', delay: 10500 },
-        { speaker: 'Team Alpha', text: 'Copiado. Agregaremos limpieza de alfombras por $75 USD.', time: '10:00:30', delay: 14000 }
+        { speaker: activeUser || 'Administrador (Tú)', text: 'Buenos días equipo. Sincronización de ruta para hoy en Pine St.', time: '10:00:02', delay: 1000 },
+        { speaker: getOtherSpeakerName(1), text: 'Vamos en camino a Pine St de Jose Mario. Listos.', time: '10:00:08', delay: 3500 },
+        { speaker: getOtherSpeakerName(2), text: 'Tránsito pesado en la I-4. Retraso estimado de 10 min para Maria Delgado.', time: '10:00:15', delay: 7000 },
+        { speaker: activeUser || 'Administrador (Tú)', text: 'Entendido. Ofrezcan limpieza de alfombras a Jose Mario, y notifiquen retraso a Maria Delgado.', time: '10:00:23', delay: 10500 },
+        { speaker: getOtherSpeakerName(1), text: 'Copiado. Agregaremos limpieza de alfombras por $75 USD.', time: '10:00:30', delay: 14000 }
       ];
 
       const timeouts = mockConversations.map(msg => {
@@ -95,7 +105,7 @@ export const AICopilotMeetings = ({ jobs, staff, tt, refresh }) => {
       if (!text) return;
 
       const timeStr = new Date().toTimeString().split(' ')[0];
-      setTranscripts(prev => [...prev, { speaker: 'Administrador (Tú)', text, time: timeStr }]);
+      setTranscripts(prev => [...prev, { speaker: activeUser || 'Administrador (Tú)', text, time: timeStr }]);
     };
 
     rec.onerror = (err) => {
@@ -162,11 +172,11 @@ export const AICopilotMeetings = ({ jobs, staff, tt, refresh }) => {
     tt('Procesando transcripción con Ollama local...', 'blue');
 
     const rawTranscripts = transcripts.length > 0 ? transcripts : [
-      { speaker: 'Administrador (Tú)', text: 'Buenos días equipo. Sincronización de ruta para hoy en Pine St.', time: '10:00:02' },
-      { speaker: 'Team Alpha', text: 'Vamos en camino a Pine St de Jose Mario. Listos.', time: '10:00:08' },
-      { speaker: 'Team Beta', text: 'Tránsito pesado en la I-4. Retraso estimado de 10 min para Maria Delgado.', time: '10:00:15' },
-      { speaker: 'Administrador (Tú)', text: 'Entendido. Ofrezcan limpieza de alfombras a Jose Mario, y notifiquen retraso a Maria Delgado.', time: '10:00:23' },
-      { speaker: 'Team Alpha', text: 'Copiado. Agregaremos limpieza de alfombras por $75 USD.', time: '10:00:30' }
+      { speaker: activeUser || 'Administrador (Tú)', text: 'Buenos días equipo. Sincronización de ruta para hoy en Pine St.', time: '10:00:02' },
+      { speaker: getOtherSpeakerName(1), text: 'Vamos en camino a Pine St de Jose Mario. Listos.', time: '10:00:08' },
+      { speaker: getOtherSpeakerName(2), text: 'Tránsito pesado en la I-4. Retraso estimado de 10 min para Maria Delgado.', time: '10:00:15' },
+      { speaker: activeUser || 'Administrador (Tú)', text: 'Entendido. Ofrezcan limpieza de alfombras a Jose Mario, y notifiquen retraso a Maria Delgado.', time: '10:00:23' },
+      { speaker: getOtherSpeakerName(1), text: 'Copiado. Agregaremos limpieza de alfombras por $75 USD.', time: '10:00:30' }
     ];
 
     const transcriptText = rawTranscripts.map(t => `[${t.time}] ${t.speaker}: ${t.text}`).join('\n');
@@ -308,28 +318,66 @@ export const AICopilotMeetings = ({ jobs, staff, tt, refresh }) => {
 
             {/* Simulated participants grid */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              {[
-                { name: 'Administrador (Tú)', status: 'online', wave: meetingActive && !isMuted, avatar: '👤' },
-                { name: 'Team Alpha', status: 'online', wave: meetingActive && transcripts.length >= 2, avatar: '👷' },
-                { name: 'Team Beta', status: 'online', wave: meetingActive && transcripts.length >= 3, avatar: 'grid' },
-                { name: 'Soporte Central', status: 'online', wave: false, avatar: '👩‍💻' }
-              ].map((p, idx) => (
-                <div key={idx} className="p-3.5 bg-black border border-white/5 rounded-2xl flex flex-col items-center justify-center text-center space-y-2 relative overflow-hidden">
-                  <div className="text-2xl">{p.avatar === 'grid' ? '👷' : p.avatar}</div>
-                  <p className="text-[8.5px] font-black text-white uppercase">{p.name}</p>
-                  
-                  {/* Wave indicator */}
-                  {p.wave ? (
-                    <div className="flex items-center gap-0.5 h-3">
-                      <span className="w-0.5 h-2 bg-indigo-400 animate-pulse"></span>
-                      <span className="w-0.5 h-3 bg-indigo-400 animate-pulse"></span>
-                      <span className="w-0.5 h-1.5 bg-indigo-400 animate-pulse"></span>
-                    </div>
-                  ) : (
-                    <span className="text-[6.5px] font-black uppercase text-slate-500">Muted / Silent</span>
-                  )}
-                </div>
-              ))}
+              {(() => {
+                const list = [];
+                const isCurrentUserAdmin = !activeUser || activeUser.toLowerCase().includes('admin') || activeUser.toLowerCase().includes('ceo') || activeUser.toLowerCase().includes('administrador');
+                
+                list.push({
+                  name: `${activeUser || 'Administrador'} (Tú)`,
+                  status: 'online',
+                  wave: meetingActive && !isMuted,
+                  avatar: isCurrentUserAdmin ? '👤' : '👷'
+                });
+
+                if (!isCurrentUserAdmin) {
+                  list.push({
+                    name: 'Administrador (CEO)',
+                    status: 'online',
+                    wave: meetingActive && transcripts.length >= 3,
+                    avatar: '👤'
+                  });
+                }
+
+                if (Array.isArray(staff)) {
+                  staff.forEach(member => {
+                    if (member.name && member.name.toLowerCase() !== (activeUser || '').toLowerCase()) {
+                      list.push({
+                        name: member.name,
+                        status: 'online',
+                        wave: meetingActive && transcripts.length >= 2,
+                        avatar: '👷'
+                      });
+                    }
+                  });
+                }
+
+                if (list.length < 4) {
+                  list.push({
+                    name: 'Soporte Central',
+                    status: 'online',
+                    wave: false,
+                    avatar: '👩‍💻'
+                  });
+                }
+
+                return list.slice(0, 4).map((p, idx) => (
+                  <div key={idx} className="p-3.5 bg-black border border-white/5 rounded-2xl flex flex-col items-center justify-center text-center space-y-2 relative overflow-hidden">
+                    <div className="text-2xl">{p.avatar}</div>
+                    <p className="text-[8.5px] font-black text-white uppercase">{p.name}</p>
+                    
+                    {/* Wave indicator */}
+                    {p.wave ? (
+                      <div className="flex items-center gap-0.5 h-3">
+                        <span className="w-0.5 h-2 bg-indigo-400 animate-pulse"></span>
+                        <span className="w-0.5 h-3 bg-indigo-400 animate-pulse"></span>
+                        <span className="w-0.5 h-1.5 bg-indigo-400 animate-pulse"></span>
+                      </div>
+                    ) : (
+                      <span className="text-[6.5px] font-black uppercase text-slate-500">Muted / Silent</span>
+                    )}
+                  </div>
+                ));
+              })()}
             </div>
 
             {/* Controls Bar */}

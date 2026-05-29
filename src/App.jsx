@@ -12855,6 +12855,7 @@ Instrucciones generales de formato:
                 staff={staff}
                 tt={tt}
                 refresh={refresh}
+                activeUser={activeEmployee?.name || 'Administrador (Tú)'}
               />
             </div>
           )}
@@ -13970,6 +13971,7 @@ Respond ONLY in this exact JSON format (no explanation, no markdown, just raw JS
                   staff={staff}
                   tt={tt}
                   refresh={refresh}
+                  activeUser={activeEmployee?.name || 'Administrador (Tú)'}
                 />
               </div>
             </div>
