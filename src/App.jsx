@@ -4,6 +4,8 @@ import * as Icons from 'lucide-react';
 import { InventoryTab } from './components/admin/InventoryTab';
 import { RemindersTab } from './components/admin/RemindersTab';
 import { MapTab } from './components/admin/MapTab';
+import { AICopilotMeetings } from './components/admin/AICopilotMeetings';
+import { SecurityLedger } from './components/admin/SecurityLedger';
 import { PublicQuoteProposal } from './components/PublicQuoteProposal';
 
 // =====================================================================
@@ -11627,6 +11629,7 @@ Instrucciones generales de formato:
                     { id: 'reminders', name: `🔔 Recordatorios (${remindersBadgeCount})` },
                     { id: 'drive', name: '📸 Photo Drive' },
                     { id: 'map', name: '🗺️ IA Dispatcher' },
+                    { id: 'meetings', name: '🎙️ Reuniones IA' },
                     { id: 'deploy', name: '📝 Nueva Cotización' }
                   ].map(tab => (
                     <button
@@ -12683,6 +12686,7 @@ Instrucciones generales de formato:
                   { id: 'reminders', name: `🔔 Recordatorios (${remindersBadgeCount})` },
                   { id: 'drive', name: '📸 Photo Drive' },
                   { id: 'map', name: '🗺️ IA Dispatcher' },
+                  { id: 'meetings', name: '🎙️ Reuniones IA' },
                   { id: 'deploy', name: '📝 Nueva Cotización' }
                 ].map(tab => (
                   <button
@@ -12732,6 +12736,41 @@ Instrucciones generales de formato:
             />
           )}
 
+          {role === 'admin' && view === 'operations' && operationsTab === 'meetings' && (
+            <div className="space-y-4 animate-in fade-in pb-24">
+              {/* Operations Sub-tabs Switcher */}
+              <div className="flex gap-2 bg-black/45 p-1.5 rounded-2xl border border-white/5 overflow-x-auto nsb">
+                {[
+                  { id: 'calendar', name: '📅 Calendario de Misiones' },
+                  { id: 'reminders', name: `🔔 Recordatorios (${remindersBadgeCount})` },
+                  { id: 'drive', name: '📸 Photo Drive' },
+                  { id: 'map', name: '🗺️ IA Dispatcher' },
+                  { id: 'meetings', name: '🎙️ Reuniones IA' },
+                  { id: 'deploy', name: '📝 Nueva Cotización' }
+                ].map(tab => (
+                  <button
+                    key={tab.id}
+                    onClick={() => setOperationsTab(tab.id)}
+                    className={`px-4 py-2.5 rounded-xl text-[9px] font-black uppercase whitespace-nowrap active:scale-95 transition-all ${
+                      operationsTab === tab.id
+                        ? 'bg-[#F5C518] text-black shadow-lg shadow-[#F5C518]/15'
+                        : 'bg-white/5 text-slate-400 hover:text-white hover:bg-white/10'
+                    }`}
+                  >
+                    {tab.name}
+                  </button>
+                ))}
+              </div>
+
+              <AICopilotMeetings
+                jobs={jobs}
+                staff={staff}
+                tt={tt}
+                refresh={refresh}
+              />
+            </div>
+          )}
+
           {/* =====================================================================
               👑 ADMIN DASHBOARD NEW ESTIMATE DEPLOY TABS (deploy)
               ===================================================================== */}
@@ -12744,6 +12783,7 @@ Instrucciones generales de formato:
                   { id: 'reminders', name: `🔔 Recordatorios (${remindersBadgeCount})` },
                   { id: 'drive', name: '📸 Photo Drive' },
                   { id: 'map', name: '🗺️ IA Dispatcher' },
+                  { id: 'meetings', name: '🎙️ Reuniones IA' },
                   { id: 'deploy', name: '📝 Nueva Cotización' }
                 ].map(tab => (
                   <button
