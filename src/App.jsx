@@ -6303,6 +6303,7 @@ export default function App() {
   const [state, setState] = useState(INIT);
   const [payoutModalWorker, setPayoutModalWorker] = useState(null);
   const [routeModalOpen, setRouteModalOpen] = useState(false);
+  const [staffMeetingOpen, setStaffMeetingOpen] = useState(false);
   const [biSimClients, setBiSimClients] = useState(60);
   const [biSimPayoutPct, setBiSimPayoutPct] = useState(40);
   const [biSimMarketing, setBiSimMarketing] = useState(1500);
@@ -6458,6 +6459,8 @@ Instrucciones:
   const [newStaffEmail, setNewStaffEmail] = useState('');
   const [newStaffPIN, setNewPIN] = useState('');
   const [newStaffRole, setNewRole] = useState('staff');
+  const [newStaffPhone, setNewStaffPhone] = useState('');
+  const [newStaffPayoutPct, setNewStaffPayoutPct] = useState('');
 
   const tt = (m, c = 'green') => { setToast({ m, c }); setTimeout(() => setToast(null), 3500); };
   const log = m => setActLog(l => [{ m, time: new Date().toLocaleTimeString() }, ...l.slice(0, 49)]);
@@ -7138,14 +7141,15 @@ Instrucciones:
     if (!newStaffName || !newStaffPIN || !newStaffEmail) return tt('Name, Email and PIN required', 'red');
     
     // Add locally for robust fallback
-    const defaultPayout = tenantSettings?.staff_pay_pct !== undefined ? Math.round(tenantSettings.staff_pay_pct * 100) : 40;
+    const payoutPctVal = newStaffPayoutPct ? Number(newStaffPayoutPct) : (tenantSettings?.staff_pay_pct !== undefined ? Math.round(tenantSettings.staff_pay_pct * 100) : 40);
     const newWorker = {
       id: String(Date.now()), // use timestamp to avoid ID collision
       name: newStaffName,
       staff_email: newStaffEmail,
       role: newStaffRole,
       passcode: newStaffPIN,
-      payout_pct: defaultPayout,
+      phone: newStaffPhone || null,
+      payout_pct: payoutPctVal,
       wallet_balance: 0,
       total_earned: 0
     };
@@ -7158,7 +7162,8 @@ Instrucciones:
         staff_email: newStaffEmail,
         role: newStaffRole,
         passcode: newStaffPIN,
-        payout_pct: defaultPayout,
+        phone: newStaffPhone || null,
+        payout_pct: payoutPctVal,
         wallet_balance: 0,
         total_earned: 0,
         tenant_id: tenantId
@@ -7175,6 +7180,8 @@ Instrucciones:
     setNewPIN('');
     setNewStaffEmail('');
     setNewRole('staff');
+    setNewStaffPhone('');
+    setNewStaffPayoutPct('');
   };
 
   const handleDeleteEmployee = async (worker) => {
@@ -9244,15 +9251,24 @@ Instrucciones generales de formato:
                         </p>
                       </div>
                     </div>
-                    {todayJobs.length > 0 && (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                      {todayJobs.length > 0 && (
+                        <button 
+                          onClick={() => setRouteModalOpen(true)}
+                          className="w-full bg-slate-900 border border-[#F5C518]/30 hover:bg-[#F5C518]/10 text-[#F5C518] py-2.5 rounded-xl text-[9px] font-black uppercase tracking-wider flex items-center justify-center gap-2 active:scale-95 transition-all"
+                        >
+                          <Icon name="map" className="w-3.5 h-3.5" />
+                          Optimizar Ruta GPS (Leaflet)
+                        </button>
+                      )}
                       <button 
-                        onClick={() => setRouteModalOpen(true)}
-                        className="w-full bg-slate-900 border border-[#F5C518]/30 hover:bg-[#F5C518]/10 text-[#F5C518] py-2.5 rounded-xl text-[9px] font-black uppercase tracking-wider flex items-center justify-center gap-2 active:scale-95 transition-all"
+                        onClick={() => setStaffMeetingOpen(true)}
+                        className={`w-full bg-indigo-950/40 border border-indigo-500/30 hover:bg-indigo-500/20 text-indigo-400 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-wider flex items-center justify-center gap-2 active:scale-95 transition-all ${todayJobs.length === 0 ? 'sm:col-span-2' : ''}`}
                       >
-                        <Icon name="map" className="w-3.5 h-3.5" />
-                        Optimizar Ruta GPS (Leaflet)
+                        <Icon name="mic" className="w-3.5 h-3.5 text-indigo-400 animate-pulse" />
+                        Unirse a Habitación IA
                       </button>
-                    )}
+                    </div>
                   </div>
                 );
               })()}
@@ -12526,7 +12542,11 @@ Instrucciones generales de formato:
                     <div className="space-y-3 pt-2">
                       <input className="inp uppercase text-xs" placeholder="Worker Name" value={newStaffName} onChange={e => setNewName(e.target.value)} />
                       <input type="email" className="inp text-xs" placeholder="Worker Email (Login ID)" value={newStaffEmail} onChange={e => setNewStaffEmail(e.target.value)} />
-                      <input className="inp text-xs" placeholder="Set Passcode PIN (e.g. 5566)" value={newStaffPIN} onChange={e => setNewPIN(e.target.value)} />
+                      <input type="tel" className="inp text-xs" placeholder="Phone Number (e.g. +14075550199)" value={newStaffPhone} onChange={e => setNewStaffPhone(e.target.value)} />
+                      <div className="grid grid-cols-2 gap-2">
+                        <input className="inp text-xs w-full font-mono text-center tracking-widest" placeholder="Passcode PIN (e.g. 5566)" value={newStaffPIN} onChange={e => setNewPIN(e.target.value)} />
+                        <input type="number" className="inp text-xs w-full text-amber-500 font-bold" min={0} max={100} placeholder="Payout % (default 40)" value={newStaffPayoutPct} onChange={e => setNewStaffPayoutPct(e.target.value)} />
+                      </div>
                       <div className="grid grid-cols-3 gap-2">
                         {['staff', 'supervisor', 'admin'].map(r => (
                           <button key={r} onClick={() => setNewRole(r)} className={`py-2.5 rounded-xl text-[8px] uppercase font-black border transition-all ${newStaffRole === r ? 'bg-[#F5C518] text-black border-[#F5C518]' : 'bg-white/5 border-white/5 text-slate-400'}`}>{r}</button>
@@ -13932,6 +13952,28 @@ Respond ONLY in this exact JSON format (no explanation, no markdown, just raw JS
             onClose={() => setRouteModalOpen(false)} 
             lang="es" 
           />
+        )}
+
+        {/* Staff Meeting Modal */}
+        {staffMeetingOpen && (
+          <div className="fixed inset-0 bg-black/90 backdrop-blur-md z-[2000] flex items-center justify-center p-4 overflow-y-auto" onClick={e => e.target === e.currentTarget && setStaffMeetingOpen(false)}>
+            <div className="g p-6 w-full max-w-4xl space-y-4 border-t-4 border-indigo-500 mx-auto bg-slate-950 rounded-2xl shadow-2xl border border-white/5 animate-in fade-in-50 zoom-in-95 duration-150 relative">
+              <button 
+                onClick={() => setStaffMeetingOpen(false)} 
+                className="absolute top-4 right-4 text-slate-400 hover:text-white transition-colors p-1.5 rounded-lg hover:bg-white/5 z-50 animate-pulse"
+              >
+                <Icon name="x" className="w-5 h-5" />
+              </button>
+              <div className="pt-2">
+                <AICopilotMeetings
+                  jobs={jobs}
+                  staff={staff}
+                  tt={tt}
+                  refresh={refresh}
+                />
+              </div>
+            </div>
+          </div>
         )}
 
         {/* =====================================================================
