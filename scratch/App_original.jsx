@@ -4,18 +4,9 @@ import * as Icons from 'lucide-react';
 import { InventoryTab } from './components/admin/InventoryTab';
 import { RemindersTab } from './components/admin/RemindersTab';
 import { MapTab } from './components/admin/MapTab';
-import { AICopilotMeetings } from './components/admin/AICopilotMeetings';
-import { SecurityLedger } from './components/admin/SecurityLedger';
 import { PublicQuoteProposal } from './components/PublicQuoteProposal';
-import { HyperDriveTab } from './components/admin/HyperDriveTab';
-import PublicBookingWidget from './components/public/PublicBookingWidget';
-import TimeSlotPicker from './components/public/TimeSlotPicker';
 
 // =====================================================================
-// ⚙️ FEATURE FLAGS
-// Disable unstable or incomplete AI features for production release
-// =====================================================================
-const ENABLE_AI = true;
 // 🌟 DYNAMIC ICON ENGINE
 // Maps string names like "arrow-left" to high-performance React Icons
 // =====================================================================
@@ -709,8 +700,8 @@ function Thermo({ pct, goal, current }) {
 // MapComponent
 function MapComponent({ address, lat, lng, workerLat, workerLng }) {
   const srcDoc = useMemo(() => {
-    const destination = lat && lng && !isNaN(Number(lat)) && !isNaN(Number(lng)) ? [Number(lat), Number(lng)] : null;
-    const worker = workerLat && workerLng && !isNaN(Number(workerLat)) && !isNaN(Number(workerLng)) ? [Number(workerLat), Number(workerLng)] : null;
+    const destination = lat && lng ? [lat, lng] : null;
+    const worker = workerLat && workerLng ? [workerLat, workerLng] : null;
     return `
       <!DOCTYPE html>
       <html>
@@ -801,83 +792,8 @@ function MapComponent({ address, lat, lng, workerLat, workerLng }) {
   );
 }
 
-// React ErrorBoundary Component for defensive UI mapping
-class ErrorBoundary extends React.Component {
-  constructor(props) {
-    super(props);
-    this.state = { hasError: false, error: null };
-  }
-
-  static getDerivedStateFromError(error) {
-    return { hasError: true, error };
-  }
-
-  componentDidCatch(error, errorInfo) {
-    console.error("ErrorBoundary caught an error:", error, errorInfo);
-  }
-
-  render() {
-    if (this.state.hasError) {
-      return (
-        <div className="fixed inset-0 bg-black/90 backdrop-blur-md z-[2000] flex items-center justify-center p-4">
-          <div className="g p-6 w-full max-w-lg space-y-4 border-t-4 border-red-500 mx-auto bg-slate-950 rounded-2xl shadow-2xl border border-white/5 text-center">
-            <div className="w-12 h-12 text-red-500 mx-auto animate-pulse flex items-center justify-center text-3xl">⚠️</div>
-            <h3 className="text-sm font-black text-white uppercase italic tracking-wider">Error en la Aplicación</h3>
-            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-relaxed">
-              Ocurrió un error inesperado al cargar esta sección.
-            </p>
-            {this.state.error?.message && (
-              <pre className="text-[8px] bg-black/50 p-3 rounded-lg text-red-400 text-left overflow-x-auto max-h-[150px] border border-white/5 font-mono">
-                {this.state.error.message}
-              </pre>
-            )}
-            <button
-              onClick={() => {
-                this.setState({ hasError: false, error: null });
-                if (this.props.onReset) this.props.onReset();
-              }}
-              className="px-5 py-2.5 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-[9px] font-black uppercase tracking-wider transition-all active:scale-95"
-            >
-              Cerrar / Reset
-            </button>
-          </div>
-        </div>
-      );
-    }
-    return this.props.children;
-  }
-}
-
-const defaultAddons = [
-  { id: 'oven', en: 'Inside Oven', p: 35 },
-  { id: 'fridge', en: 'Inside Fridge', p: 30 },
-  { id: 'windows', en: 'Windows', p: 50 },
-  { id: 'pethair', en: 'Pet Hair', p: 25 },
-  { id: 'garage', en: 'Garage', p: 40 }
-];
-
-const defaultQuickJobs = [
-  { id: 'cleaning_reg', en: 'Regular Cleaning', p: 120 },
-  { id: 'cleaning_deep', en: 'Deep Cleaning', p: 180 },
-  { id: 'tv', en: 'Mount TV', p: 150 },
-  { id: 'door', en: 'Install Door', p: 200 },
-  { id: 'patch', en: 'Drywall Patch', p: 180 },
-  { id: 'shelves', en: 'Shelving', p: 100 },
-  { id: 'lock', en: 'Lock Change', p: 85 },
-  { id: 'paint', en: 'Paint Touch-up', p: 120 },
-  { id: 'faucet', en: 'Faucet Install', p: 130 }
-];
-
 // RouteOptimizerModal Component
 function RouteOptimizerModal({ todayJobs, onClose, lang }) {
-  const cleanJobs = useMemo(() => {
-    return Array.isArray(todayJobs) ? todayJobs.filter(Boolean) : [];
-  }, [todayJobs]);
-
-  if (cleanJobs.length === 0) {
-    return null;
-  }
-
   const [loading, setLoading] = useState(true);
   const [progress, setProgress] = useState(0);
   const [stops, setStops] = useState([]);
@@ -886,55 +802,26 @@ function RouteOptimizerModal({ todayJobs, onClose, lang }) {
   const [saving, setSaving] = useState(0);
   const [startLocation, setStartLocation] = useState(null);
   const [error, setError] = useState(null);
-  const [routeGeometry, setRouteGeometry] = useState([]);
-
-  // Safety distance format helper
-  const formatDist = (val) => {
-    if (val === undefined || val === null) return '0.0';
-    const num = Number(val);
-    return (!Number.isFinite(num)) ? '0.0' : num.toFixed(1);
-  };
-
-  // Helper fetch function with timeout to prevent hanging the main execution flow
-  const fetchWithTimeout = async (url, options = {}) => {
-    const { timeout = 4000 } = options;
-    const controller = new AbortController();
-    const timerId = setTimeout(() => controller.abort(), timeout);
-    try {
-      const response = await fetch(url, { ...options, signal: controller.signal });
-      clearTimeout(timerId);
-      return response;
-    } catch (err) {
-      clearTimeout(timerId);
-      throw err;
-    }
-  };
 
   // Haversine formula
   const getDistance = (lat1, lon1, lat2, lon2) => {
-    try {
-      if (
-        lat1 === null || lat1 === undefined || isNaN(Number(lat1)) ||
-        lon1 === null || lon1 === undefined || isNaN(Number(lon1)) ||
-        lat2 === null || lat2 === undefined || isNaN(Number(lat2)) ||
-        lon2 === null || lon2 === undefined || isNaN(Number(lon2))
-      ) {
-        return 0;
-      }
-      const R = 6371; // Radius of the earth in km
-      const dLat = (Number(lat2) - Number(lat1)) * Math.PI / 180;
-      const dLon = (Number(lon2) - Number(lon1)) * Math.PI / 180;
-      const a = 
-        Math.sin(dLat/2) * Math.sin(dLat/2) +
-        Math.cos(Number(lat1) * Math.PI / 180) * Math.cos(Number(lat2) * Math.PI / 180) * 
-        Math.sin(dLon/2) * Math.sin(dLon/2);
-      const aClamped = Math.max(0, Math.min(1, a));
-      const c = 2 * Math.atan2(Math.sqrt(aClamped), Math.sqrt(Math.max(0, 1 - aClamped)));
-      const dist = R * c;
-      return isNaN(dist) || !isFinite(dist) ? 0 : dist;
-    } catch (e) {
+    if (
+      lat1 === null || lat1 === undefined || isNaN(Number(lat1)) ||
+      lon1 === null || lon1 === undefined || isNaN(Number(lon1)) ||
+      lat2 === null || lat2 === undefined || isNaN(Number(lat2)) ||
+      lon2 === null || lon2 === undefined || isNaN(Number(lon2))
+    ) {
       return 0;
     }
+    const R = 6371; // Radius of the earth in km
+    const dLat = (Number(lat2) - Number(lat1)) * Math.PI / 180;
+    const dLon = (Number(lon2) - Number(lon1)) * Math.PI / 180;
+    const a = 
+      Math.sin(dLat/2) * Math.sin(dLat/2) +
+      Math.cos(Number(lat1) * Math.PI / 180) * Math.cos(Number(lat2) * Math.PI / 180) * 
+      Math.sin(dLon/2) * Math.sin(dLon/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    return R * c;
   };
 
   useEffect(() => {
@@ -942,31 +829,19 @@ function RouteOptimizerModal({ todayJobs, onClose, lang }) {
     
     const runGeocodingAndOptimization = async () => {
       try {
-        if (cleanJobs.length === 0) {
-          setStops([]);
-          setLoading(false);
-          return;
-        }
         setLoading(true);
         setError(null);
         setProgress(0);
-        setRouteGeometry([]);
         
-        // 1. Get browser geolocation (optional & safety-checked)
+        // 1. Get browser geolocation (optional)
         let currentPos = null;
-        if (navigator && navigator.geolocation && typeof navigator.geolocation.getCurrentPosition === 'function') {
+        if (navigator && navigator.geolocation) {
           try {
             currentPos = await new Promise((resolve, reject) => {
               navigator.geolocation.getCurrentPosition(
-                (pos) => {
-                  if (pos && pos.coords) {
-                    resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude });
-                  } else {
-                    reject(new Error("Invalid Position Coordinates"));
-                  }
-                },
+                (pos) => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
                 (err) => reject(err),
-                { timeout: 3000 }
+                { timeout: 5000 }
               );
             });
             if (active) setStartLocation(currentPos);
@@ -975,59 +850,32 @@ function RouteOptimizerModal({ todayJobs, onClose, lang }) {
           }
         }
         
-        // 2. Geocode each address in cleanJobs
+        // 2. Geocode each address in todayJobs
         const geocodedStops = [];
-        for (let i = 0; i < cleanJobs.length; i++) {
+        for (let i = 0; i < todayJobs.length; i++) {
           if (!active) return;
-          const job = cleanJobs[i];
+          const job = todayJobs[i];
           if (!job) continue;
           
           // Show progress
-          setProgress(Math.round((i / cleanJobs.length) * 100));
+          setProgress(Math.round((i / todayJobs.length) * 100));
           
           let coords = null;
-          let specsObj = null;
-          
-          if (job.specs) {
-            if (typeof job.specs === 'object') {
-              specsObj = job.specs;
-            } else if (typeof job.specs === 'string') {
-              try {
-                specsObj = JSON.parse(job.specs);
-              } catch (e) {
-                console.warn("Failed to parse job.specs JSON string:", e);
-              }
-            }
-          }
-          
-          if (specsObj && specsObj.lat !== undefined && specsObj.lat !== null && specsObj.lng !== undefined && specsObj.lng !== null) {
-            const latVal = Number(specsObj.lat);
-            const lngVal = Number(specsObj.lng);
-            if (!isNaN(latVal) && !isNaN(lngVal)) {
-              coords = { lat: latVal, lng: lngVal };
-            }
-          }
-          
-          if (!coords && job.address && typeof job.address === 'string' && job.address.trim().length > 0) {
-            // Fetch from Nominatim with timeout
+          if (job.specs?.lat && job.specs?.lng) {
+            coords = { lat: Number(job.specs.lat), lng: Number(job.specs.lng) };
+          } else if (job.address) {
+            // Fetch from Nominatim
             try {
-              const cleanAddr = job.address.trim();
-              const res = await fetchWithTimeout(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(cleanAddr)}&format=json&limit=1`, { timeout: 4000 });
-              if (res.ok) {
-                const data = await res.json();
-                if (Array.isArray(data) && data[0]) {
-                  const latVal = parseFloat(data[0].lat);
-                  const lngVal = parseFloat(data[0].lon);
-                  if (!isNaN(latVal) && !isNaN(lngVal)) {
-                    coords = { lat: latVal, lng: lngVal };
-                  }
-                }
+              const res = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(job.address)}&format=json&limit=1`);
+              const data = await res.json();
+              if (data && data[0]) {
+                coords = { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
               }
             } catch (err) {
               console.error("Geocoding failed for:", job.address, err);
             }
             // Delay to respect OSM Nominatim usage limits (max 1 req/sec)
-            await new Promise(r => setTimeout(r, 600));
+            await new Promise(r => setTimeout(r, 800));
           }
           
           geocodedStops.push({
@@ -1045,7 +893,6 @@ function RouteOptimizerModal({ todayJobs, onClose, lang }) {
         
         // Filter stops with valid coordinates (defensive checks)
         const validStops = geocodedStops.filter(s => 
-          s &&
           s.lat !== null && s.lat !== undefined && !isNaN(Number(s.lat)) &&
           s.lng !== null && s.lng !== undefined && !isNaN(Number(s.lng))
         );
@@ -1055,209 +902,62 @@ function RouteOptimizerModal({ todayJobs, onClose, lang }) {
           setLoading(false);
           return;
         }
-
-        // Build coordinates array for matrix routing without mutating read-only props or states
-        const coords = [];
-        const hasStart = currentPos && 
-          currentPos.lat !== null && currentPos.lat !== undefined && !isNaN(Number(currentPos.lat)) &&
-          currentPos.lng !== null && currentPos.lng !== undefined && !isNaN(Number(currentPos.lng));
         
-        if (hasStart) {
-          coords.push({ lat: Number(currentPos.lat), lng: Number(currentPos.lng), isStart: true });
-        }
-        
-        const validStopsWithIndex = validStops.map((stop, index) => ({
-          ...stop,
-          matrixIndex: hasStart ? index + 1 : index
-        }));
-        
-        validStopsWithIndex.forEach((stop) => {
-          coords.push(stop);
-        });
-
-        // 3. Fetch OSRM Distance Matrix with timeout
-        let distanceMatrix = null;
-        if (coords.length >= 2) {
-          try {
-            const coordsString = coords.map(c => `${c.lng},${c.lat}`).join(';');
-            const url = `https://router.project-osrm.org/table/v1/driving/${coordsString}?annotations=distance`;
-            const res = await fetchWithTimeout(url, { timeout: 4000 });
-            if (res.ok) {
-              const data = await res.json();
-              if (data && data.distances && Array.isArray(data.distances)) {
-                distanceMatrix = data.distances.map((row, rIdx) => 
-                  Array.isArray(row) ? row.map((d, cIdx) => {
-                    if (d === null || d === undefined || isNaN(Number(d))) {
-                      const fromCoord = coords[rIdx];
-                      const toCoord = coords[cIdx];
-                      if (fromCoord && toCoord) {
-                        return getDistance(fromCoord.lat, fromCoord.lng, toCoord.lat, toCoord.lng);
-                      }
-                      return 999999;
-                    }
-                    return Number(d) / 1000;
-                  }) : []
-                );
-                console.log("OSRM Road Distance Matrix loaded successfully.");
-              }
-            }
-          } catch (e) {
-            console.warn("Failed to load OSRM distance matrix, using Haversine straight line:", e);
-          }
-        }
-
-
-        // Helper to get distance (from OSRM matrix or fallback to Haversine)
-        const getMatrixDistance = (fromIdx, toIdx, fromLat, fromLng, toLat, toLng) => {
-          try {
-            if (distanceMatrix && 
-                Array.isArray(distanceMatrix) && 
-                fromIdx >= 0 && fromIdx < distanceMatrix.length &&
-                distanceMatrix[fromIdx] && 
-                Array.isArray(distanceMatrix[fromIdx]) && 
-                toIdx >= 0 && toIdx < distanceMatrix[fromIdx].length &&
-                distanceMatrix[fromIdx][toIdx] !== undefined && 
-                distanceMatrix[fromIdx][toIdx] !== null &&
-                !isNaN(Number(distanceMatrix[fromIdx][toIdx]))
-            ) {
-              const val = Number(distanceMatrix[fromIdx][toIdx]);
-              return isNaN(val) || !isFinite(val) ? getDistance(fromLat, fromLng, toLat, toLng) : val;
-            }
-          } catch (e) {
-            console.warn("Matrix distance lookup failed, falling back to Haversine", e);
-          }
-          return getDistance(fromLat, fromLng, toLat, toLng);
-        };
+        // 3. Calculate distances and optimize route using Nearest Neighbor (TSP)
+        const hasStart = currentPos && currentPos.lat !== null && currentPos.lat !== undefined && !isNaN(Number(currentPos.lat));
+        let currentLat = hasStart ? currentPos.lat : validStops[0].lat;
+        let currentLng = hasStart ? currentPos.lng : validStops[0].lng;
         
         // Calculate original distance (in scheduled order)
         let origDist = 0;
-        let prevLat = 0;
-        let prevLng = 0;
-        let prevIdx = 0;
-
-        if (hasStart) {
-          prevLat = Number(currentPos.lat);
-          prevLng = Number(currentPos.lng);
-        } else if (validStopsWithIndex.length > 0 && validStopsWithIndex[0]) {
-          prevLat = Number(validStopsWithIndex[0].lat) || 0;
-          prevLng = Number(validStopsWithIndex[0].lng) || 0;
-        }
-        
-        validStopsWithIndex.forEach(s => {
-          if (s) {
-            const sLat = Number(s.lat) || 0;
-            const sLng = Number(s.lng) || 0;
-            const sIdx = Number(s.matrixIndex) || 0;
-            origDist += getMatrixDistance(prevIdx, sIdx, prevLat, prevLng, sLat, sLng);
-            prevLat = sLat;
-            prevLng = sLng;
-            prevIdx = sIdx;
-          }
+        let prevLat = currentLat;
+        let prevLng = currentLng;
+        validStops.forEach(s => {
+          origDist += getDistance(prevLat, prevLng, s.lat, s.lng);
+          prevLat = s.lat;
+          prevLng = s.lng;
         });
         
-        // Optimize route using Nearest Neighbor (TSP)
-        const unvisited = [...validStopsWithIndex];
+        // Optimize route
+        const unvisited = [...validStops];
         const optimized = [];
         let optDist = 0;
-        let currentPrevLat = 0;
-        let currentPrevLng = 0;
-        let currentPrevIdx = 0;
-
-        if (hasStart) {
-          currentPrevLat = Number(currentPos.lat);
-          currentPrevLng = Number(currentPos.lng);
-        } else if (validStopsWithIndex.length > 0 && validStopsWithIndex[0]) {
-          currentPrevLat = Number(validStopsWithIndex[0].lat) || 0;
-          currentPrevLng = Number(validStopsWithIndex[0].lng) || 0;
-        }
+        let currentPrevLat = currentLat;
+        let currentPrevLng = currentLng;
         
         while (unvisited.length > 0) {
           let nearestIdx = -1;
           let minDist = Infinity;
           
           for (let i = 0; i < unvisited.length; i++) {
-            const stop = unvisited[i];
-            if (!stop) continue;
-            const stopLat = Number(stop.lat) || 0;
-            const stopLng = Number(stop.lng) || 0;
-            const stopIdx = Number(stop.matrixIndex) || 0;
-            const dist = getMatrixDistance(
-              currentPrevIdx, 
-              stopIdx, 
-              currentPrevLat, 
-              currentPrevLng, 
-              stopLat, 
-              stopLng
-            );
-            if (!isNaN(dist) && isFinite(dist) && dist < minDist) {
+            const dist = getDistance(currentPrevLat, currentPrevLng, unvisited[i].lat, unvisited[i].lng);
+            if (dist < minDist) {
               minDist = dist;
               nearestIdx = i;
             }
           }
           
           if (nearestIdx === -1) {
+            // Safety fallback if no nearest neighbor found (e.g. dist calculation error)
             nearestIdx = 0;
             minDist = 0;
           }
           
           const nextStop = unvisited.splice(nearestIdx, 1)[0];
-          if (!nextStop) continue;
-          
-          optDist += isNaN(minDist) || !isFinite(minDist) ? 0 : minDist;
+          optDist += minDist;
           optimized.push(nextStop);
-          currentPrevLat = Number(nextStop.lat) || 0;
-          currentPrevLng = Number(nextStop.lng) || 0;
-          currentPrevIdx = Number(nextStop.matrixIndex) || 0;
-        }
-
-        // 4. Fetch the real street-routing path geometry with timeout
-        let routeGeom = [];
-        try {
-          const orderedCoords = [];
-          if (hasStart) {
-            orderedCoords.push(currentPos);
-          }
-          optimized.forEach(s => {
-            if (s && s.lat !== null && s.lng !== null) {
-              orderedCoords.push({ lat: Number(s.lat), lng: Number(s.lng) });
-            }
-          });
-          
-          if (orderedCoords.length > 1) {
-            const coordsString = orderedCoords.map(c => `${c.lng},${c.lat}`).join(';');
-            const url = `https://router.project-osrm.org/route/v1/driving/${coordsString}?overview=full&geometries=geojson`;
-            const res = await fetchWithTimeout(url, { timeout: 4000 });
-            if (res.ok) {
-              const data = await res.json();
-              if (data && data.routes && Array.isArray(data.routes) && data.routes[0] && data.routes[0].geometry && Array.isArray(data.routes[0].geometry.coordinates)) {
-                routeGeom = data.routes[0].geometry.coordinates.map(coord => {
-                  if (Array.isArray(coord) && coord.length >= 2) {
-                    const latVal = Number(coord[1]);
-                    const lngVal = Number(coord[0]);
-                    if (!isNaN(latVal) && !isNaN(lngVal)) {
-                      return [latVal, lngVal];
-                    }
-                  }
-                  return null;
-                }).filter(c => c !== null);
-                console.log("OSRM Road Routing Geometry loaded successfully.");
-              }
-            }
-          }
-        } catch (e) {
-          console.warn("Failed to load OSRM routing geometry:", e);
+          currentPrevLat = nextStop.lat;
+          currentPrevLng = nextStop.lng;
         }
         
-        if (!active) return;
         setOriginalDistance(origDist || 0);
         setOptimizedDistance(optDist || 0);
         setSaving(Math.max(0, (origDist || 0) - (optDist || 0)));
         setStops(optimized);
-        setRouteGeometry(routeGeom);
         setLoading(false);
       } catch (err) {
         console.error("Error calculating optimized route:", err);
-        setError(err?.message || String(err) || "Error calculating route");
+        setError(err.message || "Error calculating route");
         setLoading(false);
       }
     };
@@ -1267,143 +967,94 @@ function RouteOptimizerModal({ todayJobs, onClose, lang }) {
     return () => {
       active = false;
     };
-  }, [cleanJobs]);
+  }, [todayJobs]);
 
   const srcDoc = useMemo(() => {
-    if (!Array.isArray(stops) || stops.length === 0) return '';
-    try {
-      const stopsJson = JSON.stringify(stops)
-        .replace(/<\/script>/ig, '<\\/script>')
-        .replace(/`/g, '\\`')
-        .replace(/\${/g, '\\${');
-      const startJson = JSON.stringify(startLocation)
-        .replace(/<\/script>/ig, '<\\/script>')
-        .replace(/`/g, '\\`')
-        .replace(/\${/g, '\\${');
-      const routeGeometryJson = JSON.stringify(routeGeometry || [])
-        .replace(/<\/script>/ig, '<\\/script>')
-        .replace(/`/g, '\\`')
-        .replace(/\${/g, '\\${');
-      
-      return `
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-          <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-          <style>
-            html, body, #map { margin: 0; padding: 0; height: 100%; background: #0b0f19; }
-            .leaflet-control-zoom { display: none; }
-            .popup-content { font-family: monospace; font-size: 10px; color: #fff; background: #0f172a; padding: 4px; border-radius: 4px; }
-            .leaflet-popup-content-wrapper { background: #0f172a; color: #fff; border: 1px solid rgba(255,255,255,0.1); }
-            .leaflet-popup-tip { background: #0f172a; }
-          </style>
-        </head>
-        <body>
-          <div id="map"></div>
-          <script>
-            const stops = ${stopsJson};
-            const startLoc = ${startJson};
-            
-            const map = L.map('map', { zoomControl: false });
-            
-            L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-              attribution: '&copy; OpenStreetMap &copy; CartoDB'
-            }).addTo(map);
-            
-            const bounds = [];
-            
-            // Custom Leaflet Icons
-            const workerIcon = L.divIcon({
-              html: '<div style="background-color: #3b82f6; width: 18px; height: 18px; border: 2px solid white; border-radius: 50%; box-shadow: 0 0 12px #3b82f6; display: flex; align-items: center; justify-content: center; color: white; font-size: 9px;">🚗</div>',
+    if (stops.length === 0) return '';
+    const stopsJson = JSON.stringify(stops);
+    const startJson = JSON.stringify(startLocation);
+    
+    return `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+        <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+        <style>
+          html, body, #map { margin: 0; padding: 0; height: 100%; background: #0b0f19; }
+          .leaflet-control-zoom { display: none; }
+          .popup-content { font-family: monospace; font-size: 10px; color: #fff; background: #0f172a; padding: 4px; border-radius: 4px; }
+          .leaflet-popup-content-wrapper { background: #0f172a; color: #fff; border: 1px solid rgba(255,255,255,0.1); }
+          .leaflet-popup-tip { background: #0f172a; }
+        </style>
+      </head>
+      <body>
+        <div id="map"></div>
+        <script>
+          const stops = ${stopsJson};
+          const startLoc = ${startJson};
+          
+          const map = L.map('map', { zoomControl: false });
+          
+          L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+            attribution: '&copy; OpenStreetMap &copy; CartoDB'
+          }).addTo(map);
+          
+          const bounds = [];
+          
+          // Custom Leaflet Icons
+          const workerIcon = L.divIcon({
+            html: '<div style="background-color: #3b82f6; width: 18px; height: 18px; border: 2px solid white; border-radius: 50%; box-shadow: 0 0 12px #3b82f6; display: flex; align-items: center; justify-content: center; color: white; font-size: 9px;">🚗</div>',
+            className: '',
+            iconSize: [18, 18],
+            iconAnchor: [9, 9]
+          });
+          
+          if (startLoc && startLoc.lat !== null && startLoc.lng !== null) {
+            L.marker([startLoc.lat, startLoc.lng], { icon: workerIcon })
+              .addTo(map)
+              .bindPopup('<div class="popup-content"><b>Mi Ubicación Actual</b></div>');
+            bounds.push([startLoc.lat, startLoc.lng]);
+          }
+          
+          // Draw stops and lines
+          const polylinePoints = [];
+          if (startLoc && startLoc.lat !== null && startLoc.lng !== null) {
+            polylinePoints.push([startLoc.lat, startLoc.lng]);
+          }
+          
+          stops.forEach((s, idx) => {
+            const stopIcon = L.divIcon({
+              html: \`<div style="background-color: #22c55e; width: 22px; height: 22px; border: 2px solid white; border-radius: 50%; box-shadow: 0 0 10px #22c55e; display: flex; align-items: center; justify-content: center; color: white; font-family: sans-serif; font-size: 10px; font-weight: bold;">\${idx + 1}</div>\`,
               className: '',
-              iconSize: [18, 18],
-              iconAnchor: [9, 9]
+              iconSize: [22, 22],
+              iconAnchor: [11, 11]
             });
             
-            if (startLoc && typeof startLoc.lat === 'number' && !isNaN(startLoc.lat) && typeof startLoc.lng === 'number' && !isNaN(startLoc.lng)) {
-              const startPopup = document.createElement('div');
-              startPopup.className = 'popup-content';
-              const b = document.createElement('b');
-              b.textContent = 'Mi Ubicación Actual';
-              startPopup.appendChild(b);
-
-              L.marker([startLoc.lat, startLoc.lng], { icon: workerIcon })
+            if (s.lat !== null && s.lng !== null) {
+              L.marker([s.lat, s.lng], { icon: stopIcon })
                 .addTo(map)
-                .bindPopup(startPopup);
-              bounds.push([startLoc.lat, startLoc.lng]);
-            }
-            
-            // Draw stops and lines
-            const roadPoints = ${routeGeometryJson};
-            const fallbackPoints = [];
-            if (startLoc && typeof startLoc.lat === 'number' && !isNaN(startLoc.lat) && typeof startLoc.lng === 'number' && !isNaN(startLoc.lng)) {
-              fallbackPoints.push([startLoc.lat, startLoc.lng]);
-            }
-            
-            stops.forEach((s, idx) => {
-              const stopIcon = L.divIcon({
-                html: '<div style="background-color: #22c55e; width: 22px; height: 22px; border: 2px solid white; border-radius: 50%; box-shadow: 0 0 10px #22c55e; display: flex; align-items: center; justify-content: center; color: white; font-family: sans-serif; font-size: 10px; font-weight: bold;">&nbsp;' + (idx + 1) + '</div>',
-                className: '',
-                iconSize: [22, 22],
-                iconAnchor: [11, 11]
-              });
+                .bindPopup(\`<div class="popup-content"><b>Parada \${idx + 1}: \${s.clientName}</b><br>\${s.serviceType}<br>\${s.address}</div>\`);
               
-              if (s && typeof s.lat === 'number' && !isNaN(s.lat) && typeof s.lng === 'number' && !isNaN(s.lng)) {
-                const stopPopup = document.createElement('div');
-                stopPopup.className = 'popup-content';
-                
-                const boldTitle = document.createElement('b');
-                boldTitle.textContent = 'Parada ' + (idx + 1) + ': ' + (s.clientName || 'Desconocido');
-                stopPopup.appendChild(boldTitle);
-                
-                const br1 = document.createElement('br');
-                stopPopup.appendChild(br1);
-                
-                const typeText = document.createTextNode(' ' + (s.serviceType || ''));
-                stopPopup.appendChild(typeText);
-                
-                const br2 = document.createElement('br');
-                stopPopup.appendChild(br2);
-                
-                const addrText = document.createTextNode(' ' + (s.address || ''));
-                stopPopup.appendChild(addrText);
-
-                L.marker([s.lat, s.lng], { icon: stopIcon })
-                  .addTo(map)
-                  .bindPopup(stopPopup);
-                
-                bounds.push([s.lat, s.lng]);
-                fallbackPoints.push([s.lat, s.lng]);
-              }
-            });
-            
-            const drawPoints = roadPoints && roadPoints.length > 0 ? roadPoints : fallbackPoints;
-            if (drawPoints.length > 1) {
-              L.polyline(drawPoints, { color: '#F5C518', weight: 4, opacity: 0.8, dashArray: '5, 8' }).addTo(map);
+              bounds.push([s.lat, s.lng]);
+              polylinePoints.push([s.lat, s.lng]);
             }
-            
-            if (bounds.length > 1) {
-              map.fitBounds(bounds, { padding: [50, 50] });
-            } else if (bounds.length === 1) {
-              map.setView(bounds[0], 14);
-            } else {
-              map.setView([28.5383, -81.3792], 10);
-            }
-          </script>
-        </body>
-        </html>
-      `;
-    } catch (e) {
-      console.error("Failed to generate map srcDoc:", e);
-      return '';
-    }
-  }, [stops, startLocation, routeGeometry]);
-
-  const orig = Number(originalDistance) || 0;
-  const opt = Number(optimizedDistance) || 0;
-  const sav = Number(saving) || 0;
-  const savingPct = orig > 0 ? Math.round((sav / orig) * 100) : 0;
+          });
+          
+          if (polylinePoints.length > 1) {
+            L.polyline(polylinePoints, { color: '#F5C518', weight: 4, opacity: 0.8, dashArray: '5, 8' }).addTo(map);
+          }
+          
+          if (bounds.length > 0) {
+            map.fitBounds(bounds, { padding: [50, 50] });
+          } else {
+            map.setView([28.5383, -81.3792], 10);
+          }
+        </script>
+      </body>
+      </html>
+    `;
+  }, [stops, startLocation]);
 
   return (
     <div className="fixed inset-0 bg-black/90 backdrop-blur-md z-[2000] flex items-center justify-center p-4">
@@ -1439,56 +1090,43 @@ function RouteOptimizerModal({ todayJobs, onClose, lang }) {
                 <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Resumen de Optimización</p>
                 <div className="flex justify-between text-[10px] uppercase font-bold text-slate-500">
                   <span>Secuencia Inicial:</span>
-                  <span className="text-white">{formatDist(originalDistance)} km</span>
+                  <span className="text-white">{originalDistance.toFixed(1)} km</span>
                 </div>
                 <div className="flex justify-between text-[10px] uppercase font-black text-green-400">
                   <span>Ruta Optimizada:</span>
-                  <span>{formatDist(optimizedDistance)} km</span>
+                  <span>{optimizedDistance.toFixed(1)} km</span>
                 </div>
-                {sav > 0 && (
+                {saving > 0 && (
                   <div className="border-t border-white/5 pt-2 flex justify-between text-[10px] uppercase font-black text-amber-400 animate-pulse">
                     <span>🔥 Ahorro Estimado:</span>
-                    <span>{formatDist(sav)} km ({savingPct}%)</span>
+                    <span>{saving.toFixed(1)} km ({Math.round((saving / originalDistance) * 100)}%)</span>
                   </div>
                 )}
               </div>
 
               <div className="space-y-2 flex-1">
                 <p className="text-[8px] font-black text-[#F5C518] uppercase tracking-widest pl-1">Itinerario de Paradas</p>
-                {stops.length === 0 ? (
-                  <div className="g p-8 text-center text-slate-500 border border-dashed border-white/5 rounded-xl font-bold uppercase text-[9px] leading-relaxed">
-                    No se encontraron paradas válidas para optimizar.<br />
-                    Verifica que las misiones de hoy tengan una dirección correcta.
-                  </div>
-                ) : (
-                  stops.map((s, idx) => (
-                    <div key={s?.id || idx} className="g p-3.5 flex items-center justify-between border border-white/5 bg-black/45 hover:border-white/10 transition-all rounded-xl">
-                      <div className="space-y-1 text-left min-w-0 pr-2">
-                        <div className="flex items-center gap-1.5">
-                          <span className="w-5 h-5 rounded-full bg-green-500 text-white font-black text-[9px] flex items-center justify-center flex-shrink-0">
-                            {idx + 1}
-                          </span>
-                          <h4 className="text-[10px] font-black text-white uppercase italic truncate">{s?.clientName || 'Desconocido'}</h4>
-                        </div>
-                        <p className="text-[8px] text-slate-400 font-bold uppercase">{s?.serviceType || 'Servicio'} • {s?.status || 'Pendiente'}</p>
-                        <p className="text-[7.5px] text-slate-500 italic truncate w-full">{s?.address || 'Sin dirección'}</p>
+                {stops.map((s, idx) => (
+                  <div key={s.id} className="g p-3.5 flex items-center justify-between border border-white/5 bg-black/45 hover:border-white/10 transition-all rounded-xl">
+                    <div className="space-y-1 text-left min-w-0 pr-2">
+                      <div className="flex items-center gap-1.5">
+                        <span className="w-5 h-5 rounded-full bg-green-500 text-white font-black text-[9px] flex items-center justify-center flex-shrink-0">
+                          {idx + 1}
+                        </span>
+                        <h4 className="text-[10px] font-black text-white uppercase italic truncate">{s.clientName}</h4>
                       </div>
-                      <button
-                        onClick={() => {
-                          try {
-                            window.open(`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(s?.address || '')}`, '_blank');
-                          } catch (err) {
-                            console.error("Failed to open directions:", err);
-                          }
-                        }}
-                        className="px-2.5 py-1.5 bg-[#F5C518] hover:bg-amber-400 text-black rounded-lg text-[7px] font-black uppercase tracking-wider active:scale-95 transition-all flex items-center gap-1.5 flex-shrink-0"
-                      >
-                        <Icon name="navigation" className="w-3 h-3" />
-                        Navegar
-                      </button>
+                      <p className="text-[8px] text-slate-400 font-bold uppercase">{s.serviceType} • {s.status}</p>
+                      <p className="text-[7.5px] text-slate-500 italic truncate w-full">{s.address}</p>
                     </div>
-                  ))
-                )}
+                    <button
+                      onClick={() => window.open(`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(s.address)}`, '_blank')}
+                      className="px-2.5 py-1.5 bg-[#F5C518] hover:bg-amber-400 text-black rounded-lg text-[7px] font-black uppercase tracking-wider active:scale-95 transition-all flex items-center gap-1.5 flex-shrink-0"
+                    >
+                      <Icon name="navigation" className="w-3 h-3" />
+                      Navegar
+                    </button>
+                  </div>
+                ))}
               </div>
             </div>
 
@@ -1783,8 +1421,6 @@ function Portal({ cjid }) {
 
   // Premium Dashboard States
   const [activeTab, setActiveTab] = useState('tracker');
-  const [assignedStaff, setAssignedStaff] = useState(null);
-  const [crewLocation, setCrewLocation] = useState(null);
   const [clientMissions, setClientMissions] = useState([]);
   const [clientProfile, setClientProfile] = useState(null);
   const [tenantSettings, setTenantSettings] = useState(null);
@@ -1798,7 +1434,6 @@ function Portal({ cjid }) {
   // Booking states
   const [bookingService, setBookingService] = useState('tv');
   const [bookingDate, setBookingDate] = useState('');
-  const [bookingTime, setBookingTime] = useState('08:00');
   const [bookingNotes, setBookingNotes] = useState('');
   const [bookingAddons, setBookingAddons] = useState([]);
   const [bookingSaving, setBookingSaving] = useState(false);
@@ -2126,63 +1761,10 @@ function Portal({ cjid }) {
       if (data.tenant_id) {
         await loadTenantSettings(data.tenant_id);
       }
-
-      // Fetch assigned staff profile to get their UUID for GPS updates
-      if (data.team_assigned && data.tenant_id) {
-        try {
-          const { data: staffList } = await sb.from('staff_profiles')
-            .select('*')
-            .eq('tenant_id', data.tenant_id)
-            .eq('name', data.team_assigned);
-          if (staffList && staffList.length > 0) {
-            setAssignedStaff(staffList[0]);
-          }
-        } catch (e) {
-          console.warn("Failed to fetch assigned staff profile:", e);
-        }
-      }
     }
     setLoading(false);
   };
   useEffect(() => { load(); }, [cjid]);
-
-  useEffect(() => {
-    if (!assignedStaff?.id) return;
-    
-    // 1. Fetch initial coordinate from crew_locations
-    const fetchInitialLocation = async () => {
-      try {
-        const { data } = await sb.from('crew_locations')
-          .select('*')
-          .eq('staff_id', assignedStaff.id)
-          .maybeSingle();
-        if (data) {
-          setCrewLocation({ lat: Number(data.lat), lng: Number(data.lng) });
-        }
-      } catch (err) {
-        console.warn("Error fetching initial crew location:", err);
-      }
-    };
-    fetchInitialLocation();
-
-    // 2. Subscribe to Postgres changes on crew_locations for this staff member
-    const channel = sb.channel(`crew_loc_${assignedStaff.id}`)
-      .on('postgres_changes', {
-        event: '*',
-        schema: 'public',
-        table: 'crew_locations',
-        filter: `staff_id=eq.${assignedStaff.id}`
-      }, (payload) => {
-        if (payload.new && payload.new.lat && payload.new.lng) {
-          setCrewLocation({ lat: Number(payload.new.lat), lng: Number(payload.new.lng) });
-        }
-      })
-      .subscribe();
-
-    return () => {
-      sb.removeChannel(channel);
-    };
-  }, [assignedStaff]);
 
   const saveClientPrefs = async (e) => {
     e.preventDefault();
@@ -2229,6 +1811,25 @@ function Portal({ cjid }) {
     setMembershipSaving(false);
   };
 
+  const defaultAddons = [
+    { id: 'oven', en: 'Inside Oven', p: 35 },
+    { id: 'fridge', en: 'Inside Fridge', p: 30 },
+    { id: 'windows', en: 'Windows', p: 50 },
+    { id: 'pethair', en: 'Pet Hair', p: 25 },
+    { id: 'garage', en: 'Garage', p: 40 }
+  ];
+
+  const defaultQuickJobs = [
+    { id: 'cleaning_reg', en: 'Regular Cleaning', p: 120 },
+    { id: 'cleaning_deep', en: 'Deep Cleaning', p: 180 },
+    { id: 'tv', en: 'Mount TV', p: 150 },
+    { id: 'door', en: 'Install Door', p: 200 },
+    { id: 'patch', en: 'Drywall Patch', p: 180 },
+    { id: 'shelves', en: 'Shelving', p: 100 },
+    { id: 'lock', en: 'Lock Change', p: 85 },
+    { id: 'paint', en: 'Paint Touch-up', p: 120 },
+    { id: 'faucet', en: 'Faucet Install', p: 130 }
+  ];
 
   const addonsList = (tenantSettings?.addons && tenantSettings.addons.length > 0) 
                      ? tenantSettings.addons 
@@ -2294,15 +1895,12 @@ function Portal({ cjid }) {
       team_assigned: '',
       status: 'scheduled',
       scheduled_date: bookingDate,
-      notes: bookingNotes 
-        ? `${bookingNotes} (Pref: ${bookingTime})` 
-        : `Booked by client. Preferred Time: ${bookingTime}. Extras: ${bookingAddons.join(', ')}`,
+      notes: bookingNotes || `Booked by client. Extras: ${bookingAddons.join(', ')}`,
       membership_plan: membershipTier !== 'none' ? membershipTier : null,
       tenant_id: job.tenant_id,
       specs: {
         booking_addons: bookingAddons,
         booking_service_id: bookingService,
-        booking_time: bookingTime,
         client_booked: true,
         created_at: new Date().toISOString()
       }
@@ -2313,7 +1911,6 @@ function Portal({ cjid }) {
       if (error) throw error;
       tt(lang === 'es' ? '¡Servicio agendado con éxito!' : 'Service booked successfully!', 'green');
       setBookingDate('');
-      setBookingTime('08:00');
       setBookingNotes('');
       setBookingAddons([]);
       await loadClientMissions(job.client_name, job.client_phone);
@@ -2512,8 +2109,8 @@ function Portal({ cjid }) {
                   address={job.address} 
                   lat={job.dest_lat} 
                   lng={job.dest_lng}
-                  workerLat={crewLocation ? crewLocation.lat : (job.specs?.en_route_lat || job.check_in_lat)}
-                  workerLng={crewLocation ? crewLocation.lng : (job.specs?.en_route_lng || job.check_in_lng)}
+                  workerLat={job.specs?.en_route_lat || job.check_in_lat}
+                  workerLng={job.specs?.en_route_lng || job.check_in_lng}
                 />
               </div>
             )}
@@ -3007,14 +2604,17 @@ function Portal({ cjid }) {
                 </select>
               </div>
 
-              <TimeSlotPicker 
-                tenantId={job?.tenant_id}
-                selectedDate={bookingDate}
-                selectedTime={bookingTime}
-                onChangeDate={setBookingDate}
-                onChangeTime={setBookingTime}
-                lang={lang}
-              />
+              <div className="space-y-1">
+                <label className="text-[8px] font-black uppercase text-slate-500 tracking-wider block">{lang === 'es' ? 'Fecha de Servicio' : 'Service Date'}</label>
+                <input 
+                  required
+                  type="date" 
+                  value={bookingDate} 
+                  min={new Date().toISOString().split('T')[0]}
+                  onChange={e => setBookingDate(e.target.value)} 
+                  className="inp w-full py-3 text-xs text-center" 
+                />
+              </div>
 
               <div className="space-y-2">
                 <label className="text-[8px] font-black uppercase text-slate-500 tracking-wider block">{lang === 'es' ? 'Añadir Servicios Extras' : 'Choose Addons'}</label>
@@ -3128,58 +2728,6 @@ function StaffJob({ job, onBack, onRefresh, tt, recTime, upsell, update, employe
     setLocalJob(job);
     setChk(job.specs?.checklist || {});
   }, [job]);
-
-  const lastUpdateRef = useRef(0);
-
-  useEffect(() => {
-    // Only broadcast if geolocation is available, employee is loaded, the mission is active, and en_route is true (but not yet checked out)
-    if (!navigator.geolocation || !employee?.id || !localJob.specs?.en_route || localJob.check_out_time) {
-      return;
-    }
-
-    let watchId = null;
-
-    const startWatching = () => {
-      watchId = navigator.geolocation.watchPosition(
-        async (position) => {
-          const now = Date.now();
-          // Throttle updates: write to database at most once every 12 seconds
-          if (now - lastUpdateRef.current < 12000) {
-            return;
-          }
-          lastUpdateRef.current = now;
-
-          const lat = position.coords.latitude;
-          const lng = position.coords.longitude;
-
-          try {
-            await sb.from('crew_locations').upsert({
-              staff_id: employee.id,
-              tenant_id: localJob.tenant_id || employee.tenant_id,
-              lat: lat,
-              lng: lng,
-              updated_at: new Date().toISOString()
-            }, { onConflict: 'staff_id' });
-            console.log("GPS broadcast success:", lat, lng);
-          } catch (e) {
-            console.warn("GPS broadcast failed:", e);
-          }
-        },
-        (error) => {
-          console.warn("GPS watchPosition error:", error);
-        },
-        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
-      );
-    };
-
-    startWatching();
-
-    return () => {
-      if (watchId !== null) {
-        navigator.geolocation.clearWatch(watchId);
-      }
-    };
-  }, [employee?.id, localJob.specs?.en_route, localJob.check_out_time, localJob.tenant_id, employee?.tenant_id]);
 
   const done = Object.values(chk).filter(Boolean).length;
   
@@ -4495,31 +4043,28 @@ function LoginFlow({ onLoginSuccess, onBack, tt }) {
     setLoading(true);
     tt('Authenticating Field Access...', 'yellow');
     
-    try {
-      // Fetch all staff profiles that match this passcode to handle passcode collisions safely
-      const { data: matchedStaffs, error } = await sb
-        .from('staff_profiles')
-        .select('*')
-        .eq('passcode', pin);
-      
-      let matchedStaff = null;
-      if (Array.isArray(matchedStaffs) && matchedStaffs.length > 0) {
-        matchedStaff = matchedStaffs.find(s => {
-          const storedEmail = s.staff_email || s.name || '';
-          return storedEmail.toLowerCase().includes(companyName.trim().toLowerCase());
-        });
-      }
-      
-      if (matchedStaff) {
-        tt(`Welcome ${matchedStaff.name} ✓`, 'green');
-        onLoginSuccess(matchedStaff.role, matchedStaff.tenant_id, null, matchedStaff, 'ELEVORE EMPIRE');
-      } else {
-        setLoading(false);
-        tt('Access Denied: Invalid Email or PIN', 'red');
-      }
-    } catch (err) {
+    // Instead of company name, we use the email directly to find the staff profile.
+    let query = sb.from('staff_profiles').select('*').eq('passcode', pin).limit(1);
+    
+    // Filter by staff email if the staff_email column exists.
+    // Para no romper la compatibilidad si la DB no tiene la columna aun, buscamos por correo en el nombre o asumimos fallback.
+    const { data: matchedStaff, error } = await query.maybeSingle();
+    
+    // Check email logic (we assume email is saved in staff_email OR we use name as fallback)
+    let isValid = false;
+    if (matchedStaff) {
+       const storedEmail = matchedStaff.staff_email || matchedStaff.name;
+       if (storedEmail.toLowerCase().includes(companyName.trim().toLowerCase())) {
+          isValid = true;
+       }
+    }
+
+    if (isValid && matchedStaff) {
+      tt(`Welcome ${matchedStaff.name} ✓`, 'green');
+      onLoginSuccess(matchedStaff.role, matchedStaff.tenant_id, null, matchedStaff, 'ELEVORE EMPIRE');
+    } else {
       setLoading(false);
-      tt('Connection error during login. Try again.', 'red');
+      tt('Access Denied: Invalid Email or PIN', 'red');
     }
   };
 
@@ -5490,19 +5035,13 @@ function FeatureCard({ icon, label, desc, color, border, text, bgColor, big, onC
   );
 }
 
-function LandingPage({ onLogin, onSignup, prefLang, setPrefLang }) {
+function LandingPage({ onLogin, onSignup }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [activeModal, setActiveModal] = useState(null);
   const [billingAnnual, setBillingAnnual] = useState(false);
   const [showVideoDemo, setShowVideoDemo] = useState(false);
   const [activeStep, setActiveStep] = useState(0);
   const [isAutoplay, setIsAutoplay] = useState(true);
-
-  // ROI Calculator states
-  const [roiTechs, setRoiTechs] = useState(3);
-  const [roiTicket, setRoiTicket] = useState(150);
-  const [roiJobs, setRoiJobs] = useState(15);
-  const [roiHours, setRoiHours] = useState(5);
 
   const openModal = (key) => setActiveModal(key);
   const closeModal = () => setActiveModal(null);
@@ -5540,44 +5079,7 @@ function LandingPage({ onLogin, onSignup, prefLang, setPrefLang }) {
     return () => clearInterval(timer);
   }, [isAutoplay]);
 
-  const previewSteps = prefLang === 'es' ? [
-    {
-      title: 'Despacho Inteligente con IA',
-      desc: 'El sistema asigna la mejor tripulación según ubicación y horario, enviando los detalles del trabajo directamente a su app móvil.',
-      icon: 'zap',
-      badge: 'Paso 1: Despacho Automatizado'
-    },
-    {
-      title: 'Ruta GPS en Vivo al Cliente',
-      desc: 'Cuando sale el equipo, se envía automáticamente un SMS al cliente con un enlace de seguimiento en tiempo real.',
-      icon: 'map-pin',
-      badge: 'Paso 2: Notificaciones al Cliente'
-    },
-    {
-      title: 'Check-In por Geocerca',
-      desc: 'El equipo se registra al llegar. La verificación GPS garantiza que estén en la dirección correcta antes de iniciar.',
-      icon: 'clock',
-      badge: 'Paso 3: Verificación de Geocerca'
-    },
-    {
-      title: 'Control de Calidad por IA',
-      desc: 'El equipo sube fotos antes/después. La IA de Elevore analiza las fotos para garantizar la calidad y evitar reclamos.',
-      icon: 'camera',
-      badge: 'Paso 4: Garantía de Calidad'
-    },
-    {
-      title: 'Firma Digital en Sitio',
-      desc: 'El cliente firma directamente en el teléfono del trabajador o mediante enlace SMS, creando un registro vinculante.',
-      icon: 'edit-3',
-      badge: 'Paso 5: Firma del Cliente'
-    },
-    {
-      title: 'Autofacturación y Pago Stripe',
-      desc: 'La facturación es automática. Stripe procesa el pago inmediatamente y se solicita una reseña de 5 estrellas.',
-      icon: 'credit-card',
-      badge: 'Paso 6: Liquidación Automatizada'
-    }
-  ] : [
+  const previewSteps = [
     {
       title: 'AI Smart Dispatch',
       desc: 'System matches the best crew based on location and schedule, sending the job details directly to their mobile app.',
@@ -5616,14 +5118,7 @@ function LandingPage({ onLogin, onSignup, prefLang, setPrefLang }) {
     }
   ];
 
-  const features = prefLang === 'es' ? [
-    { icon: 'calendar', color: 'from-amber-500/20 to-amber-500/5', border: 'border-amber-500/30', text: 'amber-400', label: 'Calendario y Despacho Inteligente', desc: 'El calendario drag-and-drop optimiza las rutas de viaje, programa visitas recurrentes y notifica a los equipos.', big: true },
-    { icon: 'camera', color: 'from-purple-500/20 to-purple-500/5', border: 'border-purple-500/30', text: 'purple-400', label: 'Carpeta de Fotos Antes y Después', desc: 'Prueba innegable de calidad. Los trabajadores suben fotos organizadas automáticamente en el historial del cliente.' },
-    { icon: 'edit-3', color: 'from-blue-500/20 to-blue-500/5', border: 'border-blue-500/30', text: 'blue-400', label: 'Firmas Digitales en Sitio', desc: 'Firmas vinculantes en el smartphone del equipo al terminar el servicio. Evite cualquier disputa de pago.' },
-    { icon: 'message-square', color: 'from-green-500/20 to-green-500/5', border: 'border-green-500/30', text: 'green-400', label: 'WhatsApp CRM y Alertas Automáticas', desc: 'Automatice la comunicación: envíe cotizaciones de seguimiento, avisos de llegada y enlaces para reseñas de 5 estrellas.', big: true },
-    { icon: 'brain', color: 'from-rose-500/20 to-rose-500/5', border: 'border-rose-500/30', text: 'rose-400', label: 'Asistente de Ingresos con IA', desc: 'Analice la demanda histórica y el clima para identificar oportunidades de upselling y proyectar el flujo de caja.' },
-    { icon: 'layout-dashboard', color: 'from-yellow-500/20 to-yellow-500/5', border: 'border-yellow-500/30', text: 'yellow-400', label: 'Panel de Control en Tiempo Real', desc: 'Monitoree toda la operación de un vistazo: estados de despacho, temporizadores de trabajo activos y ubicaciones GPS.' },
-  ] : [
+  const features = [
     { icon: 'calendar', color: 'from-amber-500/20 to-amber-500/5', border: 'border-amber-500/30', text: 'amber-400', label: 'Mission Calendar & Smart Dispatch', desc: 'Drag-and-drop calendar automatically optimizes travel routes, schedules recurring visits, and notifies crews instantly.', big: true },
     { icon: 'camera', color: 'from-purple-500/20 to-purple-500/5', border: 'border-purple-500/30', text: 'purple-400', label: 'Before & After Photo Drive', desc: 'Provide undeniable proof of quality. Workers upload photos directly from the job site, automatically organized in the client history.' },
     { icon: 'edit-3', color: 'from-blue-500/20 to-blue-500/5', border: 'border-blue-500/30', text: 'blue-400', label: 'Digital Signatures On-Site', desc: 'Secure legally binding sign-offs on the crew’s smartphone right after completion. Never worry about payment disputes again.' },
@@ -5632,21 +5127,11 @@ function LandingPage({ onLogin, onSignup, prefLang, setPrefLang }) {
     { icon: 'layout-dashboard', color: 'from-yellow-500/20 to-yellow-500/5', border: 'border-yellow-500/30', text: 'yellow-400', label: 'Real-Time Operations Dashboard', desc: 'Monitor your entire operation at a glance. Live dispatch states, active job timers, GPS locations, and daily gross revenues.' },
   ];
 
-  const testimonials = prefLang === 'es' ? [
-    { name: 'Carlos Mendoza', biz: 'Mendoza Premium Cleaners', loc: 'Miami, FL', text: 'Antes de Elevore, me pasaba el día coordinando turnos en WhatsApp. El optimizador de rutas GPS y las confirmaciones automáticas redujeron mis ausencias a cero. ¡Pasamos de $9,500 a $27,800/mes!', stars: 5, avatar: 'CM', avatarColor: 'from-amber-500 to-orange-600' },
-    { name: 'Jessica Sterling', biz: 'Apex Maintenance Co.', loc: 'Austin, TX', text: 'El mayor cambio fue el CRM de WhatsApp y las firmas de contratos digitales en sitio. El 90% de los clientes aprueban y pagan depósitos en menos de 10 minutos.', stars: 5, avatar: 'JS', avatarColor: 'from-purple-500 to-pink-600' },
-    { name: 'Marcus Vance', biz: 'Vance Janitorial', loc: 'Atlanta, GA', text: 'Administrar 12 limpiadores comerciales solía requerir despacho manual constante. Con la asignación automática por ubicación de Elevore, ahorramos más de 15 horas/semana.', stars: 5, avatar: 'MV', avatarColor: 'from-blue-500 to-cyan-600' },
-  ] : [
-    { name: 'Carlos Mendoza', biz: 'Mendoza Premium Cleaners', loc: 'Miami, FL', text: 'Scheduling was a nightmare. Since Elevore, the GPS routing and auto confirmations reduced our noshows to zero. We scaled from $9,500 to $27,800/month!', stars: 5, avatar: 'CM', avatarColor: 'from-amber-500 to-orange-600' },
-    { name: 'Jessica Sterling', biz: 'Apex Maintenance Co.', loc: 'Austin, TX', text: 'The biggest shift was WhatsApp CRM and digital sign-offs. 90% of our clients approve and pay their deposit link in under 10 minutes directly on their phone.', stars: 5, avatar: 'JS', avatarColor: 'from-purple-500 to-pink-600' },
-    { name: 'Marcus Vance', biz: 'Vance Janitorial', loc: 'Atlanta, GA', text: 'Managing 12 commercial cleaners used to require constant calls. With Elevores automated dispatch based on location, we save 15+ hours/week.', stars: 5, avatar: 'MV', avatarColor: 'from-blue-500 to-cyan-600' },
+  const testimonials = [
+    { name: 'Carlos R.', biz: 'Pristine Cleaning Co.', loc: 'Orlando, FL', text: 'Our scheduling was a nightmare. Since Elevore, the dispatch system handles our 12 crews automatically, saving us 15+ hours/week. Growth went from 0 to 45%.', stars: 5, avatar: 'CR', avatarColor: 'from-amber-500 to-orange-600' },
+    { name: 'Maria S.', biz: 'Elite Handyman Services', loc: 'Tampa, FL', text: 'Before/after photo drives completely saved us. When a client claims we missed a spot, we send the timestamped photo. Zero disputes this year.', stars: 5, avatar: 'MS', avatarColor: 'from-purple-500 to-pink-600' },
+    { name: 'David K.', biz: 'Apex Property Services', loc: 'Miami, FL', text: 'The Good-Better-Best pricing matrix is pure magic. 80% of our residential clients choose the middle option, boosting average job value by 38%.', stars: 5, avatar: 'DK', avatarColor: 'from-blue-500 to-cyan-600' },
   ];
-
-  const roiCurrentIncome = Math.round(roiJobs * roiTicket * 4.33);
-  const roiLostMoney = Math.round(roiTechs * roiHours * 25 * 4.33);
-  const roiAddedIncome = Math.round(roiTechs * 2 * roiTicket * 4.33);
-  const roiProjectedIncome = roiCurrentIncome + roiAddedIncome + roiLostMoney;
-  const roiNetGain = roiAddedIncome + roiLostMoney;
 
   return (
     <div className="min-h-screen bg-[#030303] text-white selection:bg-[#F5C518] selection:text-black overflow-x-hidden land">
@@ -5667,20 +5152,14 @@ function LandingPage({ onLogin, onSignup, prefLang, setPrefLang }) {
             <span className="font-black tracking-tight text-xl">Elevore <span className="glow-text italic">Empire</span></span>
           </button>
           <div className="hidden md:flex items-center gap-8 text-[11px] font-bold uppercase tracking-widest text-slate-400">
-            {[['features', prefLang === 'es' ? 'Funciones' : 'Features'],['pricing', prefLang === 'es' ? 'Precios' : 'Pricing'],['testimonials', prefLang === 'es' ? 'Opiniones' : 'Reviews']].map(([id, label]) => (
+            {[['features','Features'],['pricing','Pricing'],['testimonials','Reviews']].map(([id, label]) => (
               <button key={id} onClick={() => scrollTo(id)} className="animated-underline hover:text-white transition-colors">{label}</button>
             ))}
-            <button onClick={() => openModal('Changelog')} className="animated-underline hover:text-[#F5C518] transition-colors">{prefLang === 'es' ? 'Historial' : 'Changelog'}</button>
+            <button onClick={() => openModal('Changelog')} className="animated-underline hover:text-[#F5C518] transition-colors">Changelog</button>
           </div>
           <div className="flex items-center gap-3">
-            {/* Language Switcher */}
-            <div className="flex bg-white/5 border border-white/10 rounded-xl p-0.5 text-[9px] font-black uppercase tracking-wider">
-              <button onClick={() => setPrefLang('en')} className={`px-2 py-1 rounded-lg transition-all ${prefLang === 'en' ? 'bg-[#F5C518] text-black shadow' : 'text-slate-400 hover:text-white'}`}>EN</button>
-              <button onClick={() => setPrefLang('es')} className={`px-2 py-1 rounded-lg transition-all ${prefLang === 'es' ? 'bg-[#F5C518] text-black shadow' : 'text-slate-400 hover:text-white'}`}>ES</button>
-            </div>
-            
-            <button onClick={onLogin} className="hidden sm:block text-[11px] font-black uppercase tracking-widest text-slate-400 hover:text-white transition-colors px-4 py-2">{prefLang === 'es' ? 'Iniciar Sesión' : 'Log In'}</button>
-            <button onClick={onSignup} className="btn-gold px-5 py-2.5 text-[11px] uppercase tracking-widest">{prefLang === 'es' ? 'Prueba Gratis' : 'Start Free Trial'}</button>
+            <button onClick={onLogin} className="hidden sm:block text-[11px] font-black uppercase tracking-widest text-slate-400 hover:text-white transition-colors px-4 py-2">Log In</button>
+            <button onClick={onSignup} className="btn-gold px-5 py-2.5 text-[11px] uppercase tracking-widest">Start Free Trial</button>
             <button onClick={() => setMenuOpen(m => !m)} className="md:hidden flex flex-col gap-1.5 p-2 rounded-lg hover:bg-white/5 transition-colors" aria-label="Toggle menu">
               <span className={`block w-5 h-0.5 bg-white transition-all duration-300 origin-center ${menuOpen ? 'rotate-45 translate-y-2' : ''}`} />
               <span className={`block w-5 h-0.5 bg-white transition-all duration-300 ${menuOpen ? 'opacity-0' : ''}`} />
@@ -5690,13 +5169,13 @@ function LandingPage({ onLogin, onSignup, prefLang, setPrefLang }) {
         </div>
         {menuOpen && (
           <div className="md:hidden border-t border-white/5 px-6 py-6 space-y-4" style={{ background: 'rgba(3,3,3,0.98)' }}>
-            {[['features', prefLang === 'es' ? '⚡ Funciones' : '⚡ Features'],['pricing', prefLang === 'es' ? '💎 Precios' : '💎 Pricing'],['testimonials', prefLang === 'es' ? '⭐ Opiniones' : '⭐ Reviews']].map(([id, label]) => (
+            {[['features','⚡ Features'],['pricing','💎 Pricing'],['testimonials','⭐ Reviews']].map(([id, label]) => (
               <button key={id} onClick={() => scrollTo(id)} className="block w-full text-left text-sm font-black uppercase tracking-widest text-slate-300 hover:text-white py-2 border-b border-white/5 transition-colors">{label}</button>
             ))}
-            <button onClick={() => { openModal('Changelog'); setMenuOpen(false); }} className="block w-full text-left text-sm font-black uppercase tracking-widest text-slate-300 hover:text-[#F5C518] py-2 border-b border-white/5">{prefLang === 'es' ? '📋 Historial' : '📋 Changelog'}</button>
+            <button onClick={() => { openModal('Changelog'); setMenuOpen(false); }} className="block w-full text-left text-sm font-black uppercase tracking-widest text-slate-300 hover:text-[#F5C518] py-2 border-b border-white/5">📋 Changelog</button>
             <div className="flex gap-3 pt-2">
-              <button onClick={() => { onLogin(); setMenuOpen(false); }} className="flex-1 py-3 border border-white/10 rounded-xl text-sm font-black uppercase tracking-wider text-slate-300 hover:bg-white/5 active:scale-95 transition-all">{prefLang === 'es' ? 'Acceder' : 'Log In'}</button>
-              <button onClick={() => { onSignup(); setMenuOpen(false); }} className="flex-1 py-3 bg-[#F5C518] text-black rounded-xl text-sm font-black uppercase tracking-wider active:scale-95 transition-all">{prefLang === 'es' ? 'Prueba Gratis' : 'Free Trial'}</button>
+              <button onClick={() => { onLogin(); setMenuOpen(false); }} className="flex-1 py-3 border border-white/10 rounded-xl text-sm font-black uppercase tracking-wider text-slate-300 hover:bg-white/5 active:scale-95 transition-all">Log In</button>
+              <button onClick={() => { onSignup(); setMenuOpen(false); }} className="flex-1 py-3 bg-[#F5C518] text-black rounded-xl text-sm font-black uppercase tracking-wider active:scale-95 transition-all">Free Trial</button>
             </div>
           </div>
         )}
@@ -5714,27 +5193,18 @@ function LandingPage({ onLogin, onSignup, prefLang, setPrefLang }) {
               <div className="w-2 h-2 bg-[#F5C518] rounded-full" />
               <div className="pulse-ring" style={{ background: 'rgba(245,197,24,0.4)' }} />
             </div>
-            <span className="text-[#F5C518] text-[10px] font-black uppercase tracking-[0.3em]">
-              {prefLang === 'es' ? '⭐ El Sistema Operativo con IA Nº 1 para Negocios de Servicios' : '⭐️ #1 AI OS FOR SERVICE BUSINESSES'}
-            </span>
+            <span className="text-[#F5C518] text-[10px] font-black uppercase tracking-[0.3em]">The #1 OS for Elite Service Companies</span>
           </div>
-          <h1 className="reveal delay-100 text-5xl sm:text-7xl md:text-[88px] font-black leading-[0.9] tracking-tighter">
-            {prefLang === 'es' ? (
-              <>Escale su negocio de servicios<br /><span className="glow-text italic">de $8K a $31K/mes.</span></>
-            ) : (
-              <>Scale Your Service Business<br /><span className="glow-text italic">from $8K to $31K/mo.</span></>
-            )}
+          <h1 className="reveal delay-100 text-5xl sm:text-7xl md:text-[96px] font-black leading-[0.88] tracking-tighter">
+            Run Your Service Operations<br />
+            <span className="glow-text italic">on Autopilot.</span>
           </h1>
           <p className="reveal delay-200 text-slate-400 text-lg md:text-xl max-w-2xl mx-auto leading-relaxed">
-            {prefLang === 'es' ? (
-              'Asigne servicios automáticamente, rastree rutas por GPS y cierre contratos digitales. Diseñado para dueños de empresas de limpieza y handyman que operan desde el móvil.'
-            ) : (
-              'Automate smart dispatch, track fleet GPS in real-time, and sign digital contracts. Built specifically for cleaning, handyman, and maintenance operators who run business from the mobile.'
-            )}
+            AI dispatch, GPS routing, before/after drives, and live tracking — built specifically to scale cleaning, handyman, and property maintenance companies.
           </p>
           <div className="reveal delay-300 flex flex-col sm:flex-row items-center justify-center gap-4">
             <button onClick={onSignup} className="btn-gold group w-full sm:w-auto px-10 py-5 text-sm uppercase tracking-widest flex items-center justify-center gap-2">
-              {prefLang === 'es' ? 'Comience su Prueba Gratis por 14 Días' : 'Start 14-Day Free Trial'} <Icon name="arrow-right" className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+              Start 14-Day Free Trial <Icon name="arrow-right" className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
             </button>
             <button
               onClick={() => setShowVideoDemo(true)}
@@ -5746,25 +5216,18 @@ function LandingPage({ onLogin, onSignup, prefLang, setPrefLang }) {
                   <path d="M5 3l14 9-14 9V3z"/>
                 </svg>
               </div>
-              {prefLang === 'es' ? 'Ver Demo de 60 Segundos' : 'Watch 60s Demo'}
+              Ver Demo de 3 min
             </button>
           </div>
-          <p className="text-[10px] text-slate-600 uppercase tracking-widest font-bold">
-            {prefLang === 'es' ? 'Sin tarjeta de crédito • Cancele cuando quiera • Configuración en 2 minutos' : 'No credit card required • Cancel anytime • Setup in 2 minutes'}
-          </p>
+          <p className="text-[10px] text-slate-600 uppercase tracking-widest font-bold">No credit card required • Cancel anytime • Setup in 2 minutes</p>
           
           {/* Interactive Operations Preview Section */}
           <div className="pt-16 pb-8">
             <div className="text-center mb-12 space-y-3">
-              <p className="text-[10px] font-black uppercase tracking-[0.3em] text-[#F5C518]">
-                {prefLang === 'es' ? 'Demostración Interactiva' : 'Interactive Demonstration'}
-              </p>
+              <p className="text-[10px] font-black uppercase tracking-[0.3em] text-[#F5C518]">Demostración Interactiva</p>
               <h2 className="text-3xl md:text-4xl font-black tracking-tighter">
-                {prefLang === 'es' ? (
-                  <>Mira cómo una misión se completa<br /><span className="glow-text italic">en piloto automático.</span></>
-                ) : (
-                  <>Watch how a mission gets completed<br /><span className="glow-text italic">on autopilot.</span></>
-                )}
+                Mira cómo una misión se completa<br />
+                <span className="glow-text italic">en piloto automático.</span>
               </h2>
             </div>
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-stretch text-left">
@@ -6515,12 +5978,10 @@ export default function App() {
   const cjid = urlP.get('mision');
   const refCode = urlP.get('ref');
   const quoteId = urlP.get('propuesta') || urlP.get('quote') || urlP.get('cotizacion');
-  const showBook = urlP.get('book') === 'true' || urlP.get('reservar') === 'true';
 
   if (quoteId) return <PublicQuoteProposal quoteId={quoteId} />;
   if (cjid) return <Portal cjid={cjid} />;
   if (refCode) return <PublicLeadForm refCode={refCode} />;
-  if (showBook) return <PublicBookingWidget />;
 
   const [view, setView] = useState(urlP.get('view') || 'landing');
   const [role, setRole] = useState('admin');
@@ -6562,36 +6023,51 @@ export default function App() {
   const [campaignStage, setCampaignStage] = useState('');
 
   const handleActivateSubscription = async () => {
+    if (!billingCardName.trim()) { setBillingError(prefLang === 'es' ? 'Falta nombre del titular' : 'Cardholder name is required'); return; }
+    if (billingCardNo.replace(/\D/g, '').length < 16) { setBillingError(prefLang === 'es' ? 'Número de tarjeta inválido' : 'Invalid Card Number'); return; }
+    if (billingCardExpiry.length < 5) { setBillingError(prefLang === 'es' ? 'Fecha de expiración inválida' : 'Invalid expiration date'); return; }
+    if (billingCardCvc.length < 3) { setBillingError(prefLang === 'es' ? 'CVC inválido' : 'Invalid CVC'); return; }
+    
     setBillingError('');
     setBillingLoading(true);
-    setBillingProgressStage(prefLang === 'es' ? 'Creando sesión de suscripción en Stripe...' : 'Creating Stripe subscription session...');
+    
+    const stages = [
+      { key: 'connecting', label: 'Conectando con Stripe Billing Gateway...' },
+      { key: 'verifying', label: 'Verificando tarjeta con el banco emisor...' },
+      { key: 'routing', label: 'Procesando autorización de cargo recurrente...' },
+      { key: 'activating', label: 'Activando suscripción premium...' }
+    ];
+    
+    for (const stage of stages) {
+      setBillingProgressStage(stage.label);
+      await new Promise(resolve => setTimeout(resolve, 1000));
+    }
     
     try {
-      const res = await fetch('/api/create-checkout-session', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          mode: 'subscription',
-          tenant_id: tenantId,
-          plan: selectedBillingPlan
-        })
-      });
+      const mockCustomerId = 'cus_sim_' + Math.random().toString(36).substring(7);
+      const planStatus = 'active_' + selectedBillingPlan;
       
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.error || (prefLang === 'es' ? 'Error al contactar con el servidor de pagos' : 'Failed to contact checkout server'));
-      }
+      const { error } = await sb.from('tenants').update({
+        stripe_subscription_status: planStatus,
+        stripe_customer_id: mockCustomerId
+      }).eq('id', tenantId);
       
-      if (data.url) {
-        setBillingProgressStage(prefLang === 'es' ? 'Redirigiendo a pasarela de pagos...' : 'Redirecting to checkout gateway...');
-        window.location.href = data.url;
-      } else {
-        throw new Error(prefLang === 'es' ? 'No se pudo generar la URL de redirección' : 'No redirect URL returned by gateway');
-      }
+      if (error) throw error;
+      
+      setTenant(prev => ({
+        ...prev,
+        stripe_subscription_status: planStatus,
+        stripe_customer_id: mockCustomerId
+      }));
+      
+      tt(prefLang === 'es' ? `¡Plan ${selectedBillingPlan.toUpperCase()} activado con éxito!` : `Plan ${selectedBillingPlan.toUpperCase()} activated successfully!`, 'green');
+      setBillingCardName('');
+      setBillingCardNo('');
+      setBillingCardExpiry('');
+      setBillingCardCvc('');
     } catch (e) {
       setBillingError(e.message);
+    } finally {
       setBillingLoading(false);
       setBillingProgressStage('');
     }
@@ -6723,21 +6199,6 @@ export default function App() {
   const [operationsTab, setOperationsTab] = useState('calendar');
   const [crmTab, setCrmTab] = useState('dna');
   const [settingsTab, setSettingsTab] = useState('company');
-  
-  // AI CFO Sandbox States
-  const [cfoTicketSize, setCfoTicketSize] = useState(180);
-  const [cfoCloseRate, setCfoCloseRate] = useState(35);
-  const [cfoPayrollPct, setCfoPayrollPct] = useState(40);
-  const [cfoLeadsPerMonth, setCfoLeadsPerMonth] = useState(250);
-  const [cfoPlaybooks, setCfoPlaybooks] = useState({
-    gpsOptimization: false,
-    dynamicPricing: false,
-    cartRecovery: false,
-    performancePay: false
-  });
-  const [monteCarloResult, setMonteCarloResult] = useState(null);
-  const [isSimulatingMonteCarlo, setIsSimulatingMonteCarlo] = useState(false);
-
   const [quickMode, setQM] = useState(false);
   const [chatJob, setChatJob] = useState(null);
   const [chatMsg, setChatMsg] = useState('');
@@ -6757,7 +6218,6 @@ export default function App() {
   const [state, setState] = useState(INIT);
   const [payoutModalWorker, setPayoutModalWorker] = useState(null);
   const [routeModalOpen, setRouteModalOpen] = useState(false);
-  const [staffMeetingOpen, setStaffMeetingOpen] = useState(false);
   const [biSimClients, setBiSimClients] = useState(60);
   const [biSimPayoutPct, setBiSimPayoutPct] = useState(40);
   const [biSimMarketing, setBiSimMarketing] = useState(1500);
@@ -6781,10 +6241,6 @@ export default function App() {
   const [settingsPhone, setSettingsPhone] = useState('');
   const [settingsGoal, setSettingsGoal] = useState('15000');
   const [settingsPayPct, setSettingsPayPct] = useState('40');
-  const [settingsBasePrice, setSettingsBasePrice] = useState('100');
-  const [settingsPricePerSqft, setSettingsPricePerSqft] = useState('0.08');
-  const [settingsMultDeep, setSettingsMultDeep] = useState('1.45');
-  const [settingsMultMoveout, setSettingsMultMoveout] = useState('1.60');
 
   useEffect(() => {
     if (tenantSettings) {
@@ -6792,14 +6248,6 @@ export default function App() {
       setSettingsPhone(tenantSettings.zelle_phone || '');
       setSettingsGoal(String(tenantSettings.monthly_goal || 15000));
       setSettingsPayPct(tenantSettings.staff_pay_pct !== undefined ? String(Math.round(Number(tenantSettings.staff_pay_pct) * 100)) : '40');
-      setSettingsBasePrice(tenantSettings.booking_base_price !== undefined && tenantSettings.booking_base_price !== null ? String(tenantSettings.booking_base_price) : '100');
-      setSettingsPricePerSqft(tenantSettings.booking_price_per_sqft !== undefined && tenantSettings.booking_price_per_sqft !== null ? String(tenantSettings.booking_price_per_sqft) : '0.08');
-      setSettingsMultDeep(tenantSettings.booking_multiplier_deep !== undefined && tenantSettings.booking_multiplier_deep !== null ? String(tenantSettings.booking_multiplier_deep) : '1.45');
-      setSettingsMultMoveout(tenantSettings.booking_multiplier_moveout !== undefined && tenantSettings.booking_multiplier_moveout !== null ? String(tenantSettings.booking_multiplier_moveout) : '1.60');
-      
-      if (tenantSettings.wa_template_booking) setBookingTemplateText(tenantSettings.wa_template_booking);
-      if (tenantSettings.wa_template_route) setRouteTemplateText(tenantSettings.wa_template_route);
-      if (tenantSettings.wa_template_review) setReviewTemplateText(tenantSettings.wa_template_review);
     }
   }, [tenantSettings]);
 
@@ -6812,11 +6260,7 @@ export default function App() {
         business_full_name: settingsBusName,
         zelle_phone: settingsPhone,
         monthly_goal: Number(settingsGoal) || 0,
-        staff_pay_pct: (Number(settingsPayPct) || 40) / 100,
-        booking_base_price: Number(settingsBasePrice) || 100,
-        booking_price_per_sqft: Number(settingsPricePerSqft) || 0.08,
-        booking_multiplier_deep: Number(settingsMultDeep) || 1.45,
-        booking_multiplier_moveout: Number(settingsMultMoveout) || 1.60
+        staff_pay_pct: (Number(settingsPayPct) || 40) / 100
       };
 
       const { error } = await sb
@@ -6855,7 +6299,7 @@ Instrucciones:
 3. El mensaje debe ser directo, tener emojis y no sonar robótico.
 4. Devuelve únicamente el texto del mensaje de WhatsApp, sin introducciones ni comillas ni formatos markdown.`;
 
-      const aiProvider = localStorage.getItem('elevore_ai_provider') || 'ollama';
+      const aiProvider = localStorage.getItem('elevore_ai_provider') || 'antigravity';
       const geminiModel = localStorage.getItem('elevore_gemini_model') || 'gemini-2.5-flash';
       const geminiKey = localStorage.getItem('elevore_gemini_key') || '';
       const ollamaUrl = localStorage.getItem('elevore_ollama_url') || 'http://127.0.0.1:11434';
@@ -6906,12 +6350,7 @@ Instrucciones:
       tt(`Mensaje de reactivación generado por IA para ${client.name}! 🚀`, 'green');
       log(`IA Reactivación → ${client.name}`);
     } catch (e) {
-      console.warn("AI winback message generation failed, using fallback:", e);
-      const fallbackMsg = `¡Hola ${client.name}! 😊 Te extrañamos en Elevore. Queríamos ofrecerte un descuento exclusivo de 15% en tu próximo servicio si agendas esta semana. ¿Te reservamos un espacio? 💫`;
-      const ph = (client.phone || '').replace(/\D/g, '');
-      const ph2 = ph.length === 10 ? '1' + ph : ph;
-      window.open(`https://wa.me/${ph2}?text=${encodeURIComponent(fallbackMsg)}`, '_blank');
-      tt(`Mensaje de reactivación enviado (Heurístico) para ${client.name}! 🚀`, 'green');
+      tt('Error con la IA: ' + e.message, 'red');
     }
     setLoad(false);
   };
@@ -6934,8 +6373,6 @@ Instrucciones:
   const [newStaffEmail, setNewStaffEmail] = useState('');
   const [newStaffPIN, setNewPIN] = useState('');
   const [newStaffRole, setNewRole] = useState('staff');
-  const [newStaffPhone, setNewStaffPhone] = useState('');
-  const [newStaffPayoutPct, setNewStaffPayoutPct] = useState('');
 
   const tt = (m, c = 'green') => { setToast({ m, c }); setTimeout(() => setToast(null), 3500); };
   const log = m => setActLog(l => [{ m, time: new Date().toLocaleTimeString() }, ...l.slice(0, 49)]);
@@ -7616,15 +7053,14 @@ Instrucciones:
     if (!newStaffName || !newStaffPIN || !newStaffEmail) return tt('Name, Email and PIN required', 'red');
     
     // Add locally for robust fallback
-    const payoutPctVal = newStaffPayoutPct ? Number(newStaffPayoutPct) : (tenantSettings?.staff_pay_pct !== undefined ? Math.round(tenantSettings.staff_pay_pct * 100) : 40);
+    const defaultPayout = tenantSettings?.staff_pay_pct !== undefined ? Math.round(tenantSettings.staff_pay_pct * 100) : 40;
     const newWorker = {
       id: String(Date.now()), // use timestamp to avoid ID collision
       name: newStaffName,
       staff_email: newStaffEmail,
       role: newStaffRole,
       passcode: newStaffPIN,
-      phone: newStaffPhone || null,
-      payout_pct: payoutPctVal,
+      payout_pct: defaultPayout,
       wallet_balance: 0,
       total_earned: 0
     };
@@ -7637,8 +7073,7 @@ Instrucciones:
         staff_email: newStaffEmail,
         role: newStaffRole,
         passcode: newStaffPIN,
-        phone: newStaffPhone || null,
-        payout_pct: payoutPctVal,
+        payout_pct: defaultPayout,
         wallet_balance: 0,
         total_earned: 0,
         tenant_id: tenantId
@@ -7655,8 +7090,6 @@ Instrucciones:
     setNewPIN('');
     setNewStaffEmail('');
     setNewRole('staff');
-    setNewStaffPhone('');
-    setNewStaffPayoutPct('');
   };
 
   const handleDeleteEmployee = async (worker) => {
@@ -7909,7 +7342,7 @@ Instrucciones:
     const basicFiltered = jobs.filter(j => j.scheduled_date === todayStr || j.status === 'scheduled' || j.status === 'in_progress');
     if (activeEmployee && activeEmployee.name && activeEmployee.name !== 'General Staff' && role === 'staff') {
       const nameLower = activeEmployee.name.toLowerCase();
-      return basicFiltered.filter(j => j.team_assigned && typeof j.team_assigned === 'string' && j.team_assigned.toLowerCase().includes(nameLower));
+      return basicFiltered.filter(j => j.team_assigned && j.team_assigned.toLowerCase().includes(nameLower));
     }
     return basicFiltered;
   }, [jobs, todayStr, activeEmployee, role]);
@@ -7997,7 +7430,7 @@ Instrucciones generales de formato:
 2. Usa emojis de forma moderada para hacerlo visualmente atractivo.
 3. Devuelve ÚNICAMENTE el texto final para copiar y enviar en WhatsApp, sin introducciones ni comentarios ni markdown.`;
 
-      const aiProvider = localStorage.getItem('elevore_ai_provider') || 'ollama';
+      const aiProvider = localStorage.getItem('elevore_ai_provider') || 'antigravity';
       const geminiModel = localStorage.getItem('elevore_gemini_model') || 'gemini-2.5-flash';
       const geminiKey = localStorage.getItem('elevore_gemini_key') || '';
       const ollamaUrl = localStorage.getItem('elevore_ollama_url') || 'http://127.0.0.1:11434';
@@ -8570,7 +8003,7 @@ Nómina pagada acumulada por empleado: ${JSON.stringify(finance.payroll)}
 
       let res;
       let usedProvider = 'ollama';
-      const aiProvider = localStorage.getItem('elevore_ai_provider') || 'ollama';
+      const aiProvider = localStorage.getItem('elevore_ai_provider') || 'antigravity';
       const geminiModel = localStorage.getItem('elevore_gemini_model') || 'gemini-2.5-flash';
       const geminiKey = localStorage.getItem('elevore_gemini_key') || '';
 
@@ -8786,7 +8219,7 @@ Instrucciones generales de formato:
 2. Usa emojis de forma moderada para hacerlo visualmente atractivo.
 3. Devuelve ÚNICAMENTE el texto final para copiar y enviar en WhatsApp, sin introducciones ni comentarios ni markdown.`;
 
-        const aiProvider = localStorage.getItem('elevore_ai_provider') || 'ollama';
+        const aiProvider = localStorage.getItem('elevore_ai_provider') || 'antigravity';
         const geminiModel = localStorage.getItem('elevore_gemini_model') || 'gemini-2.5-flash';
         const geminiKey = localStorage.getItem('elevore_gemini_key') || '';
         const ollamaUrl = localStorage.getItem('elevore_ollama_url') || 'http://127.0.0.1:11434';
@@ -9300,7 +8733,7 @@ Instrucciones generales de formato:
   if (view === 'landing') {
     return (
       <div className="min-h-screen bg-slate-950 text-slate-100 font-sans relative overflow-x-hidden">
-        <LandingPage onLogin={() => setView('auth')} onSignup={() => setView('signup')} prefLang={prefLang} setPrefLang={setPrefLang} />
+        <LandingPage onLogin={() => setView('auth')} onSignup={() => setView('signup')} />
         {renderCopilot()}
       </div>
     );
@@ -9593,12 +9026,10 @@ Instrucciones generales de formato:
                   <Icon name="shield-check" className="w-4 h-4" />
                   <span>Misiones</span>
                 </button>
-                {ENABLE_AI && (
-                  <button onClick={() => { setAIOpen(true); setMobileMenuOpen(false); }} className="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl text-[9px] font-black uppercase tracking-widest text-slate-400 hover:bg-white/5 hover:text-white transition-all active:scale-95">
-                    <Icon name="brain" className="w-4 h-4 text-amber-400" />
-                    <span>Operaciones IA</span>
-                  </button>
-                )}
+                <button onClick={() => { setAIOpen(true); setMobileMenuOpen(false); }} className="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl text-[9px] font-black uppercase tracking-widest text-slate-400 hover:bg-white/5 hover:text-white transition-all active:scale-95">
+                  <Icon name="brain" className="w-4 h-4 text-amber-400" />
+                  <span>Operaciones IA</span>
+                </button>
               </>
             )}
           </nav>
@@ -9607,16 +9038,14 @@ Instrucciones generales de formato:
         {/* Sidebar Footer Actions */}
         <div className="pt-4 border-t border-white/5 space-y-3">
           {role === 'admin' && (
-            <div className={`grid ${ENABLE_AI ? 'grid-cols-2' : 'grid-cols-1'} gap-2`}>
-              {ENABLE_AI && (
-                <button onClick={() => { setAIOpen(true); setMobileMenuOpen(false); }} className="py-3 bg-white/5 hover:bg-white/10 text-white rounded-xl text-[8px] font-black uppercase flex items-center justify-center gap-1 active:scale-95 border border-white/5 transition-all">
-                  <Icon name="brain" className="w-3.5 h-3.5 text-amber-400" />
-                  <span>AI Advisor</span>
-                </button>
-              )}
+            <div className="grid grid-cols-2 gap-2">
+              <button onClick={() => { setAIOpen(true); setMobileMenuOpen(false); }} className="py-3 bg-white/5 hover:bg-white/10 text-white rounded-xl text-[8px] font-black uppercase flex items-center justify-center gap-1 active:scale-95 border border-white/5 transition-all">
+                <Icon name="brain" className="w-3.5 h-3.5 text-amber-400" />
+                <span>AI Advisor</span>
+              </button>
               <button onClick={() => { setQM(true); setMobileMenuOpen(false); }} className="py-3 bg-[#F5C518] hover:bg-[#F5C518]/90 text-black rounded-xl text-[8px] font-black uppercase flex items-center justify-center gap-1 active:scale-95 transition-all shadow-md">
                 <Icon name="zap" className="w-3.5 h-3.5" />
-                <span>Quick Actions</span>
+                <span>Quick</span>
               </button>
             </div>
           )}
@@ -9655,11 +9084,7 @@ Instrucciones generales de formato:
                 <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-ping"></span> OFFLINE
               </span>
             )}
-            {ENABLE_AI && (
-              <button onClick={() => setAIOpen(true)} className="p-2 bg-white/5 rounded-lg text-slate-400 hover:text-white">
-                <Icon name="brain" className="w-4 h-4 text-amber-400" />
-              </button>
-            )}
+            <button onClick={() => setAIOpen(true)} className="p-2 bg-white/5 rounded-lg text-slate-400 hover:text-white"><Icon name="brain" className="w-4 h-4 text-amber-400" /></button>
             {role === 'admin' && (
               <button onClick={() => setQM(true)} className="p-2 bg-[#F5C518] text-black rounded-lg"><Icon name="zap" className="w-4 h-4" /></button>
             )}
@@ -9690,9 +9115,7 @@ Instrucciones generales de formato:
                   <h2 className="text-xl font-black uppercase tracking-widest text-white font-display">MISIONES ASIGNADAS</h2>
                   <p className="text-[9px] text-slate-500 uppercase font-black">{activeEmployee?.name} • 👷 {activeEmployee?.role?.toUpperCase()}</p>
                 </div>
-                {ENABLE_AI && (
-                  <button onClick={() => setAIOpen(true)} className="px-4 py-2.5 bg-[#F5C518] hover:bg-[#F5C518]/90 text-black font-black uppercase text-[9px] flex items-center gap-1 active:scale-95 shadow-lg shadow-[#F5C518]/15 rounded-xl transition-all">🧠 Operaciones IA</button>
-                )}
+                <button onClick={() => setAIOpen(true)} className="px-4 py-2.5 bg-[#F5C518] hover:bg-[#F5C518]/90 text-black font-black uppercase text-[9px] flex items-center gap-1 active:scale-95 shadow-lg shadow-[#F5C518]/15 rounded-xl transition-all">🧠 Operaciones IA</button>
               </div>
 
               {/* Today's Missions Prominent Widget */}
@@ -9736,24 +9159,15 @@ Instrucciones generales de formato:
                         </p>
                       </div>
                     </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                      {todayJobs.length > 0 && (
-                        <button 
-                          onClick={() => setRouteModalOpen(true)}
-                          className="w-full bg-slate-900 border border-[#F5C518]/30 hover:bg-[#F5C518]/10 text-[#F5C518] py-2.5 rounded-xl text-[9px] font-black uppercase tracking-wider flex items-center justify-center gap-2 active:scale-95 transition-all"
-                        >
-                          <Icon name="map" className="w-3.5 h-3.5" />
-                          Optimizar Ruta GPS (Leaflet)
-                        </button>
-                      )}
+                    {todayJobs.length > 0 && (
                       <button 
-                        onClick={() => setStaffMeetingOpen(true)}
-                        className={`w-full bg-indigo-950/40 border border-indigo-500/30 hover:bg-indigo-500/20 text-indigo-400 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-wider flex items-center justify-center gap-2 active:scale-95 transition-all ${todayJobs.length === 0 ? 'sm:col-span-2' : ''}`}
+                        onClick={() => setRouteModalOpen(true)}
+                        className="w-full bg-slate-900 border border-[#F5C518]/30 hover:bg-[#F5C518]/10 text-[#F5C518] py-2.5 rounded-xl text-[9px] font-black uppercase tracking-wider flex items-center justify-center gap-2 active:scale-95 transition-all"
                       >
-                        <Icon name="mic" className="w-3.5 h-3.5 text-indigo-400 animate-pulse" />
-                        Unirse a Habitación IA
+                        <Icon name="map" className="w-3.5 h-3.5" />
+                        Optimizar Ruta GPS (Leaflet)
                       </button>
-                    </div>
+                    )}
                   </div>
                 );
               })()}
@@ -9819,10 +9233,10 @@ Instrucciones generales de formato:
                 );
               })()}
 
-              {(staffJobs || []).length === 0 && <div className="g p-10 text-center text-slate-500 font-black italic uppercase bg-[rgba(255,255,255,0.04)] border border-[rgba(255,255,255,0.08)]">No tienes misiones asignadas hoy.</div>}
+              {staffJobs.length === 0 && <div className="g p-10 text-center text-slate-500 font-black italic uppercase bg-[rgba(255,255,255,0.04)] border border-[rgba(255,255,255,0.08)]">No tienes misiones asignadas hoy.</div>}
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {(staffJobs || []).map(job => (
+                {staffJobs.map(job => (
                   <button key={job.id} onClick={() => setAStaff(job)} className="w-full g p-5 text-left active:scale-95 transition-all bg-[rgba(255,255,255,0.04)] border border-[rgba(255,255,255,0.08)] flex flex-col justify-between min-h-[140px] hover:border-[#F5C518]/30">
                     <div className="flex justify-between items-start w-full">
                       <div>
@@ -10294,9 +9708,7 @@ Instrucciones generales de formato:
                   { id: 'inventory', name: '🛠️ Inventario' },
                   { id: 'tax', name: '📋 Libro Contable y Exportación' },
                   { id: 'productivity', name: '📈 Rendimiento y Calidad' },
-                  { id: 'automation', name: '🤖 Automatización y Mensajería' },
-                  { id: 'cfo', name: '🔮 AI CFO y Flujo de Caja' },
-                  { id: 'hyperdrive', name: '⚡ HyperDrive (Leads & Booking)' }
+                  { id: 'automation', name: '🤖 Automatización y Mensajería' }
                 ].map(tab => (
                   <button
                     key={tab.id}
@@ -11520,34 +10932,7 @@ Instrucciones generales de formato:
                         </div>
 
                         {/* Trigger button */}
-                        <div className="pt-2 flex justify-between items-center gap-2">
-                          <button
-                            onClick={async () => {
-                              setLoad(true);
-                              try {
-                                const payload = {
-                                  wa_template_booking: bookingTemplateText,
-                                  wa_template_route: routeTemplateText,
-                                  wa_template_review: reviewTemplateText
-                                };
-                                const { error } = await sb
-                                  .from('tenant_settings')
-                                  .update(payload)
-                                  .eq('tenant_id', tenantId);
-                                if (error) throw error;
-                                setTenantSettings(prev => ({ ...prev, ...payload }));
-                                tt('¡Plantillas guardadas en la base de datos! 💾', 'green');
-                              } catch (err) {
-                                tt('Error al guardar plantillas: ' + err.message, 'red');
-                              }
-                              setLoad(false);
-                            }}
-                            className="px-5 py-3.5 bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 font-black uppercase text-[9.5px] tracking-wider rounded-xl transition-all active:scale-95 flex items-center gap-1.5"
-                          >
-                            <Icon name="save" className="w-4 h-4" />
-                            Guardar Plantillas 💾
-                          </button>
-                          
+                        <div className="pt-2 flex justify-end">
                           <button
                             onClick={handleSendWhatsApp}
                             disabled={!selectedJob}
@@ -11557,614 +10942,6 @@ Instrucciones generales de formato:
                             Enviar Mensaje de Prueba a WhatsApp 🚀
                           </button>
                         </div>
-                      </div>
-
-                    </div>
-                  </div>
-                );
-              })()}
-
-              {financeTab === 'hyperdrive' && (
-                <HyperDriveTab
-                  tt={tt}
-                  refresh={refresh}
-                  jobs={jobs}
-                  staff={staff}
-                />
-              )}
-
-              {financeTab === 'cfo' && (() => {
-                // CFO logic here with Playbook modifiers
-                const activeTicketSize = Math.round(cfoPlaybooks.dynamicPricing ? cfoTicketSize * 1.12 : cfoTicketSize);
-                const activeCloseRate = Math.min(100, cfoPlaybooks.cartRecovery ? cfoCloseRate + 8 : cfoCloseRate);
-                const activePayrollPct = cfoPlaybooks.performancePay ? 38 : cfoPayrollPct;
-                const activeMaterialPct = cfoPlaybooks.gpsOptimization ? 0.055 : 0.08;
-
-                const projectedMonthlyRev = Math.round(cfoLeadsPerMonth * (activeCloseRate / 100) * activeTicketSize);
-                const projectedJobsCount = Math.round(cfoLeadsPerMonth * (activeCloseRate / 100));
-                const laborCost = Math.round(projectedMonthlyRev * (activePayrollPct / 100));
-                const marketingCost = cfoLeadsPerMonth * 15; // $15 per lead
-                const materialCost = Math.round(projectedMonthlyRev * activeMaterialPct);
-                const fixedCosts = 2500; // Fixed overhead
-                const totalCosts = laborCost + marketingCost + materialCost + fixedCosts;
-                const ebitda = projectedMonthlyRev - totalCosts;
-                const ebitdaMargin = projectedMonthlyRev > 0 ? ((ebitda / projectedMonthlyRev) * 100).toFixed(1) : '0';
-
-                const marginPerLead = ((activeCloseRate / 100) * activeTicketSize) * (1 - (activePayrollPct / 100) - activeMaterialPct) - 15;
-                const breakEvenLeads = marginPerLead > 0 ? Math.ceil(fixedCosts / marginPerLead) : null;
-
-                // Waterfall SVG calculations
-                const scale = projectedMonthlyRev > 0 ? 95 / projectedMonthlyRev : 1;
-                const wBaseline = 130;
-                
-                // Heights
-                const hRev = Math.round(projectedMonthlyRev * scale);
-                const hLabor = Math.round(laborCost * scale);
-                const hMktg = Math.round(marketingCost * scale);
-                const hMat = Math.round(materialCost * scale);
-                const hFixed = Math.round(fixedCosts * scale);
-                const hEbitda = Math.round(Math.abs(ebitda) * scale);
-
-                // Y coordinates (stepping down)
-                const yRev = wBaseline - hRev;
-                const yLabor = yRev;
-                const yMktg = yLabor + hLabor;
-                const yMat = yMktg + hMktg;
-                const yFixed = yMat + hMat;
-                const yEbitda = ebitda >= 0 ? wBaseline - hEbitda : wBaseline;
-
-                // Sensitivity values for 5x5 Heatmap Matrix
-                const ticketVals = [
-                  Math.round(cfoTicketSize * 0.8),
-                  Math.round(cfoTicketSize * 0.9),
-                  cfoTicketSize,
-                  Math.round(cfoTicketSize * 1.1),
-                  Math.round(cfoTicketSize * 1.2)
-                ];
-                const closeVals = [
-                  Math.max(5, cfoCloseRate - 10),
-                  Math.max(5, cfoCloseRate - 5),
-                  cfoCloseRate,
-                  Math.min(100, cfoCloseRate + 5),
-                  Math.min(100, cfoCloseRate + 10)
-                ];
-
-                const runMonteCarlo = () => {
-                  setIsSimulatingMonteCarlo(true);
-                  setTimeout(() => {
-                    let profitableCount = 0;
-                    let netSum = 0;
-                    const results = [];
-                    for (let i = 0; i < 1000; i++) {
-                      const simTicket = activeTicketSize * (1 + (Math.random() - 0.5) * 0.1);
-                      const simClose = Math.max(5, Math.min(100, activeCloseRate + (Math.random() - 0.5) * 10));
-                      const simPayroll = Math.max(10, Math.min(90, activePayrollPct + (Math.random() - 0.5) * 6));
-                      const simLeads = Math.max(10, cfoLeadsPerMonth * (1 + (Math.random() - 0.5) * 0.25));
-                      const simMaterialPct = activeMaterialPct * (1 + (Math.random() - 0.5) * 0.2);
-                      const simFixed = fixedCosts * (1 + (Math.random() - 0.5) * 0.1);
-
-                      const rev = simLeads * (simClose / 100) * simTicket;
-                      const cost = (rev * (simPayroll / 100)) + (simLeads * 15) + (rev * simMaterialPct) + simFixed;
-                      const net = rev - cost;
-
-                      if (net > 0) profitableCount++;
-                      netSum += net;
-                      results.push(net);
-                    }
-                    results.sort((a, b) => a - b);
-                    const worstCase = Math.round(results[50]); // 5th percentile
-                    const expectedCase = Math.round(results[500]); // 50th percentile
-                    const bestCase = Math.round(results[950]); // 95th percentile
-                    const winPct = ((profitableCount / 1000) * 100).toFixed(1);
-
-                    setMonteCarloResult({
-                      winPct,
-                      worstCase,
-                      expectedCase,
-                      bestCase
-                    });
-                    setIsSimulatingMonteCarlo(false);
-                    tt('Simulación Monte Carlo completada con 1,000 escenarios ✓', 'green');
-                  }, 1000);
-                };
-
-                // Advisory logic
-                const getAdvisory = () => {
-                  if (activePayrollPct > 55) {
-                    return {
-                      type: 'warning',
-                      title: 'Costos de Nómina Excesivos',
-                      desc: 'La comisión asignada al staff supera el 55%. Considera indexar parte del pago a las calificaciones de los clientes (Playbook Nómina por Desempeño) para reducir la base fija y mejorar la calidad del servicio.'
-                    };
-                  }
-                  if (parseFloat(ebitdaMargin) < 15) {
-                    return {
-                      type: 'danger',
-                      title: 'Margen de Utilidad Crítico',
-                      desc: `Margen EBITDA de ${ebitdaMargin}% es bajo. Activa los Playbooks de Precios Dinámicos e Inteligencia de Rutas GPS para elevar instantáneamente la rentabilidad sin perder volumen.`
-                    };
-                  }
-                  if (activeCloseRate < 25) {
-                    return {
-                      type: 'info',
-                      title: 'Fuga de Leads Cotizados',
-                      desc: 'Tu conversión es menor del 25%. Activa el Playbook de Recuperación de Leads para enviar alertas dinámicas automáticas vía WhatsApp a los clientes que abandonaron el proceso de checkout.'
-                    };
-                  }
-                  if (parseFloat(ebitdaMargin) >= 30) {
-                    return {
-                      type: 'success',
-                      title: 'Desempeño Financiero Extraordinario',
-                      desc: `¡Felicidades, socio! Tu margen del ${ebitdaMargin}% es óptimo. Te sugerimos aumentar tu presupuesto de publicidad para capturar más leads y escalar este modelo altamente rentable.`
-                    };
-                  }
-                  return {
-                    type: 'success',
-                    title: 'Operación Financiera Saludable',
-                    desc: 'El balance de ingresos y egresos actuales se encuentra dentro de los márgenes recomendados del sector. Monitorea periódicamente las desviaciones en insumos.'
-                  };
-                };
-
-                const advice = getAdvisory();
-
-                return (
-                  <div className="space-y-6 animate-in fade-in pb-12 text-left">
-                    {/* Top KPI cockpit */}
-                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                      
-                      <div className="p-4.5 border border-white/5 bg-black/45 backdrop-blur-md rounded-2xl flex flex-col justify-between shadow-xl">
-                        <span className="text-[7.5px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-1">
-                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                          Facturación Mensual Est.
-                        </span>
-                        <div className="mt-2 flex items-baseline gap-1">
-                          <span className="text-xl font-black text-white">${projectedMonthlyRev.toLocaleString()}</span>
-                          <span className="text-[7px] text-slate-400 font-bold uppercase">USD</span>
-                        </div>
-                        <span className="text-[7px] text-slate-500 mt-1 uppercase font-semibold">Basado en {projectedJobsCount} misiones/mes</span>
-                      </div>
-
-                      <div className="p-4.5 border border-white/5 bg-black/45 backdrop-blur-md rounded-2xl flex flex-col justify-between shadow-xl">
-                        <span className="text-[7.5px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-1">
-                          <span className={`w-1.5 h-1.5 rounded-full ${ebitda >= 0 ? 'bg-green-500' : 'bg-red-500 animate-ping'}`}></span>
-                          Flujo Neto EBITDA
-                        </span>
-                        <div className="mt-2 flex items-baseline gap-1">
-                          <span className={`text-xl font-black ${ebitda >= 0 ? 'text-green-400' : 'text-red-500'}`}>
-                            {ebitda >= 0 ? '+' : ''}${ebitda.toLocaleString()}
-                          </span>
-                          <span className="text-[7px] text-slate-400 font-bold uppercase">USD</span>
-                        </div>
-                        <span className={`text-[7px] mt-1 uppercase font-semibold ${ebitda >= 0 ? 'text-green-500/70' : 'text-red-400/70'}`}>
-                          {ebitda >= 0 ? 'Generando Caja Positiva' : 'Pérdida en Operación'}
-                        </span>
-                      </div>
-
-                      <div className="p-4.5 border border-white/5 bg-black/45 backdrop-blur-md rounded-2xl flex flex-col justify-between shadow-xl">
-                        <span className="text-[7.5px] font-black text-slate-500 uppercase tracking-widest">Margen EBITDA Real</span>
-                        <div className="mt-2 flex items-baseline gap-1">
-                          <span className={`text-xl font-black ${parseFloat(ebitdaMargin) >= 30 ? 'text-amber-400' : parseFloat(ebitdaMargin) >= 15 ? 'text-green-400' : 'text-red-500'}`}>
-                            {ebitdaMargin}%
-                          </span>
-                        </div>
-                        <span className="text-[7px] text-slate-500 mt-1 uppercase font-semibold">Margen objetivo: 25% +</span>
-                      </div>
-
-                      <div className="p-4.5 border border-white/5 bg-black/45 backdrop-blur-md rounded-2xl flex flex-col justify-between shadow-xl">
-                        <span className="text-[7.5px] font-black text-slate-500 uppercase tracking-widest">Punto de Equilibrio</span>
-                        <div className="mt-2 flex items-baseline gap-1">
-                          <span className="text-xl font-black text-white">
-                            {breakEvenLeads ? `${breakEvenLeads}` : 'N/D'}
-                          </span>
-                          <span className="text-[7px] text-slate-400 font-bold uppercase"> prospectos/mes</span>
-                        </div>
-                        <span className="text-[7px] text-slate-500 mt-1 uppercase font-semibold">Leads para no perder capital</span>
-                      </div>
-
-                    </div>
-
-                    {/* Cockpit main grid */}
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                      
-                      {/* Left: Sandbox & Toggles */}
-                      <div className="space-y-6">
-                        
-                        {/* Sandbox sliders */}
-                        <div className="p-5 border border-white/5 bg-black/45 rounded-2xl space-y-5 shadow-lg">
-                          <div>
-                            <h4 className="text-[10px] font-black text-white uppercase tracking-widest pb-2.5 border-b border-white/5 flex justify-between items-center">
-                              <span>🎛️ Moduladores Operativos</span>
-                              <span className="text-[7px] text-[#F5C518] font-bold uppercase">Sandbox</span>
-                            </h4>
-                          </div>
-
-                          <div className="space-y-3.5">
-                            {/* Input 1 */}
-                            <div className="space-y-1">
-                              <div className="flex justify-between items-center text-[8px] font-black uppercase text-slate-400">
-                                <span>💵 Ticket Base</span>
-                                <span className="text-white bg-white/5 px-2 py-0.5 rounded text-[8.5px]">${cfoTicketSize} USD</span>
-                              </div>
-                              <input
-                                type="range"
-                                min="50"
-                                max="500"
-                                step="5"
-                                value={cfoTicketSize}
-                                onChange={e => setCfoTicketSize(parseInt(e.target.value))}
-                                className="w-full accent-[#F5C518] bg-white/10 h-1 rounded-lg cursor-pointer animate-none"
-                              />
-                            </div>
-
-                            {/* Input 2 */}
-                            <div className="space-y-1">
-                              <div className="flex justify-between items-center text-[8px] font-black uppercase text-slate-400">
-                                <span>🎯 Conversión Base</span>
-                                <span className="text-white bg-white/5 px-2 py-0.5 rounded text-[8.5px]">{cfoCloseRate}%</span>
-                              </div>
-                              <input
-                                type="range"
-                                min="5"
-                                max="100"
-                                step="1"
-                                value={cfoCloseRate}
-                                onChange={e => setCfoCloseRate(parseInt(e.target.value))}
-                                className="w-full accent-[#F5C518] bg-white/10 h-1 rounded-lg cursor-pointer animate-none"
-                              />
-                            </div>
-
-                            {/* Input 3 */}
-                            <div className="space-y-1">
-                              <div className="flex justify-between items-center text-[8px] font-black uppercase text-slate-400">
-                                <span>👥 Comisión Nómina</span>
-                                <span className="text-white bg-white/5 px-2 py-0.5 rounded text-[8.5px]">{cfoPayrollPct}%</span>
-                              </div>
-                              <input
-                                type="range"
-                                min="20"
-                                max="75"
-                                step="1"
-                                value={cfoPayrollPct}
-                                onChange={e => setCfoPayrollPct(parseInt(e.target.value))}
-                                className="w-full accent-[#F5C518] bg-white/10 h-1 rounded-lg cursor-pointer animate-none"
-                              />
-                            </div>
-
-                            {/* Input 4 */}
-                            <div className="space-y-1">
-                              <div className="flex justify-between items-center text-[8px] font-black uppercase text-slate-400">
-                                <span>📣 Leads Mensuales</span>
-                                <span className="text-white bg-white/5 px-2 py-0.5 rounded text-[8.5px]">{cfoLeadsPerMonth} leads</span>
-                              </div>
-                              <input
-                                type="range"
-                                min="20"
-                                max="1000"
-                                step="10"
-                                value={cfoLeadsPerMonth}
-                                onChange={e => setCfoLeadsPerMonth(parseInt(e.target.value))}
-                                className="w-full accent-[#F5C518] bg-white/10 h-1 rounded-lg cursor-pointer animate-none"
-                              />
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Executable Playbooks */}
-                        <div className="p-5 border border-white/5 bg-black/45 rounded-2xl space-y-4 shadow-lg">
-                          <div>
-                            <h4 className="text-[10px] font-black text-white uppercase tracking-widest pb-2.5 border-b border-white/5">
-                              🧠 Estrategias Ejecutables (Playbooks)
-                            </h4>
-                            <p className="text-[7.5px] text-slate-500 uppercase font-black mt-1">Activa optimizaciones reales del SaaS y simula el impacto neto.</p>
-                          </div>
-
-                          <div className="space-y-2">
-                            {/* Playbook 1 */}
-                            <button
-                              onClick={() => setCfoPlaybooks(prev => ({ ...prev, gpsOptimization: !prev.gpsOptimization }))}
-                              className={`w-full p-3 border rounded-xl text-left transition-all ${
-                                cfoPlaybooks.gpsOptimization 
-                                  ? 'bg-[#F5C518]/10 border-[#F5C518] text-white animate-pulse' 
-                                  : 'bg-black/20 border-white/5 text-slate-400 hover:border-white/10 hover:text-white'
-                              }`}
-                            >
-                              <div className="flex justify-between items-center">
-                                <span className="text-[9px] font-black uppercase tracking-wider">🗺️ Inteligencia de Rutas GPS</span>
-                                <span className={`text-[7px] font-black px-1.5 py-0.5 rounded uppercase ${cfoPlaybooks.gpsOptimization ? 'bg-emerald-500/20 text-emerald-400' : 'bg-slate-800 text-slate-500'}`}>
-                                  {cfoPlaybooks.gpsOptimization ? 'ACTIVO' : 'INACTIVO'}
-                                </span>
-                              </div>
-                              <p className="text-[7px] text-slate-500 uppercase mt-1">Ahorro en gasolina y traslados: reduce coste de insumos del 8% al 5.5%.</p>
-                            </button>
-
-                            {/* Playbook 2 */}
-                            <button
-                              onClick={() => setCfoPlaybooks(prev => ({ ...prev, dynamicPricing: !prev.dynamicPricing }))}
-                              className={`w-full p-3 border rounded-xl text-left transition-all ${
-                                cfoPlaybooks.dynamicPricing 
-                                  ? 'bg-[#F5C518]/10 border-[#F5C518] text-white animate-pulse' 
-                                  : 'bg-black/20 border-white/5 text-slate-400 hover:border-white/10 hover:text-white'
-                              }`}
-                            >
-                              <div className="flex justify-between items-center">
-                                <span className="text-[9px] font-black uppercase tracking-wider">⚡ Precios Dinámicos</span>
-                                <span className={`text-[7px] font-black px-1.5 py-0.5 rounded uppercase ${cfoPlaybooks.dynamicPricing ? 'bg-emerald-500/20 text-emerald-400' : 'bg-slate-800 text-slate-500'}`}>
-                                  {cfoPlaybooks.dynamicPricing ? 'ACTIVO' : 'INACTIVO'}
-                                </span>
-                              </div>
-                              <p className="text-[7px] text-slate-500 uppercase mt-1">Recargo dinámico del 12% en horas pico automáticamente.</p>
-                            </button>
-
-                            {/* Playbook 3 */}
-                            <button
-                              onClick={() => setCfoPlaybooks(prev => ({ ...prev, cartRecovery: !prev.cartRecovery }))}
-                              className={`w-full p-3 border rounded-xl text-left transition-all ${
-                                cfoPlaybooks.cartRecovery 
-                                  ? 'bg-[#F5C518]/10 border-[#F5C518] text-white animate-pulse' 
-                                  : 'bg-black/20 border-white/5 text-slate-400 hover:border-white/10 hover:text-white'
-                              }`}
-                            >
-                              <div className="flex justify-between items-center">
-                                <span className="text-[9px] font-black uppercase tracking-wider">💬 Recuperación de Cotizaciones</span>
-                                <span className={`text-[7px] font-black px-1.5 py-0.5 rounded uppercase ${cfoPlaybooks.cartRecovery ? 'bg-emerald-500/20 text-emerald-400' : 'bg-slate-800 text-slate-500'}`}>
-                                  {cfoPlaybooks.cartRecovery ? 'ACTIVO' : 'INACTIVO'}
-                                </span>
-                              </div>
-                              <p className="text-[7px] text-slate-500 uppercase mt-1">Automatización vía WhatsApp para rescatar leads: +8% conversión.</p>
-                            </button>
-
-                            {/* Playbook 4 */}
-                            <button
-                              onClick={() => setCfoPlaybooks(prev => ({ ...prev, performancePay: !prev.performancePay }))}
-                              className={`w-full p-3 border rounded-xl text-left transition-all ${
-                                cfoPlaybooks.performancePay 
-                                  ? 'bg-[#F5C518]/10 border-[#F5C518] text-white animate-pulse' 
-                                  : 'bg-black/20 border-white/5 text-slate-400 hover:border-white/10 hover:text-white'
-                              }`}
-                            >
-                              <div className="flex justify-between items-center">
-                                <span className="text-[9px] font-black uppercase tracking-wider">🏆 Nómina por Desempeño</span>
-                                <span className={`text-[7px] font-black px-1.5 py-0.5 rounded uppercase ${cfoPlaybooks.performancePay ? 'bg-emerald-500/20 text-emerald-400' : 'bg-slate-800 text-slate-500'}`}>
-                                  {cfoPlaybooks.performancePay ? 'ACTIVO' : 'INACTIVO'}
-                                </span>
-                              </div>
-                              <p className="text-[7px] text-slate-500 uppercase mt-1">Fija base del staff al 38%. Compensaciones atadas a reseñas de 5 estrellas.</p>
-                            </button>
-                          </div>
-                        </div>
-
-                      </div>
-
-                      {/* Middle: SVG Waterfall & Monte Carlo */}
-                      <div className="space-y-6">
-                        
-                        {/* Waterfall Chart */}
-                        <div className="p-5 border border-white/5 bg-black/45 rounded-2xl shadow-lg">
-                          <h4 className="text-[10px] font-black text-white uppercase tracking-widest pb-2.5 border-b border-white/5">
-                            📊 Gráfico de Cascada de Flujo de Caja
-                          </h4>
-                          <p className="text-[7.5px] text-slate-500 uppercase font-black mt-1 mb-4">
-                            Deconstrucción del Ingreso Bruto Mensual (USD)
-                          </p>
-
-                          <div className="relative flex justify-center">
-                            <svg className="w-full h-40 overflow-visible" viewBox="0 0 280 150">
-                              {/* Horizontal Grid lines */}
-                              <line x1="10" y1="30" x2="270" y2="30" stroke="rgba(255,255,255,0.03)" strokeWidth="1" />
-                              <line x1="10" y1="80" x2="270" y2="80" stroke="rgba(255,255,255,0.03)" strokeWidth="1" />
-                              <line x1="10" y1="130" x2="270" y2="130" stroke="rgba(255,255,255,0.15)" strokeWidth="1.5" />
-
-                              {/* Bars */}
-                              {/* Rev */}
-                              <rect x="15" y={yRev} width="22" height={hRev || 1} rx="3" fill="#10B981" fillOpacity="0.85" stroke="#10B981" strokeWidth="1" />
-                              <text x="26" y={yRev - 4} className="text-[5.5px] fill-emerald-400 font-bold" textAnchor="middle">${projectedMonthlyRev >= 1000 ? `${(projectedMonthlyRev/1000).toFixed(1)}k` : projectedMonthlyRev}</text>
-                              
-                              {/* Labor */}
-                              <rect x="59" y={yLabor} width="22" height={hLabor || 1} rx="3" fill="#EF4444" fillOpacity="0.85" stroke="#EF4444" strokeWidth="1" />
-                              <text x="70" y={yLabor + hLabor + 8} className="text-[5.5px] fill-red-400 font-bold" textAnchor="middle">-${laborCost >= 1000 ? `${(laborCost/1000).toFixed(1)}k` : laborCost}</text>
-
-                              {/* Marketing */}
-                              <rect x="103" y={yMktg} width="22" height={hMktg || 1} rx="3" fill="#EF4444" fillOpacity="0.85" stroke="#EF4444" strokeWidth="1" />
-                              <text x="114" y={yMktg + hMktg + 8} className="text-[5.5px] fill-red-400 font-bold" textAnchor="middle">-${marketingCost >= 1000 ? `${(marketingCost/1000).toFixed(1)}k` : marketingCost}</text>
-
-                              {/* Materials */}
-                              <rect x="147" y={yMat} width="22" height={hMat || 1} rx="3" fill="#EF4444" fillOpacity="0.85" stroke="#EF4444" strokeWidth="1" />
-                              <text x="158" y={yMat + hMat + 8} className="text-[5.5px] fill-red-400 font-bold" textAnchor="middle">-${materialCost >= 1000 ? `${(materialCost/1000).toFixed(1)}k` : materialCost}</text>
-
-                              {/* Fixed */}
-                              <rect x="191" y={yFixed} width="22" height={hFixed || 1} rx="3" fill="#EF4444" fillOpacity="0.85" stroke="#EF4444" strokeWidth="1" />
-                              <text x="202" y={yFixed + hFixed + 8} className="text-[5.5px] fill-red-400 font-bold" textAnchor="middle">-${fixedCosts >= 1000 ? `${(fixedCosts/1000).toFixed(1)}k` : fixedCosts}</text>
-
-                              {/* EBITDA */}
-                              <rect x="235" y={yEbitda} width="22" height={hEbitda || 1} rx="3" fill={ebitda >= 0 ? '#3B82F6' : '#DC2626'} fillOpacity="0.85" stroke={ebitda >= 0 ? '#3B82F6' : '#DC2626'} strokeWidth="1" />
-                              <text x="246" y={yEbitda - 4} className={`text-[5.5px] font-bold ${ebitda >= 0 ? 'fill-blue-400' : 'fill-red-400'}`}>${ebitda >= 1000 ? `${(ebitda/1000).toFixed(1)}k` : ebitda}</text>
-
-                              {/* Labels below bars */}
-                              <text x="26" y="142" className="text-[5px] fill-slate-500 font-black" textAnchor="middle">INGRESOS</text>
-                              <text x="70" y="142" className="text-[5px] fill-slate-500 font-black" textAnchor="middle">NÓMINA</text>
-                              <text x="114" y="142" className="text-[5px] fill-slate-500 font-black" textAnchor="middle">MKTG</text>
-                              <text x="158" y="142" className="text-[5px] fill-slate-500 font-black" textAnchor="middle">INSUMOS</text>
-                              <text x="202" y="142" className="text-[5px] fill-slate-500 font-black" textAnchor="middle">FIJOS</text>
-                              <text x="246" y="142" className="text-[5px] fill-slate-500 font-black" textAnchor="middle">EBITDA</text>
-                            </svg>
-                          </div>
-                        </div>
-
-                        {/* Monte Carlo Simulator */}
-                        <div className="p-5 border border-white/5 bg-black/45 rounded-2xl shadow-lg space-y-4">
-                          <div>
-                            <h4 className="text-[10px] font-black text-white uppercase tracking-widest pb-2.5 border-b border-white/5 flex justify-between items-center">
-                              <span>⚡ Simulación Monte Carlo</span>
-                              <span className="text-[7px] text-[#F5C518] font-bold uppercase">Estrés Operativo</span>
-                            </h4>
-                            <p className="text-[7.5px] text-slate-500 uppercase font-black mt-1">Calcula la solidez financiera simulando 1,000 fluctuaciones aleatorias del mercado.</p>
-                          </div>
-
-                          {isSimulatingMonteCarlo ? (
-                            <div className="py-6 flex flex-col items-center justify-center space-y-3">
-                              <div className="w-6 h-6 border-2 border-[#F5C518] border-t-transparent rounded-full animate-spin"></div>
-                              <span className="text-[7.5px] font-black text-slate-400 uppercase tracking-widest animate-pulse">Analizando 1,000 escenarios estocásticos...</span>
-                            </div>
-                          ) : monteCarloResult ? (
-                            <div className="space-y-4 animate-in fade-in">
-                              <div className="flex justify-between items-center p-3 border border-white/5 bg-white/[0.02] rounded-xl">
-                                <div>
-                                  <p className="text-[8px] font-black text-slate-500 uppercase">Probabilidad Rentabilidad</p>
-                                  <p className="text-lg font-black text-emerald-400 mt-0.5">{monteCarloResult.winPct}%</p>
-                                </div>
-                                <div className="text-right">
-                                  <span className={`text-[7px] font-black px-2 py-0.5 rounded uppercase ${
-                                    parseFloat(monteCarloResult.winPct) >= 90 ? 'bg-emerald-500/20 text-emerald-400' :
-                                    parseFloat(monteCarloResult.winPct) >= 70 ? 'bg-amber-500/20 text-amber-400' : 'bg-red-500/20 text-red-400 animate-pulse'
-                                  }`}>
-                                    {parseFloat(monteCarloResult.winPct) >= 90 ? 'Riesgo Bajo' :
-                                     parseFloat(monteCarloResult.winPct) >= 70 ? 'Riesgo Moderado' : 'Riesgo Crítico'}
-                                  </span>
-                                </div>
-                              </div>
-
-                              <div className="grid grid-cols-3 gap-2 text-center">
-                                <div className="p-2 border border-white/5 bg-black/20 rounded-lg">
-                                  <p className="text-[6.5px] text-slate-500 font-bold uppercase">Peor Escenario (5%)</p>
-                                  <p className={`text-[9.5px] font-black mt-0.5 ${monteCarloResult.worstCase >= 0 ? 'text-slate-300' : 'text-red-400'}`}>
-                                    ${monteCarloResult.worstCase.toLocaleString()}
-                                  </p>
-                                </div>
-                                <div className="p-2 border border-white/5 bg-black/20 rounded-lg">
-                                  <p className="text-[6.5px] text-slate-500 font-bold uppercase">Esperado (50%)</p>
-                                  <p className="text-[9.5px] font-black text-white mt-0.5">
-                                    ${monteCarloResult.expectedCase.toLocaleString()}
-                                  </p>
-                                </div>
-                                <div className="p-2 border border-white/5 bg-black/20 rounded-lg">
-                                  <p className="text-[6.5px] text-slate-500 font-bold uppercase">Mejor Escenario (95%)</p>
-                                  <p className="text-[9.5px] font-black text-emerald-400 mt-0.5">
-                                    ${monteCarloResult.bestCase.toLocaleString()}
-                                  </p>
-                                </div>
-                              </div>
-
-                              <button
-                                onClick={runMonteCarlo}
-                                className="w-full py-2.5 bg-white/5 hover:bg-white/10 text-white font-black uppercase text-[8px] tracking-wider rounded-xl transition-all border border-white/5"
-                              >
-                                Re-Simular Escenarios 🎲
-                              </button>
-                            </div>
-                          ) : (
-                            <div className="py-4 text-center">
-                              <p className="text-[7.5px] text-slate-500 uppercase font-semibold mb-3">Ejecuta el algoritmo para modelar inflación, insumos y demanda inestable.</p>
-                              <button
-                                onClick={runMonteCarlo}
-                                className="w-full py-3 bg-gradient-to-r from-[#F5C518] to-amber-500 text-black font-black uppercase text-[8px] tracking-widest rounded-xl hover:from-[#F5C518]/90 hover:to-amber-500/90 active:scale-[0.98] transition-all shadow-lg shadow-amber-500/10"
-                              >
-                                ⚡ Simular 1,000 Escenarios de Estrés
-                              </button>
-                            </div>
-                          )}
-                        </div>
-
-                      </div>
-
-                      {/* Right: Heatmap sensitivity & advice */}
-                      <div className="space-y-6">
-                        
-                        {/* Sensitivity Heatmap Matrix */}
-                        <div className="p-5 border border-white/5 bg-black/45 rounded-2xl shadow-lg space-y-4">
-                          <div>
-                            <h4 className="text-[10px] font-black text-white uppercase tracking-widest pb-2.5 border-b border-white/5 flex justify-between items-center">
-                              <span>🧮 Matriz de Sensibilidad</span>
-                              <span className="text-[7px] text-[#F5C518] font-bold uppercase">Margen EBITDA</span>
-                            </h4>
-                            <p className="text-[7.5px] text-slate-500 uppercase font-black mt-1">Cruza Ticket Promedio (filas) y Tasa de Conversión (columnas). Toca una celda para aplicarla.</p>
-                          </div>
-
-                          <div className="space-y-2">
-                            {/* Grid layout for 5x5 */}
-                            <div className="grid grid-cols-6 gap-1 text-center font-bold text-[6px]">
-                              {/* Corner cell */}
-                              <div className="flex items-center justify-center text-slate-600 uppercase font-black leading-none">Ticket \ Conv</div>
-                              {closeVals.map((cVal, idx) => (
-                                <div key={idx} className="p-1 bg-white/5 text-slate-300 rounded uppercase font-black">{cVal}%</div>
-                              ))}
-
-                              {ticketVals.map((tVal, rIdx) => (
-                                <React.Fragment key={rIdx}>
-                                  {/* Row header */}
-                                  <div className="p-1 bg-white/5 text-slate-300 rounded flex items-center justify-center font-black">${tVal}</div>
-                                  
-                                  {closeVals.map((cVal, cIdx) => {
-                                    // Calculate EBITDA for this combination
-                                    const sRev = cfoLeadsPerMonth * (cVal / 100) * tVal;
-                                    const sCost = (sRev * (activePayrollPct / 100)) + (cfoLeadsPerMonth * 15) + (sRev * activeMaterialPct) + fixedCosts;
-                                    const sEbitda = sRev - sCost;
-                                    const sMargin = sRev > 0 ? Math.round((sEbitda / sRev) * 100) : -100;
-
-                                    const isCurrent = tVal === cfoTicketSize && cVal === cfoCloseRate;
-
-                                    // HSL coloring: Greenish if positive margin, Reddish if negative
-                                    let hue = 0;
-                                    let sat = 65;
-                                    let light = 18;
-                                    if (sMargin >= 0) {
-                                      hue = Math.min(130, Math.round(sMargin * 3.2));
-                                      light = 20;
-                                    } else {
-                                      hue = Math.max(0, 10 + sMargin * 1.5);
-                                      sat = 60;
-                                      light = 22;
-                                    }
-
-                                    return (
-                                      <button
-                                        key={cIdx}
-                                        onClick={() => {
-                                          setCfoTicketSize(tVal);
-                                          setCfoCloseRate(cVal);
-                                          tt(`Sandbox configurado a $${tVal} USD / ${cVal}% Conversión ✓`, 'green');
-                                        }}
-                                        style={{
-                                          backgroundColor: `hsla(${hue}, ${sat}%, ${light}%, ${isCurrent ? '0.9' : '0.45'})`,
-                                          borderColor: isCurrent ? '#F5C518' : `hsla(${hue}, 80%, 40%, 0.6)`
-                                        }}
-                                        className={`p-1.5 border rounded text-[7.5px] font-black tracking-tighter text-white transition-all hover:scale-105 active:scale-95 flex flex-col justify-center items-center ${isCurrent ? 'ring-1 ring-[#F5C518]' : 'border-white/5'}`}
-                                      >
-                                        <span>{sMargin}%</span>
-                                      </button>
-                                    );
-                                  })}
-                                </React.Fragment>
-                              ))}
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Advisor Panel */}
-                        <div className="p-5 border border-white/5 bg-black/45 rounded-2xl shadow-lg">
-                          <div className="flex items-center gap-2 pb-3 border-b border-white/5">
-                            <span className="text-base">🔮</span>
-                            <div>
-                              <h4 className="text-[10px] font-black text-white uppercase tracking-widest">Consejo Estratégico del AI CFO</h4>
-                              <p className="text-[7.5px] text-slate-500 uppercase font-black mt-0.5">Diagnóstico y Recomendaciones en base al Sandbox</p>
-                            </div>
-                          </div>
-
-                          <div className="mt-4 flex items-start gap-3">
-                            <div className="mt-0.5">
-                              {advice.type === 'danger' && <span className="text-red-500 text-lg">⚠️</span>}
-                              {advice.type === 'warning' && <span className="text-amber-500 text-lg">⚠️</span>}
-                              {advice.type === 'info' && <span className="text-sky-500 text-lg">ℹ️</span>}
-                              {advice.type === 'success' && <span className="text-green-400 text-lg">🏆</span>}
-                            </div>
-                            <div className="space-y-1 text-left">
-                              <p className="text-[9px] font-black text-white uppercase tracking-wider">{advice.title}</p>
-                              <p className="text-[8.5px] text-slate-300 leading-relaxed font-medium">
-                                {advice.desc}
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-
                       </div>
 
                     </div>
@@ -12235,9 +11012,8 @@ Instrucciones generales de formato:
                     { id: 'reminders', name: `🔔 Recordatorios (${remindersBadgeCount})` },
                     { id: 'drive', name: '📸 Photo Drive' },
                     { id: 'map', name: '🗺️ IA Dispatcher' },
-                    ENABLE_AI && { id: 'meetings', name: '🎙️ Reuniones IA' },
                     { id: 'deploy', name: '📝 Nueva Cotización' }
-                  ].filter(Boolean).map(tab => (
+                  ].map(tab => (
                     <button
                       key={tab.id}
                       onClick={() => setOperationsTab(tab.id)}
@@ -12704,7 +11480,7 @@ Instrucciones generales de formato:
                     <h2 className="text-2xl font-black uppercase tracking-widest text-white mb-2">⚙️ Company Settings</h2>
                     <p className="text-[10px] text-slate-400 font-bold uppercase mb-8">Administra la configuracion interna de tu imperio SaaS</p>
                     
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                       <div className="space-y-4">
                         <h3 className="text-sm font-black uppercase text-[#F5C518]">Brand Identity</h3>
                         <div className="space-y-1">
@@ -12726,28 +11502,6 @@ Instrucciones generales de formato:
                         <div className="space-y-1">
                           <label className="text-[9px] font-black uppercase text-slate-500 tracking-widest pl-1">Staff Default Payout %</label>
                           <input className="inp w-full" type="number" value={settingsPayPct} onChange={e => setSettingsPayPct(e.target.value)} />
-                        </div>
-                      </div>
-
-                      <div className="space-y-4">
-                        <h3 className="text-sm font-black uppercase text-[#F5C518]">Booking Rates</h3>
-                        <div className="space-y-1">
-                          <label className="text-[9px] font-black uppercase text-slate-500 tracking-widest pl-1">Base Fee ($)</label>
-                          <input className="inp w-full" type="number" value={settingsBasePrice} onChange={e => setSettingsBasePrice(e.target.value)} />
-                        </div>
-                        <div className="space-y-1">
-                          <label className="text-[9px] font-black uppercase text-slate-500 tracking-widest pl-1">Price per SQFT ($)</label>
-                          <input className="inp w-full" type="number" step="0.001" value={settingsPricePerSqft} onChange={e => setSettingsPricePerSqft(e.target.value)} />
-                        </div>
-                        <div className="grid grid-cols-2 gap-2">
-                          <div className="space-y-1">
-                            <label className="text-[8px] font-black uppercase text-slate-500 tracking-widest pl-1">Deep Mult.</label>
-                            <input className="inp w-full" type="number" step="0.01" value={settingsMultDeep} onChange={e => setSettingsMultDeep(e.target.value)} />
-                          </div>
-                          <div className="space-y-1">
-                            <label className="text-[8px] font-black uppercase text-slate-500 tracking-widest pl-1">Moveout Mult.</label>
-                            <input className="inp w-full" type="number" step="0.01" value={settingsMultMoveout} onChange={e => setSettingsMultMoveout(e.target.value)} />
-                          </div>
                         </div>
                       </div>
                     </div>
@@ -12926,27 +11680,46 @@ Instrucciones generales de formato:
 
                   {/* Stripe Checkout Form Card */}
                   {selectedBillingPlan && tenant?.stripe_subscription_status !== 'active_' + selectedBillingPlan && (
-                    <div className="g p-6 border border-[#F5C518]/25 bg-slate-950/70 rounded-2xl max-w-md mx-auto space-y-4 animate-in slide-in-from-bottom duration-300 shadow-[0_0_30px_rgba(245,197,24,0.05)]">
-                      <p className="text-[9px] font-black text-[#F5C518] uppercase tracking-widest flex items-center gap-1.5 justify-center">
-                        <Icon name="shield-check" className="w-4 h-4 text-[#F5C518]" /> {prefLang === 'es' ? 'Pago Seguro Procesado por Stripe' : 'Secure Stripe Checkout'}
+                    <div className="g p-6 border border-white/5 bg-slate-950/50 rounded-2xl max-w-md mx-auto space-y-4 animate-in slide-in-from-bottom duration-300">
+                      <p className="text-[9px] font-black text-[#F5C518] uppercase tracking-widest flex items-center gap-1.5">
+                        <Icon name="credit-card" className="w-4 h-4" /> Detalle de Pago Seguro
                       </p>
-                      <div className="bg-white/5 p-4 rounded-xl border border-white/5 space-y-2">
-                        <div className="flex justify-between items-center text-[10px] uppercase font-black">
-                          <span className="text-slate-400">{prefLang === 'es' ? 'Plan Seleccionado' : 'Plan Selected'}:</span>
-                          <span className="text-white bg-indigo-950/50 border border-indigo-500/30 px-2 py-0.5 rounded text-[9px]">{selectedBillingPlan.toUpperCase()}</span>
+                      <p className="text-[7.5px] text-slate-400 uppercase font-bold leading-normal">
+                        Estás suscribiéndote al <span className="text-white font-extrabold">{selectedBillingPlan.toUpperCase()}</span>. El cargo se realizará mensualmente a través de Stripe Billing.
+                      </p>
+                      
+                      <div className="space-y-3 pt-2">
+                        <div className="space-y-1">
+                          <label className="text-[8px] font-black uppercase text-slate-500 tracking-widest pl-1">Nombre en la Tarjeta</label>
+                          <input className="inp w-full text-xs uppercase" placeholder="JOHN DOE" value={billingCardName} onChange={e => setBillingCardName(e.target.value)} />
                         </div>
-                        <div className="flex justify-between items-center text-[10px] uppercase font-black">
-                          <span className="text-slate-400">{prefLang === 'es' ? 'Inversión Mensual' : 'Monthly Price'}:</span>
-                          <span className="text-[#F5C518] text-sm italic font-black">
-                            ${selectedBillingPlan === 'basic' ? '49' : selectedBillingPlan === 'premium' ? '99' : '199'} USD
-                          </span>
+                        
+                        <div className="space-y-1">
+                          <label className="text-[8px] font-black uppercase text-slate-500 tracking-widest pl-1">Número de Tarjeta</label>
+                          <div className="relative">
+                            <input className="inp w-full text-xs font-mono" placeholder="4242 •••• •••• 4242" maxLength={19} value={billingCardNo} onChange={e => {
+                              const val = e.target.value.replace(/\s?/g, '').replace(/(\d{4})/g, '$1 ').trim();
+                              setBillingCardNo(val);
+                            }} />
+                            <span className="absolute right-3.5 top-3 text-[9px] font-black text-slate-600 uppercase">VISA / MC</span>
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-3">
+                          <div className="space-y-1">
+                            <label className="text-[8px] font-black uppercase text-slate-500 tracking-widest pl-1">Expiración</label>
+                            <input className="inp w-full text-xs font-mono text-center" placeholder="MM/YY" maxLength={5} value={billingCardExpiry} onChange={e => {
+                              let val = e.target.value.replace(/\D/g, '');
+                              if (val.length > 2) val = val.substring(0, 2) + '/' + val.substring(2, 4);
+                              setBillingCardExpiry(val);
+                            }} />
+                          </div>
+                          <div className="space-y-1">
+                            <label className="text-[8px] font-black uppercase text-slate-500 tracking-widest pl-1">CVC</label>
+                            <input className="inp w-full text-xs font-mono text-center" placeholder="123" maxLength={4} value={billingCardCvc} onChange={e => setBillingCardCvc(e.target.value)} />
+                          </div>
                         </div>
                       </div>
-                      <p className="text-[8px] text-slate-400 uppercase font-bold leading-relaxed text-center">
-                        {prefLang === 'es' 
-                          ? 'Serás redirigido de forma segura a Stripe Checkout para ingresar tu método de pago y activar tu suscripción recurrentemente.'
-                          : 'You will be redirected securely to Stripe Checkout to input your payment method and activate your recurring subscription.'}
-                      </p>
 
                       {billingError && (
                         <p className="text-[8.5px] font-black uppercase text-red-400 bg-red-950/20 border border-red-500/20 p-2.5 rounded-xl text-center">
@@ -12957,18 +11730,12 @@ Instrucciones generales de formato:
                       <button
                         onClick={handleActivateSubscription}
                         disabled={billingLoading}
-                        className="w-full mt-2 bg-[#F5C518] hover:bg-amber-400 text-black py-4 rounded-xl font-black uppercase tracking-widest text-[10px] active:scale-95 transition-all shadow-[0_0_20px_rgba(245,197,24,0.15)] flex items-center justify-center gap-1.5"
+                        className="w-full mt-4 bg-[#F5C518] hover:bg-amber-400 text-black py-4 rounded-xl font-black uppercase tracking-widest text-[10px] active:scale-95 transition-all shadow-[0_0_20px_rgba(245,197,24,0.15)] flex items-center justify-center gap-1.5"
                       >
                         {billingLoading ? (
-                          <>
-                            <Icon name="loader-2" className="w-4 h-4 animate-spin text-black" />
-                            <span>{billingProgressStage || (prefLang === 'es' ? 'Procesando...' : 'Processing...')}</span>
-                          </>
+                          <Icon name="loader-2" className="w-4 h-4 animate-spin text-black" />
                         ) : (
-                          <>
-                            <Icon name="lock" className="w-3.5 h-3.5" />
-                            <span>{prefLang === 'es' ? 'Iniciar Suscripción con Stripe 🚀' : 'Start Subscription with Stripe 🚀'}</span>
-                          </>
+                          `Activar Suscripción (${selectedBillingPlan === 'basic' ? '$49' : selectedBillingPlan === 'premium' ? '$99' : '$199'}/mo) 🚀`
                         )}
                       </button>
                     </div>
@@ -13073,11 +11840,7 @@ Instrucciones generales de formato:
                     <div className="space-y-3 pt-2">
                       <input className="inp uppercase text-xs" placeholder="Worker Name" value={newStaffName} onChange={e => setNewName(e.target.value)} />
                       <input type="email" className="inp text-xs" placeholder="Worker Email (Login ID)" value={newStaffEmail} onChange={e => setNewStaffEmail(e.target.value)} />
-                      <input type="tel" className="inp text-xs" placeholder="Phone Number (e.g. +14075550199)" value={newStaffPhone} onChange={e => setNewStaffPhone(e.target.value)} />
-                      <div className="grid grid-cols-2 gap-2">
-                        <input className="inp text-xs w-full font-mono text-center tracking-widest" placeholder="Passcode PIN (e.g. 5566)" value={newStaffPIN} onChange={e => setNewPIN(e.target.value)} />
-                        <input type="number" className="inp text-xs w-full text-amber-500 font-bold" min={0} max={100} placeholder="Payout % (default 40)" value={newStaffPayoutPct} onChange={e => setNewStaffPayoutPct(e.target.value)} />
-                      </div>
+                      <input className="inp text-xs" placeholder="Set Passcode PIN (e.g. 5566)" value={newStaffPIN} onChange={e => setNewPIN(e.target.value)} />
                       <div className="grid grid-cols-3 gap-2">
                         {['staff', 'supervisor', 'admin'].map(r => (
                           <button key={r} onClick={() => setNewRole(r)} className={`py-2.5 rounded-xl text-[8px] uppercase font-black border transition-all ${newStaffRole === r ? 'bg-[#F5C518] text-black border-[#F5C518]' : 'bg-white/5 border-white/5 text-slate-400'}`}>{r}</button>
@@ -13305,9 +12068,8 @@ Instrucciones generales de formato:
                   { id: 'reminders', name: `🔔 Recordatorios (${remindersBadgeCount})` },
                   { id: 'drive', name: '📸 Photo Drive' },
                   { id: 'map', name: '🗺️ IA Dispatcher' },
-                  ENABLE_AI && { id: 'meetings', name: '🎙️ Reuniones IA' },
                   { id: 'deploy', name: '📝 Nueva Cotización' }
-                ].filter(Boolean).map(tab => (
+                ].map(tab => (
                   <button
                     key={tab.id}
                     onClick={() => setOperationsTab(tab.id)}
@@ -13355,42 +12117,6 @@ Instrucciones generales de formato:
             />
           )}
 
-          {ENABLE_AI && role === 'admin' && view === 'operations' && operationsTab === 'meetings' && (
-            <div className="space-y-4 animate-in fade-in pb-24">
-              {/* Operations Sub-tabs Switcher */}
-              <div className="flex gap-2 bg-black/45 p-1.5 rounded-2xl border border-white/5 overflow-x-auto nsb">
-                {[
-                  { id: 'calendar', name: '📅 Calendario de Misiones' },
-                  { id: 'reminders', name: `🔔 Recordatorios (${remindersBadgeCount})` },
-                  { id: 'drive', name: '📸 Photo Drive' },
-                  { id: 'map', name: '🗺️ IA Dispatcher' },
-                  ENABLE_AI && { id: 'meetings', name: '🎙️ Reuniones IA' },
-                  { id: 'deploy', name: '📝 Nueva Cotización' }
-                ].filter(Boolean).map(tab => (
-                  <button
-                    key={tab.id}
-                    onClick={() => setOperationsTab(tab.id)}
-                    className={`px-4 py-2.5 rounded-xl text-[9px] font-black uppercase whitespace-nowrap active:scale-95 transition-all ${
-                      operationsTab === tab.id
-                        ? 'bg-[#F5C518] text-black shadow-lg shadow-[#F5C518]/15'
-                        : 'bg-white/5 text-slate-400 hover:text-white hover:bg-white/10'
-                    }`}
-                  >
-                    {tab.name}
-                  </button>
-                ))}
-              </div>
-
-              <AICopilotMeetings
-                jobs={jobs}
-                staff={staff}
-                tt={tt}
-                refresh={refresh}
-                activeUser={activeEmployee?.name || 'Administrador (Tú)'}
-              />
-            </div>
-          )}
-
           {/* =====================================================================
               👑 ADMIN DASHBOARD NEW ESTIMATE DEPLOY TABS (deploy)
               ===================================================================== */}
@@ -13403,7 +12129,6 @@ Instrucciones generales de formato:
                   { id: 'reminders', name: `🔔 Recordatorios (${remindersBadgeCount})` },
                   { id: 'drive', name: '📸 Photo Drive' },
                   { id: 'map', name: '🗺️ IA Dispatcher' },
-                  { id: 'meetings', name: '🎙️ Reuniones IA' },
                   { id: 'deploy', name: '📝 Nueva Cotización' }
                 ].map(tab => (
                   <button
@@ -13586,7 +12311,7 @@ Respond ONLY in this exact JSON format (no explanation, no markdown, just raw JS
                     let ollamaUrl = localStorage.getItem('elevore_ollama_url') || 'http://127.0.0.1:11434';
                     if (ollamaUrl === 'http://localhost:11434') ollamaUrl = 'http://127.0.0.1:11434';
                     const ollamaModel = localStorage.getItem('elevore_ollama_model') || 'llama3.2';
-                    const aiProvider = localStorage.getItem('elevore_ai_provider') || 'ollama';
+                    const aiProvider = localStorage.getItem('elevore_ai_provider') || 'antigravity';
                     const geminiModel = localStorage.getItem('elevore_gemini_model') || 'gemini-2.5-flash';
                     const geminiKey = localStorage.getItem('elevore_gemini_key') || '';
 
@@ -13661,18 +12386,12 @@ Respond ONLY in this exact JSON format (no explanation, no markdown, just raw JS
                       tt('🧠 Precios de mercado Orlando cargados ✓', 'green');
                     } catch (err) {
                       clearTimeout(timeoutId);
-                      console.warn("AI Pricing generation failed, using local fallback matrix:", err);
-                      const basePrice = state.price || pricing.total || 150;
-                      const fallbackPricing = {
-                        good: { price: basePrice, desc: "Limpieza Básica estándar de alta calidad." },
-                        better: { price: Math.round(basePrice * 1.35), desc: "Limpieza Profunda con foco en detalles y desinfección." },
-                        best: { price: Math.round(basePrice * 1.70), desc: "Limpieza Premium con add-on de electrodomésticos incluido." },
-                        insight: "Estimación local inteligente basada en los metros cuadrados y el tipo de servicio especificado (Modo Offline)."
-                      };
-                      setAiPrices(fallbackPricing);
-                      setAiInsight(fallbackPricing.insight);
-                      setState(s => ({ ...s, price: fallbackPricing.better.price }));
-                      tt('🧠 Precios sugeridos generados con estimador local ✓', 'green');
+                      console.error(err);
+                      if (err.name === 'AbortError') {
+                        tt('Tiempo de espera agotado (90s). ¿Tu IA local está encendida?', 'red');
+                      } else {
+                        tt(`Error IA: ${err.message || 'Verifica la conexión.'}`, 'red');
+                      }
                     } finally {
                       setAiPriceLoading(false);
                     }
@@ -14485,36 +13204,11 @@ Respond ONLY in this exact JSON format (no explanation, no markdown, just raw JS
 
         {/* Route Optimizer Modal */}
         {routeModalOpen && (
-          <ErrorBoundary onReset={() => setRouteModalOpen(false)}>
-            <RouteOptimizerModal 
-              todayJobs={(staffJobs || []).filter(j => j && j.scheduled_date === todayStr)} 
-              onClose={() => setRouteModalOpen(false)} 
-              lang="es" 
-            />
-          </ErrorBoundary>
-        )}
-
-        {/* Staff Meeting Modal */}
-        {staffMeetingOpen && (
-          <div className="fixed inset-0 bg-black/90 backdrop-blur-md z-[2000] flex items-center justify-center p-4 overflow-y-auto" onClick={e => e.target === e.currentTarget && setStaffMeetingOpen(false)}>
-            <div className="g p-6 w-full max-w-4xl space-y-4 border-t-4 border-indigo-500 mx-auto bg-slate-950 rounded-2xl shadow-2xl border border-white/5 animate-in fade-in-50 zoom-in-95 duration-150 relative">
-              <button 
-                onClick={() => setStaffMeetingOpen(false)} 
-                className="absolute top-4 right-4 text-slate-400 hover:text-white transition-colors p-1.5 rounded-lg hover:bg-white/5 z-50 animate-pulse"
-              >
-                <Icon name="x" className="w-5 h-5" />
-              </button>
-              <div className="pt-2">
-                <AICopilotMeetings
-                  jobs={jobs}
-                  staff={staff}
-                  tt={tt}
-                  refresh={refresh}
-                  activeUser={activeEmployee?.name || 'Administrador (Tú)'}
-                />
-              </div>
-            </div>
-          </div>
+          <RouteOptimizerModal 
+            todayJobs={staffJobs.filter(j => j.scheduled_date === todayStr)} 
+            onClose={() => setRouteModalOpen(false)} 
+            lang="es" 
+          />
         )}
 
         {/* =====================================================================

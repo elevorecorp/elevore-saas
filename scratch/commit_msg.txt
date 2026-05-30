@@ -1,0 +1,1 @@
+Dynamically display logged in staff names and active profiles in AICopilotMeetings room grid v1.0.6
