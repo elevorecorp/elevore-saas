@@ -9,6 +9,7 @@ import { SecurityLedger } from './components/admin/SecurityLedger';
 import { PublicQuoteProposal } from './components/PublicQuoteProposal';
 import { HyperDriveTab } from './components/admin/HyperDriveTab';
 import PublicBookingWidget from './components/public/PublicBookingWidget';
+import TimeSlotPicker from './components/public/TimeSlotPicker';
 
 // =====================================================================
 // ⚙️ FEATURE FLAGS
@@ -1616,6 +1617,7 @@ function Portal({ cjid }) {
   // Booking states
   const [bookingService, setBookingService] = useState('tv');
   const [bookingDate, setBookingDate] = useState('');
+  const [bookingTime, setBookingTime] = useState('08:00');
   const [bookingNotes, setBookingNotes] = useState('');
   const [bookingAddons, setBookingAddons] = useState([]);
   const [bookingSaving, setBookingSaving] = useState(false);
@@ -2077,12 +2079,15 @@ function Portal({ cjid }) {
       team_assigned: '',
       status: 'scheduled',
       scheduled_date: bookingDate,
-      notes: bookingNotes || `Booked by client. Extras: ${bookingAddons.join(', ')}`,
+      notes: bookingNotes 
+        ? `${bookingNotes} (Pref: ${bookingTime})` 
+        : `Booked by client. Preferred Time: ${bookingTime}. Extras: ${bookingAddons.join(', ')}`,
       membership_plan: membershipTier !== 'none' ? membershipTier : null,
       tenant_id: job.tenant_id,
       specs: {
         booking_addons: bookingAddons,
         booking_service_id: bookingService,
+        booking_time: bookingTime,
         client_booked: true,
         created_at: new Date().toISOString()
       }
@@ -2093,6 +2098,7 @@ function Portal({ cjid }) {
       if (error) throw error;
       tt(lang === 'es' ? '¡Servicio agendado con éxito!' : 'Service booked successfully!', 'green');
       setBookingDate('');
+      setBookingTime('08:00');
       setBookingNotes('');
       setBookingAddons([]);
       await loadClientMissions(job.client_name, job.client_phone);
@@ -2786,17 +2792,14 @@ function Portal({ cjid }) {
                 </select>
               </div>
 
-              <div className="space-y-1">
-                <label className="text-[8px] font-black uppercase text-slate-500 tracking-wider block">{lang === 'es' ? 'Fecha de Servicio' : 'Service Date'}</label>
-                <input 
-                  required
-                  type="date" 
-                  value={bookingDate} 
-                  min={new Date().toISOString().split('T')[0]}
-                  onChange={e => setBookingDate(e.target.value)} 
-                  className="inp w-full py-3 text-xs text-center" 
-                />
-              </div>
+              <TimeSlotPicker 
+                tenantId={job?.tenant_id}
+                selectedDate={bookingDate}
+                selectedTime={bookingTime}
+                onChangeDate={setBookingDate}
+                onChangeTime={setBookingTime}
+                lang={lang}
+              />
 
               <div className="space-y-2">
                 <label className="text-[8px] font-black uppercase text-slate-500 tracking-wider block">{lang === 'es' ? 'Añadir Servicios Extras' : 'Choose Addons'}</label>
