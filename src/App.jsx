@@ -861,6 +861,7 @@ function RouteOptimizerModal({ todayJobs, onClose, lang }) {
 
   // Safety distance format helper
   const formatDist = (val) => {
+    if (val === undefined || val === null) return '0.0';
     const num = Number(val);
     return isNaN(num) ? '0.0' : num.toFixed(1);
   };
@@ -891,6 +892,11 @@ function RouteOptimizerModal({ todayJobs, onClose, lang }) {
     
     const runGeocodingAndOptimization = async () => {
       try {
+        if (!Array.isArray(todayJobs) || todayJobs.length === 0) {
+          setStops([]);
+          setLoading(false);
+          return;
+        }
         setLoading(true);
         setError(null);
         setProgress(0);
@@ -962,6 +968,7 @@ function RouteOptimizerModal({ todayJobs, onClose, lang }) {
         
         // Filter stops with valid coordinates (defensive checks)
         const validStops = geocodedStops.filter(s => 
+          s &&
           s.lat !== null && s.lat !== undefined && !isNaN(Number(s.lat)) &&
           s.lng !== null && s.lng !== undefined && !isNaN(Number(s.lng))
         );
@@ -993,8 +1000,10 @@ function RouteOptimizerModal({ todayJobs, onClose, lang }) {
           const res = await fetch(url);
           if (res.ok) {
             const data = await res.json();
-            if (data && data.distances) {
-              distanceMatrix = data.distances.map(row => row.map(d => d === null ? Infinity : d / 1000));
+            if (data && data.distances && Array.isArray(data.distances)) {
+              distanceMatrix = data.distances.map(row => 
+                Array.isArray(row) ? row.map(d => d === null || d === undefined || isNaN(Number(d)) ? Infinity : Number(d) / 1000) : []
+              );
               console.log("OSRM Road Distance Matrix loaded successfully.");
             }
           }
@@ -1004,8 +1013,19 @@ function RouteOptimizerModal({ todayJobs, onClose, lang }) {
 
         // Helper to get distance (from OSRM matrix or fallback to Haversine)
         const getMatrixDistance = (fromIdx, toIdx, fromLat, fromLng, toLat, toLng) => {
-          if (distanceMatrix && distanceMatrix[fromIdx] && distanceMatrix[fromIdx][toIdx] !== undefined) {
-            return distanceMatrix[fromIdx][toIdx];
+          try {
+            if (distanceMatrix && 
+                Array.isArray(distanceMatrix) && 
+                distanceMatrix[fromIdx] && 
+                Array.isArray(distanceMatrix[fromIdx]) && 
+                distanceMatrix[fromIdx][toIdx] !== undefined && 
+                distanceMatrix[fromIdx][toIdx] !== null &&
+                !isNaN(Number(distanceMatrix[fromIdx][toIdx]))
+            ) {
+              return Number(distanceMatrix[fromIdx][toIdx]);
+            }
+          } catch (e) {
+            console.warn("Matrix distance lookup failed, falling back to Haversine", e);
           }
           return getDistance(fromLat, fromLng, toLat, toLng);
         };
@@ -1017,10 +1037,12 @@ function RouteOptimizerModal({ todayJobs, onClose, lang }) {
         let prevIdx = 0;
         
         validStops.forEach(s => {
-          origDist += getMatrixDistance(prevIdx, s.matrixIndex, prevLat, prevLng, s.lat, s.lng);
-          prevLat = s.lat;
-          prevLng = s.lng;
-          prevIdx = s.matrixIndex;
+          if (s) {
+            origDist += getMatrixDistance(prevIdx, s.matrixIndex, prevLat, prevLng, s.lat, s.lng);
+            prevLat = s.lat;
+            prevLng = s.lng;
+            prevIdx = s.matrixIndex;
+          }
         });
         
         // Optimize route using Nearest Neighbor (TSP)
@@ -1036,8 +1058,17 @@ function RouteOptimizerModal({ todayJobs, onClose, lang }) {
           let minDist = Infinity;
           
           for (let i = 0; i < unvisited.length; i++) {
-            const dist = getMatrixDistance(currentPrevIdx, unvisited[i].matrixIndex, currentPrevLat, currentPrevLng, unvisited[i].lat, unvisited[i].lng);
-            if (dist < minDist) {
+            const stop = unvisited[i];
+            if (!stop) continue;
+            const dist = getMatrixDistance(
+              currentPrevIdx, 
+              stop.matrixIndex, 
+              currentPrevLat, 
+              currentPrevLng, 
+              stop.lat, 
+              stop.lng
+            );
+            if (dist < minDist && !isNaN(dist)) {
               minDist = dist;
               nearestIdx = i;
             }
@@ -1049,7 +1080,9 @@ function RouteOptimizerModal({ todayJobs, onClose, lang }) {
           }
           
           const nextStop = unvisited.splice(nearestIdx, 1)[0];
-          optDist += minDist;
+          if (!nextStop) continue;
+          
+          optDist += isNaN(minDist) ? 0 : minDist;
           optimized.push(nextStop);
           currentPrevLat = nextStop.lat;
           currentPrevLng = nextStop.lng;
@@ -1063,7 +1096,11 @@ function RouteOptimizerModal({ todayJobs, onClose, lang }) {
           if (hasStart) {
             orderedCoords.push(currentPos);
           }
-          optimized.forEach(s => orderedCoords.push({ lat: s.lat, lng: s.lng }));
+          optimized.forEach(s => {
+            if (s && s.lat !== null && s.lng !== null) {
+              orderedCoords.push({ lat: s.lat, lng: s.lng });
+            }
+          });
           
           if (orderedCoords.length > 1) {
             const coordsString = orderedCoords.map(c => `${c.lng},${c.lat}`).join(';');
@@ -1071,8 +1108,10 @@ function RouteOptimizerModal({ todayJobs, onClose, lang }) {
             const res = await fetch(url);
             if (res.ok) {
               const data = await res.json();
-              if (data && data.routes && data.routes[0] && data.routes[0].geometry) {
-                routeGeom = data.routes[0].geometry.coordinates.map(coord => [coord[1], coord[0]]);
+              if (data && data.routes && Array.isArray(data.routes) && data.routes[0] && data.routes[0].geometry && Array.isArray(data.routes[0].geometry.coordinates)) {
+                routeGeom = data.routes[0].geometry.coordinates.map(coord => 
+                  Array.isArray(coord) && coord.length >= 2 ? [coord[1], coord[0]] : null
+                ).filter(c => c !== null);
                 console.log("OSRM Road Routing Geometry loaded successfully.");
               }
             }
@@ -1104,92 +1143,100 @@ function RouteOptimizerModal({ todayJobs, onClose, lang }) {
 
   const srcDoc = useMemo(() => {
     if (stops.length === 0) return '';
-    const stopsJson = JSON.stringify(stops).replace(/`/g, '\\`').replace(/\${/g, '\\${');
-    const startJson = JSON.stringify(startLocation).replace(/`/g, '\\`').replace(/\${/g, '\\${');
-    
-    return `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-        <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-        <style>
-          html, body, #map { margin: 0; padding: 0; height: 100%; background: #0b0f19; }
-          .leaflet-control-zoom { display: none; }
-          .popup-content { font-family: monospace; font-size: 10px; color: #fff; background: #0f172a; padding: 4px; border-radius: 4px; }
-          .leaflet-popup-content-wrapper { background: #0f172a; color: #fff; border: 1px solid rgba(255,255,255,0.1); }
-          .leaflet-popup-tip { background: #0f172a; }
-        </style>
-      </head>
-      <body>
-        <div id="map"></div>
-        <script>
-          const stops = ${stopsJson};
-          const startLoc = ${startJson};
-          
-          const map = L.map('map', { zoomControl: false });
-          
-          L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-            attribution: '&copy; OpenStreetMap &copy; CartoDB'
-          }).addTo(map);
-          
-          const bounds = [];
-          
-          // Custom Leaflet Icons
-          const workerIcon = L.divIcon({
-            html: '<div style="background-color: #3b82f6; width: 18px; height: 18px; border: 2px solid white; border-radius: 50%; box-shadow: 0 0 12px #3b82f6; display: flex; align-items: center; justify-content: center; color: white; font-size: 9px;">🚗</div>',
-            className: '',
-            iconSize: [18, 18],
-            iconAnchor: [9, 9]
-          });
-          
-          if (startLoc && typeof startLoc.lat === 'number' && !isNaN(startLoc.lat) && typeof startLoc.lng === 'number' && !isNaN(startLoc.lng)) {
-            L.marker([startLoc.lat, startLoc.lng], { icon: workerIcon })
-              .addTo(map)
-              .bindPopup('<div class="popup-content"><b>Mi Ubicación Actual</b></div>');
-            bounds.push([startLoc.lat, startLoc.lng]);
-          }
-          
-          // Draw stops and lines
-          const roadPoints = ${JSON.stringify(routeGeometry).replace(/`/g, '\\`').replace(/\${/g, '\\${')};
-          const fallbackPoints = [];
-          if (startLoc && typeof startLoc.lat === 'number' && !isNaN(startLoc.lat) && typeof startLoc.lng === 'number' && !isNaN(startLoc.lng)) {
-            fallbackPoints.push([startLoc.lat, startLoc.lng]);
-          }
-          
-          stops.forEach((s, idx) => {
-            const stopIcon = L.divIcon({
-              html: \`<div style="background-color: #22c55e; width: 22px; height: 22px; border: 2px solid white; border-radius: 50%; box-shadow: 0 0 10px #22c55e; display: flex; align-items: center; justify-content: center; color: white; font-family: sans-serif; font-size: 10px; font-weight: bold;">\${idx + 1}</div>\`,
+    try {
+      const stopsJson = JSON.stringify(stops).replace(/`/g, '\\`').replace(/\${/g, '\\${');
+      const startJson = JSON.stringify(startLocation).replace(/`/g, '\\`').replace(/\${/g, '\\${');
+      const routeGeometryJson = JSON.stringify(routeGeometry || []).replace(/`/g, '\\`').replace(/\${/g, '\\${');
+      
+      return `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+          <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+          <style>
+            html, body, #map { margin: 0; padding: 0; height: 100%; background: #0b0f19; }
+            .leaflet-control-zoom { display: none; }
+            .popup-content { font-family: monospace; font-size: 10px; color: #fff; background: #0f172a; padding: 4px; border-radius: 4px; }
+            .leaflet-popup-content-wrapper { background: #0f172a; color: #fff; border: 1px solid rgba(255,255,255,0.1); }
+            .leaflet-popup-tip { background: #0f172a; }
+          </style>
+        </head>
+        <body>
+          <div id="map"></div>
+          <script>
+            const stops = ${stopsJson};
+            const startLoc = ${startJson};
+            
+            const map = L.map('map', { zoomControl: false });
+            
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+              attribution: '&copy; OpenStreetMap &copy; CartoDB'
+            }).addTo(map);
+            
+            const bounds = [];
+            
+            // Custom Leaflet Icons
+            const workerIcon = L.divIcon({
+              html: '<div style="background-color: #3b82f6; width: 18px; height: 18px; border: 2px solid white; border-radius: 50%; box-shadow: 0 0 12px #3b82f6; display: flex; align-items: center; justify-content: center; color: white; font-size: 9px;">🚗</div>',
               className: '',
-              iconSize: [22, 22],
-              iconAnchor: [11, 11]
+              iconSize: [18, 18],
+              iconAnchor: [9, 9]
             });
             
-            if (s && typeof s.lat === 'number' && !isNaN(s.lat) && typeof s.lng === 'number' && !isNaN(s.lng)) {
-              L.marker([s.lat, s.lng], { icon: stopIcon })
+            if (startLoc && typeof startLoc.lat === 'number' && !isNaN(startLoc.lat) && typeof startLoc.lng === 'number' && !isNaN(startLoc.lng)) {
+              L.marker([startLoc.lat, startLoc.lng], { icon: workerIcon })
                 .addTo(map)
-                .bindPopup(\`<div class="popup-content"><b>Parada \${idx + 1}: \${s.clientName || 'Desconocido'}</b><br>\&nbsp;\${s.serviceType || ''}<br>\&nbsp;\${s.address || ''}</div>\`);
-              
-              bounds.push([s.lat, s.lng]);
-              fallbackPoints.push([s.lat, s.lng]);
+                .bindPopup('<div class="popup-content"><b>Mi Ubicación Actual</b></div>');
+              bounds.push([startLoc.lat, startLoc.lng]);
             }
-          });
-          
-          const drawPoints = roadPoints && roadPoints.length > 0 ? roadPoints : fallbackPoints;
-          if (drawPoints.length > 1) {
-            L.polyline(drawPoints, { color: '#F5C518', weight: 4, opacity: 0.8, dashArray: '5, 8' }).addTo(map);
-          }
-          
-          if (bounds.length > 0) {
-            map.fitBounds(bounds, { padding: [50, 50] });
-          } else {
-            map.setView([28.5383, -81.3792], 10);
-          }
-        </script>
-      </body>
-      </html>
-    `;
+            
+            // Draw stops and lines
+            const roadPoints = ${routeGeometryJson};
+            const fallbackPoints = [];
+            if (startLoc && typeof startLoc.lat === 'number' && !isNaN(startLoc.lat) && typeof startLoc.lng === 'number' && !isNaN(startLoc.lng)) {
+              fallbackPoints.push([startLoc.lat, startLoc.lng]);
+            }
+            
+            stops.forEach((s, idx) => {
+              const stopIcon = L.divIcon({
+                html: '<div style="background-color: #22c55e; width: 22px; height: 22px; border: 2px solid white; border-radius: 50%; box-shadow: 0 0 10px #22c55e; display: flex; align-items: center; justify-content: center; color: white; font-family: sans-serif; font-size: 10px; font-weight: bold;">&nbsp;' + (idx + 1) + '</div>',
+                className: '',
+                iconSize: [22, 22],
+                iconAnchor: [11, 11]
+              });
+              
+              if (s && typeof s.lat === 'number' && !isNaN(s.lat) && typeof s.lng === 'number' && !isNaN(s.lng)) {
+                L.marker([s.lat, s.lng], { icon: stopIcon })
+                  .addTo(map)
+                  .bindPopup('<div class="popup-content"><b>Parada ' + (idx + 1) + ': ' + (s.clientName || \'Desconocido\') + '</b><br>&nbsp;' + (s.serviceType || \'\') + '<br>&nbsp;' + (s.address || \'\') + '</div>');
+                
+                bounds.push([s.lat, s.lng]);
+                fallbackPoints.push([s.lat, s.lng]);
+              }
+            });
+            
+            const drawPoints = roadPoints && roadPoints.length > 0 ? roadPoints : fallbackPoints;
+            if (drawPoints.length > 1) {
+              L.polyline(drawPoints, { color: '#F5C518', weight: 4, opacity: 0.8, dashArray: '5, 8' }).addTo(map);
+            }
+            
+            if (bounds.length > 0) {
+              map.fitBounds(bounds, { padding: [50, 50] });
+            } else {
+              map.setView([28.5383, -81.3792], 10);
+            }
+          </script>
+        </body>
+        </html>
+      `;
+    } catch (e) {
+      console.error("Failed to generate map srcDoc:", e);
+      return '';
+    }
   }, [stops, startLocation, routeGeometry]);
+
+  const savingPct = Math.round((Number(saving || 0) / Math.max(1, Number(originalDistance || 1))) * 100);
 
   return (
     <div className="fixed inset-0 bg-black/90 backdrop-blur-md z-[2000] flex items-center justify-center p-4">
@@ -1234,7 +1281,7 @@ function RouteOptimizerModal({ todayJobs, onClose, lang }) {
                 {saving > 0 && (
                   <div className="border-t border-white/5 pt-2 flex justify-between text-[10px] uppercase font-black text-amber-400 animate-pulse">
                     <span>🔥 Ahorro Estimado:</span>
-                    <span>{formatDist(saving)} km ({Math.round((Number(saving || 0) / Math.max(1, Number(originalDistance || 1))) * 100)}%)</span>
+                    <span>{formatDist(saving)} km ({isNaN(savingPct) ? 0 : savingPct}%)</span>
                   </div>
                 )}
               </div>
@@ -1251,10 +1298,10 @@ function RouteOptimizerModal({ todayJobs, onClose, lang }) {
                         <h4 className="text-[10px] font-black text-white uppercase italic truncate">{s.clientName}</h4>
                       </div>
                       <p className="text-[8px] text-slate-400 font-bold uppercase">{s.serviceType} • {s.status}</p>
-                      <p className="text-[7.5px] text-slate-500 italic truncate w-full">{s.address}</p>
+                      <p className="text-[7.5px] text-slate-500 italic truncate w-full">{s.address || 'Sin dirección'}</p>
                     </div>
                     <button
-                      onClick={() => window.open(`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(s.address)}`, '_blank')}
+                      onClick={() => window.open(`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(s.address || '')}`, '_blank')}
                       className="px-2.5 py-1.5 bg-[#F5C518] hover:bg-amber-400 text-black rounded-lg text-[7px] font-black uppercase tracking-wider active:scale-95 transition-all flex items-center gap-1.5 flex-shrink-0"
                     >
                       <Icon name="navigation" className="w-3 h-3" />
@@ -9266,14 +9313,16 @@ Instrucciones generales de formato:
         {/* Sidebar Footer Actions */}
         <div className="pt-4 border-t border-white/5 space-y-3">
           {role === 'admin' && (
-            <div className="grid grid-cols-2 gap-2">
-              <button onClick={() => { setAIOpen(true); setMobileMenuOpen(false); }} className="py-3 bg-white/5 hover:bg-white/10 text-white rounded-xl text-[8px] font-black uppercase flex items-center justify-center gap-1 active:scale-95 border border-white/5 transition-all">
-                <Icon name="brain" className="w-3.5 h-3.5 text-amber-400" />
-                <span>AI Advisor</span>
-              </button>
+            <div className={`grid ${ENABLE_AI ? 'grid-cols-2' : 'grid-cols-1'} gap-2`}>
+              {ENABLE_AI && (
+                <button onClick={() => { setAIOpen(true); setMobileMenuOpen(false); }} className="py-3 bg-white/5 hover:bg-white/10 text-white rounded-xl text-[8px] font-black uppercase flex items-center justify-center gap-1 active:scale-95 border border-white/5 transition-all">
+                  <Icon name="brain" className="w-3.5 h-3.5 text-amber-400" />
+                  <span>AI Advisor</span>
+                </button>
+              )}
               <button onClick={() => { setQM(true); setMobileMenuOpen(false); }} className="py-3 bg-[#F5C518] hover:bg-[#F5C518]/90 text-black rounded-xl text-[8px] font-black uppercase flex items-center justify-center gap-1 active:scale-95 transition-all shadow-md">
                 <Icon name="zap" className="w-3.5 h-3.5" />
-                <span>Quick</span>
+                <span>Quick Actions</span>
               </button>
             </div>
           )}
@@ -11865,9 +11914,9 @@ Instrucciones generales de formato:
                     { id: 'reminders', name: `🔔 Recordatorios (${remindersBadgeCount})` },
                     { id: 'drive', name: '📸 Photo Drive' },
                     { id: 'map', name: '🗺️ IA Dispatcher' },
-                    { id: 'meetings', name: '🎙️ Reuniones IA' },
+                    ENABLE_AI && { id: 'meetings', name: '🎙️ Reuniones IA' },
                     { id: 'deploy', name: '📝 Nueva Cotización' }
-                  ].map(tab => (
+                  ].filter(Boolean).map(tab => (
                     <button
                       key={tab.id}
                       onClick={() => setOperationsTab(tab.id)}
@@ -12913,9 +12962,9 @@ Instrucciones generales de formato:
                   { id: 'reminders', name: `🔔 Recordatorios (${remindersBadgeCount})` },
                   { id: 'drive', name: '📸 Photo Drive' },
                   { id: 'map', name: '🗺️ IA Dispatcher' },
-                  { id: 'meetings', name: '🎙️ Reuniones IA' },
+                  ENABLE_AI && { id: 'meetings', name: '🎙️ Reuniones IA' },
                   { id: 'deploy', name: '📝 Nueva Cotización' }
-                ].map(tab => (
+                ].filter(Boolean).map(tab => (
                   <button
                     key={tab.id}
                     onClick={() => setOperationsTab(tab.id)}
@@ -12963,7 +13012,7 @@ Instrucciones generales de formato:
             />
           )}
 
-          {role === 'admin' && view === 'operations' && operationsTab === 'meetings' && (
+          {ENABLE_AI && role === 'admin' && view === 'operations' && operationsTab === 'meetings' && (
             <div className="space-y-4 animate-in fade-in pb-24">
               {/* Operations Sub-tabs Switcher */}
               <div className="flex gap-2 bg-black/45 p-1.5 rounded-2xl border border-white/5 overflow-x-auto nsb">
@@ -12972,9 +13021,9 @@ Instrucciones generales de formato:
                   { id: 'reminders', name: `🔔 Recordatorios (${remindersBadgeCount})` },
                   { id: 'drive', name: '📸 Photo Drive' },
                   { id: 'map', name: '🗺️ IA Dispatcher' },
-                  { id: 'meetings', name: '🎙️ Reuniones IA' },
+                  ENABLE_AI && { id: 'meetings', name: '🎙️ Reuniones IA' },
                   { id: 'deploy', name: '📝 Nueva Cotización' }
-                ].map(tab => (
+                ].filter(Boolean).map(tab => (
                   <button
                     key={tab.id}
                     onClick={() => setOperationsTab(tab.id)}
@@ -14087,11 +14136,13 @@ Respond ONLY in this exact JSON format (no explanation, no markdown, just raw JS
 
         {/* Route Optimizer Modal */}
         {routeModalOpen && (
-          <RouteOptimizerModal 
-            todayJobs={staffJobs.filter(j => j.scheduled_date === todayStr)} 
-            onClose={() => setRouteModalOpen(false)} 
-            lang="es" 
-          />
+          <ErrorBoundary onReset={() => setRouteModalOpen(false)}>
+            <RouteOptimizerModal 
+              todayJobs={staffJobs.filter(j => j.scheduled_date === todayStr)} 
+              onClose={() => setRouteModalOpen(false)} 
+              lang="es" 
+            />
+          </ErrorBoundary>
         )}
 
         {/* Staff Meeting Modal */}
