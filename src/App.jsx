@@ -5107,13 +5107,19 @@ function FeatureCard({ icon, label, desc, color, border, text, bgColor, big, onC
   );
 }
 
-function LandingPage({ onLogin, onSignup }) {
+function LandingPage({ onLogin, onSignup, prefLang, setPrefLang }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [activeModal, setActiveModal] = useState(null);
   const [billingAnnual, setBillingAnnual] = useState(false);
   const [showVideoDemo, setShowVideoDemo] = useState(false);
   const [activeStep, setActiveStep] = useState(0);
   const [isAutoplay, setIsAutoplay] = useState(true);
+
+  // ROI Calculator states
+  const [roiTechs, setRoiTechs] = useState(3);
+  const [roiTicket, setRoiTicket] = useState(150);
+  const [roiJobs, setRoiJobs] = useState(15);
+  const [roiHours, setRoiHours] = useState(5);
 
   const openModal = (key) => setActiveModal(key);
   const closeModal = () => setActiveModal(null);
@@ -5151,7 +5157,44 @@ function LandingPage({ onLogin, onSignup }) {
     return () => clearInterval(timer);
   }, [isAutoplay]);
 
-  const previewSteps = [
+  const previewSteps = prefLang === 'es' ? [
+    {
+      title: 'Despacho Inteligente con IA',
+      desc: 'El sistema asigna la mejor tripulación según ubicación y horario, enviando los detalles del trabajo directamente a su app móvil.',
+      icon: 'zap',
+      badge: 'Paso 1: Despacho Automatizado'
+    },
+    {
+      title: 'Ruta GPS en Vivo al Cliente',
+      desc: 'Cuando sale el equipo, se envía automáticamente un SMS al cliente con un enlace de seguimiento en tiempo real.',
+      icon: 'map-pin',
+      badge: 'Paso 2: Notificaciones al Cliente'
+    },
+    {
+      title: 'Check-In por Geocerca',
+      desc: 'El equipo se registra al llegar. La verificación GPS garantiza que estén en la dirección correcta antes de iniciar.',
+      icon: 'clock',
+      badge: 'Paso 3: Verificación de Geocerca'
+    },
+    {
+      title: 'Control de Calidad por IA',
+      desc: 'El equipo sube fotos antes/después. La IA de Elevore analiza las fotos para garantizar la calidad y evitar reclamos.',
+      icon: 'camera',
+      badge: 'Paso 4: Garantía de Calidad'
+    },
+    {
+      title: 'Firma Digital en Sitio',
+      desc: 'El cliente firma directamente en el teléfono del trabajador o mediante enlace SMS, creando un registro vinculante.',
+      icon: 'edit-3',
+      badge: 'Paso 5: Firma del Cliente'
+    },
+    {
+      title: 'Autofacturación y Pago Stripe',
+      desc: 'La facturación es automática. Stripe procesa el pago inmediatamente y se solicita una reseña de 5 estrellas.',
+      icon: 'credit-card',
+      badge: 'Paso 6: Liquidación Automatizada'
+    }
+  ] : [
     {
       title: 'AI Smart Dispatch',
       desc: 'System matches the best crew based on location and schedule, sending the job details directly to their mobile app.',
@@ -5190,7 +5233,14 @@ function LandingPage({ onLogin, onSignup }) {
     }
   ];
 
-  const features = [
+  const features = prefLang === 'es' ? [
+    { icon: 'calendar', color: 'from-amber-500/20 to-amber-500/5', border: 'border-amber-500/30', text: 'amber-400', label: 'Calendario y Despacho Inteligente', desc: 'El calendario drag-and-drop optimiza las rutas de viaje, programa visitas recurrentes y notifica a los equipos.', big: true },
+    { icon: 'camera', color: 'from-purple-500/20 to-purple-500/5', border: 'border-purple-500/30', text: 'purple-400', label: 'Carpeta de Fotos Antes y Después', desc: 'Prueba innegable de calidad. Los trabajadores suben fotos organizadas automáticamente en el historial del cliente.' },
+    { icon: 'edit-3', color: 'from-blue-500/20 to-blue-500/5', border: 'border-blue-500/30', text: 'blue-400', label: 'Firmas Digitales en Sitio', desc: 'Firmas vinculantes en el smartphone del equipo al terminar el servicio. Evite cualquier disputa de pago.' },
+    { icon: 'message-square', color: 'from-green-500/20 to-green-500/5', border: 'border-green-500/30', text: 'green-400', label: 'WhatsApp CRM y Alertas Automáticas', desc: 'Automatice la comunicación: envíe cotizaciones de seguimiento, avisos de llegada y enlaces para reseñas de 5 estrellas.', big: true },
+    { icon: 'brain', color: 'from-rose-500/20 to-rose-500/5', border: 'border-rose-500/30', text: 'rose-400', label: 'Asistente de Ingresos con IA', desc: 'Analice la demanda histórica y el clima para identificar oportunidades de upselling y proyectar el flujo de caja.' },
+    { icon: 'layout-dashboard', color: 'from-yellow-500/20 to-yellow-500/5', border: 'border-yellow-500/30', text: 'yellow-400', label: 'Panel de Control en Tiempo Real', desc: 'Monitoree toda la operación de un vistazo: estados de despacho, temporizadores de trabajo activos y ubicaciones GPS.' },
+  ] : [
     { icon: 'calendar', color: 'from-amber-500/20 to-amber-500/5', border: 'border-amber-500/30', text: 'amber-400', label: 'Mission Calendar & Smart Dispatch', desc: 'Drag-and-drop calendar automatically optimizes travel routes, schedules recurring visits, and notifies crews instantly.', big: true },
     { icon: 'camera', color: 'from-purple-500/20 to-purple-500/5', border: 'border-purple-500/30', text: 'purple-400', label: 'Before & After Photo Drive', desc: 'Provide undeniable proof of quality. Workers upload photos directly from the job site, automatically organized in the client history.' },
     { icon: 'edit-3', color: 'from-blue-500/20 to-blue-500/5', border: 'border-blue-500/30', text: 'blue-400', label: 'Digital Signatures On-Site', desc: 'Secure legally binding sign-offs on the crew’s smartphone right after completion. Never worry about payment disputes again.' },
@@ -5199,11 +5249,21 @@ function LandingPage({ onLogin, onSignup }) {
     { icon: 'layout-dashboard', color: 'from-yellow-500/20 to-yellow-500/5', border: 'border-yellow-500/30', text: 'yellow-400', label: 'Real-Time Operations Dashboard', desc: 'Monitor your entire operation at a glance. Live dispatch states, active job timers, GPS locations, and daily gross revenues.' },
   ];
 
-  const testimonials = [
-    { name: 'Carlos R.', biz: 'Pristine Cleaning Co.', loc: 'Orlando, FL', text: 'Our scheduling was a nightmare. Since Elevore, the dispatch system handles our 12 crews automatically, saving us 15+ hours/week. Growth went from 0 to 45%.', stars: 5, avatar: 'CR', avatarColor: 'from-amber-500 to-orange-600' },
-    { name: 'Maria S.', biz: 'Elite Handyman Services', loc: 'Tampa, FL', text: 'Before/after photo drives completely saved us. When a client claims we missed a spot, we send the timestamped photo. Zero disputes this year.', stars: 5, avatar: 'MS', avatarColor: 'from-purple-500 to-pink-600' },
-    { name: 'David K.', biz: 'Apex Property Services', loc: 'Miami, FL', text: 'The Good-Better-Best pricing matrix is pure magic. 80% of our residential clients choose the middle option, boosting average job value by 38%.', stars: 5, avatar: 'DK', avatarColor: 'from-blue-500 to-cyan-600' },
+  const testimonials = prefLang === 'es' ? [
+    { name: 'Carlos Mendoza', biz: 'Mendoza Premium Cleaners', loc: 'Miami, FL', text: 'Antes de Elevore, me pasaba el día coordinando turnos en WhatsApp. El optimizador de rutas GPS y las confirmaciones automáticas redujeron mis ausencias a cero. ¡Pasamos de $9,500 a $27,800/mes!', stars: 5, avatar: 'CM', avatarColor: 'from-amber-500 to-orange-600' },
+    { name: 'Jessica Sterling', biz: 'Apex Maintenance Co.', loc: 'Austin, TX', text: 'El mayor cambio fue el CRM de WhatsApp y las firmas de contratos digitales en sitio. El 90% de los clientes aprueban y pagan depósitos en menos de 10 minutos.', stars: 5, avatar: 'JS', avatarColor: 'from-purple-500 to-pink-600' },
+    { name: 'Marcus Vance', biz: 'Vance Janitorial', loc: 'Atlanta, GA', text: 'Administrar 12 limpiadores comerciales solía requerir despacho manual constante. Con la asignación automática por ubicación de Elevore, ahorramos más de 15 horas/semana.', stars: 5, avatar: 'MV', avatarColor: 'from-blue-500 to-cyan-600' },
+  ] : [
+    { name: 'Carlos Mendoza', biz: 'Mendoza Premium Cleaners', loc: 'Miami, FL', text: 'Scheduling was a nightmare. Since Elevore, the GPS routing and auto confirmations reduced our noshows to zero. We scaled from $9,500 to $27,800/month!', stars: 5, avatar: 'CM', avatarColor: 'from-amber-500 to-orange-600' },
+    { name: 'Jessica Sterling', biz: 'Apex Maintenance Co.', loc: 'Austin, TX', text: 'The biggest shift was WhatsApp CRM and digital sign-offs. 90% of our clients approve and pay their deposit link in under 10 minutes directly on their phone.', stars: 5, avatar: 'JS', avatarColor: 'from-purple-500 to-pink-600' },
+    { name: 'Marcus Vance', biz: 'Vance Janitorial', loc: 'Atlanta, GA', text: 'Managing 12 commercial cleaners used to require constant calls. With Elevores automated dispatch based on location, we save 15+ hours/week.', stars: 5, avatar: 'MV', avatarColor: 'from-blue-500 to-cyan-600' },
   ];
+
+  const roiCurrentIncome = Math.round(roiJobs * roiTicket * 4.33);
+  const roiLostMoney = Math.round(roiTechs * roiHours * 25 * 4.33);
+  const roiAddedIncome = Math.round(roiTechs * 2 * roiTicket * 4.33);
+  const roiProjectedIncome = roiCurrentIncome + roiAddedIncome + roiLostMoney;
+  const roiNetGain = roiAddedIncome + roiLostMoney;
 
   return (
     <div className="min-h-screen bg-[#030303] text-white selection:bg-[#F5C518] selection:text-black overflow-x-hidden land">
@@ -5224,14 +5284,20 @@ function LandingPage({ onLogin, onSignup }) {
             <span className="font-black tracking-tight text-xl">Elevore <span className="glow-text italic">Empire</span></span>
           </button>
           <div className="hidden md:flex items-center gap-8 text-[11px] font-bold uppercase tracking-widest text-slate-400">
-            {[['features','Features'],['pricing','Pricing'],['testimonials','Reviews']].map(([id, label]) => (
+            {[['features', prefLang === 'es' ? 'Funciones' : 'Features'],['pricing', prefLang === 'es' ? 'Precios' : 'Pricing'],['testimonials', prefLang === 'es' ? 'Opiniones' : 'Reviews']].map(([id, label]) => (
               <button key={id} onClick={() => scrollTo(id)} className="animated-underline hover:text-white transition-colors">{label}</button>
             ))}
-            <button onClick={() => openModal('Changelog')} className="animated-underline hover:text-[#F5C518] transition-colors">Changelog</button>
+            <button onClick={() => openModal('Changelog')} className="animated-underline hover:text-[#F5C518] transition-colors">{prefLang === 'es' ? 'Historial' : 'Changelog'}</button>
           </div>
           <div className="flex items-center gap-3">
-            <button onClick={onLogin} className="hidden sm:block text-[11px] font-black uppercase tracking-widest text-slate-400 hover:text-white transition-colors px-4 py-2">Log In</button>
-            <button onClick={onSignup} className="btn-gold px-5 py-2.5 text-[11px] uppercase tracking-widest">Start Free Trial</button>
+            {/* Language Switcher */}
+            <div className="flex bg-white/5 border border-white/10 rounded-xl p-0.5 text-[9px] font-black uppercase tracking-wider">
+              <button onClick={() => setPrefLang('en')} className={`px-2 py-1 rounded-lg transition-all ${prefLang === 'en' ? 'bg-[#F5C518] text-black shadow' : 'text-slate-400 hover:text-white'}`}>EN</button>
+              <button onClick={() => setPrefLang('es')} className={`px-2 py-1 rounded-lg transition-all ${prefLang === 'es' ? 'bg-[#F5C518] text-black shadow' : 'text-slate-400 hover:text-white'}`}>ES</button>
+            </div>
+            
+            <button onClick={onLogin} className="hidden sm:block text-[11px] font-black uppercase tracking-widest text-slate-400 hover:text-white transition-colors px-4 py-2">{prefLang === 'es' ? 'Iniciar Sesión' : 'Log In'}</button>
+            <button onClick={onSignup} className="btn-gold px-5 py-2.5 text-[11px] uppercase tracking-widest">{prefLang === 'es' ? 'Prueba Gratis' : 'Start Free Trial'}</button>
             <button onClick={() => setMenuOpen(m => !m)} className="md:hidden flex flex-col gap-1.5 p-2 rounded-lg hover:bg-white/5 transition-colors" aria-label="Toggle menu">
               <span className={`block w-5 h-0.5 bg-white transition-all duration-300 origin-center ${menuOpen ? 'rotate-45 translate-y-2' : ''}`} />
               <span className={`block w-5 h-0.5 bg-white transition-all duration-300 ${menuOpen ? 'opacity-0' : ''}`} />
@@ -5241,13 +5307,13 @@ function LandingPage({ onLogin, onSignup }) {
         </div>
         {menuOpen && (
           <div className="md:hidden border-t border-white/5 px-6 py-6 space-y-4" style={{ background: 'rgba(3,3,3,0.98)' }}>
-            {[['features','⚡ Features'],['pricing','💎 Pricing'],['testimonials','⭐ Reviews']].map(([id, label]) => (
+            {[['features', prefLang === 'es' ? '⚡ Funciones' : '⚡ Features'],['pricing', prefLang === 'es' ? '💎 Precios' : '💎 Pricing'],['testimonials', prefLang === 'es' ? '⭐ Opiniones' : '⭐ Reviews']].map(([id, label]) => (
               <button key={id} onClick={() => scrollTo(id)} className="block w-full text-left text-sm font-black uppercase tracking-widest text-slate-300 hover:text-white py-2 border-b border-white/5 transition-colors">{label}</button>
             ))}
-            <button onClick={() => { openModal('Changelog'); setMenuOpen(false); }} className="block w-full text-left text-sm font-black uppercase tracking-widest text-slate-300 hover:text-[#F5C518] py-2 border-b border-white/5">📋 Changelog</button>
+            <button onClick={() => { openModal('Changelog'); setMenuOpen(false); }} className="block w-full text-left text-sm font-black uppercase tracking-widest text-slate-300 hover:text-[#F5C518] py-2 border-b border-white/5">{prefLang === 'es' ? '📋 Historial' : '📋 Changelog'}</button>
             <div className="flex gap-3 pt-2">
-              <button onClick={() => { onLogin(); setMenuOpen(false); }} className="flex-1 py-3 border border-white/10 rounded-xl text-sm font-black uppercase tracking-wider text-slate-300 hover:bg-white/5 active:scale-95 transition-all">Log In</button>
-              <button onClick={() => { onSignup(); setMenuOpen(false); }} className="flex-1 py-3 bg-[#F5C518] text-black rounded-xl text-sm font-black uppercase tracking-wider active:scale-95 transition-all">Free Trial</button>
+              <button onClick={() => { onLogin(); setMenuOpen(false); }} className="flex-1 py-3 border border-white/10 rounded-xl text-sm font-black uppercase tracking-wider text-slate-300 hover:bg-white/5 active:scale-95 transition-all">{prefLang === 'es' ? 'Acceder' : 'Log In'}</button>
+              <button onClick={() => { onSignup(); setMenuOpen(false); }} className="flex-1 py-3 bg-[#F5C518] text-black rounded-xl text-sm font-black uppercase tracking-wider active:scale-95 transition-all">{prefLang === 'es' ? 'Prueba Gratis' : 'Free Trial'}</button>
             </div>
           </div>
         )}
@@ -5265,18 +5331,27 @@ function LandingPage({ onLogin, onSignup }) {
               <div className="w-2 h-2 bg-[#F5C518] rounded-full" />
               <div className="pulse-ring" style={{ background: 'rgba(245,197,24,0.4)' }} />
             </div>
-            <span className="text-[#F5C518] text-[10px] font-black uppercase tracking-[0.3em]">The #1 OS for Elite Service Companies</span>
+            <span className="text-[#F5C518] text-[10px] font-black uppercase tracking-[0.3em]">
+              {prefLang === 'es' ? '⭐ El Sistema Operativo con IA Nº 1 para Negocios de Servicios' : '⭐️ #1 AI OS FOR SERVICE BUSINESSES'}
+            </span>
           </div>
-          <h1 className="reveal delay-100 text-5xl sm:text-7xl md:text-[96px] font-black leading-[0.88] tracking-tighter">
-            Run Your Service Operations<br />
-            <span className="glow-text italic">on Autopilot.</span>
+          <h1 className="reveal delay-100 text-5xl sm:text-7xl md:text-[88px] font-black leading-[0.9] tracking-tighter">
+            {prefLang === 'es' ? (
+              <>Escale su negocio de servicios<br /><span className="glow-text italic">de $8K a $31K/mes.</span></>
+            ) : (
+              <>Scale Your Service Business<br /><span className="glow-text italic">from $8K to $31K/mo.</span></>
+            )}
           </h1>
           <p className="reveal delay-200 text-slate-400 text-lg md:text-xl max-w-2xl mx-auto leading-relaxed">
-            AI dispatch, GPS routing, before/after drives, and live tracking — built specifically to scale cleaning, handyman, and property maintenance companies.
+            {prefLang === 'es' ? (
+              'Asigne servicios automáticamente, rastree rutas por GPS y cierre contratos digitales. Diseñado para dueños de empresas de limpieza y handyman que operan desde el móvil.'
+            ) : (
+              'Automate smart dispatch, track fleet GPS in real-time, and sign digital contracts. Built specifically for cleaning, handyman, and maintenance operators who run business from the mobile.'
+            )}
           </p>
           <div className="reveal delay-300 flex flex-col sm:flex-row items-center justify-center gap-4">
             <button onClick={onSignup} className="btn-gold group w-full sm:w-auto px-10 py-5 text-sm uppercase tracking-widest flex items-center justify-center gap-2">
-              Start 14-Day Free Trial <Icon name="arrow-right" className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+              {prefLang === 'es' ? 'Comience su Prueba Gratis por 14 Días' : 'Start 14-Day Free Trial'} <Icon name="arrow-right" className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
             </button>
             <button
               onClick={() => setShowVideoDemo(true)}
@@ -5288,18 +5363,25 @@ function LandingPage({ onLogin, onSignup }) {
                   <path d="M5 3l14 9-14 9V3z"/>
                 </svg>
               </div>
-              Ver Demo de 3 min
+              {prefLang === 'es' ? 'Ver Demo de 60 Segundos' : 'Watch 60s Demo'}
             </button>
           </div>
-          <p className="text-[10px] text-slate-600 uppercase tracking-widest font-bold">No credit card required • Cancel anytime • Setup in 2 minutes</p>
+          <p className="text-[10px] text-slate-600 uppercase tracking-widest font-bold">
+            {prefLang === 'es' ? 'Sin tarjeta de crédito • Cancele cuando quiera • Configuración en 2 minutos' : 'No credit card required • Cancel anytime • Setup in 2 minutes'}
+          </p>
           
           {/* Interactive Operations Preview Section */}
           <div className="pt-16 pb-8">
             <div className="text-center mb-12 space-y-3">
-              <p className="text-[10px] font-black uppercase tracking-[0.3em] text-[#F5C518]">Demostración Interactiva</p>
+              <p className="text-[10px] font-black uppercase tracking-[0.3em] text-[#F5C518]">
+                {prefLang === 'es' ? 'Demostración Interactiva' : 'Interactive Demonstration'}
+              </p>
               <h2 className="text-3xl md:text-4xl font-black tracking-tighter">
-                Mira cómo una misión se completa<br />
-                <span className="glow-text italic">en piloto automático.</span>
+                {prefLang === 'es' ? (
+                  <>Mira cómo una misión se completa<br /><span className="glow-text italic">en piloto automático.</span></>
+                ) : (
+                  <>Watch how a mission gets completed<br /><span className="glow-text italic">on autopilot.</span></>
+                )}
               </h2>
             </div>
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-stretch text-left">
