@@ -709,8 +709,8 @@ function Thermo({ pct, goal, current }) {
 // MapComponent
 function MapComponent({ address, lat, lng, workerLat, workerLng }) {
   const srcDoc = useMemo(() => {
-    const destination = lat && lng ? [lat, lng] : null;
-    const worker = workerLat && workerLng ? [workerLat, workerLng] : null;
+    const destination = lat && lng && !isNaN(Number(lat)) && !isNaN(Number(lng)) ? [Number(lat), Number(lng)] : null;
+    const worker = workerLat && workerLng && !isNaN(Number(workerLat)) && !isNaN(Number(workerLng)) ? [Number(workerLat), Number(workerLng)] : null;
     return `
       <!DOCTYPE html>
       <html>
@@ -848,8 +848,36 @@ class ErrorBoundary extends React.Component {
   }
 }
 
+const defaultAddons = [
+  { id: 'oven', en: 'Inside Oven', p: 35 },
+  { id: 'fridge', en: 'Inside Fridge', p: 30 },
+  { id: 'windows', en: 'Windows', p: 50 },
+  { id: 'pethair', en: 'Pet Hair', p: 25 },
+  { id: 'garage', en: 'Garage', p: 40 }
+];
+
+const defaultQuickJobs = [
+  { id: 'cleaning_reg', en: 'Regular Cleaning', p: 120 },
+  { id: 'cleaning_deep', en: 'Deep Cleaning', p: 180 },
+  { id: 'tv', en: 'Mount TV', p: 150 },
+  { id: 'door', en: 'Install Door', p: 200 },
+  { id: 'patch', en: 'Drywall Patch', p: 180 },
+  { id: 'shelves', en: 'Shelving', p: 100 },
+  { id: 'lock', en: 'Lock Change', p: 85 },
+  { id: 'paint', en: 'Paint Touch-up', p: 120 },
+  { id: 'faucet', en: 'Faucet Install', p: 130 }
+];
+
 // RouteOptimizerModal Component
 function RouteOptimizerModal({ todayJobs, onClose, lang }) {
+  const cleanJobs = useMemo(() => {
+    return Array.isArray(todayJobs) ? todayJobs.filter(Boolean) : [];
+  }, [todayJobs]);
+
+  if (cleanJobs.length === 0) {
+    return null;
+  }
+
   const [loading, setLoading] = useState(true);
   const [progress, setProgress] = useState(0);
   const [stops, setStops] = useState([]);
@@ -864,28 +892,49 @@ function RouteOptimizerModal({ todayJobs, onClose, lang }) {
   const formatDist = (val) => {
     if (val === undefined || val === null) return '0.0';
     const num = Number(val);
-    return isNaN(num) ? '0.0' : num.toFixed(1);
+    return (!Number.isFinite(num)) ? '0.0' : num.toFixed(1);
+  };
+
+  // Helper fetch function with timeout to prevent hanging the main execution flow
+  const fetchWithTimeout = async (url, options = {}) => {
+    const { timeout = 4000 } = options;
+    const controller = new AbortController();
+    const timerId = setTimeout(() => controller.abort(), timeout);
+    try {
+      const response = await fetch(url, { ...options, signal: controller.signal });
+      clearTimeout(timerId);
+      return response;
+    } catch (err) {
+      clearTimeout(timerId);
+      throw err;
+    }
   };
 
   // Haversine formula
   const getDistance = (lat1, lon1, lat2, lon2) => {
-    if (
-      lat1 === null || lat1 === undefined || isNaN(Number(lat1)) ||
-      lon1 === null || lon1 === undefined || isNaN(Number(lon1)) ||
-      lat2 === null || lat2 === undefined || isNaN(Number(lat2)) ||
-      lon2 === null || lon2 === undefined || isNaN(Number(lon2))
-    ) {
+    try {
+      if (
+        lat1 === null || lat1 === undefined || isNaN(Number(lat1)) ||
+        lon1 === null || lon1 === undefined || isNaN(Number(lon1)) ||
+        lat2 === null || lat2 === undefined || isNaN(Number(lat2)) ||
+        lon2 === null || lon2 === undefined || isNaN(Number(lon2))
+      ) {
+        return 0;
+      }
+      const R = 6371; // Radius of the earth in km
+      const dLat = (Number(lat2) - Number(lat1)) * Math.PI / 180;
+      const dLon = (Number(lon2) - Number(lon1)) * Math.PI / 180;
+      const a = 
+        Math.sin(dLat/2) * Math.sin(dLat/2) +
+        Math.cos(Number(lat1) * Math.PI / 180) * Math.cos(Number(lat2) * Math.PI / 180) * 
+        Math.sin(dLon/2) * Math.sin(dLon/2);
+      const aClamped = Math.max(0, Math.min(1, a));
+      const c = 2 * Math.atan2(Math.sqrt(aClamped), Math.sqrt(Math.max(0, 1 - aClamped)));
+      const dist = R * c;
+      return isNaN(dist) || !isFinite(dist) ? 0 : dist;
+    } catch (e) {
       return 0;
     }
-    const R = 6371; // Radius of the earth in km
-    const dLat = (Number(lat2) - Number(lat1)) * Math.PI / 180;
-    const dLon = (Number(lon2) - Number(lon1)) * Math.PI / 180;
-    const a = 
-      Math.sin(dLat/2) * Math.sin(dLat/2) +
-      Math.cos(Number(lat1) * Math.PI / 180) * Math.cos(Number(lat2) * Math.PI / 180) * 
-      Math.sin(dLon/2) * Math.sin(dLon/2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-    return R * c;
   };
 
   useEffect(() => {
@@ -893,7 +942,7 @@ function RouteOptimizerModal({ todayJobs, onClose, lang }) {
     
     const runGeocodingAndOptimization = async () => {
       try {
-        if (!Array.isArray(todayJobs) || todayJobs.length === 0) {
+        if (cleanJobs.length === 0) {
           setStops([]);
           setLoading(false);
           return;
@@ -917,7 +966,7 @@ function RouteOptimizerModal({ todayJobs, onClose, lang }) {
                   }
                 },
                 (err) => reject(err),
-                { timeout: 5000 }
+                { timeout: 3000 }
               );
             });
             if (active) setStartLocation(currentPos);
@@ -926,32 +975,59 @@ function RouteOptimizerModal({ todayJobs, onClose, lang }) {
           }
         }
         
-        // 2. Geocode each address in todayJobs
+        // 2. Geocode each address in cleanJobs
         const geocodedStops = [];
-        for (let i = 0; i < todayJobs.length; i++) {
+        for (let i = 0; i < cleanJobs.length; i++) {
           if (!active) return;
-          const job = todayJobs[i];
+          const job = cleanJobs[i];
           if (!job) continue;
           
           // Show progress
-          setProgress(Math.round((i / todayJobs.length) * 100));
+          setProgress(Math.round((i / cleanJobs.length) * 100));
           
           let coords = null;
-          if (job.specs && typeof job.specs === 'object' && job.specs.lat && job.specs.lng) {
-            coords = { lat: Number(job.specs.lat), lng: Number(job.specs.lng) };
-          } else if (job.address) {
-            // Fetch from Nominatim
+          let specsObj = null;
+          
+          if (job.specs) {
+            if (typeof job.specs === 'object') {
+              specsObj = job.specs;
+            } else if (typeof job.specs === 'string') {
+              try {
+                specsObj = JSON.parse(job.specs);
+              } catch (e) {
+                console.warn("Failed to parse job.specs JSON string:", e);
+              }
+            }
+          }
+          
+          if (specsObj && specsObj.lat !== undefined && specsObj.lat !== null && specsObj.lng !== undefined && specsObj.lng !== null) {
+            const latVal = Number(specsObj.lat);
+            const lngVal = Number(specsObj.lng);
+            if (!isNaN(latVal) && !isNaN(lngVal)) {
+              coords = { lat: latVal, lng: lngVal };
+            }
+          }
+          
+          if (!coords && job.address && typeof job.address === 'string' && job.address.trim().length > 0) {
+            // Fetch from Nominatim with timeout
             try {
-              const res = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(job.address)}&format=json&limit=1`);
-              const data = await res.json();
-              if (data && data[0]) {
-                coords = { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
+              const cleanAddr = job.address.trim();
+              const res = await fetchWithTimeout(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(cleanAddr)}&format=json&limit=1`, { timeout: 4000 });
+              if (res.ok) {
+                const data = await res.json();
+                if (Array.isArray(data) && data[0]) {
+                  const latVal = parseFloat(data[0].lat);
+                  const lngVal = parseFloat(data[0].lon);
+                  if (!isNaN(latVal) && !isNaN(lngVal)) {
+                    coords = { lat: latVal, lng: lngVal };
+                  }
+                }
               }
             } catch (err) {
               console.error("Geocoding failed for:", job.address, err);
             }
             // Delay to respect OSM Nominatim usage limits (max 1 req/sec)
-            await new Promise(r => setTimeout(r, 800));
+            await new Promise(r => setTimeout(r, 600));
           }
           
           geocodedStops.push({
@@ -980,50 +1056,72 @@ function RouteOptimizerModal({ todayJobs, onClose, lang }) {
           return;
         }
 
-        // Build coordinates array for matrix routing
+        // Build coordinates array for matrix routing without mutating read-only props or states
         const coords = [];
-        const hasStart = currentPos && currentPos.lat !== null && currentPos.lat !== undefined && !isNaN(Number(currentPos.lat));
+        const hasStart = currentPos && 
+          currentPos.lat !== null && currentPos.lat !== undefined && !isNaN(Number(currentPos.lat)) &&
+          currentPos.lng !== null && currentPos.lng !== undefined && !isNaN(Number(currentPos.lng));
         
         if (hasStart) {
-          coords.push({ lat: currentPos.lat, lng: currentPos.lng, isStart: true });
+          coords.push({ lat: Number(currentPos.lat), lng: Number(currentPos.lng), isStart: true });
         }
         
-        validStops.forEach((stop) => {
-          stop.matrixIndex = coords.length;
+        const validStopsWithIndex = validStops.map((stop, index) => ({
+          ...stop,
+          matrixIndex: hasStart ? index + 1 : index
+        }));
+        
+        validStopsWithIndex.forEach((stop) => {
           coords.push(stop);
         });
 
-        // 3. Fetch OSRM Distance Matrix
+        // 3. Fetch OSRM Distance Matrix with timeout
         let distanceMatrix = null;
-        try {
-          const coordsString = coords.map(c => `${c.lng},${c.lat}`).join(';');
-          const url = `https://router.project-osrm.org/table/v1/driving/${coordsString}?annotations=distance`;
-          const res = await fetch(url);
-          if (res.ok) {
-            const data = await res.json();
-            if (data && data.distances && Array.isArray(data.distances)) {
-              distanceMatrix = data.distances.map(row => 
-                Array.isArray(row) ? row.map(d => d === null || d === undefined || isNaN(Number(d)) ? Infinity : Number(d) / 1000) : []
-              );
-              console.log("OSRM Road Distance Matrix loaded successfully.");
+        if (coords.length >= 2) {
+          try {
+            const coordsString = coords.map(c => `${c.lng},${c.lat}`).join(';');
+            const url = `https://router.project-osrm.org/table/v1/driving/${coordsString}?annotations=distance`;
+            const res = await fetchWithTimeout(url, { timeout: 4000 });
+            if (res.ok) {
+              const data = await res.json();
+              if (data && data.distances && Array.isArray(data.distances)) {
+                distanceMatrix = data.distances.map((row, rIdx) => 
+                  Array.isArray(row) ? row.map((d, cIdx) => {
+                    if (d === null || d === undefined || isNaN(Number(d))) {
+                      const fromCoord = coords[rIdx];
+                      const toCoord = coords[cIdx];
+                      if (fromCoord && toCoord) {
+                        return getDistance(fromCoord.lat, fromCoord.lng, toCoord.lat, toCoord.lng);
+                      }
+                      return 999999;
+                    }
+                    return Number(d) / 1000;
+                  }) : []
+                );
+                console.log("OSRM Road Distance Matrix loaded successfully.");
+              }
             }
+          } catch (e) {
+            console.warn("Failed to load OSRM distance matrix, using Haversine straight line:", e);
           }
-        } catch (e) {
-          console.warn("Failed to load OSRM distance matrix, using Haversine straight line:", e);
         }
+
 
         // Helper to get distance (from OSRM matrix or fallback to Haversine)
         const getMatrixDistance = (fromIdx, toIdx, fromLat, fromLng, toLat, toLng) => {
           try {
             if (distanceMatrix && 
                 Array.isArray(distanceMatrix) && 
+                fromIdx >= 0 && fromIdx < distanceMatrix.length &&
                 distanceMatrix[fromIdx] && 
                 Array.isArray(distanceMatrix[fromIdx]) && 
+                toIdx >= 0 && toIdx < distanceMatrix[fromIdx].length &&
                 distanceMatrix[fromIdx][toIdx] !== undefined && 
                 distanceMatrix[fromIdx][toIdx] !== null &&
                 !isNaN(Number(distanceMatrix[fromIdx][toIdx]))
             ) {
-              return Number(distanceMatrix[fromIdx][toIdx]);
+              const val = Number(distanceMatrix[fromIdx][toIdx]);
+              return isNaN(val) || !isFinite(val) ? getDistance(fromLat, fromLng, toLat, toLng) : val;
             }
           } catch (e) {
             console.warn("Matrix distance lookup failed, falling back to Haversine", e);
@@ -1033,26 +1131,45 @@ function RouteOptimizerModal({ todayJobs, onClose, lang }) {
         
         // Calculate original distance (in scheduled order)
         let origDist = 0;
-        let prevLat = hasStart ? currentPos.lat : validStops[0].lat;
-        let prevLng = hasStart ? currentPos.lng : validStops[0].lng;
+        let prevLat = 0;
+        let prevLng = 0;
         let prevIdx = 0;
+
+        if (hasStart) {
+          prevLat = Number(currentPos.lat);
+          prevLng = Number(currentPos.lng);
+        } else if (validStopsWithIndex.length > 0 && validStopsWithIndex[0]) {
+          prevLat = Number(validStopsWithIndex[0].lat) || 0;
+          prevLng = Number(validStopsWithIndex[0].lng) || 0;
+        }
         
-        validStops.forEach(s => {
+        validStopsWithIndex.forEach(s => {
           if (s) {
-            origDist += getMatrixDistance(prevIdx, s.matrixIndex, prevLat, prevLng, s.lat, s.lng);
-            prevLat = s.lat;
-            prevLng = s.lng;
-            prevIdx = s.matrixIndex;
+            const sLat = Number(s.lat) || 0;
+            const sLng = Number(s.lng) || 0;
+            const sIdx = Number(s.matrixIndex) || 0;
+            origDist += getMatrixDistance(prevIdx, sIdx, prevLat, prevLng, sLat, sLng);
+            prevLat = sLat;
+            prevLng = sLng;
+            prevIdx = sIdx;
           }
         });
         
         // Optimize route using Nearest Neighbor (TSP)
-        const unvisited = [...validStops];
+        const unvisited = [...validStopsWithIndex];
         const optimized = [];
         let optDist = 0;
-        let currentPrevLat = hasStart ? currentPos.lat : validStops[0].lat;
-        let currentPrevLng = hasStart ? currentPos.lng : validStops[0].lng;
+        let currentPrevLat = 0;
+        let currentPrevLng = 0;
         let currentPrevIdx = 0;
+
+        if (hasStart) {
+          currentPrevLat = Number(currentPos.lat);
+          currentPrevLng = Number(currentPos.lng);
+        } else if (validStopsWithIndex.length > 0 && validStopsWithIndex[0]) {
+          currentPrevLat = Number(validStopsWithIndex[0].lat) || 0;
+          currentPrevLng = Number(validStopsWithIndex[0].lng) || 0;
+        }
         
         while (unvisited.length > 0) {
           let nearestIdx = -1;
@@ -1061,15 +1178,18 @@ function RouteOptimizerModal({ todayJobs, onClose, lang }) {
           for (let i = 0; i < unvisited.length; i++) {
             const stop = unvisited[i];
             if (!stop) continue;
+            const stopLat = Number(stop.lat) || 0;
+            const stopLng = Number(stop.lng) || 0;
+            const stopIdx = Number(stop.matrixIndex) || 0;
             const dist = getMatrixDistance(
               currentPrevIdx, 
-              stop.matrixIndex, 
+              stopIdx, 
               currentPrevLat, 
               currentPrevLng, 
-              stop.lat, 
-              stop.lng
+              stopLat, 
+              stopLng
             );
-            if (dist < minDist && !isNaN(dist)) {
+            if (!isNaN(dist) && isFinite(dist) && dist < minDist) {
               minDist = dist;
               nearestIdx = i;
             }
@@ -1083,14 +1203,14 @@ function RouteOptimizerModal({ todayJobs, onClose, lang }) {
           const nextStop = unvisited.splice(nearestIdx, 1)[0];
           if (!nextStop) continue;
           
-          optDist += isNaN(minDist) ? 0 : minDist;
+          optDist += isNaN(minDist) || !isFinite(minDist) ? 0 : minDist;
           optimized.push(nextStop);
-          currentPrevLat = nextStop.lat;
-          currentPrevLng = nextStop.lng;
-          currentPrevIdx = nextStop.matrixIndex;
+          currentPrevLat = Number(nextStop.lat) || 0;
+          currentPrevLng = Number(nextStop.lng) || 0;
+          currentPrevIdx = Number(nextStop.matrixIndex) || 0;
         }
 
-        // 4. Fetch the real street-routing path geometry
+        // 4. Fetch the real street-routing path geometry with timeout
         let routeGeom = [];
         try {
           const orderedCoords = [];
@@ -1099,20 +1219,27 @@ function RouteOptimizerModal({ todayJobs, onClose, lang }) {
           }
           optimized.forEach(s => {
             if (s && s.lat !== null && s.lng !== null) {
-              orderedCoords.push({ lat: s.lat, lng: s.lng });
+              orderedCoords.push({ lat: Number(s.lat), lng: Number(s.lng) });
             }
           });
           
           if (orderedCoords.length > 1) {
             const coordsString = orderedCoords.map(c => `${c.lng},${c.lat}`).join(';');
             const url = `https://router.project-osrm.org/route/v1/driving/${coordsString}?overview=full&geometries=geojson`;
-            const res = await fetch(url);
+            const res = await fetchWithTimeout(url, { timeout: 4000 });
             if (res.ok) {
               const data = await res.json();
               if (data && data.routes && Array.isArray(data.routes) && data.routes[0] && data.routes[0].geometry && Array.isArray(data.routes[0].geometry.coordinates)) {
-                routeGeom = data.routes[0].geometry.coordinates.map(coord => 
-                  Array.isArray(coord) && coord.length >= 2 ? [coord[1], coord[0]] : null
-                ).filter(c => c !== null);
+                routeGeom = data.routes[0].geometry.coordinates.map(coord => {
+                  if (Array.isArray(coord) && coord.length >= 2) {
+                    const latVal = Number(coord[1]);
+                    const lngVal = Number(coord[0]);
+                    if (!isNaN(latVal) && !isNaN(lngVal)) {
+                      return [latVal, lngVal];
+                    }
+                  }
+                  return null;
+                }).filter(c => c !== null);
                 console.log("OSRM Road Routing Geometry loaded successfully.");
               }
             }
@@ -1130,7 +1257,7 @@ function RouteOptimizerModal({ todayJobs, onClose, lang }) {
         setLoading(false);
       } catch (err) {
         console.error("Error calculating optimized route:", err);
-        setError(err.message || "Error calculating route");
+        setError(err?.message || String(err) || "Error calculating route");
         setLoading(false);
       }
     };
@@ -1140,14 +1267,23 @@ function RouteOptimizerModal({ todayJobs, onClose, lang }) {
     return () => {
       active = false;
     };
-  }, [todayJobs]);
+  }, [cleanJobs]);
 
   const srcDoc = useMemo(() => {
-    if (stops.length === 0) return '';
+    if (!Array.isArray(stops) || stops.length === 0) return '';
     try {
-      const stopsJson = JSON.stringify(stops).replace(/`/g, '\\`').replace(/\${/g, '\\${');
-      const startJson = JSON.stringify(startLocation).replace(/`/g, '\\`').replace(/\${/g, '\\${');
-      const routeGeometryJson = JSON.stringify(routeGeometry || []).replace(/`/g, '\\`').replace(/\${/g, '\\${');
+      const stopsJson = JSON.stringify(stops)
+        .replace(/<\/script>/ig, '<\\/script>')
+        .replace(/`/g, '\\`')
+        .replace(/\${/g, '\\${');
+      const startJson = JSON.stringify(startLocation)
+        .replace(/<\/script>/ig, '<\\/script>')
+        .replace(/`/g, '\\`')
+        .replace(/\${/g, '\\${');
+      const routeGeometryJson = JSON.stringify(routeGeometry || [])
+        .replace(/<\/script>/ig, '<\\/script>')
+        .replace(/`/g, '\\`')
+        .replace(/\${/g, '\\${');
       
       return `
         <!DOCTYPE html>
@@ -1186,9 +1322,15 @@ function RouteOptimizerModal({ todayJobs, onClose, lang }) {
             });
             
             if (startLoc && typeof startLoc.lat === 'number' && !isNaN(startLoc.lat) && typeof startLoc.lng === 'number' && !isNaN(startLoc.lng)) {
+              const startPopup = document.createElement('div');
+              startPopup.className = 'popup-content';
+              const b = document.createElement('b');
+              b.textContent = 'Mi Ubicación Actual';
+              startPopup.appendChild(b);
+
               L.marker([startLoc.lat, startLoc.lng], { icon: workerIcon })
                 .addTo(map)
-                .bindPopup('<div class="popup-content"><b>Mi Ubicación Actual</b></div>');
+                .bindPopup(startPopup);
               bounds.push([startLoc.lat, startLoc.lng]);
             }
             
@@ -1208,9 +1350,28 @@ function RouteOptimizerModal({ todayJobs, onClose, lang }) {
               });
               
               if (s && typeof s.lat === 'number' && !isNaN(s.lat) && typeof s.lng === 'number' && !isNaN(s.lng)) {
+                const stopPopup = document.createElement('div');
+                stopPopup.className = 'popup-content';
+                
+                const boldTitle = document.createElement('b');
+                boldTitle.textContent = 'Parada ' + (idx + 1) + ': ' + (s.clientName || 'Desconocido');
+                stopPopup.appendChild(boldTitle);
+                
+                const br1 = document.createElement('br');
+                stopPopup.appendChild(br1);
+                
+                const typeText = document.createTextNode(' ' + (s.serviceType || ''));
+                stopPopup.appendChild(typeText);
+                
+                const br2 = document.createElement('br');
+                stopPopup.appendChild(br2);
+                
+                const addrText = document.createTextNode(' ' + (s.address || ''));
+                stopPopup.appendChild(addrText);
+
                 L.marker([s.lat, s.lng], { icon: stopIcon })
                   .addTo(map)
-                  .bindPopup('<div class="popup-content"><b>Parada ' + (idx + 1) + ': ' + (s.clientName || \'Desconocido\') + '</b><br>&nbsp;' + (s.serviceType || \'\') + '<br>&nbsp;' + (s.address || \'\') + '</div>');
+                  .bindPopup(stopPopup);
                 
                 bounds.push([s.lat, s.lng]);
                 fallbackPoints.push([s.lat, s.lng]);
@@ -1222,8 +1383,10 @@ function RouteOptimizerModal({ todayJobs, onClose, lang }) {
               L.polyline(drawPoints, { color: '#F5C518', weight: 4, opacity: 0.8, dashArray: '5, 8' }).addTo(map);
             }
             
-            if (bounds.length > 0) {
+            if (bounds.length > 1) {
               map.fitBounds(bounds, { padding: [50, 50] });
+            } else if (bounds.length === 1) {
+              map.setView(bounds[0], 14);
             } else {
               map.setView([28.5383, -81.3792], 10);
             }
@@ -1237,7 +1400,10 @@ function RouteOptimizerModal({ todayJobs, onClose, lang }) {
     }
   }, [stops, startLocation, routeGeometry]);
 
-  const savingPct = Math.round((Number(saving || 0) / Math.max(1, Number(originalDistance || 1))) * 100);
+  const orig = Number(originalDistance) || 0;
+  const opt = Number(optimizedDistance) || 0;
+  const sav = Number(saving) || 0;
+  const savingPct = orig > 0 ? Math.round((sav / orig) * 100) : 0;
 
   return (
     <div className="fixed inset-0 bg-black/90 backdrop-blur-md z-[2000] flex items-center justify-center p-4">
@@ -1279,37 +1445,50 @@ function RouteOptimizerModal({ todayJobs, onClose, lang }) {
                   <span>Ruta Optimizada:</span>
                   <span>{formatDist(optimizedDistance)} km</span>
                 </div>
-                {saving > 0 && (
+                {sav > 0 && (
                   <div className="border-t border-white/5 pt-2 flex justify-between text-[10px] uppercase font-black text-amber-400 animate-pulse">
                     <span>🔥 Ahorro Estimado:</span>
-                    <span>{formatDist(saving)} km ({isNaN(savingPct) ? 0 : savingPct}%)</span>
+                    <span>{formatDist(sav)} km ({savingPct}%)</span>
                   </div>
                 )}
               </div>
 
               <div className="space-y-2 flex-1">
                 <p className="text-[8px] font-black text-[#F5C518] uppercase tracking-widest pl-1">Itinerario de Paradas</p>
-                {stops.map((s, idx) => (
-                  <div key={s.id} className="g p-3.5 flex items-center justify-between border border-white/5 bg-black/45 hover:border-white/10 transition-all rounded-xl">
-                    <div className="space-y-1 text-left min-w-0 pr-2">
-                      <div className="flex items-center gap-1.5">
-                        <span className="w-5 h-5 rounded-full bg-green-500 text-white font-black text-[9px] flex items-center justify-center flex-shrink-0">
-                          {idx + 1}
-                        </span>
-                        <h4 className="text-[10px] font-black text-white uppercase italic truncate">{s.clientName}</h4>
-                      </div>
-                      <p className="text-[8px] text-slate-400 font-bold uppercase">{s.serviceType} • {s.status}</p>
-                      <p className="text-[7.5px] text-slate-500 italic truncate w-full">{s.address || 'Sin dirección'}</p>
-                    </div>
-                    <button
-                      onClick={() => window.open(`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(s.address || '')}`, '_blank')}
-                      className="px-2.5 py-1.5 bg-[#F5C518] hover:bg-amber-400 text-black rounded-lg text-[7px] font-black uppercase tracking-wider active:scale-95 transition-all flex items-center gap-1.5 flex-shrink-0"
-                    >
-                      <Icon name="navigation" className="w-3 h-3" />
-                      Navegar
-                    </button>
+                {stops.length === 0 ? (
+                  <div className="g p-8 text-center text-slate-500 border border-dashed border-white/5 rounded-xl font-bold uppercase text-[9px] leading-relaxed">
+                    No se encontraron paradas válidas para optimizar.<br />
+                    Verifica que las misiones de hoy tengan una dirección correcta.
                   </div>
-                ))}
+                ) : (
+                  stops.map((s, idx) => (
+                    <div key={s?.id || idx} className="g p-3.5 flex items-center justify-between border border-white/5 bg-black/45 hover:border-white/10 transition-all rounded-xl">
+                      <div className="space-y-1 text-left min-w-0 pr-2">
+                        <div className="flex items-center gap-1.5">
+                          <span className="w-5 h-5 rounded-full bg-green-500 text-white font-black text-[9px] flex items-center justify-center flex-shrink-0">
+                            {idx + 1}
+                          </span>
+                          <h4 className="text-[10px] font-black text-white uppercase italic truncate">{s?.clientName || 'Desconocido'}</h4>
+                        </div>
+                        <p className="text-[8px] text-slate-400 font-bold uppercase">{s?.serviceType || 'Servicio'} • {s?.status || 'Pendiente'}</p>
+                        <p className="text-[7.5px] text-slate-500 italic truncate w-full">{s?.address || 'Sin dirección'}</p>
+                      </div>
+                      <button
+                        onClick={() => {
+                          try {
+                            window.open(`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(s?.address || '')}`, '_blank');
+                          } catch (err) {
+                            console.error("Failed to open directions:", err);
+                          }
+                        }}
+                        className="px-2.5 py-1.5 bg-[#F5C518] hover:bg-amber-400 text-black rounded-lg text-[7px] font-black uppercase tracking-wider active:scale-95 transition-all flex items-center gap-1.5 flex-shrink-0"
+                      >
+                        <Icon name="navigation" className="w-3 h-3" />
+                        Navegar
+                      </button>
+                    </div>
+                  ))
+                )}
               </div>
             </div>
 
@@ -1995,25 +2174,6 @@ function Portal({ cjid }) {
     setMembershipSaving(false);
   };
 
-  const defaultAddons = [
-    { id: 'oven', en: 'Inside Oven', p: 35 },
-    { id: 'fridge', en: 'Inside Fridge', p: 30 },
-    { id: 'windows', en: 'Windows', p: 50 },
-    { id: 'pethair', en: 'Pet Hair', p: 25 },
-    { id: 'garage', en: 'Garage', p: 40 }
-  ];
-
-  const defaultQuickJobs = [
-    { id: 'cleaning_reg', en: 'Regular Cleaning', p: 120 },
-    { id: 'cleaning_deep', en: 'Deep Cleaning', p: 180 },
-    { id: 'tv', en: 'Mount TV', p: 150 },
-    { id: 'door', en: 'Install Door', p: 200 },
-    { id: 'patch', en: 'Drywall Patch', p: 180 },
-    { id: 'shelves', en: 'Shelving', p: 100 },
-    { id: 'lock', en: 'Lock Change', p: 85 },
-    { id: 'paint', en: 'Paint Touch-up', p: 120 },
-    { id: 'faucet', en: 'Faucet Install', p: 130 }
-  ];
 
   const addonsList = (tenantSettings?.addons && tenantSettings.addons.length > 0) 
                      ? tenantSettings.addons 
@@ -7623,7 +7783,7 @@ Instrucciones:
     const basicFiltered = jobs.filter(j => j.scheduled_date === todayStr || j.status === 'scheduled' || j.status === 'in_progress');
     if (activeEmployee && activeEmployee.name && activeEmployee.name !== 'General Staff' && role === 'staff') {
       const nameLower = activeEmployee.name.toLowerCase();
-      return basicFiltered.filter(j => j.team_assigned && j.team_assigned.toLowerCase().includes(nameLower));
+      return basicFiltered.filter(j => j.team_assigned && typeof j.team_assigned === 'string' && j.team_assigned.toLowerCase().includes(nameLower));
     }
     return basicFiltered;
   }, [jobs, todayStr, activeEmployee, role]);
@@ -9533,10 +9693,10 @@ Instrucciones generales de formato:
                 );
               })()}
 
-              {staffJobs.length === 0 && <div className="g p-10 text-center text-slate-500 font-black italic uppercase bg-[rgba(255,255,255,0.04)] border border-[rgba(255,255,255,0.08)]">No tienes misiones asignadas hoy.</div>}
+              {(staffJobs || []).length === 0 && <div className="g p-10 text-center text-slate-500 font-black italic uppercase bg-[rgba(255,255,255,0.04)] border border-[rgba(255,255,255,0.08)]">No tienes misiones asignadas hoy.</div>}
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {staffJobs.map(job => (
+                {(staffJobs || []).map(job => (
                   <button key={job.id} onClick={() => setAStaff(job)} className="w-full g p-5 text-left active:scale-95 transition-all bg-[rgba(255,255,255,0.04)] border border-[rgba(255,255,255,0.08)] flex flex-col justify-between min-h-[140px] hover:border-[#F5C518]/30">
                     <div className="flex justify-between items-start w-full">
                       <div>
@@ -14152,7 +14312,7 @@ Respond ONLY in this exact JSON format (no explanation, no markdown, just raw JS
         {routeModalOpen && (
           <ErrorBoundary onReset={() => setRouteModalOpen(false)}>
             <RouteOptimizerModal 
-              todayJobs={staffJobs.filter(j => j.scheduled_date === todayStr)} 
+              todayJobs={(staffJobs || []).filter(j => j && j.scheduled_date === todayStr)} 
               onClose={() => setRouteModalOpen(false)} 
               lang="es" 
             />

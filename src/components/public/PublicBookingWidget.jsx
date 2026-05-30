@@ -4,6 +4,8 @@ import {
   Sparkles, Calendar, Clock, MapPin, User, Phone, Mail, 
   Shield, Check, Info, Leaf, Loader2, Heart, Award
 } from 'lucide-react';
+import TimeSlotPicker from './TimeSlotPicker';
+
 
 export default function PublicBookingWidget({ tenantId: propTenantId }) {
   // Read tenantId from URL query parameters if not passed directly
@@ -22,7 +24,7 @@ export default function PublicBookingWidget({ tenantId: propTenantId }) {
     serviceType: 'Limpieza Regular',
     sqft: 1500,
     bookingDate: '',
-    bookingTime: '09:00',
+    bookingTime: '08:00',
     selectedAddons: [],
     customNotes: ''
   });
@@ -395,33 +397,14 @@ export default function PublicBookingWidget({ tenantId: propTenantId }) {
                 <Calendar className="w-4 h-4" /> 3. Fecha & Hora de Preferencia
               </h2>
               
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-1">
-                  <label className="text-[8px] font-black uppercase text-slate-500 tracking-widest pl-1">Selecciona el Día</label>
-                  <input 
-                    required 
-                    type="date"
-                    min={new Date().toISOString().split('T')[0]}
-                    className="inp w-full text-xs font-mono select-dark text-white bg-zinc-950 dark:scheme-dark" 
-                    value={form.bookingDate} 
-                    onChange={e => setForm(prev => ({ ...prev, bookingDate: e.target.value }))}
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-[8px] font-black uppercase text-slate-500 tracking-widest pl-1">Hora Estimada</label>
-                  <select 
-                    className="inp w-full text-xs select-dark bg-zinc-950 text-white"
-                    value={form.bookingTime}
-                    onChange={e => setForm(prev => ({ ...prev, bookingTime: e.target.value }))}
-                  >
-                    <option value="08:00">08:00 AM</option>
-                    <option value="09:00">09:00 AM</option>
-                    <option value="11:00">11:00 AM</option>
-                    <option value="13:00">01:00 PM</option>
-                    <option value="15:00">03:00 PM</option>
-                  </select>
-                </div>
-              </div>
+              <TimeSlotPicker 
+                tenantId={tenantId}
+                selectedDate={form.bookingDate}
+                selectedTime={form.bookingTime}
+                onChangeDate={date => setForm(prev => ({ ...prev, bookingDate: date }))}
+                onChangeTime={time => setForm(prev => ({ ...prev, bookingTime: time }))}
+                lang="es"
+              />
 
               {/* Carbon Footprint & Green Slot Alert banner */}
               {isGreenSlot() && (
