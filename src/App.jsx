@@ -11,6 +11,10 @@ import { HyperDriveTab } from './components/admin/HyperDriveTab';
 import PublicBookingWidget from './components/public/PublicBookingWidget';
 
 // =====================================================================
+// ⚙️ FEATURE FLAGS
+// Disable unstable or incomplete AI features for production release
+// =====================================================================
+const ENABLE_AI = false;
 // 🌟 DYNAMIC ICON ENGINE
 // Maps string names like "arrow-left" to high-performance React Icons
 // =====================================================================
@@ -796,6 +800,53 @@ function MapComponent({ address, lat, lng, workerLat, workerLng }) {
   );
 }
 
+// React ErrorBoundary Component for defensive UI mapping
+class ErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error, errorInfo) {
+    console.error("ErrorBoundary caught an error:", error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="fixed inset-0 bg-black/90 backdrop-blur-md z-[2000] flex items-center justify-center p-4">
+          <div className="g p-6 w-full max-w-lg space-y-4 border-t-4 border-red-500 mx-auto bg-slate-950 rounded-2xl shadow-2xl border border-white/5 text-center">
+            <div className="w-12 h-12 text-red-500 mx-auto animate-pulse flex items-center justify-center text-3xl">⚠️</div>
+            <h3 className="text-sm font-black text-white uppercase italic tracking-wider">Error en la Aplicación</h3>
+            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-relaxed">
+              Ocurrió un error inesperado al cargar esta sección.
+            </p>
+            {this.state.error?.message && (
+              <pre className="text-[8px] bg-black/50 p-3 rounded-lg text-red-400 text-left overflow-x-auto max-h-[150px] border border-white/5 font-mono">
+                {this.state.error.message}
+              </pre>
+            )}
+            <button
+              onClick={() => {
+                this.setState({ hasError: false, error: null });
+                if (this.props.onReset) this.props.onReset();
+              }}
+              className="px-5 py-2.5 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-[9px] font-black uppercase tracking-wider transition-all active:scale-95"
+            >
+              Cerrar / Reset
+            </button>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 // RouteOptimizerModal Component
 function RouteOptimizerModal({ todayJobs, onClose, lang }) {
   const [loading, setLoading] = useState(true);
@@ -807,6 +858,12 @@ function RouteOptimizerModal({ todayJobs, onClose, lang }) {
   const [startLocation, setStartLocation] = useState(null);
   const [error, setError] = useState(null);
   const [routeGeometry, setRouteGeometry] = useState([]);
+
+  // Safety distance format helper
+  const formatDist = (val) => {
+    const num = Number(val);
+    return isNaN(num) ? '0.0' : num.toFixed(1);
+  };
 
   // Haversine formula
   const getDistance = (lat1, lon1, lat2, lon2) => {
@@ -839,13 +896,19 @@ function RouteOptimizerModal({ todayJobs, onClose, lang }) {
         setProgress(0);
         setRouteGeometry([]);
         
-        // 1. Get browser geolocation (optional)
+        // 1. Get browser geolocation (optional & safety-checked)
         let currentPos = null;
-        if (navigator && navigator.geolocation) {
+        if (navigator && navigator.geolocation && typeof navigator.geolocation.getCurrentPosition === 'function') {
           try {
             currentPos = await new Promise((resolve, reject) => {
               navigator.geolocation.getCurrentPosition(
-                (pos) => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+                (pos) => {
+                  if (pos && pos.coords) {
+                    resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+                  } else {
+                    reject(new Error("Invalid Position Coordinates"));
+                  }
+                },
                 (err) => reject(err),
                 { timeout: 5000 }
               );
@@ -867,7 +930,7 @@ function RouteOptimizerModal({ todayJobs, onClose, lang }) {
           setProgress(Math.round((i / todayJobs.length) * 100));
           
           let coords = null;
-          if (job.specs?.lat && job.specs?.lng) {
+          if (job.specs && typeof job.specs === 'object' && job.specs.lat && job.specs.lng) {
             coords = { lat: Number(job.specs.lat), lng: Number(job.specs.lng) };
           } else if (job.address) {
             // Fetch from Nominatim
@@ -1041,8 +1104,8 @@ function RouteOptimizerModal({ todayJobs, onClose, lang }) {
 
   const srcDoc = useMemo(() => {
     if (stops.length === 0) return '';
-    const stopsJson = JSON.stringify(stops);
-    const startJson = JSON.stringify(startLocation);
+    const stopsJson = JSON.stringify(stops).replace(/`/g, '\\`').replace(/\${/g, '\\${');
+    const startJson = JSON.stringify(startLocation).replace(/`/g, '\\`').replace(/\${/g, '\\${');
     
     return `
       <!DOCTYPE html>
@@ -1080,7 +1143,7 @@ function RouteOptimizerModal({ todayJobs, onClose, lang }) {
             iconAnchor: [9, 9]
           });
           
-          if (startLoc && startLoc.lat !== null && startLoc.lng !== null) {
+          if (startLoc && typeof startLoc.lat === 'number' && !isNaN(startLoc.lat) && typeof startLoc.lng === 'number' && !isNaN(startLoc.lng)) {
             L.marker([startLoc.lat, startLoc.lng], { icon: workerIcon })
               .addTo(map)
               .bindPopup('<div class="popup-content"><b>Mi Ubicación Actual</b></div>');
@@ -1088,9 +1151,9 @@ function RouteOptimizerModal({ todayJobs, onClose, lang }) {
           }
           
           // Draw stops and lines
-          const roadPoints = ${JSON.stringify(routeGeometry)};
+          const roadPoints = ${JSON.stringify(routeGeometry).replace(/`/g, '\\`').replace(/\${/g, '\\${')};
           const fallbackPoints = [];
-          if (startLoc && startLoc.lat !== null && startLoc.lng !== null) {
+          if (startLoc && typeof startLoc.lat === 'number' && !isNaN(startLoc.lat) && typeof startLoc.lng === 'number' && !isNaN(startLoc.lng)) {
             fallbackPoints.push([startLoc.lat, startLoc.lng]);
           }
           
@@ -1102,10 +1165,10 @@ function RouteOptimizerModal({ todayJobs, onClose, lang }) {
               iconAnchor: [11, 11]
             });
             
-            if (s.lat !== null && s.lng !== null) {
+            if (s && typeof s.lat === 'number' && !isNaN(s.lat) && typeof s.lng === 'number' && !isNaN(s.lng)) {
               L.marker([s.lat, s.lng], { icon: stopIcon })
                 .addTo(map)
-                .bindPopup(\`<div class="popup-content"><b>Parada \${idx + 1}: \${s.clientName}</b><br>\${s.serviceType}<br>\${s.address}</div>\`);
+                .bindPopup(\`<div class="popup-content"><b>Parada \${idx + 1}: \${s.clientName || 'Desconocido'}</b><br>\&nbsp;\${s.serviceType || ''}<br>\&nbsp;\${s.address || ''}</div>\`);
               
               bounds.push([s.lat, s.lng]);
               fallbackPoints.push([s.lat, s.lng]);
@@ -1126,7 +1189,7 @@ function RouteOptimizerModal({ todayJobs, onClose, lang }) {
       </body>
       </html>
     `;
-  }, [stops, startLocation]);
+  }, [stops, startLocation, routeGeometry]);
 
   return (
     <div className="fixed inset-0 bg-black/90 backdrop-blur-md z-[2000] flex items-center justify-center p-4">
@@ -1162,16 +1225,16 @@ function RouteOptimizerModal({ todayJobs, onClose, lang }) {
                 <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Resumen de Optimización</p>
                 <div className="flex justify-between text-[10px] uppercase font-bold text-slate-500">
                   <span>Secuencia Inicial:</span>
-                  <span className="text-white">{originalDistance.toFixed(1)} km</span>
+                  <span className="text-white">{formatDist(originalDistance)} km</span>
                 </div>
                 <div className="flex justify-between text-[10px] uppercase font-black text-green-400">
                   <span>Ruta Optimizada:</span>
-                  <span>{optimizedDistance.toFixed(1)} km</span>
+                  <span>{formatDist(optimizedDistance)} km</span>
                 </div>
                 {saving > 0 && (
                   <div className="border-t border-white/5 pt-2 flex justify-between text-[10px] uppercase font-black text-amber-400 animate-pulse">
                     <span>🔥 Ahorro Estimado:</span>
-                    <span>{saving.toFixed(1)} km ({Math.round((saving / originalDistance) * 100)}%)</span>
+                    <span>{formatDist(saving)} km ({Math.round((Number(saving || 0) / Math.max(1, Number(originalDistance || 1))) * 100)}%)</span>
                   </div>
                 )}
               </div>
@@ -9189,10 +9252,12 @@ Instrucciones generales de formato:
                   <Icon name="shield-check" className="w-4 h-4" />
                   <span>Misiones</span>
                 </button>
-                <button onClick={() => { setAIOpen(true); setMobileMenuOpen(false); }} className="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl text-[9px] font-black uppercase tracking-widest text-slate-400 hover:bg-white/5 hover:text-white transition-all active:scale-95">
-                  <Icon name="brain" className="w-4 h-4 text-amber-400" />
-                  <span>Operaciones IA</span>
-                </button>
+                {ENABLE_AI && (
+                  <button onClick={() => { setAIOpen(true); setMobileMenuOpen(false); }} className="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl text-[9px] font-black uppercase tracking-widest text-slate-400 hover:bg-white/5 hover:text-white transition-all active:scale-95">
+                    <Icon name="brain" className="w-4 h-4 text-amber-400" />
+                    <span>Operaciones IA</span>
+                  </button>
+                )}
               </>
             )}
           </nav>
@@ -9247,7 +9312,11 @@ Instrucciones generales de formato:
                 <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-ping"></span> OFFLINE
               </span>
             )}
-            <button onClick={() => setAIOpen(true)} className="p-2 bg-white/5 rounded-lg text-slate-400 hover:text-white"><Icon name="brain" className="w-4 h-4 text-amber-400" /></button>
+            {ENABLE_AI && (
+              <button onClick={() => setAIOpen(true)} className="p-2 bg-white/5 rounded-lg text-slate-400 hover:text-white">
+                <Icon name="brain" className="w-4 h-4 text-amber-400" />
+              </button>
+            )}
             {role === 'admin' && (
               <button onClick={() => setQM(true)} className="p-2 bg-[#F5C518] text-black rounded-lg"><Icon name="zap" className="w-4 h-4" /></button>
             )}
@@ -9278,7 +9347,9 @@ Instrucciones generales de formato:
                   <h2 className="text-xl font-black uppercase tracking-widest text-white font-display">MISIONES ASIGNADAS</h2>
                   <p className="text-[9px] text-slate-500 uppercase font-black">{activeEmployee?.name} • 👷 {activeEmployee?.role?.toUpperCase()}</p>
                 </div>
-                <button onClick={() => setAIOpen(true)} className="px-4 py-2.5 bg-[#F5C518] hover:bg-[#F5C518]/90 text-black font-black uppercase text-[9px] flex items-center gap-1 active:scale-95 shadow-lg shadow-[#F5C518]/15 rounded-xl transition-all">🧠 Operaciones IA</button>
+                {ENABLE_AI && (
+                  <button onClick={() => setAIOpen(true)} className="px-4 py-2.5 bg-[#F5C518] hover:bg-[#F5C518]/90 text-black font-black uppercase text-[9px] flex items-center gap-1 active:scale-95 shadow-lg shadow-[#F5C518]/15 rounded-xl transition-all">🧠 Operaciones IA</button>
+                )}
               </div>
 
               {/* Today's Missions Prominent Widget */}
