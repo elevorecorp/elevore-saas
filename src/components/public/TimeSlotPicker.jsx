@@ -207,8 +207,19 @@ export default function TimeSlotPicker({
         </label>
 
         {loading ? (
-          <div className="py-4 text-center text-[8px] font-bold uppercase tracking-wider text-slate-500 animate-pulse">
-            {lang === 'es' ? 'Calculando horarios disponibles...' : 'Calculating slots availability...'}
+          <div className="space-y-2">
+            {[1, 2, 3, 4, 5].map((i) => (
+              <div 
+                key={i} 
+                className="w-full p-3 rounded-xl border border-white/5 bg-zinc-950/30 animate-pulse flex items-center justify-between"
+              >
+                <div className="flex items-center gap-2">
+                  <div className="w-3.5 h-3.5 rounded-full bg-zinc-900"></div>
+                  <div className="h-3 w-28 bg-zinc-900 rounded"></div>
+                </div>
+                <div className="h-4.5 w-16 bg-zinc-900 rounded border border-white/5"></div>
+              </div>
+            ))}
           </div>
         ) : (
           <div className="space-y-2">
