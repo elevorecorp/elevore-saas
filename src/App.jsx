@@ -4388,28 +4388,31 @@ function LoginFlow({ onLoginSuccess, onBack, tt }) {
     setLoading(true);
     tt('Authenticating Field Access...', 'yellow');
     
-    // Instead of company name, we use the email directly to find the staff profile.
-    let query = sb.from('staff_profiles').select('*').eq('passcode', pin).limit(1);
-    
-    // Filter by staff email if the staff_email column exists.
-    // Para no romper la compatibilidad si la DB no tiene la columna aun, buscamos por correo en el nombre o asumimos fallback.
-    const { data: matchedStaff, error } = await query.maybeSingle();
-    
-    // Check email logic (we assume email is saved in staff_email OR we use name as fallback)
-    let isValid = false;
-    if (matchedStaff) {
-       const storedEmail = matchedStaff.staff_email || matchedStaff.name;
-       if (storedEmail.toLowerCase().includes(companyName.trim().toLowerCase())) {
-          isValid = true;
-       }
-    }
-
-    if (isValid && matchedStaff) {
-      tt(`Welcome ${matchedStaff.name} ✓`, 'green');
-      onLoginSuccess(matchedStaff.role, matchedStaff.tenant_id, null, matchedStaff, 'ELEVORE EMPIRE');
-    } else {
+    try {
+      // Fetch all staff profiles that match this passcode to handle passcode collisions safely
+      const { data: matchedStaffs, error } = await sb
+        .from('staff_profiles')
+        .select('*')
+        .eq('passcode', pin);
+      
+      let matchedStaff = null;
+      if (Array.isArray(matchedStaffs) && matchedStaffs.length > 0) {
+        matchedStaff = matchedStaffs.find(s => {
+          const storedEmail = s.staff_email || s.name || '';
+          return storedEmail.toLowerCase().includes(companyName.trim().toLowerCase());
+        });
+      }
+      
+      if (matchedStaff) {
+        tt(`Welcome ${matchedStaff.name} ✓`, 'green');
+        onLoginSuccess(matchedStaff.role, matchedStaff.tenant_id, null, matchedStaff, 'ELEVORE EMPIRE');
+      } else {
+        setLoading(false);
+        tt('Access Denied: Invalid Email or PIN', 'red');
+      }
+    } catch (err) {
       setLoading(false);
-      tt('Access Denied: Invalid Email or PIN', 'red');
+      tt('Connection error during login. Try again.', 'red');
     }
   };
 
