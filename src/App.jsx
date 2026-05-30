@@ -3292,10 +3292,12 @@ function StaffJob({ job, onBack, onRefresh, tt, recTime, upsell, update, employe
   }, [job]);
 
   const lastUpdateRef = useRef(0);
+  const [gpsStatus, setGpsStatus] = useState('inactive'); // inactive, active, error
 
   useEffect(() => {
-    // Only broadcast if geolocation is available, employee is loaded, the mission is active, and en_route is true (but not yet checked out)
-    if (!navigator.geolocation || !employee?.id || !localJob.specs?.en_route || localJob.check_out_time) {
+    // Only broadcast if geolocation is available, employee is loaded, the mission is active, en_route is true, and not checked in or checked out
+    if (!navigator.geolocation || !employee?.id || !localJob.specs?.en_route || localJob.check_in_time || localJob.check_out_time) {
+      setGpsStatus('inactive');
       return;
     }
 
@@ -3304,6 +3306,7 @@ function StaffJob({ job, onBack, onRefresh, tt, recTime, upsell, update, employe
     const startWatching = () => {
       watchId = navigator.geolocation.watchPosition(
         async (position) => {
+          setGpsStatus('active');
           const now = Date.now();
           // Throttle updates: write to database at most once every 12 seconds
           if (now - lastUpdateRef.current < 12000) {
@@ -3329,6 +3332,7 @@ function StaffJob({ job, onBack, onRefresh, tt, recTime, upsell, update, employe
         },
         (error) => {
           console.warn("GPS watchPosition error:", error);
+          setGpsStatus('error');
         },
         { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
       );
@@ -3340,8 +3344,10 @@ function StaffJob({ job, onBack, onRefresh, tt, recTime, upsell, update, employe
       if (watchId !== null) {
         navigator.geolocation.clearWatch(watchId);
       }
+      setGpsStatus('inactive');
     };
-  }, [employee?.id, localJob.specs?.en_route, localJob.check_out_time, localJob.tenant_id, employee?.tenant_id]);
+  }, [employee?.id, localJob.specs?.en_route, localJob.check_in_time, localJob.check_out_time, localJob.tenant_id, employee?.tenant_id]);
+
 
   const done = Object.values(chk).filter(Boolean).length;
   
@@ -3513,6 +3519,23 @@ function StaffJob({ job, onBack, onRefresh, tt, recTime, upsell, update, employe
           <h2 className="text-xl font-black uppercase italic text-white mb-1">{localJob.client_name}</h2>
           <p className="text-[9px] text-slate-500 uppercase">{localJob.service_type} • {localJob.address}</p>
           {employee && <p className="text-[8px] text-green-400 font-black uppercase mt-1">👤 Active Worker: {employee.name}</p>}
+          {localJob.specs?.en_route && !localJob.check_in_time && !localJob.check_out_time && (
+            <>
+              {gpsStatus === 'active' && (
+                <div className="mt-2.5 p-2 bg-blue-950/40 border border-blue-500/20 text-blue-400 rounded-xl text-[8.5px] font-black uppercase flex items-center gap-1.5 animate-pulse">
+                  <span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
+                  📡 Transmitiendo GPS en vivo al cliente...
+                </div>
+              )}
+              {gpsStatus === 'error' && (
+                <div className="mt-2.5 p-2 bg-amber-955/20 border border-orange-600/30 text-amber-400 rounded-xl text-[8.5px] font-black uppercase flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+                  ⚠️ GPS Inactivo (Sin permisos o señal). El cliente no verá tu ruta.
+                </div>
+              )}
+            </>
+          )}
+
           <div className="grid grid-cols-2 gap-2 mt-4">
             {/* Voy En Camino Button */}
             <button 
