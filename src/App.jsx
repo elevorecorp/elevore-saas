@@ -6674,6 +6674,10 @@ export default function App() {
   const [settingsPhone, setSettingsPhone] = useState('');
   const [settingsGoal, setSettingsGoal] = useState('15000');
   const [settingsPayPct, setSettingsPayPct] = useState('40');
+  const [settingsBasePrice, setSettingsBasePrice] = useState('100');
+  const [settingsPricePerSqft, setSettingsPricePerSqft] = useState('0.08');
+  const [settingsMultDeep, setSettingsMultDeep] = useState('1.45');
+  const [settingsMultMoveout, setSettingsMultMoveout] = useState('1.60');
 
   useEffect(() => {
     if (tenantSettings) {
@@ -6681,6 +6685,14 @@ export default function App() {
       setSettingsPhone(tenantSettings.zelle_phone || '');
       setSettingsGoal(String(tenantSettings.monthly_goal || 15000));
       setSettingsPayPct(tenantSettings.staff_pay_pct !== undefined ? String(Math.round(Number(tenantSettings.staff_pay_pct) * 100)) : '40');
+      setSettingsBasePrice(tenantSettings.booking_base_price !== undefined && tenantSettings.booking_base_price !== null ? String(tenantSettings.booking_base_price) : '100');
+      setSettingsPricePerSqft(tenantSettings.booking_price_per_sqft !== undefined && tenantSettings.booking_price_per_sqft !== null ? String(tenantSettings.booking_price_per_sqft) : '0.08');
+      setSettingsMultDeep(tenantSettings.booking_multiplier_deep !== undefined && tenantSettings.booking_multiplier_deep !== null ? String(tenantSettings.booking_multiplier_deep) : '1.45');
+      setSettingsMultMoveout(tenantSettings.booking_multiplier_moveout !== undefined && tenantSettings.booking_multiplier_moveout !== null ? String(tenantSettings.booking_multiplier_moveout) : '1.60');
+      
+      if (tenantSettings.wa_template_booking) setBookingTemplateText(tenantSettings.wa_template_booking);
+      if (tenantSettings.wa_template_route) setRouteTemplateText(tenantSettings.wa_template_route);
+      if (tenantSettings.wa_template_review) setReviewTemplateText(tenantSettings.wa_template_review);
     }
   }, [tenantSettings]);
 
@@ -6693,7 +6705,11 @@ export default function App() {
         business_full_name: settingsBusName,
         zelle_phone: settingsPhone,
         monthly_goal: Number(settingsGoal) || 0,
-        staff_pay_pct: (Number(settingsPayPct) || 40) / 100
+        staff_pay_pct: (Number(settingsPayPct) || 40) / 100,
+        booking_base_price: Number(settingsBasePrice) || 100,
+        booking_price_per_sqft: Number(settingsPricePerSqft) || 0.08,
+        booking_multiplier_deep: Number(settingsMultDeep) || 1.45,
+        booking_multiplier_moveout: Number(settingsMultMoveout) || 1.60
       };
 
       const { error } = await sb
@@ -11397,7 +11413,34 @@ Instrucciones generales de formato:
                         </div>
 
                         {/* Trigger button */}
-                        <div className="pt-2 flex justify-end">
+                        <div className="pt-2 flex justify-between items-center gap-2">
+                          <button
+                            onClick={async () => {
+                              setLoad(true);
+                              try {
+                                const payload = {
+                                  wa_template_booking: bookingTemplateText,
+                                  wa_template_route: routeTemplateText,
+                                  wa_template_review: reviewTemplateText
+                                };
+                                const { error } = await sb
+                                  .from('tenant_settings')
+                                  .update(payload)
+                                  .eq('tenant_id', tenantId);
+                                if (error) throw error;
+                                setTenantSettings(prev => ({ ...prev, ...payload }));
+                                tt('¡Plantillas guardadas en la base de datos! 💾', 'green');
+                              } catch (err) {
+                                tt('Error al guardar plantillas: ' + err.message, 'red');
+                              }
+                              setLoad(false);
+                            }}
+                            className="px-5 py-3.5 bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 font-black uppercase text-[9.5px] tracking-wider rounded-xl transition-all active:scale-95 flex items-center gap-1.5"
+                          >
+                            <Icon name="save" className="w-4 h-4" />
+                            Guardar Plantillas 💾
+                          </button>
+                          
                           <button
                             onClick={handleSendWhatsApp}
                             disabled={!selectedJob}
@@ -12554,7 +12597,7 @@ Instrucciones generales de formato:
                     <h2 className="text-2xl font-black uppercase tracking-widest text-white mb-2">⚙️ Company Settings</h2>
                     <p className="text-[10px] text-slate-400 font-bold uppercase mb-8">Administra la configuracion interna de tu imperio SaaS</p>
                     
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                       <div className="space-y-4">
                         <h3 className="text-sm font-black uppercase text-[#F5C518]">Brand Identity</h3>
                         <div className="space-y-1">
@@ -12576,6 +12619,28 @@ Instrucciones generales de formato:
                         <div className="space-y-1">
                           <label className="text-[9px] font-black uppercase text-slate-500 tracking-widest pl-1">Staff Default Payout %</label>
                           <input className="inp w-full" type="number" value={settingsPayPct} onChange={e => setSettingsPayPct(e.target.value)} />
+                        </div>
+                      </div>
+
+                      <div className="space-y-4">
+                        <h3 className="text-sm font-black uppercase text-[#F5C518]">Booking Rates</h3>
+                        <div className="space-y-1">
+                          <label className="text-[9px] font-black uppercase text-slate-500 tracking-widest pl-1">Base Fee ($)</label>
+                          <input className="inp w-full" type="number" value={settingsBasePrice} onChange={e => setSettingsBasePrice(e.target.value)} />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-[9px] font-black uppercase text-slate-500 tracking-widest pl-1">Price per SQFT ($)</label>
+                          <input className="inp w-full" type="number" step="0.001" value={settingsPricePerSqft} onChange={e => setSettingsPricePerSqft(e.target.value)} />
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                          <div className="space-y-1">
+                            <label className="text-[8px] font-black uppercase text-slate-500 tracking-widest pl-1">Deep Mult.</label>
+                            <input className="inp w-full" type="number" step="0.01" value={settingsMultDeep} onChange={e => setSettingsMultDeep(e.target.value)} />
+                          </div>
+                          <div className="space-y-1">
+                            <label className="text-[8px] font-black uppercase text-slate-500 tracking-widest pl-1">Moveout Mult.</label>
+                            <input className="inp w-full" type="number" step="0.01" value={settingsMultMoveout} onChange={e => setSettingsMultMoveout(e.target.value)} />
+                          </div>
                         </div>
                       </div>
                     </div>

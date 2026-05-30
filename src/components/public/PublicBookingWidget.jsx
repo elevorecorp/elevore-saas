@@ -103,12 +103,18 @@ export default function PublicBookingWidget({ tenantId: propTenantId }) {
 
   // Calculate pricing
   const calculatePricing = () => {
-    // Base: $100 + $0.08 per SQFT
-    let basePrice = 100 + (form.sqft * 0.08);
+    // Load custom pricing from settings with default fallbacks
+    const baseFee = settings?.booking_base_price !== undefined && settings?.booking_base_price !== null ? Number(settings.booking_base_price) : 100;
+    const perSqft = settings?.booking_price_per_sqft !== undefined && settings?.booking_price_per_sqft !== null ? Number(settings.booking_price_per_sqft) : 0.08;
+    const multDeep = settings?.booking_multiplier_deep !== undefined && settings?.booking_multiplier_deep !== null ? Number(settings.booking_multiplier_deep) : 1.45;
+    const multMoveout = settings?.booking_multiplier_moveout !== undefined && settings?.booking_multiplier_moveout !== null ? Number(settings.booking_multiplier_moveout) : 1.60;
+
+    // Base price calculation based on SQFT
+    let basePrice = baseFee + (form.sqft * perSqft);
     
     // Adjust base by service type multipliers
-    if (form.serviceType === 'Limpieza Profunda') basePrice *= 1.45;
-    if (form.serviceType === 'Mudanza (In/Out)') basePrice *= 1.60;
+    if (form.serviceType === 'Limpieza Profunda') basePrice *= multDeep;
+    if (form.serviceType === 'Mudanza (In/Out)') basePrice *= multMoveout;
 
     // Add selected addons
     const availableAddons = settings?.addons || [
