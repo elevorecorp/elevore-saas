@@ -14,7 +14,7 @@ import PublicBookingWidget from './components/public/PublicBookingWidget';
 // ⚙️ FEATURE FLAGS
 // Disable unstable or incomplete AI features for production release
 // =====================================================================
-const ENABLE_AI = false;
+const ENABLE_AI = true;
 // 🌟 DYNAMIC ICON ENGINE
 // Maps string names like "arrow-left" to high-performance React Icons
 // =====================================================================
@@ -6566,7 +6566,7 @@ Instrucciones:
 3. El mensaje debe ser directo, tener emojis y no sonar robótico.
 4. Devuelve únicamente el texto del mensaje de WhatsApp, sin introducciones ni comillas ni formatos markdown.`;
 
-      const aiProvider = localStorage.getItem('elevore_ai_provider') || 'antigravity';
+      const aiProvider = localStorage.getItem('elevore_ai_provider') || 'ollama';
       const geminiModel = localStorage.getItem('elevore_gemini_model') || 'gemini-2.5-flash';
       const geminiKey = localStorage.getItem('elevore_gemini_key') || '';
       const ollamaUrl = localStorage.getItem('elevore_ollama_url') || 'http://127.0.0.1:11434';
@@ -7703,7 +7703,7 @@ Instrucciones generales de formato:
 2. Usa emojis de forma moderada para hacerlo visualmente atractivo.
 3. Devuelve ÚNICAMENTE el texto final para copiar y enviar en WhatsApp, sin introducciones ni comentarios ni markdown.`;
 
-      const aiProvider = localStorage.getItem('elevore_ai_provider') || 'antigravity';
+      const aiProvider = localStorage.getItem('elevore_ai_provider') || 'ollama';
       const geminiModel = localStorage.getItem('elevore_gemini_model') || 'gemini-2.5-flash';
       const geminiKey = localStorage.getItem('elevore_gemini_key') || '';
       const ollamaUrl = localStorage.getItem('elevore_ollama_url') || 'http://127.0.0.1:11434';
@@ -8276,7 +8276,7 @@ Nómina pagada acumulada por empleado: ${JSON.stringify(finance.payroll)}
 
       let res;
       let usedProvider = 'ollama';
-      const aiProvider = localStorage.getItem('elevore_ai_provider') || 'antigravity';
+      const aiProvider = localStorage.getItem('elevore_ai_provider') || 'ollama';
       const geminiModel = localStorage.getItem('elevore_gemini_model') || 'gemini-2.5-flash';
       const geminiKey = localStorage.getItem('elevore_gemini_key') || '';
 
@@ -8492,7 +8492,7 @@ Instrucciones generales de formato:
 2. Usa emojis de forma moderada para hacerlo visualmente atractivo.
 3. Devuelve ÚNICAMENTE el texto final para copiar y enviar en WhatsApp, sin introducciones ni comentarios ni markdown.`;
 
-        const aiProvider = localStorage.getItem('elevore_ai_provider') || 'antigravity';
+        const aiProvider = localStorage.getItem('elevore_ai_provider') || 'ollama';
         const geminiModel = localStorage.getItem('elevore_gemini_model') || 'gemini-2.5-flash';
         const geminiKey = localStorage.getItem('elevore_gemini_key') || '';
         const ollamaUrl = localStorage.getItem('elevore_ollama_url') || 'http://127.0.0.1:11434';
@@ -13243,7 +13243,7 @@ Respond ONLY in this exact JSON format (no explanation, no markdown, just raw JS
                     let ollamaUrl = localStorage.getItem('elevore_ollama_url') || 'http://127.0.0.1:11434';
                     if (ollamaUrl === 'http://localhost:11434') ollamaUrl = 'http://127.0.0.1:11434';
                     const ollamaModel = localStorage.getItem('elevore_ollama_model') || 'llama3.2';
-                    const aiProvider = localStorage.getItem('elevore_ai_provider') || 'antigravity';
+                    const aiProvider = localStorage.getItem('elevore_ai_provider') || 'ollama';
                     const geminiModel = localStorage.getItem('elevore_gemini_model') || 'gemini-2.5-flash';
                     const geminiKey = localStorage.getItem('elevore_gemini_key') || '';
 
