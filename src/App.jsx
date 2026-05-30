@@ -8896,7 +8896,7 @@ Instrucciones generales de formato:
   if (view === 'landing') {
     return (
       <div className="min-h-screen bg-slate-950 text-slate-100 font-sans relative overflow-x-hidden">
-        <LandingPage onLogin={() => setView('auth')} onSignup={() => setView('signup')} />
+        <LandingPage onLogin={() => setView('auth')} onSignup={() => setView('signup')} prefLang={prefLang} setPrefLang={setPrefLang} />
         {renderCopilot()}
       </div>
     );
