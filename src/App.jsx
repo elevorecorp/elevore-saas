@@ -10,6 +10,7 @@ import { PublicQuoteProposal } from './components/PublicQuoteProposal';
 import { HyperDriveTab } from './components/admin/HyperDriveTab';
 import PublicBookingWidget from './components/public/PublicBookingWidget';
 import TimeSlotPicker from './components/public/TimeSlotPicker';
+import { generateInvoiceReceiptPDF, generateQuotePDF } from './utils/pdfGenerator';
 
 // =====================================================================
 // ⚙️ FEATURE FLAGS
@@ -2519,10 +2520,21 @@ function Portal({ cjid }) {
             )}
 
             {/* Balance Due Card */}
-            <div className="g p-6 text-center space-y-2">
+            <div className="g p-6 text-center space-y-4">
               <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest">{tr(lang, 'balance')}</p>
               <h3 className="text-6xl font-black italic tracking-tighter text-white">{fmt$(bal)}</h3>
-              <p className="text-[9px] text-green-500 font-black uppercase pt-2">💸 {tr(lang, 'pay')}: {DEFAULT_CFG.ZELLE}</p>
+              <p className="text-[9px] text-green-500 font-black uppercase pt-1">💸 {tr(lang, 'pay')}: {tenantSettings?.zelle_phone || DEFAULT_CFG.ZELLE}</p>
+              
+              <button
+                onClick={() => generateInvoiceReceiptPDF(job, tenantSettings, lang)}
+                className="w-full bg-white/5 hover:bg-white/10 border border-white/10 text-white hover:text-[#F5C518] hover:border-[#F5C518]/30 py-3 rounded-xl font-black uppercase active:scale-95 transition-all text-[9px] tracking-wider flex items-center justify-center gap-2 mt-2 shadow-lg"
+              >
+                <Icon name="file-text" className="w-4 h-4" />
+                {job.status === 'paid' 
+                  ? (lang === 'es' ? 'Descargar Comprobante (PDF)' : 'Download Receipt (PDF)')
+                  : (lang === 'es' ? 'Descargar Factura (PDF)' : 'Download Invoice (PDF)')
+                }
+              </button>
             </div>
 
             {/* Card Checkout Form */}
@@ -13902,8 +13914,7 @@ Respond ONLY in this exact JSON format (no explanation, no markdown, just raw JS
                 </div>
                 <div className="flex gap-2">
                   <button onClick={deploy} className="flex-1 bg-slate-900 text-white py-5 rounded-2xl font-black text-sm uppercase italic active:scale-95 transition-all shadow-xl shadow-slate-900/10 tracking-widest font-display">{editId ? 'Update Estimate ⚡' : 'Execute Deploy 🚀'}</button>
-                  <button onClick={async () => {
-                    const { generateQuotePDF } = await import('./utils/pdfGenerator');
+                  <button onClick={() => {
                     generateQuotePDF({
                       name: state.name,
                       phone: state.phone,
