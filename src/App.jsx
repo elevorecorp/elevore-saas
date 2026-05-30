@@ -5654,6 +5654,121 @@ function FeatureCard({ icon, label, desc, color, border, text, bgColor, big, onC
   );
 }
 
+// ─── FAQ Accordion Section ────────────────────────────────────────────────────
+const FAQ_DATA = {
+  en: [
+    { q: 'Does Elevore work for any type of service business?', a: 'Yes. Elevore Empire is built for cleaning companies, handyman services, HVAC, lawn care, and any field service business with staff doing jobs at client locations.' },
+    { q: 'How long does setup take?', a: 'Most businesses are fully operational within 5 minutes. Our guided wizard walks you through adding services, staff PINs, and pricing tiers.' },
+    { q: 'Is there a free trial?', a: 'Yes. We offer a full 14-day free trial with no credit card required. You get access to all features including the AI Revenue Engine.' },
+    { q: 'Can I export my data?', a: 'Absolutely. All client data, job history, invoices, and reports can be exported as CSV or PDF at any time. Your data is always yours.' },
+    { q: 'How does the AI dispatch work?', a: 'Our AI analyzes crew location, availability, and job history to assign the optimal technician for each mission automatically — saving an average of 8 minutes per dispatch.' },
+    { q: 'Is there a mobile app for my team?', a: 'Yes. Elevore works as a fully installable PWA on iOS and Android. Staff access their daily missions, check in via GPS, upload photos, and collect signatures — all from their phone.' },
+  ],
+  es: [
+    { q: '¿Elevore funciona para cualquier tipo de empresa de servicios?', a: 'Sí. Elevore Empire está diseñado para empresas de limpieza, handyman, HVAC, mantenimiento de jardines y cualquier negocio de campo con personal en los domicilios de clientes.' },
+    { q: '¿Cuánto tiempo toma la configuración?', a: 'La mayoría de las empresas están completamente operativas en 5 minutos. Nuestro asistente guiado lo lleva por la configuración de servicios, PINs del personal y niveles de precios.' },
+    { q: '¿Hay una prueba gratuita?', a: 'Sí. Ofrecemos 14 días de prueba completa sin tarjeta de crédito. Tendrás acceso a todas las funciones, incluido el Motor de Ingresos con IA.' },
+    { q: '¿Puedo exportar mis datos?', a: 'Por supuesto. Todos los datos de clientes, historial de trabajos, facturas e informes se pueden exportar como CSV o PDF en cualquier momento.' },
+    { q: '¿Cómo funciona el despacho con IA?', a: 'Nuestra IA analiza la ubicación, disponibilidad e historial de los técnicos para asignar automáticamente el mejor trabajador a cada misión, ahorrando un promedio de 8 minutos por despacho.' },
+    { q: '¿Hay una app móvil para mi equipo?', a: 'Sí. Elevore funciona como una PWA instalable en iOS y Android. El personal accede a sus misiones diarias, hace check-in por GPS, sube fotos y recoge firmas — todo desde el teléfono.' },
+  ],
+};
+
+function FAQSection({ prefLang, onSignup }) {
+  const [openIdx, setOpenIdx] = useState(null);
+  const faqs = FAQ_DATA[prefLang] || FAQ_DATA.en;
+  return (
+    <section className="border-t border-white/5 py-32 section-dark">
+      <div className="max-w-3xl mx-auto px-6">
+        <div className="text-center mb-16 space-y-4">
+          <div className="reveal inline-block text-[10px] font-black uppercase tracking-[0.3em] text-blue-400 border border-blue-400/30 px-4 py-2 rounded-full bg-blue-400/5">FAQ</div>
+          <h2 className="reveal delay-100 text-4xl md:text-5xl font-black tracking-tighter">
+            {prefLang === 'es' ? 'Preguntas' : 'Got'} <span className="glow-text italic">{prefLang === 'es' ? 'Frecuentes' : 'Questions?'}</span>
+          </h2>
+          <p className="reveal delay-200 text-slate-400">{prefLang === 'es' ? 'Todo lo que necesitas saber sobre Elevore Empire.' : 'Everything you need to know about Elevore Empire.'}</p>
+        </div>
+        <div className="space-y-3">
+          {faqs.map((item, i) => {
+            const isOpen = openIdx === i;
+            return (
+              <div
+                key={i}
+                className={`faq-item reveal border rounded-2xl overflow-hidden transition-all duration-300 ${isOpen ? 'border-[#F5C518]/30 bg-[#F5C518]/[0.03]' : 'border-white/8 bg-white/[0.02]'}`}
+                style={{ animationDelay: `${i * 60}ms` }}
+              >
+                <button
+                  onClick={() => setOpenIdx(isOpen ? null : i)}
+                  className="w-full flex items-center justify-between p-5 text-left gap-4"
+                >
+                  <span className={`text-sm font-black ${isOpen ? 'text-white' : 'text-slate-300'} transition-colors leading-snug`}>{item.q}</span>
+                  <div className={`w-6 h-6 rounded-lg flex-shrink-0 flex items-center justify-center border transition-all duration-300 ${isOpen ? 'bg-[#F5C518] border-[#F5C518] rotate-45' : 'bg-white/5 border-white/10'}`}>
+                    <Icon name="plus" className={`w-3 h-3 ${isOpen ? 'text-black' : 'text-slate-400'}`} />
+                  </div>
+                </button>
+                <div className={`faq-body ${isOpen ? 'open' : ''}`}>
+                  <p className="px-5 pb-5 text-slate-400 text-sm leading-relaxed">{item.a}</p>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+        <div className="text-center mt-12 space-y-4">
+          <p className="text-slate-500 text-sm">{prefLang === 'es' ? '¿Tienes más preguntas?' : 'Still have questions?'}</p>
+          <button onClick={onSignup} className="btn-gold px-8 py-4 text-[11px] uppercase tracking-widest">
+            {prefLang === 'es' ? 'Habla con Nosotros →' : 'Talk to Our Team →'}
+          </button>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+// ─── Scroll-to-top floating button ─────────────────────────────────────────
+function ScrollToTopButton() {
+  const [visible, setVisible] = useState(false);
+  useEffect(() => {
+    const onScroll = () => setVisible(window.scrollY > 400);
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
+  if (!visible) return null;
+  return (
+    <button
+      onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+      className="scroll-top-btn"
+      aria-label="Scroll to top"
+    >
+      <Icon name="arrow-up" className="w-4 h-4 text-[#F5C518]" />
+    </button>
+  );
+}
+
+// ─── Animated rotating word in hero headline ───────────────────────────────
+function AnimatedWords({ words }) {
+  const [idx, setIdx] = useState(0);
+  const [phase, setPhase] = useState('in'); // 'in' | 'out'
+  useEffect(() => {
+    const out = setTimeout(() => setPhase('out'), 2800);
+    return () => clearTimeout(out);
+  }, [idx]);
+  useEffect(() => {
+    if (phase !== 'out') return;
+    const next = setTimeout(() => { setIdx(i => (i + 1) % words.length); setPhase('in'); }, 450);
+    return () => clearTimeout(next);
+  }, [phase, words.length]);
+  return (
+    <span className="relative inline-block" style={{ minWidth: '6ch' }}>
+      <span
+        key={idx}
+        className={`glow-text italic ${phase === 'in' ? 'word-in' : 'word-out'}`}
+        style={{ display: 'inline-block', willChange: 'transform, opacity' }}
+      >
+        {words[idx]}
+      </span>
+    </span>
+  );
+}
+
 function LandingPage({ onLogin, onSignup, prefLang, setPrefLang }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [activeModal, setActiveModal] = useState(null);
@@ -5884,9 +5999,17 @@ function LandingPage({ onLogin, onSignup, prefLang, setPrefLang }) {
           </div>
           <h1 className="reveal delay-100 text-5xl sm:text-7xl md:text-[88px] font-black leading-[0.9] tracking-tighter">
             {prefLang === 'es' ? (
-              <>Escale su negocio de servicios<br /><span className="glow-text italic">de $8K a $31K/mes.</span></>
+              <>
+                Escale su{' '}
+                <AnimatedWords words={['Empresa de Limpieza', 'Negocio Handyman', 'Servicio de Campo', 'Empresa de Servicios']} />
+                <br /><span className="glow-text italic">de $8K a $31K/mes.</span>
+              </>
             ) : (
-              <>Scale Your Service Business<br /><span className="glow-text italic">from $8K to $31K/mo.</span></>
+              <>
+                Scale Your{' '}
+                <AnimatedWords words={['Cleaning Business', 'Handyman Company', 'Field Service', 'Home Services Biz']} />
+                <br /><span className="glow-text italic">from $8K to $31K/mo.</span>
+              </>
             )}
           </h1>
           <p className="reveal delay-200 text-slate-400 text-lg md:text-xl max-w-2xl mx-auto leading-relaxed">
@@ -5916,6 +6039,30 @@ function LandingPage({ onLogin, onSignup, prefLang, setPrefLang }) {
           <p className="text-[10px] text-slate-600 uppercase tracking-widest font-bold">
             {prefLang === 'es' ? 'Sin tarjeta de crédito • Cancele cuando quiera • Configuración en 2 minutos' : 'No credit card required • Cancel anytime • Setup in 2 minutes'}
           </p>
+
+          {/* ── Social Proof Trust Bar ── */}
+          <div className="reveal delay-400 flex flex-wrap items-center justify-center gap-6 pt-4">
+            {/* Avatar Stack */}
+            <div className="flex items-center gap-3">
+              <div className="avatar-stack">
+                {['from-amber-500 to-orange-500','from-purple-500 to-pink-500','from-blue-500 to-cyan-500','from-green-500 to-emerald-500','from-rose-500 to-red-500'].map((g,i) => (
+                  <div key={i} className={`bg-gradient-to-br ${g} flex items-center justify-center text-white text-[8px] font-black`}>
+                    {['C','J','M','A','S'][i]}
+                  </div>
+                ))}
+              </div>
+              <span className="text-[10px] text-slate-400 font-bold">
+                <span className="text-white font-black">+500</span> {prefLang === 'es' ? 'se unieron esta semana' : 'joined this week'}
+              </span>
+            </div>
+            <div className="hidden sm:block w-px h-5 bg-white/10" />
+            {[['4.9★', prefLang === 'es' ? 'Calificación Promedio' : 'Avg Rating'],['99.9%', prefLang === 'es' ? 'Tiempo de Actividad' : 'Uptime SLA'],['$31K', prefLang === 'es' ? 'Ingreso Promedio/Mes' : 'Avg Revenue/Mo']].map(([val, lbl]) => (
+              <div key={lbl} className="flex items-center gap-1.5">
+                <span className="text-white font-black text-sm">{val}</span>
+                <span className="text-slate-500 text-[10px] font-bold uppercase tracking-wider">{lbl}</span>
+              </div>
+            ))}
+          </div>
           
           {/* Interactive Operations Preview Section */}
           <div className="pt-16 pb-8">
@@ -6247,9 +6394,11 @@ function LandingPage({ onLogin, onSignup, prefLang, setPrefLang }) {
           <h2 className="reveal delay-100 text-4xl md:text-6xl font-black tracking-tighter">Everything You Need.<br /><span className="glow-text italic">Nothing You Don't.</span></h2>
           <p className="reveal delay-200 text-slate-400 text-lg max-w-xl mx-auto">Built specifically for cleaning and handyman businesses that want to scale fast without losing quality.</p>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+        <div className="grid grid-cols-1 md:grid-cols-6 gap-5">
           {features.map((f, i) => (
-            <div key={i} className={`reveal delay-${Math.min((i+1)*100, 600)}`}>
+            <div key={i} className={`reveal delay-${Math.min((i+1)*100, 600)} ${
+              f.big ? 'md:col-span-4' : 'md:col-span-2'
+            }`}>
               <FeatureCard {...f} onClick={() => openModal('Features')} />
             </div>
           ))}
@@ -6299,6 +6448,71 @@ function LandingPage({ onLogin, onSignup, prefLang, setPrefLang }) {
               <AnimatedStat end={s.end} prefix={s.prefix||''} suffix={s.suffix||''} label={s.label} />
             </div>
           ))}
+        </div>
+      </section>
+
+      {/* ═══ ROI CALCULATOR ═══ */}
+      <section className="border-t border-white/5 py-32 relative overflow-hidden section-dark">
+        <div className="absolute inset-0 dot-grid pointer-events-none opacity-10" />
+        <div className="max-w-5xl mx-auto px-6 relative z-10">
+          <div className="text-center mb-16 space-y-4">
+            <div className="reveal inline-block text-[10px] font-black uppercase tracking-[0.3em] text-green-400 border border-green-400/30 px-4 py-2 rounded-full bg-green-400/5">💰 Revenue Calculator</div>
+            <h2 className="reveal delay-100 text-4xl md:text-5xl font-black tracking-tighter">See Exactly How Much <span className="glow-text italic">You'll Make More.</span></h2>
+            <p className="reveal delay-200 text-slate-400 text-lg max-w-xl mx-auto">Move the sliders to match your business — watch the numbers change in real time.</p>
+          </div>
+          <div className="reveal grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
+            {/* Sliders */}
+            <div className="space-y-8 bg-white/[0.02] border border-white/8 rounded-3xl p-8">
+              {[
+                { label: prefLang === 'es' ? 'Número de Técnicos' : 'Number of Technicians', min: 1, max: 20, val: roiTechs, set: setRoiTechs, unit: prefLang === 'es' ? 'técnicos' : 'techs', color: 'text-amber-400' },
+                { label: prefLang === 'es' ? 'Ticket Promedio por Trabajo' : 'Average Ticket per Job', min: 50, max: 500, val: roiTicket, set: setRoiTicket, unit: '$', color: 'text-blue-400', prefix: true },
+                { label: prefLang === 'es' ? 'Trabajos por Semana' : 'Jobs per Week', min: 1, max: 50, val: roiJobs, set: setRoiJobs, unit: prefLang === 'es' ? 'trabajos' : 'jobs', color: 'text-purple-400' },
+                { label: prefLang === 'es' ? 'Horas Admin Perdidas/Semana' : 'Admin Hours Wasted/Week', min: 1, max: 20, val: roiHours, set: setRoiHours, unit: prefLang === 'es' ? 'hrs' : 'hrs', color: 'text-rose-400' },
+              ].map(({ label, min, max, val, set, unit, color, prefix }) => (
+                <div key={label} className="space-y-3">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm font-bold text-slate-300">{label}</span>
+                    <span className={`text-base font-black ${color}`}>{prefix ? '$' : ''}{val}{prefix ? '' : ' ' + unit}</span>
+                  </div>
+                  <input
+                    type="range" min={min} max={max} value={val}
+                    onChange={e => set(Number(e.target.value))}
+                    className="roi-slider"
+                    style={{ background: `linear-gradient(to right, #F5C518 ${((val-min)/(max-min))*100}%, rgba(255,255,255,0.08) ${((val-min)/(max-min))*100}%)` }}
+                  />
+                  <div className="flex justify-between text-[9px] text-slate-600 font-bold">
+                    <span>{prefix ? '$' : ''}{min}</span><span>{prefix ? '$' : ''}{max}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+            {/* Results */}
+            <div className="space-y-4">
+              {[
+                { label: prefLang === 'es' ? 'Ingresos Actuales (est.)' : 'Current Monthly Revenue (est.)', val: roiCurrentIncome, color: 'border-white/10 text-white', bg: 'bg-white/[0.02]' },
+                { label: prefLang === 'es' ? 'Dinero Perdido en Admin' : 'Revenue Lost to Admin Work', val: roiLostMoney, color: 'border-red-500/20 text-red-400', bg: 'bg-red-500/5', negative: true },
+                { label: prefLang === 'es' ? 'Ingresos Adicionales con IA' : 'Added Revenue with AI Dispatch', val: roiAddedIncome, color: 'border-green-500/20 text-green-400', bg: 'bg-green-500/5', plus: true },
+              ].map(({ label, val, color, bg, negative, plus }) => (
+                <div key={label} className={`${bg} border ${color} rounded-2xl p-5 flex justify-between items-center`}>
+                  <span className="text-sm font-bold text-slate-400">{label}</span>
+                  <span className={`text-xl font-black ${color.split(' ')[1]}`}>
+                    {negative ? '-' : plus ? '+' : ''}${Math.round(val).toLocaleString()}
+                  </span>
+                </div>
+              ))}
+              <div className="bg-gradient-to-br from-[#F5C518]/15 to-[#F5C518]/5 border-2 border-[#F5C518] rounded-2xl p-6 text-center space-y-2 relative overflow-hidden">
+                <div className="beam-line top-1/2" />
+                <p className="text-[10px] font-black uppercase tracking-[0.3em] text-[#F5C518]">{prefLang === 'es' ? '🎯 Ingresos Proyectados con Elevore' : '🎯 Projected Monthly Revenue with Elevore'}</p>
+                <p className="text-5xl font-black text-white tracking-tighter">${Math.round(roiProjectedIncome).toLocaleString()}</p>
+                <p className="text-green-400 text-sm font-black">+${Math.round(roiNetGain).toLocaleString()} / {prefLang === 'es' ? 'mes' : 'mo'} {prefLang === 'es' ? 'vs ahora' : 'vs today'}</p>
+              </div>
+              <button onClick={onSignup} className="btn-gold w-full py-5 text-sm uppercase tracking-widest flex items-center justify-center gap-2 group">
+                {prefLang === 'es' ? 'Comenzar y Ganar Más →' : 'Start Earning More →'}
+                <Icon name="trending-up" className="w-4 h-4 group-hover:translate-y-[-2px] transition-transform" />
+              </button>
+              <p className="text-[9px] text-center text-slate-600 font-bold uppercase tracking-widest">{prefLang === 'es' ? 'Sin tarjeta de crédito • Prueba de 14 días' : 'No credit card • 14-day free trial'}</p>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -6567,6 +6781,9 @@ function LandingPage({ onLogin, onSignup, prefLang, setPrefLang }) {
         </div>
       </section>
 
+      {/* ═══ FAQ ═══ */}
+      <FAQSection prefLang={prefLang} onSignup={onSignup} />
+
       {/* ═══ FINAL CTA ═══ */}
       <section className="border-t border-white/5 py-36 relative overflow-hidden">
         <div className="absolute inset-0" style={{ background: 'radial-gradient(ellipse at 50% 50%, rgba(245,197,24,0.08) 0%, transparent 70%)' }} />
@@ -6600,6 +6817,9 @@ function LandingPage({ onLogin, onSignup, prefLang, setPrefLang }) {
         </div>
       </section>
 
+      {/* ═══ SCROLL TO TOP ═══ */}
+      <ScrollToTopButton />
+
       {/* ═══ FOOTER ═══ */}
       <footer className="border-t border-white/5 py-16 relative" style={{ background: 'rgba(0,0,0,0.7)' }}>
         <div className="absolute top-0 left-0 right-0 h-px shimmer-gold" />
@@ -6625,7 +6845,16 @@ function LandingPage({ onLogin, onSignup, prefLang, setPrefLang }) {
           </div>
           <div className="border-t border-white/5 pt-8 flex flex-col sm:flex-row items-center justify-between gap-4">
             <p className="text-[10px] text-slate-700 font-bold uppercase tracking-widest">© 2026 Elevore Empire SaaS. All Rights Reserved.</p>
-            <p className="text-[10px] text-slate-700 font-bold uppercase tracking-widest">Built for the hustlers. <span className="text-[#F5C518]/40">Powered by AI.</span></p>
+            <div className="flex items-center gap-4">
+              {/* Social Icons */}
+              {[{icon:'twitter', href:'#', label:'X / Twitter'},{icon:'linkedin', href:'#', label:'LinkedIn'},{icon:'instagram', href:'#', label:'Instagram'}].map(({icon, href, label}) => (
+                <a key={icon} href={href} aria-label={label} target="_blank" rel="noreferrer"
+                  className="w-8 h-8 rounded-lg bg-white/5 border border-white/8 flex items-center justify-center text-slate-600 hover:text-[#F5C518] hover:border-[#F5C518]/30 hover:bg-[#F5C518]/5 transition-all">
+                  <Icon name={icon} className="w-3.5 h-3.5" />
+                </a>
+              ))}
+              <p className="text-[10px] text-slate-700 font-bold uppercase tracking-widest ml-2">Built for the hustlers. <span className="text-[#F5C518]/40">Powered by AI.</span></p>
+            </div>
           </div>
         </div>
       </footer>
