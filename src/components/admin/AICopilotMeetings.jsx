@@ -360,7 +360,7 @@ export const AICopilotMeetings = ({ jobs, staff, tt, refresh, activeUser }) => {
                   });
                 }
 
-                return list.slice(0, 4).map((p, idx) => (
+                return list.map((p, idx) => (
                   <div key={idx} className="p-3.5 bg-black border border-white/5 rounded-2xl flex flex-col items-center justify-center text-center space-y-2 relative overflow-hidden">
                     <div className="text-2xl">{p.avatar}</div>
                     <p className="text-[8.5px] font-black text-white uppercase">{p.name}</p>
