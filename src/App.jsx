@@ -1786,6 +1786,9 @@ function Portal({ cjid }) {
   const [activeTab, setActiveTab] = useState('tracker');
   const [assignedStaff, setAssignedStaff] = useState(null);
   const [crewLocation, setCrewLocation] = useState(null);
+  const [feedbackComment, setFeedbackComment] = useState('');
+  const [suggestedReview, setSuggestedReview] = useState('');
+  const [isGeneratingReview, setIsGeneratingReview] = useState(false);
   const [clientMissions, setClientMissions] = useState([]);
   const [clientProfile, setClientProfile] = useState(null);
   const [tenantSettings, setTenantSettings] = useState(null);
@@ -2346,10 +2349,55 @@ function Portal({ cjid }) {
     load();
   };
   const submitRating = async () => { 
-    await sb.from('elevore_missions').update({ client_rating: rating }).eq('id', cjid); 
+    const updatedSpecs = {
+      ...(job.specs || {}),
+      feedback_comment: feedbackComment.trim() || null
+    };
+
+    await sb.from('elevore_missions')
+      .update({ 
+        client_rating: rating,
+        specs: updatedSpecs
+      })
+      .eq('id', cjid); 
+
     setRDone(true); 
-    tt('⭐ Thank you!'); 
-    triggerRatingSubmitEmail(job, rating, tenantSettings?.business_full_name || "Elevore Premium Services", tenantSettings?.google_review_link || "https://g.page/r/review", sb, job.tenant_id);
+    tt(lang === 'es' ? '⭐ ¡Gracias!' : '⭐ Thank you!', 'green'); 
+    triggerRatingSubmitEmail({ ...job, specs: updatedSpecs }, rating, tenantSettings?.business_full_name || "Elevore Premium Services", tenantSettings?.google_review_link || "https://g.page/r/review", sb, job.tenant_id);
+
+    if (rating >= 4) {
+      setIsGeneratingReview(true);
+      try {
+        const serviceName = job.service_type || 'service';
+        const crewName = job.team_assigned || 'Elevore team';
+        const targetLang = lang === 'es' ? 'Spanish' : 'English';
+        
+        const promptText = `Write a short, natural, enthusiastic 5-star Google review in ${targetLang} for a ${serviceName} cleaning/handyman service done by ${crewName}. Make it sound authentic and personal. Return ONLY the review text. Do not include quotes, greetings, or intro text.`;
+        
+        const response = await fetch('/api/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            messages: [
+              { role: 'system', content: 'You are a professional review writer.' },
+              { role: 'user', content: promptText }
+            ],
+            model: 'gemini-2.5-flash'
+          })
+        });
+
+        if (response.ok) {
+          const resData = await response.json();
+          if (resData.text) {
+            setSuggestedReview(resData.text.trim().replace(/^"|"$/g, ''));
+          }
+        }
+      } catch (err) {
+        console.warn("AI Review generation failed:", err);
+      } finally {
+        setIsGeneratingReview(false);
+      }
+    }
   };
 
   // Uber-Style Timeline Steps calculation
@@ -2708,18 +2756,127 @@ function Portal({ cjid }) {
 
             {/* Rating Stars Feedback */}
             {job.status === 'paid' && !ratingDone && (
-              <div className="g p-6 border border-amber-500/20 text-center space-y-4">
+              <div className="g p-6 border border-white/5 bg-black/45 rounded-2xl text-center space-y-4 animate-in slide-in-from-bottom duration-500">
                 <p className="text-[9px] font-black text-amber-500 uppercase tracking-widest">{tr(lang, 'rating')}</p>
                 <div className="flex justify-center">
-                  <Stars value={rating} onChange={setRating} size={8} />
+                  <Stars value={rating} onChange={(val) => { setRating(val); if (val >= 4) setFeedbackComment(''); }} size={8} />
                 </div>
-                <button onClick={submitRating} disabled={!rating} className={`w-full py-3 rounded-xl font-black uppercase text-[10px] active:scale-95 ${rating ? 'gold' : 'bg-white/5 text-slate-600'}`}>{tr(lang, 'submit')}</button>
+                
+                {rating > 0 && (
+                  <div className="space-y-1.5 text-left animate-in fade-in duration-300">
+                    <label className="text-[8px] font-black uppercase text-slate-500 tracking-widest pl-1">
+                      {rating <= 3 
+                        ? (lang === 'es' ? '¿Qué podríamos mejorar? (Requerido)' : 'What could we improve? (Required)')
+                        : (lang === 'es' ? 'Describe tu experiencia (Opcional)' : 'Describe your experience (Optional)')
+                      }
+                    </label>
+                    <textarea
+                      value={feedbackComment}
+                      onChange={(e) => setFeedbackComment(e.target.value)}
+                      placeholder={rating <= 3 
+                        ? (lang === 'es' ? 'Por favor cuéntanos qué salió mal...' : 'Please tell us what went wrong...')
+                        : (lang === 'es' ? '¡Tu opinión nos ayuda a crecer!' : 'Your feedback helps us grow!')
+                      }
+                      className="inp w-full p-3 text-xs min-h-[60px] resize-none"
+                    />
+                  </div>
+                )}
+
+                <button 
+                  onClick={submitRating} 
+                  disabled={!rating || (rating <= 3 && !feedbackComment.trim())} 
+                  className={`w-full py-4 rounded-xl font-black uppercase text-[10px] active:scale-95 transition-all ${
+                    (rating && (rating >= 4 || feedbackComment.trim())) 
+                      ? 'gold shadow-[0_0_20px_rgba(245,197,24,0.15)]' 
+                      : 'bg-white/5 text-slate-600 cursor-not-allowed'
+                  }`}
+                >
+                  {tr(lang, 'submit')}
+                </button>
               </div>
             )}
 
             {ratingDone && (
-              <div className="g p-4 text-center">
-                <p className="text-[9px] text-amber-400 font-black uppercase">⭐ {job.client_rating}/5 — Thank you!</p>
+              <div className="space-y-4 animate-in slide-in-from-bottom duration-500">
+                <div className="g p-5 border border-white/5 bg-black/45 rounded-2xl text-center space-y-2">
+                  <p className="text-[10px] text-amber-400 font-black uppercase">⭐ {job.client_rating || rating}/5 — {lang === 'es' ? '¡Muchas Gracias!' : 'Thank you!'}</p>
+                  {(feedbackComment || job.specs?.feedback_comment) && (
+                    <p className="text-[8.5px] text-slate-400 italic">"{feedbackComment || job.specs?.feedback_comment}"</p>
+                  )}
+                </div>
+
+                {/* AI Google Review Generator block for 4/5 stars */}
+                {(rating >= 4 || (job.client_rating >= 4)) && (
+                  <div className="g p-6 border border-[#F5C518]/25 bg-amber-500/5 relative overflow-hidden rounded-2xl text-left space-y-4 shadow-[0_0_30px_rgba(245,197,24,0.05)]">
+                    <div className="absolute top-0 left-0 w-full h-[1.5px] bg-gradient-to-r from-amber-500 via-yellow-400 to-transparent" />
+                    
+                    <div className="flex items-center gap-2">
+                      <Icon name="sparkles" className="w-4 h-4 text-[#F5C518] animate-pulse" />
+                      <h4 className="text-[10px] font-black text-white uppercase tracking-widest font-display">
+                        {lang === 'es' ? 'Reseña de Google Asistida por IA' : 'AI-Assisted Google Review'}
+                      </h4>
+                    </div>
+
+                    {isGeneratingReview ? (
+                      <div className="flex flex-col items-center justify-center py-6 gap-2">
+                        <Icon name="loader-2" className="w-6 h-6 animate-spin text-[#F5C518]" />
+                        <p className="text-[8px] text-slate-500 font-black uppercase tracking-widest">
+                          {lang === 'es' ? 'Redactando sugerencia con IA...' : 'Drafting suggestion with AI...'}
+                        </p>
+                      </div>
+                    ) : suggestedReview ? (
+                      <div className="space-y-3">
+                        <p className="text-[8.5px] text-slate-400 leading-normal">
+                          {lang === 'es' 
+                            ? 'Hemos redactado esta reseña para ti basada en tu servicio. Puedes editarla si lo deseas:'
+                            : 'We have drafted this review based on your service. Feel free to edit it:'
+                          }
+                        </p>
+                        <textarea
+                          value={suggestedReview}
+                          onChange={(e) => setSuggestedReview(e.target.value)}
+                          className="inp w-full p-3 text-[10px] font-mono leading-relaxed min-h-[90px] text-slate-300"
+                        />
+                        <button
+                          onClick={() => {
+                            navigator.clipboard?.writeText(suggestedReview);
+                            tt(lang === 'es' ? '📋 Copiado al portapapeles' : '📋 Copied to clipboard', 'green');
+                            window.open(tenantSettings?.google_review_link || DEFAULT_CFG.GOOGLE, '_blank');
+                          }}
+                          className="w-full gold py-3.5 rounded-xl font-black uppercase text-[10px] active:scale-95 transition-all flex items-center justify-center gap-2 shadow-lg shadow-[#F5C518]/15"
+                        >
+                          <Icon name="external-link" className="w-4 h-4" />
+                          {lang === 'es' ? 'Copiar y Dejar Reseña en Google' : 'Copy & Leave Review on Google'}
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => window.open(tenantSettings?.google_review_link || DEFAULT_CFG.GOOGLE, '_blank')}
+                        className="w-full gold py-4 rounded-xl font-black uppercase text-xs active:scale-95 transition-all flex items-center justify-center gap-2 shadow-lg shadow-[#F5C518]/15"
+                      >
+                        <Icon name="external-link" className="w-4.5 h-4.5" />
+                        {lang === 'es' ? 'Dejar Reseña en Google' : 'Leave Review on Google'}
+                      </button>
+                    )}
+                  </div>
+                )}
+
+                {/* Apology card for 3 stars or below */}
+                {((rating > 0 && rating <= 3) || (job.client_rating > 0 && job.client_rating <= 3)) && (
+                  <div className="g p-6 border border-red-500/20 bg-red-500/5 relative overflow-hidden rounded-2xl text-left space-y-2">
+                    <div className="absolute top-0 left-0 w-full h-[1.5px] bg-red-500" />
+                    <p className="text-[10px] text-red-400 font-black uppercase flex items-center gap-1.5 font-display">
+                      <Icon name="alert-triangle" className="w-4 h-4" />
+                      {lang === 'es' ? 'Reporte Registrado' : 'Feedback Logged'}
+                    </p>
+                    <p className="text-[8.5px] text-slate-300 leading-normal">
+                      {lang === 'es' 
+                        ? 'Lamentamos mucho tu experiencia. Hemos registrado tu reporte en nuestro sistema y un supervisor de Elevore se comunicará contigo de inmediato para solucionar cualquier inconveniente.'
+                        : 'We are truly sorry for your experience. We have logged your feedback and an Elevore supervisor will contact you shortly to make things right.'
+                      }
+                    </p>
+                  </div>
+                )}
               </div>
             )}
 
@@ -2731,13 +2888,6 @@ function Portal({ cjid }) {
                 <p className="text-[7px] text-slate-600 italic">Scan anytime</p>
               </div>
             </div>
-
-            {/* Google Review link */}
-            {job.status === 'paid' && (
-              <button onClick={() => window.open(DEFAULT_CFG.GOOGLE)} className="w-full gold py-4 rounded-2xl font-black uppercase text-sm active:scale-95 mb-1">
-                ⭐ {tr(lang, 'review')}
-              </button>
-            )}
           </div>
         )}
 
@@ -4517,8 +4667,10 @@ function LoginFlow({ onLoginSuccess, onBack, tt }) {
       let matchedStaff = null;
       if (Array.isArray(matchedStaffs) && matchedStaffs.length > 0) {
         matchedStaff = matchedStaffs.find(s => {
-          const storedEmail = s.staff_email || s.name || '';
-          return storedEmail.toLowerCase().includes(companyName.trim().toLowerCase());
+          const input = companyName.trim().toLowerCase();
+          const storedEmail = (s.staff_email || '').toLowerCase();
+          const storedName = (s.name || '').toLowerCase();
+          return storedEmail.includes(input) || storedName.includes(input);
         });
       }
       
@@ -4527,7 +4679,7 @@ function LoginFlow({ onLoginSuccess, onBack, tt }) {
         onLoginSuccess(matchedStaff.role, matchedStaff.tenant_id, null, matchedStaff, 'ELEVORE EMPIRE');
       } else {
         setLoading(false);
-        tt('Access Denied: Invalid Email or PIN', 'red');
+        tt('Access Denied: Invalid Email, Name or PIN', 'red');
       }
     } catch (err) {
       setLoading(false);
@@ -4596,8 +4748,8 @@ function LoginFlow({ onLoginSuccess, onBack, tt }) {
         {tab === 'pin' && (
           <form onSubmit={handlePinLogin} className="space-y-4 text-left">
             <div className="space-y-1">
-              <label className="text-[9px] font-black uppercase text-slate-500 tracking-widest pl-1">Staff Email</label>
-              <input required type="email" placeholder="staff@company.com" className="inp w-full py-4 text-sm" value={companyName} onChange={e => setCompanyName(e.target.value)} disabled={loading} />
+              <label className="text-[9px] font-black uppercase text-slate-500 tracking-widest pl-1">Staff Email or Name</label>
+              <input required type="text" placeholder="e.g. jei or jei@gmail.com" className="inp w-full py-4 text-sm" value={companyName} onChange={e => setCompanyName(e.target.value)} disabled={loading} />
             </div>
             <div className="space-y-1">
               <label className="text-[9px] font-black uppercase text-slate-500 tracking-widest pl-1">Access PIN</label>
@@ -11360,32 +11512,59 @@ Instrucciones generales de formato:
                             return Math.round(Number(f.client_rating)) === Number(prodQualityFilter);
                           })
                           .slice(0, 6)
-                          .map(f => (
-                            <div key={f.id} className="g p-4 border border-white/5 bg-black/20 rounded-xl space-y-2 flex flex-col justify-between">
-                              <div className="space-y-1">
-                                <div className="flex justify-between items-start">
-                                  <h5 className="text-[9.5px] font-black text-white uppercase italic">{f.client_name}</h5>
-                                  <span className="text-amber-400 text-[9px] font-black">{'⭐'.repeat(Math.round(f.client_rating || 5))}</span>
+                          .map(f => {
+                            const isLowRating = f.client_rating <= 3;
+                            return (
+                              <div 
+                                key={f.id} 
+                                className={`g p-4 border rounded-xl space-y-2 flex flex-col justify-between transition-all duration-300 ${
+                                  isLowRating 
+                                    ? 'border-red-500/30 bg-red-950/10 shadow-[0_0_15px_rgba(239,68,68,0.08)]' 
+                                    : 'border-white/5 bg-black/20'
+                                }`}
+                              >
+                                <div className="space-y-1">
+                                  <div className="flex justify-between items-start">
+                                    <div className="flex flex-col">
+                                      <h5 className="text-[9.5px] font-black text-white uppercase italic">{f.client_name}</h5>
+                                      {isLowRating && (
+                                        <span className="text-[6.5px] font-black tracking-widest text-red-500 uppercase bg-red-500/10 border border-red-500/20 px-1.5 py-0.5 rounded mt-1 max-w-max animate-pulse">
+                                          ⚠️ Alerta de Calidad
+                                        </span>
+                                      )}
+                                    </div>
+                                    <span className="text-amber-400 text-[9px] font-black">{'⭐'.repeat(Math.round(f.client_rating || 5))}</span>
+                                  </div>
+                                  <p className="text-[8px] text-[#F5C518] font-bold uppercase">{f.service_type} • {f.team_assigned || 'General Staff'}</p>
+                                  <p className="text-[8.5px] text-slate-300 italic">
+                                    {f.specs?.feedback_comment || f.specs?.clientNote || f.specs?.notes || "Servicio completado con firma digital de aprobación. No se registraron quejas."}
+                                  </p>
                                 </div>
-                                <p className="text-[8px] text-[#F5C518] font-bold uppercase">{f.service_type} • {f.team_assigned || 'General Staff'}</p>
-                                <p className="text-[8.5px] text-slate-300 italic">
-                                  {f.specs?.clientNote || f.specs?.notes || "Servicio completado con firma digital de aprobación. No se registraron quejas."}
-                                </p>
+                                <div className="pt-2 border-t border-white/5 flex justify-end gap-2">
+                                  {isLowRating ? (
+                                    <button
+                                      onClick={() => wa(f, 'qcfix')}
+                                      className="px-2.5 py-1.5 bg-red-600/15 hover:bg-red-600/25 border border-red-500/30 text-red-400 rounded-lg text-[7px] font-black uppercase tracking-wider transition-all flex items-center gap-1.5 active:scale-95 cursor-pointer"
+                                    >
+                                      <Icon name="alert-triangle" className="w-3 h-3 text-red-500 animate-pulse" />
+                                      Resolver por WA (qcfix)
+                                    </button>
+                                  ) : (
+                                    <button
+                                      onClick={() => {
+                                        const text = `Hola ${f.client_name}! ✨ Gracias por tu calificación de ${f.client_rating} estrellas en Elevore. Nos alegra que tuvieras una gran experiencia. ¡Hasta la próxima!`;
+                                        window.open(`https://wa.me/${(f.client_phone || '').replace(/\D/g, '')}?text=${encodeURIComponent(text)}`, '_blank');
+                                      }}
+                                      className="px-2 py-1 bg-green-500/10 text-green-400 hover:bg-green-500/20 rounded-lg text-[7px] font-black uppercase tracking-wider transition-all flex items-center gap-1.5 cursor-pointer"
+                                    >
+                                      <Icon name="message-circle" className="w-3 h-3" />
+                                      Agradecer por WA
+                                    </button>
+                                  )}
+                                </div>
                               </div>
-                              <div className="pt-2 border-t border-white/5 flex justify-end gap-2">
-                                <button
-                                  onClick={() => {
-                                    const text = `Hola ${f.client_name}! ✨ Gracias por tu calificación de ${f.client_rating} estrellas en Elevore. Nos alegra que tuvieras una gran experiencia. ¡Hasta la próxima!`;
-                                    window.open(`https://wa.me/${(f.client_phone || '').replace(/\D/g, '')}?text=${encodeURIComponent(text)}`, '_blank');
-                                  }}
-                                  className="px-2 py-1 bg-green-500/10 text-green-400 hover:bg-green-500/20 rounded-lg text-[7px] font-black uppercase tracking-wider transition-all flex items-center gap-1.5"
-                                >
-                                  <Icon name="message-circle" className="w-3 h-3" />
-                                  Agradecer por WA
-                                </button>
-                              </div>
-                            </div>
-                          ))}
+                            );
+                          })}
                         {feedbacks.length === 0 && (
                           <p className="text-center text-slate-500 italic text-[9px] py-6 col-span-2">No se han registrado calificaciones de clientes aún</p>
                         )}
