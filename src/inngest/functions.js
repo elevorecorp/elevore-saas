@@ -2,7 +2,7 @@ import postgres from 'postgres';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import { inngest } from "./client.js";
 import * as schema from '../db/schema.js';
-import { eq, and, or, sql, gte, lte } from 'drizzle-orm';
+import { eq, and, or, sql, gte, lte, inArray } from 'drizzle-orm';
 import { sendEmail } from '../lib/email.js';
 
 // Setup database connection for serverless environment
@@ -501,5 +501,192 @@ export const weeklyPayrollReport = inngest.createFunction(
       return { status: "weekly-reports-processed", tenants: processedTenants };
     });
     return result;
+  }
+);
+
+// 6. Weekly Empire Audit Function (Cron check hourly, sends Sunday 7 PM local time)
+export const weeklyAuditCron = inngest.createFunction(
+  { id: "weekly-audit-cron", cron: "0 * * * *" }, // Runs every hour
+  async ({ step }) => {
+    // 1. Get current UTC time
+    const currentUtc = new Date();
+    
+    // 2. Fetch all tenant settings
+    const settings = await step.run("fetch-all-settings", async () => {
+      if (!db) return [];
+      return await db.select({
+        tenantId: schema.tenantSettings.tenantId,
+        timezone: schema.tenantSettings.timezone,
+        googleReviewLink: schema.tenantSettings.googleReviewLink,
+        ownerPhone: schema.tenantSettings.ownerPhone,
+        zellePhone: schema.tenantSettings.zellePhone,
+        businessFullName: schema.tenantSettings.businessFullName
+      }).from(schema.tenantSettings);
+    });
+
+    // 3. Filter tenants whose local time is Sunday 7:00 PM (hour 19)
+    const targets = settings.filter(s => {
+      try {
+        const tz = s.timezone || 'America/New_York';
+        const formatterDay = new Intl.DateTimeFormat('en-US', { timeZone: tz, weekday: 'long' });
+        const localDay = formatterDay.format(currentUtc); // "Sunday", "Monday", etc.
+        
+        const formatterHour = new Intl.DateTimeFormat('en-US', { timeZone: tz, hour: 'numeric', hour12: false });
+        const localHour = parseInt(formatterHour.format(currentUtc), 10);
+        
+        return localDay === 'Sunday' && localHour === 19;
+      } catch (err) {
+        console.warn(`Timezone parsing failed for tenant ${s.tenantId} with timezone ${s.timezone}:`, err);
+        return false;
+      }
+    });
+
+    const results = [];
+
+    // 4. Process each target tenant
+    for (const target of targets) {
+      const runResult = await step.run(`process-audit-${target.tenantId}`, async () => {
+        if (!db) return { status: "no-db" };
+
+        const tz = target.timezone || 'America/New_York';
+        
+        // Calculate date strings for the last 7 days (including today) in the tenant's timezone
+        const localDates = [];
+        for (let i = 0; i < 7; i++) {
+          const d = new Date(currentUtc.getTime() - i * 24 * 60 * 60 * 1000);
+          const formatterDate = new Intl.DateTimeFormat('en-US', {
+            timeZone: tz,
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit'
+          });
+          const parts = formatterDate.formatToParts(d);
+          const partMap = Object.fromEntries(parts.map(p => [p.type, p.value]));
+          localDates.push(`${partMap.year}-${partMap.month}-${partMap.day}`);
+        }
+
+        // Fetch completed and paid jobs in these local dates
+        const weeklyJobs = await db.select({
+          id: schema.elevoreMissions.id,
+          totalPrice: schema.elevoreMissions.totalPrice,
+          status: schema.elevoreMissions.status,
+          clientRating: schema.elevoreMissions.clientRating
+        })
+        .from(schema.elevoreMissions)
+        .where(
+          and(
+            eq(schema.elevoreMissions.tenantId, target.tenantId),
+            inArray(schema.elevoreMissions.scheduledDate, localDates),
+            or(
+              eq(schema.elevoreMissions.status, 'completed'),
+              eq(schema.elevoreMissions.status, 'paid')
+            )
+          )
+        );
+
+        // Aggregate stats
+        let totalRevenue = 0;
+        let jobsCompleted = 0;
+        let googleReviewsRequested = 0;
+
+        weeklyJobs.forEach(job => {
+          totalRevenue += Number(job.totalPrice || 0);
+          jobsCompleted++;
+          if (job.clientRating && Number(job.clientRating) === 5) {
+            googleReviewsRequested++;
+          }
+        });
+
+        const milesSaved = Number((jobsCompleted * 3.4).toFixed(1));
+        const fuelSaved = Number((milesSaved / 20.0).toFixed(1));
+
+        // Get Year and Week Number in local time
+        const formatterYear = new Intl.DateTimeFormat('en-US', { timeZone: tz, year: 'numeric' });
+        const localYear = parseInt(formatterYear.format(currentUtc), 10);
+        
+        const jan4 = new Date(localYear, 0, 4);
+        const dayDiff = Math.floor((currentUtc - jan4) / (24 * 60 * 60 * 1000));
+        const weekNumber = Math.ceil((dayDiff + jan4.getDay() + 1) / 7);
+
+        // Save Weekly Audit record to database
+        try {
+          await db.insert(schema.weeklyAudits).values({
+            tenantId: target.tenantId,
+            weekNumber: weekNumber,
+            year: localYear,
+            totalRevenue: totalRevenue.toString(),
+            jobsCompleted: jobsCompleted,
+            milesSaved: milesSaved.toString()
+          });
+        } catch (e) {
+          // If UNIQUE constraint fails (audit already exists for this week), skip inserting
+          console.warn(`Weekly audit record already exists for tenant ${target.tenantId} week ${weekNumber} year ${localYear}`);
+        }
+
+        // Fetch Business name
+        const tenantList = await db.select({
+          businessName: schema.tenants.businessName
+        }).from(schema.tenants).where(eq(schema.tenants.id, target.tenantId)).limit(1);
+        const tenant = tenantList[0];
+        const bizName = target.businessFullName || tenant?.businessName || "Elevore Empire";
+
+        // Format WhatsApp Message
+        const reviewLink = target.googleReviewLink || "https://g.page/r/review";
+        const messageText = `👑 *${bizName.toUpperCase()}: Weekly Empire Audit* 👑\n\n` +
+          `¡Felicidades por otra gran semana de trabajo!\n\n` +
+          `💰 *Ingresos*: $${totalRevenue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}\n` +
+          `✅ *Misiones*: ${jobsCompleted} servicios completados\n` +
+          `🌱 *AI Dispatch*: Ahorraste *${milesSaved} millas* de conducción (~${fuelSaved} galones de gasolina).\n` +
+          `⭐ *Reviews*: Conseguiste ${googleReviewsRequested} booster invitaciones de 5 estrellas.\n\n` +
+          `👉 *Boost Google*: Invita a tus clientes a calificar tu servicio aquí: ${reviewLink}`;
+
+        // Get phone number (prefer ownerPhone dedicated field, fallback to zellePhone)
+        const phone = target.ownerPhone || target.zellePhone;
+        if (!phone) {
+          return { status: "no-phone", business: bizName };
+        }
+
+        const cleanPhone = phone.replace(/\D/g, '');
+        if (!cleanPhone) {
+          return { status: "invalid-phone", phone, business: bizName };
+        }
+
+        const phoneId = process.env.META_PHONE_NUMBER_ID;
+        const token = process.env.META_ACCESS_TOKEN;
+
+        if (!phoneId || !token) {
+          // Sandbox mock mode
+          console.log(`[MOCK WHATSAPP AUDIT SENT TO ${cleanPhone}]:\n${messageText}`);
+          return { status: "mock-sent", phone: cleanPhone, business: bizName, messageText };
+        }
+
+        const whatsappUrl = `https://graph.facebook.com/v18.0/${phoneId}/messages`;
+        const response = await fetch(whatsappUrl, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            messaging_product: "whatsapp",
+            to: cleanPhone,
+            type: "text",
+            text: { body: messageText }
+          })
+        });
+
+        if (!response.ok) {
+          const errText = await response.text();
+          console.error(`Meta API Error sending audit to ${cleanPhone}:`, errText);
+          return { status: "meta-api-error", error: errText, phone: cleanPhone, business: bizName };
+        }
+
+        return { status: "sent", phone: cleanPhone, business: bizName };
+      });
+
+      results.push(runResult);
+    }
+
+    return { processedCount: targets.length, results };
   }
 );

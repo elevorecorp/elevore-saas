@@ -1,4 +1,4 @@
-import { pgTable, uuid, text, timestamp, numeric, jsonb } from "drizzle-orm/pg-core";
+import { pgTable, uuid, text, timestamp, numeric, jsonb, integer } from "drizzle-orm/pg-core";
 
 export const tenants = pgTable("tenants", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -52,6 +52,8 @@ export const tenantSettings = pgTable("tenant_settings", {
   waTemplateBooking: text("wa_template_booking"),
   waTemplateRoute: text("wa_template_route"),
   waTemplateReview: text("wa_template_review"),
+  timezone: text("timezone").default("America/New_York"),
+  ownerPhone: text("owner_phone"),
 });
 
 export const staffProfiles = pgTable("staff_profiles", {
@@ -94,5 +96,16 @@ export const elevoreMissions = pgTable("elevore_missions", {
   checkInTime: text("check_in_time"),
   checkOutTime: text("check_out_time"),
   finalSignature: text("final_signature"),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const weeklyAudits = pgTable("weekly_audits", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  tenantId: uuid("tenant_id").references(() => tenants.id, { onDelete: "cascade" }).notNull(),
+  weekNumber: integer("week_number").notNull(),
+  year: integer("year").notNull(),
+  totalRevenue: numeric("total_revenue").default("0.00"),
+  jobsCompleted: integer("jobs_completed").default(0),
+  milesSaved: numeric("miles_saved").default("0.00"),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });

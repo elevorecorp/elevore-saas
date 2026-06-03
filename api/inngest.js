@@ -7,7 +7,8 @@ import {
   quoteChase,
   winBackCampaign,
   onMyWayAlert,
-  weeklyPayrollReport
+  weeklyPayrollReport,
+  weeklyAuditCron
 } from "../src/inngest/functions.js";
 
 // Export the serve handler for Vercel serverless functions
@@ -20,6 +21,7 @@ export default serve({
     quoteChase,
     winBackCampaign,
     onMyWayAlert,
-    weeklyPayrollReport
+    weeklyPayrollReport,
+    weeklyAuditCron
   ],
 });

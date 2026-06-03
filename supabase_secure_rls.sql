@@ -19,6 +19,23 @@ CREATE TABLE IF NOT EXISTS public.staff_payouts (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
+-- Asegurar que la tabla weekly_audits exista
+CREATE TABLE IF NOT EXISTS public.weekly_audits (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    tenant_id UUID REFERENCES public.tenants(id) ON DELETE CASCADE NOT NULL,
+    week_number INTEGER NOT NULL,
+    year INTEGER NOT NULL,
+    total_revenue NUMERIC(10,2) DEFAULT 0.00,
+    jobs_completed INTEGER DEFAULT 0,
+    miles_saved NUMERIC(6,2) DEFAULT 0.00,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+    UNIQUE(tenant_id, week_number, year)
+);
+
+-- Habilitar nuevas columnas de configuración en tenant_settings si no existen
+ALTER TABLE public.tenant_settings ADD COLUMN IF NOT EXISTS timezone TEXT DEFAULT 'America/New_York';
+ALTER TABLE public.tenant_settings ADD COLUMN IF NOT EXISTS owner_phone TEXT DEFAULT NULL;
+
 -- Habilitar RLS en todas las tablas por seguridad
 ALTER TABLE public.tenants ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.tenant_settings ENABLE ROW LEVEL SECURITY;
@@ -26,6 +43,7 @@ ALTER TABLE public.staff_profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.clients ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.elevore_missions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.staff_payouts ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.weekly_audits ENABLE ROW LEVEL SECURITY;
 
 -- ─────────────────────────────────────────────────────────────────────
 -- 1. TABLA: tenants (Negocios)
@@ -211,6 +229,29 @@ CREATE POLICY "allow_anon_update_missions"
     TO anon 
     USING (true)
     WITH CHECK (true);
+
+-- ─────────────────────────────────────────────────────────────────────
+-- 8. TABLA: weekly_audits (Historial de Auditorías Semanales)
+-- ─────────────────────────────────────────────────────────────────────
+-- Eliminar todas las políticas históricas posibles
+DROP POLICY IF EXISTS "Enable ALL for staff_payouts" ON public.weekly_audits;
+DROP POLICY IF EXISTS "tenant_isolation_audits" ON public.weekly_audits;
+
+-- Bloqueo total a usuarios anónimos.
+-- Aislamiento estricto para usuarios autenticados de la misma empresa o dueño.
+CREATE POLICY "tenant_isolation_audits" 
+    ON public.weekly_audits FOR ALL 
+    TO authenticated 
+    USING (
+        tenant_id::text = (auth.jwt() -> 'user_metadata' ->> 'tenant_id')
+        OR
+        tenant_id IN (SELECT id FROM public.tenants WHERE owner_id = auth.uid())
+    )
+    WITH CHECK (
+        tenant_id::text = (auth.jwt() -> 'user_metadata' ->> 'tenant_id')
+        OR
+        tenant_id IN (SELECT id FROM public.tenants WHERE owner_id = auth.uid())
+    );
 
 -- ─────────────────────────────────────────────────────────────────────
 -- 7. DISPARADORES (TRIGGERS) PARA SINCRONIZAR METADATOS A AUTH.USERS
