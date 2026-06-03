@@ -14294,39 +14294,45 @@ Instrucciones generales de formato:
           )}
 
           {ENABLE_AI && role === 'admin' && view === 'operations' && operationsTab === 'meetings' && (
-            <div className="space-y-4 animate-in fade-in pb-24">
-              {/* Operations Sub-tabs Switcher */}
-              <div className="flex gap-2 bg-black/45 p-1.5 rounded-2xl border border-white/5 overflow-x-auto nsb">
-                {[
-                  { id: 'calendar', name: '📅 Calendario de Misiones' },
-                  { id: 'reminders', name: `🔔 Recordatorios (${remindersBadgeCount})` },
-                  { id: 'drive', name: '📸 Photo Drive' },
-                  { id: 'map', name: '🗺️ IA Dispatcher' },
-                  ENABLE_AI && { id: 'meetings', name: '🎙️ Reuniones IA' },
-                  { id: 'deploy', name: '📝 Nueva Cotización' }
-                ].filter(Boolean).map(tab => (
-                  <button
-                    key={tab.id}
-                    onClick={() => setOperationsTab(tab.id)}
-                    className={`px-4 py-2.5 rounded-xl text-[9px] font-black uppercase whitespace-nowrap active:scale-95 transition-all ${
-                      operationsTab === tab.id
-                        ? 'bg-[#F5C518] text-black shadow-lg shadow-[#F5C518]/15'
-                        : 'bg-white/5 text-slate-400 hover:text-white hover:bg-white/10'
-                    }`}
-                  >
-                    {tab.name}
-                  </button>
-                ))}
-              </div>
+            <FeatureGate
+              requiredPlan="premium"
+              currentPlan={currentPlan}
+              onUpgradeSuccess={handleUpgradeSuccess}
+            >
+              <div className="space-y-4 animate-in fade-in pb-24">
+                {/* Operations Sub-tabs Switcher */}
+                <div className="flex gap-2 bg-black/45 p-1.5 rounded-2xl border border-white/5 overflow-x-auto nsb">
+                  {[
+                    { id: 'calendar', name: '📅 Calendario de Misiones' },
+                    { id: 'reminders', name: `🔔 Recordatorios (${remindersBadgeCount})` },
+                    { id: 'drive', name: '📸 Photo Drive' },
+                    { id: 'map', name: '🗺️ IA Dispatcher' },
+                    ENABLE_AI && { id: 'meetings', name: '🎙️ Reuniones IA' },
+                    { id: 'deploy', name: '📝 Nueva Cotización' }
+                  ].filter(Boolean).map(tab => (
+                    <button
+                      key={tab.id}
+                      onClick={() => setOperationsTab(tab.id)}
+                      className={`px-4 py-2.5 rounded-xl text-[9px] font-black uppercase whitespace-nowrap active:scale-95 transition-all ${
+                        operationsTab === tab.id
+                          ? 'bg-[#F5C518] text-black shadow-lg shadow-[#F5C518]/15'
+                          : 'bg-white/5 text-slate-400 hover:text-white hover:bg-white/10'
+                      }`}
+                    >
+                      {tab.name}
+                    </button>
+                  ))}
+                </div>
 
-              <AICopilotMeetings
-                jobs={jobs}
-                staff={staff}
-                tt={tt}
-                refresh={refresh}
-                activeUser={activeEmployee?.name || 'Administrador (Tú)'}
-              />
-            </div>
+                <AICopilotMeetings
+                  jobs={jobs}
+                  staff={staff}
+                  tt={tt}
+                  refresh={refresh}
+                  activeUser={activeEmployee?.name || 'Administrador (Tú)'}
+                />
+              </div>
+            </FeatureGate>
           )}
 
           {/* =====================================================================
@@ -15103,7 +15109,13 @@ Respond ONLY in this exact JSON format (no explanation, no markdown, just raw JS
             );
           })()}
 
-          {role === 'admin' && view === 'crm' && crmTab === 'campaigns' && (() => {
+          {role === 'admin' && view === 'crm' && crmTab === 'campaigns' && (
+            <FeatureGate
+              requiredPlan="premium"
+              currentPlan={currentPlan}
+              onUpgradeSuccess={handleUpgradeSuccess}
+            >
+              {(() => {
             let segmentClients = [];
             const now = new Date();
             if (campaignTargets === 'high_risk') {
@@ -15326,6 +15338,8 @@ Respond ONLY in this exact JSON format (no explanation, no markdown, just raw JS
               </div>
             );
           })()}
+          </FeatureGate>
+          )}
 
 
 
