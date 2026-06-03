@@ -1,0 +1,1321 @@
+{
+  "timestamp": "2026-06-03T19:21:00.443Z",
+  "database": "db.ceijlgurveaalvjmptns.supabase.co",
+  "tables": {
+    "crew_locations": {
+      "rowCount": 0,
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "nullable": "NO",
+          "default": "gen_random_uuid()"
+        },
+        {
+          "name": "tenant_id",
+          "type": "uuid",
+          "nullable": "NO",
+          "default": null
+        },
+        {
+          "name": "staff_id",
+          "type": "uuid",
+          "nullable": "NO",
+          "default": null
+        },
+        {
+          "name": "lat",
+          "type": "numeric",
+          "nullable": "NO",
+          "default": null
+        },
+        {
+          "name": "lng",
+          "type": "numeric",
+          "nullable": "NO",
+          "default": null
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "nullable": "NO",
+          "default": "timezone('utc'::text, now())"
+        }
+      ]
+    },
+    "jobs": {
+      "rowCount": 2,
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "nullable": "NO",
+          "default": "gen_random_uuid()"
+        },
+        {
+          "name": "client_id",
+          "type": "uuid",
+          "nullable": "YES",
+          "default": null
+        },
+        {
+          "name": "client_name",
+          "type": "text",
+          "nullable": "YES",
+          "default": null
+        },
+        {
+          "name": "service_type",
+          "type": "text",
+          "nullable": "YES",
+          "default": null
+        },
+        {
+          "name": "total_price",
+          "type": "numeric",
+          "nullable": "YES",
+          "default": "0"
+        },
+        {
+          "name": "deposit_paid",
+          "type": "numeric",
+          "nullable": "YES",
+          "default": "0"
+        },
+        {
+          "name": "status",
+          "type": "text",
+          "nullable": "YES",
+          "default": "'scheduled'::text"
+        },
+        {
+          "name": "scheduled_date",
+          "type": "date",
+          "nullable": "YES",
+          "default": null
+        },
+        {
+          "name": "team_assigned",
+          "type": "text",
+          "nullable": "YES",
+          "default": null
+        },
+        {
+          "name": "specs",
+          "type": "jsonb",
+          "nullable": "YES",
+          "default": "'{}'::jsonb"
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "nullable": "YES",
+          "default": "now()"
+        },
+        {
+          "name": "address",
+          "type": "text",
+          "nullable": "YES",
+          "default": null
+        },
+        {
+          "name": "client_phone",
+          "type": "text",
+          "nullable": "YES",
+          "default": null
+        },
+        {
+          "name": "notes",
+          "type": "text",
+          "nullable": "YES",
+          "default": null
+        }
+      ]
+    },
+    "job_expenses": {
+      "rowCount": 0,
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "nullable": "NO",
+          "default": "gen_random_uuid()"
+        },
+        {
+          "name": "job_id",
+          "type": "uuid",
+          "nullable": "YES",
+          "default": null
+        },
+        {
+          "name": "amount",
+          "type": "numeric",
+          "nullable": "YES",
+          "default": "0"
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "nullable": "YES",
+          "default": "now()"
+        }
+      ]
+    },
+    "elevore_pro_v1": {
+      "rowCount": 0,
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "nullable": "NO",
+          "default": "gen_random_uuid()"
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "nullable": "YES",
+          "default": "now()"
+        },
+        {
+          "name": "client_name",
+          "type": "text",
+          "nullable": "NO",
+          "default": null
+        },
+        {
+          "name": "client_phone",
+          "type": "text",
+          "nullable": "YES",
+          "default": null
+        },
+        {
+          "name": "address",
+          "type": "text",
+          "nullable": "YES",
+          "default": null
+        },
+        {
+          "name": "service_type",
+          "type": "text",
+          "nullable": "YES",
+          "default": null
+        },
+        {
+          "name": "beds",
+          "type": "numeric",
+          "nullable": "YES",
+          "default": "0"
+        },
+        {
+          "name": "baths",
+          "type": "numeric",
+          "nullable": "YES",
+          "default": "0"
+        },
+        {
+          "name": "living_rooms",
+          "type": "numeric",
+          "nullable": "YES",
+          "default": "0"
+        },
+        {
+          "name": "laundry_rooms",
+          "type": "numeric",
+          "nullable": "YES",
+          "default": "0"
+        },
+        {
+          "name": "sqft",
+          "type": "numeric",
+          "nullable": "YES",
+          "default": "0"
+        },
+        {
+          "name": "complexity",
+          "type": "numeric",
+          "nullable": "YES",
+          "default": "1"
+        },
+        {
+          "name": "oven",
+          "type": "boolean",
+          "nullable": "YES",
+          "default": "false"
+        },
+        {
+          "name": "fridge",
+          "type": "boolean",
+          "nullable": "YES",
+          "default": "false"
+        },
+        {
+          "name": "windows",
+          "type": "boolean",
+          "nullable": "YES",
+          "default": "false"
+        },
+        {
+          "name": "pethair",
+          "type": "boolean",
+          "nullable": "YES",
+          "default": "false"
+        },
+        {
+          "name": "garage",
+          "type": "boolean",
+          "nullable": "YES",
+          "default": "false"
+        },
+        {
+          "name": "laundry_loads",
+          "type": "numeric",
+          "nullable": "YES",
+          "default": "0"
+        },
+        {
+          "name": "expenses",
+          "type": "numeric",
+          "nullable": "YES",
+          "default": "0"
+        },
+        {
+          "name": "discount",
+          "type": "numeric",
+          "nullable": "YES",
+          "default": "0"
+        },
+        {
+          "name": "deposit",
+          "type": "numeric",
+          "nullable": "YES",
+          "default": "0"
+        },
+        {
+          "name": "total_price",
+          "type": "numeric",
+          "nullable": "YES",
+          "default": "0"
+        },
+        {
+          "name": "team_assigned",
+          "type": "text",
+          "nullable": "YES",
+          "default": null
+        },
+        {
+          "name": "status",
+          "type": "text",
+          "nullable": "YES",
+          "default": "'scheduled'::text"
+        },
+        {
+          "name": "date",
+          "type": "date",
+          "nullable": "YES",
+          "default": null
+        }
+      ]
+    },
+    "audit_logs": {
+      "rowCount": 0,
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "nullable": "NO",
+          "default": "gen_random_uuid()"
+        },
+        {
+          "name": "job_id",
+          "type": "uuid",
+          "nullable": "YES",
+          "default": null
+        },
+        {
+          "name": "event_type",
+          "type": "text",
+          "nullable": "YES",
+          "default": null
+        },
+        {
+          "name": "timestamp",
+          "type": "timestamp with time zone",
+          "nullable": "YES",
+          "default": "now()"
+        }
+      ]
+    },
+    "clients": {
+      "rowCount": 12,
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "nullable": "NO",
+          "default": "gen_random_uuid()"
+        },
+        {
+          "name": "name",
+          "type": "text",
+          "nullable": "NO",
+          "default": null
+        },
+        {
+          "name": "phone",
+          "type": "text",
+          "nullable": "YES",
+          "default": null
+        },
+        {
+          "name": "address",
+          "type": "text",
+          "nullable": "YES",
+          "default": null
+        },
+        {
+          "name": "specs",
+          "type": "jsonb",
+          "nullable": "YES",
+          "default": "'{}'::jsonb"
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "nullable": "YES",
+          "default": "now()"
+        },
+        {
+          "name": "points",
+          "type": "integer",
+          "nullable": "YES",
+          "default": "0"
+        },
+        {
+          "name": "birthday",
+          "type": "text",
+          "nullable": "YES",
+          "default": null
+        },
+        {
+          "name": "joined_date",
+          "type": "date",
+          "nullable": "YES",
+          "default": "CURRENT_DATE"
+        },
+        {
+          "name": "membership",
+          "type": "text",
+          "nullable": "YES",
+          "default": "'none'::text"
+        },
+        {
+          "name": "language",
+          "type": "text",
+          "nullable": "YES",
+          "default": "'en'::text"
+        },
+        {
+          "name": "tenant_id",
+          "type": "uuid",
+          "nullable": "YES",
+          "default": null
+        },
+        {
+          "name": "email",
+          "type": "text",
+          "nullable": "YES",
+          "default": null
+        },
+        {
+          "name": "embedding",
+          "type": "USER-DEFINED",
+          "nullable": "YES",
+          "default": null
+        }
+      ]
+    },
+    "elevore_missions": {
+      "rowCount": 31,
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "nullable": "NO",
+          "default": "gen_random_uuid()"
+        },
+        {
+          "name": "client_name",
+          "type": "text",
+          "nullable": "YES",
+          "default": null
+        },
+        {
+          "name": "client_phone",
+          "type": "text",
+          "nullable": "YES",
+          "default": null
+        },
+        {
+          "name": "address",
+          "type": "text",
+          "nullable": "YES",
+          "default": null
+        },
+        {
+          "name": "service_type",
+          "type": "text",
+          "nullable": "YES",
+          "default": null
+        },
+        {
+          "name": "total_price",
+          "type": "numeric",
+          "nullable": "YES",
+          "default": "0"
+        },
+        {
+          "name": "deposit_paid",
+          "type": "numeric",
+          "nullable": "YES",
+          "default": "0"
+        },
+        {
+          "name": "expenses",
+          "type": "numeric",
+          "nullable": "YES",
+          "default": "0"
+        },
+        {
+          "name": "team_assigned",
+          "type": "text",
+          "nullable": "YES",
+          "default": null
+        },
+        {
+          "name": "status",
+          "type": "text",
+          "nullable": "YES",
+          "default": "'scheduled'::text"
+        },
+        {
+          "name": "scheduled_date",
+          "type": "date",
+          "nullable": "YES",
+          "default": null
+        },
+        {
+          "name": "specs",
+          "type": "jsonb",
+          "nullable": "YES",
+          "default": "'{}'::jsonb"
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "nullable": "YES",
+          "default": "now()"
+        },
+        {
+          "name": "approval_signature",
+          "type": "text",
+          "nullable": "YES",
+          "default": null
+        },
+        {
+          "name": "final_signature",
+          "type": "text",
+          "nullable": "YES",
+          "default": null
+        },
+        {
+          "name": "before_photos",
+          "type": "ARRAY",
+          "nullable": "YES",
+          "default": null
+        },
+        {
+          "name": "after_photos",
+          "type": "ARRAY",
+          "nullable": "YES",
+          "default": null
+        },
+        {
+          "name": "next_visit",
+          "type": "date",
+          "nullable": "YES",
+          "default": null
+        },
+        {
+          "name": "notes",
+          "type": "text",
+          "nullable": "YES",
+          "default": null
+        },
+        {
+          "name": "check_in_time",
+          "type": "timestamp with time zone",
+          "nullable": "YES",
+          "default": null
+        },
+        {
+          "name": "check_out_time",
+          "type": "timestamp with time zone",
+          "nullable": "YES",
+          "default": null
+        },
+        {
+          "name": "staff_bonus",
+          "type": "numeric",
+          "nullable": "YES",
+          "default": "0"
+        },
+        {
+          "name": "referral_code",
+          "type": "text",
+          "nullable": "YES",
+          "default": null
+        },
+        {
+          "name": "upsell_sent",
+          "type": "ARRAY",
+          "nullable": "YES",
+          "default": null
+        },
+        {
+          "name": "urgency_expires",
+          "type": "timestamp with time zone",
+          "nullable": "YES",
+          "default": null
+        },
+        {
+          "name": "client_rating",
+          "type": "integer",
+          "nullable": "YES",
+          "default": null
+        },
+        {
+          "name": "incident_note",
+          "type": "text",
+          "nullable": "YES",
+          "default": null
+        },
+        {
+          "name": "membership_plan",
+          "type": "text",
+          "nullable": "YES",
+          "default": null
+        },
+        {
+          "name": "language",
+          "type": "text",
+          "nullable": "YES",
+          "default": "'en'::text"
+        },
+        {
+          "name": "tenant_id",
+          "type": "uuid",
+          "nullable": "YES",
+          "default": null
+        },
+        {
+          "name": "embedding",
+          "type": "USER-DEFINED",
+          "nullable": "YES",
+          "default": null
+        },
+        {
+          "name": "review_requested",
+          "type": "boolean",
+          "nullable": "YES",
+          "default": "false"
+        },
+        {
+          "name": "client_email",
+          "type": "text",
+          "nullable": "YES",
+          "default": null
+        }
+      ]
+    },
+    "staff_payouts": {
+      "rowCount": 0,
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "nullable": "NO",
+          "default": "gen_random_uuid()"
+        },
+        {
+          "name": "tenant_id",
+          "type": "uuid",
+          "nullable": "NO",
+          "default": null
+        },
+        {
+          "name": "staff_id",
+          "type": "uuid",
+          "nullable": "NO",
+          "default": null
+        },
+        {
+          "name": "worker_name",
+          "type": "text",
+          "nullable": "NO",
+          "default": null
+        },
+        {
+          "name": "amount",
+          "type": "numeric",
+          "nullable": "NO",
+          "default": null
+        },
+        {
+          "name": "payment_method",
+          "type": "text",
+          "nullable": "NO",
+          "default": "'Zelle'::text"
+        },
+        {
+          "name": "reference_note",
+          "type": "text",
+          "nullable": "YES",
+          "default": null
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "nullable": "NO",
+          "default": "timezone('utc'::text, now())"
+        }
+      ]
+    },
+    "elevore_reports": {
+      "rowCount": 1,
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "nullable": "NO",
+          "default": "gen_random_uuid()"
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "nullable": "YES",
+          "default": "now()"
+        },
+        {
+          "name": "type",
+          "type": "text",
+          "nullable": "YES",
+          "default": null
+        },
+        {
+          "name": "description",
+          "type": "text",
+          "nullable": "YES",
+          "default": null
+        },
+        {
+          "name": "staff_name",
+          "type": "text",
+          "nullable": "YES",
+          "default": null
+        },
+        {
+          "name": "job_id",
+          "type": "uuid",
+          "nullable": "YES",
+          "default": null
+        },
+        {
+          "name": "photo_url",
+          "type": "text",
+          "nullable": "YES",
+          "default": null
+        },
+        {
+          "name": "status",
+          "type": "text",
+          "nullable": "YES",
+          "default": "'open'::text"
+        }
+      ]
+    },
+    "elevore_staff": {
+      "rowCount": 2,
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "nullable": "NO",
+          "default": "gen_random_uuid()"
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "nullable": "YES",
+          "default": "now()"
+        },
+        {
+          "name": "name",
+          "type": "text",
+          "nullable": "NO",
+          "default": null
+        },
+        {
+          "name": "phone",
+          "type": "text",
+          "nullable": "YES",
+          "default": null
+        },
+        {
+          "name": "email",
+          "type": "text",
+          "nullable": "YES",
+          "default": null
+        },
+        {
+          "name": "status",
+          "type": "text",
+          "nullable": "YES",
+          "default": "'active'::text"
+        },
+        {
+          "name": "pin",
+          "type": "text",
+          "nullable": "YES",
+          "default": null
+        }
+      ]
+    },
+    "weekly_audits": {
+      "rowCount": 0,
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "nullable": "NO",
+          "default": "gen_random_uuid()"
+        },
+        {
+          "name": "tenant_id",
+          "type": "uuid",
+          "nullable": "NO",
+          "default": null
+        },
+        {
+          "name": "week_number",
+          "type": "integer",
+          "nullable": "NO",
+          "default": null
+        },
+        {
+          "name": "year",
+          "type": "integer",
+          "nullable": "NO",
+          "default": null
+        },
+        {
+          "name": "total_revenue",
+          "type": "numeric",
+          "nullable": "YES",
+          "default": "0.00"
+        },
+        {
+          "name": "jobs_completed",
+          "type": "integer",
+          "nullable": "YES",
+          "default": "0"
+        },
+        {
+          "name": "miles_saved",
+          "type": "numeric",
+          "nullable": "YES",
+          "default": "0.00"
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "nullable": "NO",
+          "default": "timezone('utc'::text, now())"
+        }
+      ]
+    },
+    "tenants": {
+      "rowCount": 10,
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "nullable": "NO",
+          "default": "gen_random_uuid()"
+        },
+        {
+          "name": "business_name",
+          "type": "text",
+          "nullable": "NO",
+          "default": null
+        },
+        {
+          "name": "owner_id",
+          "type": "uuid",
+          "nullable": "YES",
+          "default": null
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "nullable": "NO",
+          "default": "timezone('utc'::text, now())"
+        },
+        {
+          "name": "stripe_customer_id",
+          "type": "text",
+          "nullable": "YES",
+          "default": null
+        },
+        {
+          "name": "stripe_subscription_status",
+          "type": "text",
+          "nullable": "YES",
+          "default": "'trialing'::text"
+        },
+        {
+          "name": "slug",
+          "type": "text",
+          "nullable": "NO",
+          "default": null
+        },
+        {
+          "name": "trial_ends_at",
+          "type": "timestamp with time zone",
+          "nullable": "YES",
+          "default": "(now() + '14 days'::interval)"
+        }
+      ]
+    },
+    "tenant_settings": {
+      "rowCount": 10,
+      "columns": [
+        {
+          "name": "tenant_id",
+          "type": "uuid",
+          "nullable": "NO",
+          "default": null
+        },
+        {
+          "name": "zelle_phone",
+          "type": "text",
+          "nullable": "YES",
+          "default": "'(407) 952-4228'::text"
+        },
+        {
+          "name": "business_full_name",
+          "type": "text",
+          "nullable": "YES",
+          "default": "'Elevore Premium Services'::text"
+        },
+        {
+          "name": "staff_pay_pct",
+          "type": "numeric",
+          "nullable": "YES",
+          "default": "0.40"
+        },
+        {
+          "name": "google_review_link",
+          "type": "text",
+          "nullable": "YES",
+          "default": "'https://g.page/r/review'::text"
+        },
+        {
+          "name": "currency",
+          "type": "text",
+          "nullable": "YES",
+          "default": "'USD'::text"
+        },
+        {
+          "name": "monthly_goal",
+          "type": "numeric",
+          "nullable": "YES",
+          "default": "15000.00"
+        },
+        {
+          "name": "admin_pin",
+          "type": "text",
+          "nullable": "YES",
+          "default": "'2026'::text"
+        },
+        {
+          "name": "addons",
+          "type": "jsonb",
+          "nullable": "YES",
+          "default": "'[]'::jsonb"
+        },
+        {
+          "name": "quick_jobs",
+          "type": "jsonb",
+          "nullable": "YES",
+          "default": "'[]'::jsonb"
+        },
+        {
+          "name": "membership_plans",
+          "type": "jsonb",
+          "nullable": "YES",
+          "default": "'[]'::jsonb"
+        },
+        {
+          "name": "webhook_completed",
+          "type": "text",
+          "nullable": "YES",
+          "default": null
+        },
+        {
+          "name": "webhook_quote_approved",
+          "type": "text",
+          "nullable": "YES",
+          "default": null
+        },
+        {
+          "name": "webhook_en_route",
+          "type": "text",
+          "nullable": "YES",
+          "default": null
+        },
+        {
+          "name": "booking_base_price",
+          "type": "numeric",
+          "nullable": "YES",
+          "default": "100.00"
+        },
+        {
+          "name": "booking_price_per_sqft",
+          "type": "numeric",
+          "nullable": "YES",
+          "default": "0.0800"
+        },
+        {
+          "name": "booking_multiplier_deep",
+          "type": "numeric",
+          "nullable": "YES",
+          "default": "1.45"
+        },
+        {
+          "name": "booking_multiplier_moveout",
+          "type": "numeric",
+          "nullable": "YES",
+          "default": "1.60"
+        },
+        {
+          "name": "wa_template_booking",
+          "type": "text",
+          "nullable": "YES",
+          "default": null
+        },
+        {
+          "name": "wa_template_route",
+          "type": "text",
+          "nullable": "YES",
+          "default": null
+        },
+        {
+          "name": "wa_template_review",
+          "type": "text",
+          "nullable": "YES",
+          "default": null
+        },
+        {
+          "name": "custom_resend_key",
+          "type": "text",
+          "nullable": "YES",
+          "default": null
+        },
+        {
+          "name": "n8n_webhook_url",
+          "type": "text",
+          "nullable": "YES",
+          "default": null
+        },
+        {
+          "name": "timezone",
+          "type": "text",
+          "nullable": "YES",
+          "default": "'America/New_York'::text"
+        },
+        {
+          "name": "owner_phone",
+          "type": "text",
+          "nullable": "YES",
+          "default": null
+        }
+      ]
+    },
+    "staff_profiles": {
+      "rowCount": 10,
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "nullable": "NO",
+          "default": "gen_random_uuid()"
+        },
+        {
+          "name": "tenant_id",
+          "type": "uuid",
+          "nullable": "NO",
+          "default": null
+        },
+        {
+          "name": "user_id",
+          "type": "uuid",
+          "nullable": "YES",
+          "default": null
+        },
+        {
+          "name": "name",
+          "type": "text",
+          "nullable": "NO",
+          "default": null
+        },
+        {
+          "name": "role",
+          "type": "text",
+          "nullable": "YES",
+          "default": "'staff'::text"
+        },
+        {
+          "name": "passcode",
+          "type": "text",
+          "nullable": "NO",
+          "default": "'staff123'::text"
+        },
+        {
+          "name": "wallet_balance",
+          "type": "numeric",
+          "nullable": "YES",
+          "default": "0.00"
+        },
+        {
+          "name": "total_earned",
+          "type": "numeric",
+          "nullable": "YES",
+          "default": "0.00"
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "nullable": "NO",
+          "default": "timezone('utc'::text, now())"
+        },
+        {
+          "name": "staff_email",
+          "type": "text",
+          "nullable": "YES",
+          "default": null
+        },
+        {
+          "name": "phone",
+          "type": "text",
+          "nullable": "YES",
+          "default": null
+        },
+        {
+          "name": "payout_pct",
+          "type": "numeric",
+          "nullable": "YES",
+          "default": "40"
+        }
+      ]
+    }
+  },
+  "policies": [
+    {
+      "table": "tenants",
+      "name": "Allow public read for tenants",
+      "roles": [
+        "public"
+      ],
+      "cmd": "SELECT",
+      "using": "true",
+      "withCheck": null
+    },
+    {
+      "table": "tenants",
+      "name": "Allow owners to manage their tenant",
+      "roles": [
+        "authenticated"
+      ],
+      "cmd": "ALL",
+      "using": "(owner_id = auth.uid())",
+      "withCheck": "(owner_id = auth.uid())"
+    },
+    {
+      "table": "tenant_settings",
+      "name": "Allow public read for settings",
+      "roles": [
+        "public"
+      ],
+      "cmd": "SELECT",
+      "using": "true",
+      "withCheck": null
+    },
+    {
+      "table": "tenant_settings",
+      "name": "Allow admins to manage settings",
+      "roles": [
+        "authenticated"
+      ],
+      "cmd": "ALL",
+      "using": "(((tenant_id)::text = ((auth.jwt() -> 'user_metadata'::text) ->> 'tenant_id'::text)) OR (tenant_id IN ( SELECT tenants.id\n   FROM tenants\n  WHERE (tenants.owner_id = auth.uid()))))",
+      "withCheck": "(((tenant_id)::text = ((auth.jwt() -> 'user_metadata'::text) ->> 'tenant_id'::text)) OR (tenant_id IN ( SELECT tenants.id\n   FROM tenants\n  WHERE (tenants.owner_id = auth.uid()))))"
+    },
+    {
+      "table": "staff_profiles",
+      "name": "tenant_isolation_staff",
+      "roles": [
+        "authenticated"
+      ],
+      "cmd": "ALL",
+      "using": "(((tenant_id)::text = ((auth.jwt() -> 'user_metadata'::text) ->> 'tenant_id'::text)) OR (tenant_id IN ( SELECT tenants.id\n   FROM tenants\n  WHERE (tenants.owner_id = auth.uid()))))",
+      "withCheck": "(((tenant_id)::text = ((auth.jwt() -> 'user_metadata'::text) ->> 'tenant_id'::text)) OR (tenant_id IN ( SELECT tenants.id\n   FROM tenants\n  WHERE (tenants.owner_id = auth.uid()))))"
+    },
+    {
+      "table": "jobs",
+      "name": "role_based_jobs",
+      "roles": [
+        "public"
+      ],
+      "cmd": "ALL",
+      "using": "((( SELECT (users.raw_user_meta_data ->> 'role'::text)\n   FROM auth.users\n  WHERE (users.id = auth.uid())) = 'admin'::text) OR ((( SELECT (users.raw_user_meta_data ->> 'role'::text)\n   FROM auth.users\n  WHERE (users.id = auth.uid())) = 'staff'::text) AND (team_assigned ~~* (('%'::text || ( SELECT (users.raw_user_meta_data ->> 'name'::text)\n   FROM auth.users\n  WHERE (users.id = auth.uid()))) || '%'::text))))",
+      "withCheck": null
+    },
+    {
+      "table": "clients",
+      "name": "tenant_isolation_clients",
+      "roles": [
+        "authenticated"
+      ],
+      "cmd": "ALL",
+      "using": "(((tenant_id)::text = ((auth.jwt() -> 'user_metadata'::text) ->> 'tenant_id'::text)) OR (tenant_id IN ( SELECT tenants.id\n   FROM tenants\n  WHERE (tenants.owner_id = auth.uid()))))",
+      "withCheck": "(((tenant_id)::text = ((auth.jwt() -> 'user_metadata'::text) ->> 'tenant_id'::text)) OR (tenant_id IN ( SELECT tenants.id\n   FROM tenants\n  WHERE (tenants.owner_id = auth.uid()))))"
+    },
+    {
+      "table": "staff_payouts",
+      "name": "tenant_isolation_payouts",
+      "roles": [
+        "authenticated"
+      ],
+      "cmd": "ALL",
+      "using": "(((tenant_id)::text = ((auth.jwt() -> 'user_metadata'::text) ->> 'tenant_id'::text)) OR (tenant_id IN ( SELECT tenants.id\n   FROM tenants\n  WHERE (tenants.owner_id = auth.uid()))))",
+      "withCheck": "(((tenant_id)::text = ((auth.jwt() -> 'user_metadata'::text) ->> 'tenant_id'::text)) OR (tenant_id IN ( SELECT tenants.id\n   FROM tenants\n  WHERE (tenants.owner_id = auth.uid()))))"
+    },
+    {
+      "table": "elevore_missions",
+      "name": "tenant_isolation_missions",
+      "roles": [
+        "authenticated"
+      ],
+      "cmd": "ALL",
+      "using": "(((tenant_id)::text = ((auth.jwt() -> 'user_metadata'::text) ->> 'tenant_id'::text)) OR (tenant_id IN ( SELECT tenants.id\n   FROM tenants\n  WHERE (tenants.owner_id = auth.uid()))))",
+      "withCheck": "(((tenant_id)::text = ((auth.jwt() -> 'user_metadata'::text) ->> 'tenant_id'::text)) OR (tenant_id IN ( SELECT tenants.id\n   FROM tenants\n  WHERE (tenants.owner_id = auth.uid()))))"
+    },
+    {
+      "table": "elevore_missions",
+      "name": "allow_public_insert_missions",
+      "roles": [
+        "anon"
+      ],
+      "cmd": "INSERT",
+      "using": null,
+      "withCheck": "((status = 'lead'::text) AND (tenant_id IS NOT NULL))"
+    },
+    {
+      "table": "elevore_missions",
+      "name": "allow_anon_select_missions",
+      "roles": [
+        "anon"
+      ],
+      "cmd": "SELECT",
+      "using": "true",
+      "withCheck": null
+    },
+    {
+      "table": "crew_locations",
+      "name": "allow_public_select_locations",
+      "roles": [
+        "public"
+      ],
+      "cmd": "SELECT",
+      "using": "true",
+      "withCheck": null
+    },
+    {
+      "table": "crew_locations",
+      "name": "allow_public_upsert_locations",
+      "roles": [
+        "public"
+      ],
+      "cmd": "ALL",
+      "using": "true",
+      "withCheck": "true"
+    },
+    {
+      "table": "elevore_missions",
+      "name": "allow_anon_update_missions",
+      "roles": [
+        "anon"
+      ],
+      "cmd": "UPDATE",
+      "using": "true",
+      "withCheck": "true"
+    },
+    {
+      "table": "weekly_audits",
+      "name": "tenant_isolation_audits",
+      "roles": [
+        "authenticated"
+      ],
+      "cmd": "ALL",
+      "using": "(((tenant_id)::text = ((auth.jwt() -> 'user_metadata'::text) ->> 'tenant_id'::text)) OR (tenant_id IN ( SELECT tenants.id\n   FROM tenants\n  WHERE (tenants.owner_id = auth.uid()))))",
+      "withCheck": "(((tenant_id)::text = ((auth.jwt() -> 'user_metadata'::text) ->> 'tenant_id'::text)) OR (tenant_id IN ( SELECT tenants.id\n   FROM tenants\n  WHERE (tenants.owner_id = auth.uid()))))"
+    }
+  ],
+  "triggers": [
+    {
+      "name": "on_tenant_created",
+      "event": "INSERT",
+      "table": "tenants",
+      "timing": "AFTER",
+      "action": "EXECUTE FUNCTION handle_new_tenant()"
+    },
+    {
+      "name": "on_tenant_owner_sync",
+      "event": "INSERT",
+      "table": "tenants",
+      "timing": "AFTER",
+      "action": "EXECUTE FUNCTION sync_tenant_owner_metadata()"
+    },
+    {
+      "name": "on_tenant_owner_sync",
+      "event": "UPDATE",
+      "table": "tenants",
+      "timing": "AFTER",
+      "action": "EXECUTE FUNCTION sync_tenant_owner_metadata()"
+    },
+    {
+      "name": "on_staff_user_sync",
+      "event": "INSERT",
+      "table": "staff_profiles",
+      "timing": "AFTER",
+      "action": "EXECUTE FUNCTION sync_staff_user_metadata()"
+    },
+    {
+      "name": "on_staff_user_sync",
+      "event": "UPDATE",
+      "table": "staff_profiles",
+      "timing": "AFTER",
+      "action": "EXECUTE FUNCTION sync_staff_user_metadata()"
+    }
+  ]
+}
