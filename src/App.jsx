@@ -10625,45 +10625,70 @@ Instrucciones generales de formato:
               👑 ADMIN DASHBOARD BRIEF TABS
               ===================================================================== */}
           {role === 'admin' && view === 'brief' && (
-            <div className="space-y-5 animate-in fade-in">
+            <div className="space-y-5 animate-in fade-in pb-24">
 
               {/* ── HEADER ── */}
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pt-1">
                 <div>
-                  <p className="text-[9px] font-black text-[#F5C518] uppercase tracking-[0.25em] mb-0.5">Good morning, {activeEmployee?.name || 'Admin'} 👋</p>
-                  <h2 className="text-3xl font-black tracking-widest uppercase text-white font-display leading-none">COMMAND DECK</h2>
+                  <p className="text-xs font-bold text-[#F5C518] uppercase tracking-[0.25em] mb-1">Good morning, {activeEmployee?.name || 'Admin'} 👋</p>
+                  <div className="flex items-center gap-4">
+                    <h2 className="text-4xl font-black tracking-widest uppercase text-white font-display leading-none">COMMAND DECK</h2>
+                    <button 
+                      onClick={() => setIsPrivate(!isPrivate)} 
+                      className="px-2.5 py-1 bg-white/5 border border-white/10 hover:border-[#F5C518]/30 text-[9px] font-black uppercase rounded-lg text-slate-400 hover:text-white transition-all flex items-center gap-1 active:scale-95"
+                    >
+                      <Icon name={isPrivate ? "eye" : "eye-off"} className="w-3.5 h-3.5" />
+                      {isPrivate ? 'Mostrar' : 'Ocultar'}
+                    </button>
+                  </div>
+                  <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider mt-1.5">{new Date().toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
                 </div>
                 <div className="flex items-center gap-2">
                   {activeMapAddress && (
                     <div className="flex items-center gap-2 bg-white/5 border border-white/10 px-3 py-2 rounded-xl">
                       <span className="dg" />
-                      <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest truncate max-w-[180px]">GPS: {activeMapAddress}</span>
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest truncate max-w-[180px]">GPS: {activeMapAddress}</span>
                     </div>
                   )}
                 </div>
               </div>
 
               {/* ── HERO REVENUE BANNER ── */}
-              <div className="relative rounded-3xl overflow-hidden border border-[#F5C518]/20 bg-gradient-to-br from-[#0d0d00] via-[#111108] to-black shadow-[0_0_60px_rgba(245,197,24,0.06)]">
+              <div className="relative rounded-3xl overflow-hidden border border-[#F5C518]/20 bg-gradient-to-br from-[#0d0d00] via-[#111108] to-black shadow-[0_0_80px_rgba(245,197,24,0.08)] animate-in fade-in slide-in-from-bottom-2 duration-500">
                 <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_60%_at_0%_50%,rgba(245,197,24,0.07),transparent)] pointer-events-none" />
                 <div className="absolute top-0 left-0 w-full h-[2px] bg-gradient-to-r from-[#F5C518] via-[#F5C518]/40 to-transparent" />
-                <div className="p-6 md:p-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
-                  <div>
-                    <p className="text-[8px] font-black text-[#F5C518]/60 uppercase tracking-[0.3em] mb-1">Total Revenue Acumulado</p>
+                <div className="p-7 md:p-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-8">
+                  <div className="flex-1">
+                    <p className="text-xs font-bold text-[#F5C518]/60 uppercase tracking-[0.3em] mb-2">Total Revenue Acumulado</p>
                     <p className="text-6xl md:text-7xl font-black italic tracking-tighter text-white leading-none">
                       {isPrivate ? <span className="blur-sm select-none">$00,000</span> : fmt$(finance.gross)}
                     </p>
-                    <div className="flex items-center gap-3 mt-3">
-                      <div className="flex-1 max-w-xs bg-white/5 rounded-full h-1.5 overflow-hidden">
+                    <div className="flex items-center gap-3 mt-4 max-w-sm">
+                      <div className="flex-1 bg-white/5 rounded-full h-2 overflow-hidden">
                         <div className="h-full bg-gradient-to-r from-[#F5C518] to-amber-300 rounded-full transition-all duration-1000" style={{ width: `${Math.min(finance.pct, 100)}%` }} />
                       </div>
-                      <span className="text-[9px] font-black text-[#F5C518] uppercase">{Math.round(finance.pct)}% de meta</span>
+                      <span className="text-xs font-black text-[#F5C518] uppercase whitespace-nowrap">{Math.round(finance.pct)}% de meta</span>
                     </div>
-                    <p className="text-[8px] text-slate-500 font-bold uppercase tracking-widest mt-1">Meta: {fmt$(DEFAULT_CFG.GOAL)} · Net: {isPrivate ? '****' : fmt$(finance.net)} · Proy: {isPrivate ? '****' : fmt$(finance.proj)}</p>
+                    <div className="flex items-center gap-6 mt-3">
+                      <div>
+                        <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Meta</p>
+                        <p className="text-sm font-black text-slate-300">{fmt$(DEFAULT_CFG.GOAL)}</p>
+                      </div>
+                      <div className="h-8 w-px bg-white/10" />
+                      <div>
+                        <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Net Profit</p>
+                        <p className="text-sm font-black text-green-400">{isPrivate ? '****' : fmt$(finance.net)}</p>
+                      </div>
+                      <div className="h-8 w-px bg-white/10" />
+                      <div>
+                        <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Proyección</p>
+                        <p className="text-sm font-black text-blue-400">{isPrivate ? '****' : fmt$(finance.proj)}</p>
+                      </div>
+                    </div>
                   </div>
                   {/* Glowing SVG Line Chart */}
-                  <div className="flex flex-col gap-2 min-w-[200px]">
-                    <p className="text-[7px] font-black text-slate-500 uppercase tracking-widest">Trayectoria (7 sem)</p>
+                  <div className="flex flex-col gap-2 min-w-[220px]">
+                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Trayectoria (7 sem)</p>
                     {(() => {
                       const bars = finance.wb?.slice(-7) || [];
                       if (bars.length < 2) return <div className="h-14 flex items-center justify-center text-[10px] text-slate-600 italic">No hay suficientes datos</div>;
@@ -10720,130 +10745,169 @@ Instrucciones generales de formato:
                 </div>
               </div>
 
-              {/* ── KPI CARDS ── */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="relative rounded-2xl overflow-hidden border border-green-500/20 bg-gradient-to-br from-green-950/40 to-black p-5 flex flex-col justify-between min-h-[130px] hover:border-green-500/40 hover:shadow-[0_0_20px_rgba(34,197,94,0.08)] transition-all group">
-                  <div className="absolute top-0 left-0 w-full h-[1.5px] bg-gradient-to-r from-green-400/60 to-transparent" />
+              {/* ── KPI CARDS (4 column) ── */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                {/* Jobs Today */}
+                <div className="relative rounded-2xl overflow-hidden border border-green-500/20 bg-gradient-to-br from-green-950/30 to-black p-5 flex flex-col justify-between min-h-[140px] hover:-translate-y-1.5 hover:border-green-500/40 hover:shadow-[0_15px_30px_rgba(34,197,94,0.15)] transition-all duration-300 ease-out group animate-in fade-in slide-in-from-bottom-2">
+                  <div className="absolute top-0 left-0 w-full h-[2px] bg-gradient-to-r from-green-400/70 to-transparent" />
                   <div className="flex items-center justify-between">
-                    <div className="w-8 h-8 rounded-xl bg-green-500/10 border border-green-500/20 flex items-center justify-center group-hover:scale-110 transition-transform">
-                      <Icon name="shield-check" className="w-4 h-4 text-green-400" />
+                    <div className="w-10 h-10 rounded-2xl bg-green-500/10 border border-green-500/20 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
+                      <Icon name="shield-check" className="w-5 h-5 text-green-400" />
                     </div>
-                    <span className="text-[7px] font-black text-green-400 bg-green-500/10 border border-green-500/20 px-2 py-0.5 rounded-full uppercase">LIVE</span>
+                    <span className="text-[10px] font-black text-green-400 bg-green-500/10 border border-green-500/20 px-2.5 py-1 rounded-full uppercase tracking-wider">LIVE</span>
                   </div>
-                  <div>
-                    <p className="text-4xl font-black text-white italic tracking-tight leading-none">{finance.todayJobs.length}</p>
-                    <p className="text-[8px] text-slate-400 uppercase font-black tracking-widest mt-1.5">Jobs Today</p>
+                  <div className="mt-3">
+                    <p className="text-4xl font-black text-white tracking-tight leading-none">{finance.todayJobs.length}</p>
+                    <p className="text-xs text-green-400/70 font-bold uppercase tracking-wider mt-1.5">Jobs Hoy</p>
                   </div>
                 </div>
 
-                <div className="relative rounded-2xl overflow-hidden border border-blue-500/20 bg-gradient-to-br from-blue-950/40 to-black p-5 flex flex-col justify-between min-h-[130px] hover:border-blue-500/40 hover:shadow-[0_0_20px_rgba(59,130,246,0.08)] transition-all group">
-                  <div className="absolute top-0 left-0 w-full h-[1.5px] bg-gradient-to-r from-blue-400/60 to-transparent" />
+                {/* MRR */}
+                <div className="relative rounded-2xl overflow-hidden border border-blue-500/20 bg-gradient-to-br from-blue-950/30 to-black p-5 flex flex-col justify-between min-h-[140px] hover:-translate-y-1.5 hover:border-blue-500/40 hover:shadow-[0_15px_30px_rgba(59,130,246,0.15)] transition-all duration-300 ease-out group animate-in fade-in slide-in-from-bottom-2" style={{ animationDelay: '100ms', animationFillMode: 'both' }}>
+                  <div className="absolute top-0 left-0 w-full h-[2px] bg-gradient-to-r from-blue-400/70 to-transparent" />
                   <div className="flex items-center justify-between">
-                    <div className="w-8 h-8 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center group-hover:scale-110 transition-transform">
-                      <Icon name="repeat" className="w-4 h-4 text-blue-400" />
+                    <div className="w-10 h-10 rounded-2xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
+                      <Icon name="repeat" className="w-5 h-5 text-blue-400" />
                     </div>
-                    <span className="text-[7px] font-black text-blue-400 bg-blue-500/10 border border-blue-500/20 px-2 py-0.5 rounded-full uppercase">MRR</span>
+                    <span className="text-[10px] font-black text-blue-400 bg-blue-500/10 border border-blue-500/20 px-2.5 py-1 rounded-full uppercase tracking-wider">MRR</span>
                   </div>
-                  <div>
-                    <p className="text-3xl font-black text-white italic tracking-tight leading-none">{isPrivate ? '***' : fmt$(finance.mrr)}</p>
-                    <p className="text-[8px] text-slate-400 uppercase font-black tracking-widest mt-1.5">Recurrente Mes</p>
+                  <div className="mt-3">
+                    <p className="text-2xl font-black text-white tracking-tight leading-none">{isPrivate ? '•••' : fmt$(finance.mrr)}</p>
+                    <p className="text-xs text-blue-400/70 font-bold uppercase tracking-wider mt-1.5">Recurrente Mes</p>
+                  </div>
+                </div>
+
+                {/* Avg Ticket */}
+                <div className="relative rounded-2xl overflow-hidden border border-amber-500/20 bg-gradient-to-br from-amber-950/20 to-black p-5 flex flex-col justify-between min-h-[140px] hover:-translate-y-1.5 hover:border-amber-500/40 hover:shadow-[0_15px_30px_rgba(245,197,24,0.12)] transition-all duration-300 ease-out group animate-in fade-in slide-in-from-bottom-2" style={{ animationDelay: '200ms', animationFillMode: 'both' }}>
+                  <div className="absolute top-0 left-0 w-full h-[2px] bg-gradient-to-r from-[#F5C518]/70 to-transparent" />
+                  <div className="flex items-center justify-between">
+                    <div className="w-10 h-10 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
+                      <Icon name="trending-up" className="w-5 h-5 text-[#F5C518]" />
+                    </div>
+                    <span className="text-[10px] font-black text-[#F5C518] bg-amber-500/10 border border-amber-500/20 px-2.5 py-1 rounded-full uppercase tracking-wider">AVG</span>
+                  </div>
+                  <div className="mt-3">
+                    <p className="text-2xl font-black text-white tracking-tight leading-none">{isPrivate ? '•••' : fmt$(finance.avg || 0)}</p>
+                    <p className="text-xs text-amber-400/70 font-bold uppercase tracking-wider mt-1.5">Ticket Promedio</p>
+                  </div>
+                </div>
+
+                {/* Net Profit Margin */}
+                <div className="relative rounded-2xl overflow-hidden border border-purple-500/20 bg-gradient-to-br from-purple-950/30 to-black p-5 flex flex-col justify-between min-h-[140px] hover:-translate-y-1.5 hover:border-purple-500/40 hover:shadow-[0_15px_30px_rgba(168,85,247,0.15)] transition-all duration-300 ease-out group animate-in fade-in slide-in-from-bottom-2" style={{ animationDelay: '300ms', animationFillMode: 'both' }}>
+                  <div className="absolute top-0 left-0 w-full h-[2px] bg-gradient-to-r from-purple-400/70 to-transparent" />
+                  <div className="flex items-center justify-between">
+                    <div className="w-10 h-10 rounded-2xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
+                      <Icon name="percent" className="w-5 h-5 text-purple-400" />
+                    </div>
+                    <span className="text-[10px] font-black text-purple-400 bg-purple-500/10 border border-purple-500/20 px-2.5 py-1 rounded-full uppercase tracking-wider">MARGIN</span>
+                  </div>
+                  <div className="mt-3">
+                    <p className="text-4xl font-black text-white tracking-tight leading-none">{finance.profitMargin}<span className="text-2xl text-purple-400/80">%</span></p>
+                    <p className="text-xs text-purple-400/70 font-bold uppercase tracking-wider mt-1.5">Margen Neto</p>
                   </div>
                 </div>
               </div>
 
               {/* ── OPERATIONS QUICK ACTIONS ── */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                <button onClick={() => { setFSt('lead'); setView('agenda'); }} className="relative rounded-2xl border border-[#F5C518]/25 bg-gradient-to-br from-amber-950/30 to-black p-4 text-left active:scale-95 transition-all hover:border-[#F5C518]/50 hover:shadow-[0_0_20px_rgba(245,197,24,0.08)]">
-                  <div className="flex items-center gap-2 mb-3">
-                    <div className="w-7 h-7 rounded-lg bg-[#F5C518]/10 flex items-center justify-center"><Icon name="clock" className="w-3.5 h-3.5 text-[#F5C518]" /></div>
-                    <p className="text-[8px] text-[#F5C518] font-black uppercase tracking-wider">Money Waiting</p>
-                  </div>
-                  <p className="text-3xl font-black italic text-white leading-none">{isPrivate ? '***' : fmt$(finance.moneyTable)}</p>
-                  <p className="text-[7px] text-slate-500 mt-1.5 font-bold">{finance.pendSig.length} sin firmar →</p>
-                </button>
+              <div>
+                <p className="text-xs font-bold text-slate-500 uppercase tracking-[0.2em] mb-3">⚡ Acción Rápida</p>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  <button onClick={() => { setFSt('lead'); setView('agenda'); }} className="group relative rounded-2xl border border-[#F5C518]/20 bg-gradient-to-br from-amber-950/20 to-black p-5 text-left active:scale-[0.97] transition-all duration-300 hover:-translate-y-1 hover:border-[#F5C518]/50 hover:bg-gradient-to-br hover:from-amber-950/35 hover:to-black hover:shadow-[0_10px_20px_rgba(245,197,24,0.1)] overflow-hidden animate-in fade-in slide-in-from-bottom-2" style={{ animationDelay: '150ms', animationFillMode: 'both' }}>
+                    <div className="absolute top-0 left-0 w-full h-[1.5px] bg-gradient-to-r from-[#F5C518]/50 to-transparent" />
+                    <div className="w-10 h-10 rounded-2xl bg-[#F5C518]/10 border border-[#F5C518]/20 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300">
+                      <Icon name="clock" className="w-5 h-5 text-[#F5C518]" />
+                    </div>
+                    <p className="text-2xl font-black text-white leading-none">{isPrivate ? '•••' : fmt$(finance.moneyTable)}</p>
+                    <p className="text-xs font-bold text-[#F5C518]/70 uppercase tracking-wider mt-1.5">Money Waiting</p>
+                    <p className="text-[11px] text-slate-500 mt-1 font-medium">{finance.pendSig.length} estimados sin firmar →</p>
+                  </button>
 
-                <button onClick={() => { setFSt('lead'); setView('agenda'); }} className="relative rounded-2xl border border-red-500/25 bg-gradient-to-br from-red-950/30 to-black p-4 text-left active:scale-95 transition-all hover:border-red-500/50 hover:shadow-[0_0_20px_rgba(239,68,68,0.08)]">
-                  <div className="flex items-center gap-2 mb-3">
-                    <div className="w-7 h-7 rounded-lg bg-red-500/10 flex items-center justify-center"><Icon name="alert-triangle" className="w-3.5 h-3.5 text-red-400" /></div>
-                    <p className="text-[8px] text-red-400 font-black uppercase tracking-wider">Expirando</p>
-                  </div>
-                  <p className="text-3xl font-black italic text-white leading-none">{finance.expiring.length}</p>
-                  <p className="text-[7px] text-slate-500 mt-1.5 font-bold">bajo 6h →</p>
-                </button>
+                  <button onClick={() => { setFSt('lead'); setView('agenda'); }} className="group relative rounded-2xl border border-red-500/20 bg-gradient-to-br from-red-950/20 to-black p-5 text-left active:scale-[0.97] transition-all duration-300 hover:-translate-y-1 hover:border-red-500/50 hover:shadow-[0_10px_20px_rgba(239,68,68,0.1)] overflow-hidden animate-in fade-in slide-in-from-bottom-2" style={{ animationDelay: '250ms', animationFillMode: 'both' }}>
+                    <div className="absolute top-0 left-0 w-full h-[1.5px] bg-gradient-to-r from-red-400/50 to-transparent" />
+                    <div className="w-10 h-10 rounded-2xl bg-red-500/10 border border-red-500/20 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300">
+                      <Icon name="alert-triangle" className="w-5 h-5 text-red-400" />
+                    </div>
+                    <p className="text-2xl font-black text-white leading-none">{finance.expiring.length}</p>
+                    <p className="text-xs font-bold text-red-400/70 uppercase tracking-wider mt-1.5">Expirando</p>
+                    <p className="text-[11px] text-slate-500 mt-1 font-medium">vencen en menos de 6h →</p>
+                  </button>
 
-                <button onClick={() => { setFSt('completed'); setView('agenda'); }} className="relative rounded-2xl border border-purple-500/25 bg-gradient-to-br from-purple-950/30 to-black p-4 text-left active:scale-95 transition-all hover:border-purple-500/50 hover:shadow-[0_0_20px_rgba(168,85,247,0.08)]">
-                  <div className="flex items-center gap-2 mb-3">
-                    <div className="w-7 h-7 rounded-lg bg-purple-500/10 flex items-center justify-center"><Icon name="camera" className="w-3.5 h-3.5 text-purple-400" /></div>
-                    <p className="text-[8px] text-purple-400 font-black uppercase tracking-wider">QC Queue</p>
-                  </div>
-                  <p className="text-3xl font-black italic text-white leading-none">{finance.qcQ.length}</p>
-                  <p className="text-[7px] text-slate-500 mt-1.5 font-bold">necesita revisión →</p>
-                </button>
+                  <button onClick={() => { setFSt('completed'); setView('agenda'); }} className="group relative rounded-2xl border border-purple-500/20 bg-gradient-to-br from-purple-950/20 to-black p-5 text-left active:scale-[0.97] transition-all duration-300 hover:-translate-y-1 hover:border-purple-500/50 hover:shadow-[0_10px_20px_rgba(168,85,247,0.1)] overflow-hidden animate-in fade-in slide-in-from-bottom-2" style={{ animationDelay: '350ms', animationFillMode: 'both' }}>
+                    <div className="absolute top-0 left-0 w-full h-[1.5px] bg-gradient-to-r from-purple-400/50 to-transparent" />
+                    <div className="w-10 h-10 rounded-2xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300">
+                      <Icon name="camera" className="w-5 h-5 text-purple-400" />
+                    </div>
+                    <p className="text-2xl font-black text-white leading-none">{finance.qcQ.length}</p>
+                    <p className="text-xs font-bold text-purple-400/70 uppercase tracking-wider mt-1.5">QC Queue</p>
+                    <p className="text-[11px] text-slate-500 mt-1 font-medium">necesita revisión →</p>
+                  </button>
 
-                <button onClick={() => { setFSt('paid'); setView('agenda'); }} className="relative rounded-2xl border border-blue-500/25 bg-gradient-to-br from-blue-950/30 to-black p-4 text-left active:scale-95 transition-all hover:border-blue-500/50 hover:shadow-[0_0_20px_rgba(59,130,246,0.08)]">
-                  <div className="flex items-center gap-2 mb-3">
-                    <div className="w-7 h-7 rounded-lg bg-blue-500/10 flex items-center justify-center"><Icon name="message-circle" className="w-3.5 h-3.5 text-blue-400" /></div>
-                    <p className="text-[8px] text-blue-400 font-black uppercase tracking-wider">Reviews</p>
-                  </div>
-                  <p className="text-3xl font-black italic text-white leading-none">{finance.reviewQ.length}</p>
-                  <p className="text-[7px] text-slate-500 mt-1.5 font-bold">pedir estrellas →</p>
-                </button>
+                  <button onClick={() => { setFSt('paid'); setView('agenda'); }} className="group relative rounded-2xl border border-blue-500/20 bg-gradient-to-br from-blue-950/20 to-black p-5 text-left active:scale-[0.97] transition-all duration-300 hover:-translate-y-1 hover:border-blue-500/50 hover:shadow-[0_10px_20px_rgba(59,130,246,0.1)] overflow-hidden animate-in fade-in slide-in-from-bottom-2" style={{ animationDelay: '450ms', animationFillMode: 'both' }}>
+                    <div className="absolute top-0 left-0 w-full h-[1.5px] bg-gradient-to-r from-blue-400/50 to-transparent" />
+                    <div className="w-10 h-10 rounded-2xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300">
+                      <Icon name="message-circle" className="w-5 h-5 text-blue-400" />
+                    </div>
+                    <p className="text-2xl font-black text-white leading-none">{finance.reviewQ.length}</p>
+                    <p className="text-xs font-bold text-blue-400/70 uppercase tracking-wider mt-1.5">Reviews</p>
+                    <p className="text-[11px] text-slate-500 mt-1 font-medium">pedir estrellas a clientes →</p>
+                  </button>
+                </div>
               </div>
 
               {/* ── AI INSIGHT + PROGRESS RINGS ── */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* AI Predictive */}
-                <div className="relative rounded-2xl overflow-hidden border border-blue-500/20 bg-gradient-to-br from-blue-950/30 to-black p-6">
-                  <div className="absolute top-0 left-0 w-full h-[1.5px] bg-gradient-to-r from-blue-400/60 to-transparent" />
+                <div className="relative rounded-2xl overflow-hidden border border-blue-500/20 bg-gradient-to-br from-blue-950/25 to-black p-7">
+                  <div className="absolute top-0 left-0 w-full h-[2px] bg-gradient-to-r from-blue-400/70 to-transparent" />
                   <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(59,130,246,0.06),transparent)] pointer-events-none" />
-                  <div className="flex items-start gap-3 mb-3">
-                    <div className="w-9 h-9 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center flex-shrink-0">
-                      <Icon name="brain" className="w-4 h-4 text-blue-400" />
+                  <div className="flex items-center gap-3 mb-5">
+                    <div className="w-11 h-11 rounded-2xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center flex-shrink-0">
+                      <Icon name="brain" className="w-5 h-5 text-blue-400" />
                     </div>
                     <div>
-                      <p className="text-[8px] font-black text-blue-400 uppercase tracking-widest">🧠 AI Predictive Revenue</p>
-                      <span className="text-[6px] bg-blue-500/10 text-blue-300 font-bold px-1.5 py-0.5 rounded border border-blue-500/15">SMART ENGINE</span>
+                      <p className="text-sm font-black text-white">🧠 AI Revenue Intelligence</p>
+                      <span className="text-[10px] bg-blue-500/10 text-blue-300 font-bold px-2 py-0.5 rounded-md border border-blue-500/15 uppercase tracking-wider">Smart Engine</span>
                     </div>
                   </div>
                   {finance.mbTargets.length > 0 ? (
                     <>
-                      <p className="text-base font-black italic text-white leading-snug mb-1">Target: {finance.mbTargets[0].name}</p>
-                      <p className="text-[8px] text-slate-400 leading-relaxed">89% probabilidad de convertir a VIP Monthly Retainer. Envía invitación prioritaria para asegurar LTV.</p>
+                      <p className="text-lg font-black text-white leading-snug mb-2">Target: {finance.mbTargets[0].name}</p>
+                      <p className="text-xs text-slate-400 leading-relaxed">89% probabilidad de convertir a VIP Monthly Retainer. Envía invitación prioritaria para asegurar LTV.</p>
                     </>
                   ) : (
                     <>
-                      <p className="text-base font-black italic text-white leading-snug mb-1">Surge Pricing Óptimo</p>
-                      <p className="text-[8px] text-slate-400 leading-relaxed">Capacidad al 80%. IA sugiere multiplicador 1.2x en nuevos estimados por 48h para maximizar margen.</p>
+                      <p className="text-lg font-black text-white leading-snug mb-2">Surge Pricing Óptimo</p>
+                      <p className="text-xs text-slate-400 leading-relaxed">Capacidad al 80%. IA sugiere multiplicador 1.2x en nuevos estimados por 48h para maximizar margen neto.</p>
                     </>
                   )}
-                  <button onClick={deploySmartCampaign} className="mt-4 px-4 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-black text-[8px] uppercase active:scale-95 shadow-lg shadow-blue-600/20 transition-all">Deploy Campaign →</button>
+                  <button onClick={deploySmartCampaign} className="mt-5 px-5 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-black text-xs uppercase tracking-wider active:scale-95 shadow-lg shadow-blue-600/20 transition-all hover:shadow-blue-500/30">Deploy Campaign →</button>
                 </div>
 
                 {/* ── PROGRESS RINGS ── */}
-                <div className="relative rounded-2xl overflow-hidden border border-white/8 bg-gradient-to-br from-white/[0.03] to-black p-6 flex flex-col justify-between">
-                  <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-4">Progreso de Meta</p>
-                  <div className="flex items-center justify-around flex-1">
-                    <div className="flex flex-col items-center gap-2">
-                      <ProgressRing progress={finance.pct} radius={36} stroke={5} color="#22c55e" />
+                <div className="relative rounded-2xl overflow-hidden border border-white/8 bg-gradient-to-br from-white/[0.025] to-black p-7">
+                  <p className="text-xs font-bold text-slate-500 uppercase tracking-[0.2em] mb-6">Progreso de Metas</p>
+                  <div className="flex items-center justify-around">
+                    <div className="flex flex-col items-center gap-3">
+                      <ProgressRing progress={finance.pct} radius={40} stroke={5} color="#22c55e" />
                       <div className="text-center">
-                        <p className="text-[7px] text-slate-500 uppercase font-black">Meta</p>
-                        <p className="text-xs font-black text-white">{Math.round(finance.pct)}%</p>
+                        <p className="text-[11px] text-slate-500 uppercase font-bold tracking-wider">Meta</p>
+                        <p className="text-sm font-black text-white">{Math.round(finance.pct)}%</p>
                       </div>
                     </div>
-                    <div className="h-16 w-[1px] bg-white/5" />
-                    <div className="flex flex-col items-center gap-2">
-                      <ProgressRing progress={finance.avgRating * 20} radius={36} stroke={5} color="#F5C518" text={String(finance.avgRating || 5)} />
+                    <div className="h-20 w-px bg-white/5" />
+                    <div className="flex flex-col items-center gap-3">
+                      <ProgressRing progress={finance.avgRating * 20} radius={40} stroke={5} color="#F5C518" text={String(finance.avgRating || 5)} />
                       <div className="text-center">
-                        <p className="text-[7px] text-slate-500 uppercase font-black">Rating</p>
-                        <p className="text-xs font-black text-white">{finance.avgRating || 5.0} ⭐</p>
+                        <p className="text-[11px] text-slate-500 uppercase font-bold tracking-wider">Rating</p>
+                        <p className="text-sm font-black text-white">{finance.avgRating || 5.0} ⭐</p>
                       </div>
                     </div>
-                    <div className="h-16 w-[1px] bg-white/5" />
-                    <div className="flex flex-col items-center gap-2">
-                      <ProgressRing progress={Math.min((clients.length / 50) * 100, 100)} radius={36} stroke={5} color="#8b5cf6" text={String(clients.length)} />
+                    <div className="h-20 w-px bg-white/5" />
+                    <div className="flex flex-col items-center gap-3">
+                      <ProgressRing progress={Math.min((clients.length / 50) * 100, 100)} radius={40} stroke={5} color="#8b5cf6" text={String(clients.length)} />
                       <div className="text-center">
-                        <p className="text-[7px] text-slate-500 uppercase font-black">Clientes</p>
-                        <p className="text-xs font-black text-white">{clients.length}</p>
+                        <p className="text-[11px] text-slate-500 uppercase font-bold tracking-wider">Clientes</p>
+                        <p className="text-sm font-black text-white">{clients.length}</p>
                       </div>
                     </div>
                   </div>
@@ -10851,120 +10915,121 @@ Instrucciones generales de formato:
               </div>
 
               {/* ── ELEVORE HEALTH & ANALYTICS CENTER ── */}
-              <div className="relative rounded-2xl overflow-hidden border border-amber-500/10 bg-gradient-to-br from-zinc-950 via-black to-slate-950 p-6 space-y-4 shadow-2xl">
-                <div className="absolute top-0 left-0 w-full h-[1.5px] bg-gradient-to-r from-amber-500/50 via-purple-500/30 to-transparent" />
+              <div className="relative rounded-2xl overflow-hidden border border-amber-500/10 bg-gradient-to-br from-zinc-950 via-black to-slate-950 p-7 space-y-6 shadow-2xl">
+                <div className="absolute top-0 left-0 w-full h-[2px] bg-gradient-to-r from-amber-500/60 via-purple-500/30 to-transparent" />
                 <div className="flex justify-between items-center">
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-3">
                     <div className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse" />
-                    <h3 className="text-[10px] font-black text-white uppercase tracking-widest font-display">💎 Elevore Health & Advanced Analytics</h3>
+                    <h3 className="text-sm font-black text-white uppercase tracking-widest">💎 Business Health Dashboard</h3>
                   </div>
-                  <span className="text-[7px] font-black px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20 uppercase tracking-widest">Growth Deck v2.0</span>
+                  <span className="text-xs font-bold px-3 py-1 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20 uppercase tracking-wider">Growth Deck v2.0</span>
                 </div>
 
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3.5">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   {/* LTV CARD */}
-                  <div className="bg-white/[0.02] border border-white/5 hover:border-white/10 p-4 rounded-xl flex flex-col justify-between min-h-[110px] transition-all">
+                  <div className="bg-white/[0.03] border border-white/8 hover:border-white/15 p-5 rounded-2xl flex flex-col justify-between min-h-[120px] transition-all duration-300 hover:bg-white/[0.05]">
                     <div>
-                      <p className="text-[7.5px] text-slate-500 font-black uppercase tracking-wider">Average Lifetime Value</p>
-                      <p className="text-xl font-black text-white mt-1">
-                        {isPrivate ? <span className="blur-xs select-none">***</span> : fmt$(finance.avgLTV)}
+                      <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider mb-2">Lifetime Value</p>
+                      <p className="text-2xl font-black text-white">
+                        {isPrivate ? <span className="blur-sm select-none">***</span> : fmt$(finance.avgLTV)}
                       </p>
                     </div>
-                    <div className="mt-2 flex items-center justify-between text-[7px] font-black uppercase text-slate-400">
+                    <div className="flex items-center justify-between text-[10px] font-bold uppercase text-slate-400 mt-3">
                       <span>Ciclo de vida</span>
                       <span className="text-green-400">LTV Alto</span>
                     </div>
                   </div>
 
                   {/* CHURN RATE CARD */}
-                  <div className="bg-white/[0.02] border border-white/5 hover:border-white/10 p-4 rounded-xl flex flex-col justify-between min-h-[110px] transition-all">
+                  <div className="bg-white/[0.03] border border-white/8 hover:border-white/15 p-5 rounded-2xl flex flex-col justify-between min-h-[120px] transition-all duration-300 hover:bg-white/[0.05]">
                     <div>
-                      <p className="text-[7.5px] text-slate-500 font-black uppercase tracking-wider">Tasa de Churn (45 días)</p>
-                      <p className="text-xl font-black text-white mt-1">
+                      <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider mb-2">Churn Rate (45d)</p>
+                      <p className="text-2xl font-black text-white">
                         {finance.churnRate}%
                       </p>
                     </div>
-                    <div className="mt-2 space-y-1">
-                      <div className="w-full bg-white/5 h-1 rounded-full overflow-hidden">
-                        <div className={`h-full ${finance.churnRate > 15 ? 'bg-red-500' : 'bg-green-500'}`} style={{ width: `${Math.min(finance.churnRate * 4, 100)}%` }} />
+                    <div className="mt-3 space-y-1.5">
+                      <div className="w-full bg-white/5 h-1.5 rounded-full overflow-hidden">
+                        <div className={`h-full rounded-full transition-all duration-700 ${finance.churnRate > 15 ? 'bg-red-500' : 'bg-green-500'}`} style={{ width: `${Math.min(finance.churnRate * 4, 100)}%` }} />
                       </div>
-                      <div className="flex justify-between text-[7px] font-black uppercase">
-                        <span className="text-slate-500">Inactivos: {finance.churn.length}</span>
+                      <div className="flex justify-between text-[10px] font-bold uppercase">
+                        <span className="text-slate-500">{finance.churn.length} inactivos</span>
                         <span className={finance.churnRate > 15 ? 'text-red-400' : 'text-green-400'}>
-                          {finance.churnRate > 15 ? 'Riesgo Alto' : 'Óptimo'}
+                          {finance.churnRate > 15 ? '⚠ Alto' : '✓ Óptimo'}
                         </span>
                       </div>
                     </div>
                   </div>
 
                   {/* CAC CARD */}
-                  <div className="bg-white/[0.02] border border-white/5 hover:border-white/10 p-4 rounded-xl flex flex-col justify-between min-h-[110px] transition-all">
+                  <div className="bg-white/[0.03] border border-white/8 hover:border-white/15 p-5 rounded-2xl flex flex-col justify-between min-h-[120px] transition-all duration-300 hover:bg-white/[0.05]">
                     <div>
-                      <p className="text-[7.5px] text-slate-500 font-black uppercase tracking-wider">Costo Adquisición (CAC)</p>
-                      <p className="text-xl font-black text-white mt-1">
-                        {isPrivate ? <span className="blur-xs select-none">***</span> : fmt$(finance.avgCAC)}
+                      <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider mb-2">Costo Adquisición</p>
+                      <p className="text-2xl font-black text-white">
+                        {isPrivate ? <span className="blur-sm select-none">***</span> : fmt$(finance.avgCAC)}
                       </p>
                     </div>
-                    <div className="mt-2 flex items-center justify-between text-[7px] font-black uppercase text-slate-400">
-                      <span>Costo por Lead</span>
+                    <div className="flex items-center justify-between text-[10px] font-bold uppercase text-slate-400 mt-3">
+                      <span>Por lead</span>
                       <span className="text-blue-400">Eficiente</span>
                     </div>
                   </div>
 
                   {/* LTV : CAC RATIO CARD */}
-                  <div className="bg-white/[0.02] border border-white/5 hover:border-white/10 p-4 rounded-xl flex flex-col justify-between min-h-[110px] transition-all">
+                  <div className="bg-white/[0.03] border border-white/8 hover:border-white/15 p-5 rounded-2xl flex flex-col justify-between min-h-[120px] transition-all duration-300 hover:bg-white/[0.05]">
                     <div>
-                      <p className="text-[7.5px] text-slate-500 font-black uppercase tracking-wider">Ratio LTV : CAC</p>
-                      <p className="text-xl font-black text-[#F5C518] mt-1">
+                      <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider mb-2">Ratio LTV : CAC</p>
+                      <p className="text-2xl font-black text-[#F5C518]">
                         {finance.ltvCacRatio}x
                       </p>
                     </div>
-                    <div className="mt-2 flex items-center justify-between text-[7px] font-black uppercase">
-                      <span className="text-slate-500">Rentabilidad Mkt</span>
-                      <span className={finance.ltvCacRatio >= 3 ? 'text-green-400 font-bold' : 'text-amber-400'}>
-                        {finance.ltvCacRatio >= 3 ? 'Excelente 💎' : 'Saludable'}
+                    <div className="flex items-center justify-between text-[10px] font-bold uppercase mt-3">
+                      <span className="text-slate-500">Rentabilidad</span>
+                      <span className={finance.ltvCacRatio >= 3 ? 'text-green-400' : 'text-amber-400'}>
+                        {finance.ltvCacRatio >= 3 ? '💎 Excelente' : 'Saludable'}
                       </span>
                     </div>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 pt-1">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {/* NET PROFIT MARGIN CARD */}
-                  <div className="bg-white/[0.01] border border-white/5 p-4 rounded-xl space-y-3.5">
+                  <div className="bg-white/[0.02] border border-white/8 p-5 rounded-2xl space-y-4">
                     <div className="flex justify-between items-center">
-                      <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">💰 Net Profit Margin & Payouts</p>
-                      <span className="text-[7px] font-black text-green-400 bg-green-500/10 px-1.5 py-0.5 rounded uppercase">Margin: {finance.profitMargin}%</span>
+                      <p className="text-xs font-black text-slate-300 uppercase tracking-wider">💰 Profit & Payouts</p>
+                      <span className="text-xs font-black text-green-400 bg-green-500/10 border border-green-500/20 px-2.5 py-1 rounded-lg">{finance.profitMargin}% Margin</span>
                     </div>
-                    <div className="space-y-2 text-[9px] font-bold uppercase">
+                    <div className="space-y-3">
                       <div className="flex justify-between items-center">
-                        <span className="text-slate-500">Margen de Ganancia Neto:</span>
-                        <span className="text-white font-black">{isPrivate ? '***' : fmt$(finance.net)} ({finance.profitMargin}%)</span>
+                        <span className="text-[11px] text-slate-500 font-bold uppercase tracking-wider">Ganancia Neta</span>
+                        <span className="text-sm text-white font-black">{isPrivate ? '•••' : fmt$(finance.net)}</span>
                       </div>
-                      <div className="flex justify-between items-center border-t border-white/5 pt-2">
-                        <span className="text-slate-500">Pago Promedio a Staff:</span>
-                        <span className="text-amber-400 font-black">{isPrivate ? '***' : fmt$(finance.avgStaffPay)} / clean</span>
+                      <div className="h-px bg-white/5" />
+                      <div className="flex justify-between items-center">
+                        <span className="text-[11px] text-slate-500 font-bold uppercase tracking-wider">Staff Promedio / Visita</span>
+                        <span className="text-sm text-amber-400 font-black">{isPrivate ? '•••' : fmt$(finance.avgStaffPay)}</span>
                       </div>
                     </div>
                   </div>
 
                   {/* AI RETENTION & GROWTH INSIGHTS */}
-                  <div className="bg-amber-500/5 border border-amber-500/10 p-4 rounded-xl flex items-start gap-3">
-                    <div className="w-8 h-8 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center flex-shrink-0">
-                      <Icon name="brain" className="w-4.5 h-4.5 text-[#F5C518]" />
+                  <div className="bg-amber-500/5 border border-amber-500/15 p-5 rounded-2xl flex items-start gap-4">
+                    <div className="w-11 h-11 rounded-2xl bg-amber-500/10 border border-amber-500/25 flex items-center justify-center flex-shrink-0">
+                      <Icon name="brain" className="w-5 h-5 text-[#F5C518]" />
                     </div>
-                    <div className="space-y-1">
-                      <p className="text-[8px] font-black text-amber-500 uppercase tracking-wider">AI Analytics Insight</p>
+                    <div className="space-y-2">
+                      <p className="text-xs font-black text-amber-400 uppercase tracking-wider">🤖 AI Analytics Insight</p>
                       {finance.churnRate > 15 ? (
-                        <p className="text-[8.5px] text-slate-300 leading-relaxed font-semibold">
-                          ⚠️ **Alerta Churn ({finance.churnRate}%):** La inactividad de clientes superó el umbral. Sugerimos lanzar la campaña de re-engagement en el CRM o enviar promociones automáticas por WhatsApp para recuperar cuentas.
+                        <p className="text-xs text-slate-300 leading-relaxed">
+                          ⚠️ Alerta: Churn al {finance.churnRate}%. Inactividad de clientes superó umbral. Lanza campaña de re-engagement via CRM o WhatsApp.
                         </p>
                       ) : finance.ltvCacRatio >= 3.5 ? (
-                        <p className="text-[8.5px] text-slate-300 leading-relaxed font-semibold">
-                          💎 **Excelente salud ({finance.ltvCacRatio}x LTV/CAC):** El valor de vida útil del cliente cubre ampliamente el costo de adquisición. Tienes margen para aumentar la pauta publicitaria o el bono de referidos.
+                        <p className="text-xs text-slate-300 leading-relaxed">
+                          💎 Salud excelente ({finance.ltvCacRatio}x LTV/CAC). Tienes margen para aumentar pauta publicitaria o el bono de referidos.
                         </p>
                       ) : (
-                        <p className="text-[8.5px] text-slate-300 leading-relaxed font-semibold">
-                          🟢 **Ratio LTV:CAC estable ({finance.ltvCacRatio}x):** El retorno es saludable. Optimizar las comisiones por upsells del staff aumentará la rentabilidad por visita.
+                        <p className="text-xs text-slate-300 leading-relaxed">
+                          🟢 Ratio LTV:CAC de {finance.ltvCacRatio}x. Optimizar comisiones por upsell del staff aumentará rentabilidad por visita.
                         </p>
                       )}
                     </div>
@@ -11065,7 +11130,12 @@ Instrucciones generales de formato:
               👑 ADMIN DASHBOARD FINANCES TABS (intel)
               ===================================================================== */}
           {role === 'admin' && view === 'intel' && (
-            <div className="space-y-6 animate-in fade-in">
+            <FeatureGate
+              requiredPlan="basic"
+              currentPlan={currentPlan}
+              onUpgradeSuccess={handleUpgradeSuccess}
+            >
+              <div className="space-y-6 animate-in fade-in">
               {/* Premium Sub-tabs Switcher */}
               <div className="flex gap-2 bg-black/45 p-1.5 rounded-2xl border border-white/5 overflow-x-auto nsb">
                 {[
@@ -11083,7 +11153,7 @@ Instrucciones generales de formato:
                   <button
                     key={tab.id}
                     onClick={() => setFinanceTab(tab.id)}
-                    className={`px-4 py-2.5 rounded-xl text-[9px] font-black uppercase whitespace-nowrap active:scale-95 transition-all ${
+                    className={`px-4 py-2.5 rounded-xl text-[10px] font-black uppercase whitespace-nowrap active:scale-95 transition-all ${
                       financeTab === tab.id
                         ? 'bg-[#F5C518] text-black shadow-lg shadow-[#F5C518]/15'
                         : 'bg-white/5 text-slate-400 hover:text-white hover:bg-white/10'
@@ -11096,15 +11166,19 @@ Instrucciones generales de formato:
 
               {financeTab === 'overview' && (
                 <>
-                  <section className="g p-8 shadow-xl bg-[rgba(255,255,255,0.04)] border-[rgba(255,255,255,0.08)] text-center relative overflow-hidden">
-                    <p className="text-[9px] font-black text-slate-500 mb-2 uppercase tracking-widest italic font-display">MRR GOAL — {fmt$(DEFAULT_CFG.GOAL)}</p>
+                  <section className="relative rounded-3xl overflow-hidden border border-[#F5C518]/25 bg-gradient-to-br from-[#0d0d00] via-[#111108] to-black p-8 text-center shadow-[0_0_80px_rgba(245,197,24,0.08)] animate-in fade-in slide-in-from-bottom-2 duration-500">
+                    <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_60%_at_50%_50%,rgba(245,197,24,0.05),transparent)] pointer-events-none" />
+                    <div className="absolute top-0 left-0 w-full h-[2px] bg-gradient-to-r from-transparent via-[#F5C518]/50 to-transparent" />
+                    <p className="text-[10px] font-black text-[#F5C518]/70 mb-2 uppercase tracking-[0.3em] font-display">MRR GOAL — {fmt$(DEFAULT_CFG.GOAL)}</p>
                     <h2 className="text-7xl italic tracking-tighter text-white font-black leading-none">{Math.round(finance.pct)}%</h2>
-                    <div className="pb mt-4 mb-3"><div className="pf" style={{ width: `${finance.pct}%` }}></div></div>
-                    <div className="flex justify-between text-[8px] text-slate-500 font-black uppercase">
-                      <span>Billed: {isPrivate ? '***' : fmt$(finance.gross)}</span>
-                      <span>{finance.gross >= DEFAULT_CFG.GOAL ? '🎯 GOAL!' : 'Left: ' + fmt$(DEFAULT_CFG.GOAL - finance.gross)}</span>
+                    <div className="pb mt-5 mb-4"><div className="pf h-2" style={{ width: `${Math.min(finance.pct, 100)}%` }}></div></div>
+                    <div className="flex justify-between text-[10px] text-slate-400 font-bold uppercase tracking-wider">
+                      <span>Facturado: {isPrivate ? '***' : fmt$(finance.gross)}</span>
+                      <span className="text-[#F5C518]">{finance.gross >= DEFAULT_CFG.GOAL ? '🎯 ¡META ALCANZADA!' : 'Faltan: ' + fmt$(DEFAULT_CFG.GOAL - finance.gross)}</span>
                     </div>
-                    <p className="text-[9px] text-[#F5C518] mt-2 font-black uppercase italic text-center font-bold">Net: {isPrivate ? '****' : fmt$(finance.net)} | Projected: {isPrivate ? '****' : fmt$(finance.proj)}</p>
+                    <p className="text-xs text-slate-300 mt-3 font-black uppercase tracking-wider italic text-center">
+                      Neto: <span className="text-green-400 font-bold">{isPrivate ? '****' : fmt$(finance.net)}</span> | Proyección: <span className="text-blue-400 font-bold">{isPrivate ? '****' : fmt$(finance.proj)}</span>
+                    </p>
                   </section>
 
                   {/* Finances KPI Grid */}
@@ -11116,23 +11190,23 @@ Instrucciones generales de formato:
                       { l: 'AVG RATING', v: finance.avgRating || '—', color: 'text-[#F5C518]', badge: 'bg-amber-500/10 text-[#F5C518] border-amber-500/20' },
                       { l: 'AVG LTV', v: isPrivate ? '***' : fmt$(finance.avgLTV), color: 'text-green-400', badge: 'bg-green-500/10 text-green-400 border-green-500/20' },
                       { l: 'BONUSES', v: fmt$(finance.bonuses), color: 'text-pink-400', badge: 'bg-pink-500/10 text-pink-400 border-pink-500/20' }
-                    ].map(k => (
-                      <div key={k.l} className="g p-5 relative overflow-hidden bg-[rgba(255,255,255,0.04)] border border-[rgba(255,255,255,0.08)] rounded-2xl flex flex-col justify-between min-h-[120px] hover:border-slate-500/20 transition-all">
-                        <span className={`absolute top-3 right-3 ${k.badge} text-[7px] px-1.5 py-0.5 rounded-full font-bold uppercase tracking-wider`}>METRIC</span>
+                    ].map((k, index) => (
+                      <div key={k.l} className="g p-5 relative overflow-hidden bg-[rgba(255,255,255,0.04)] border border-[rgba(255,255,255,0.08)] rounded-2xl flex flex-col justify-between min-h-[120px] hover:-translate-y-1 hover:border-[#F5C518]/30 hover:shadow-lg transition-all duration-300 animate-in fade-in" style={{ animationDelay: `${index * 50}ms`, animationFillMode: 'both' }}>
+                        <span className={`absolute top-3 right-3 ${k.badge} text-[9px] px-1.5 py-0.5 rounded-full font-bold uppercase tracking-wider`}>METRIC</span>
                         <p className={`text-3xl font-black mt-4 ${k.color}`}>{k.v}</p>
-                        <p className="text-[8px] text-slate-400 uppercase font-black tracking-widest mt-2">{k.l}</p>
+                        <p className="text-[10px] text-slate-400 uppercase font-bold tracking-widest mt-2">{k.l}</p>
                       </div>
                     ))}
                   </div>
 
                   {/* Area charts */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="g p-6 bg-[rgba(255,255,255,0.04)] border-[rgba(255,255,255,0.08)] space-y-2">
-                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4 font-display">📈 GROSS REVENUE TRENDS</p>
+                    <div className="g p-6 bg-[rgba(255,255,255,0.04)] border-[rgba(255,255,255,0.08)] space-y-2 hover:-translate-y-0.5 transition-all">
+                      <p className="text-xs font-black text-slate-300 uppercase tracking-widest mb-4 font-display">📈 GROSS REVENUE TRENDS</p>
                       <SleekAreaChart data={finance.wb} color="#F5C518" />
                     </div>
-                    <div className="g p-6 bg-[rgba(255,255,255,0.04)] border-[rgba(255,255,255,0.08)] space-y-2">
-                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4 font-display">📊 MONTHLY REVENUE PROJECTIONS</p>
+                    <div className="g p-6 bg-[rgba(255,255,255,0.04)] border-[rgba(255,255,255,0.08)] space-y-2 hover:-translate-y-0.5 transition-all">
+                      <p className="text-xs font-black text-slate-300 uppercase tracking-widest mb-4 font-display">📊 MONTHLY REVENUE PROJECTIONS</p>
                       <SleekAreaChart data={finance.mb2} color="#3b82f6" />
                     </div>
                   </div>
@@ -11145,17 +11219,17 @@ Instrucciones generales de formato:
                         <Icon name="brain" className="w-4 h-4 text-blue-400 animate-pulse" />
                         <h3 className="text-xs font-black text-white uppercase tracking-widest font-display">🔮 Simulador de Crecimiento & Margen BI</h3>
                       </div>
-                      <span className="text-[7px] font-black px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-400 border border-blue-500/20 uppercase tracking-widest">Predictive Engine</span>
+                      <span className="text-[9px] font-black px-2.5 py-1 rounded-full bg-blue-500/10 text-blue-400 border border-blue-500/20 uppercase tracking-widest">Predictive Engine</span>
                     </div>
 
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 text-left">
                       {/* Sliders Column */}
                       <div className="space-y-4 lg:col-span-2">
                         {/* Slider 1: Projected Active Clients */}
-                        <div className="space-y-1.5">
-                          <div className="flex justify-between items-center text-[9px] uppercase font-black text-slate-400">
+                        <div className="space-y-2">
+                          <div className="flex justify-between items-center text-xs uppercase font-bold text-slate-400">
                             <span>Clientes Recurrentes Mensuales</span>
-                            <span className="text-white font-mono bg-white/5 px-2 py-0.5 rounded border border-white/10">{biSimClients} Clientes</span>
+                            <span className="text-white font-mono bg-white/5 px-2.5 py-1 rounded border border-white/10">{biSimClients} Clientes</span>
                           </div>
                           <input 
                             type="range" 
@@ -11163,15 +11237,15 @@ Instrucciones generales de formato:
                             max="200" 
                             value={biSimClients} 
                             onChange={e => setBiSimClients(parseInt(e.target.value))}
-                            className="w-full accent-blue-500 bg-white/10 h-1 rounded-lg appearance-none cursor-pointer"
+                            className="w-full accent-blue-500 bg-white/10 h-1.5 rounded-lg appearance-none cursor-pointer"
                           />
                         </div>
 
                         {/* Slider 2: Staff Payout Percentage */}
-                        <div className="space-y-1.5">
-                          <div className="flex justify-between items-center text-[9px] uppercase font-black text-slate-400">
+                        <div className="space-y-2">
+                          <div className="flex justify-between items-center text-xs uppercase font-bold text-slate-400">
                             <span>Porcentaje de Pago al Staff</span>
-                            <span className="text-white font-mono bg-white/5 px-2 py-0.5 rounded border border-white/10">{biSimPayoutPct}%</span>
+                            <span className="text-white font-mono bg-white/5 px-2.5 py-1 rounded border border-white/10">{biSimPayoutPct}%</span>
                           </div>
                           <input 
                             type="range" 
@@ -11179,15 +11253,15 @@ Instrucciones generales de formato:
                             max="80" 
                             value={biSimPayoutPct} 
                             onChange={e => setBiSimPayoutPct(parseInt(e.target.value))}
-                            className="w-full accent-amber-500 bg-white/10 h-1 rounded-lg appearance-none cursor-pointer"
+                            className="w-full accent-amber-500 bg-white/10 h-1.5 rounded-lg appearance-none cursor-pointer"
                           />
                         </div>
 
                         {/* Slider 3: Monthly Marketing Budget */}
-                        <div className="space-y-1.5">
-                          <div className="flex justify-between items-center text-[9px] uppercase font-black text-slate-400">
+                        <div className="space-y-2">
+                          <div className="flex justify-between items-center text-xs uppercase font-bold text-slate-400">
                             <span>Presupuesto Mensual de Marketing</span>
-                            <span className="text-white font-mono bg-white/5 px-2 py-0.5 rounded border border-white/10">${biSimMarketing.toLocaleString()} USD</span>
+                            <span className="text-white font-mono bg-white/5 px-2.5 py-1 rounded border border-white/10">${biSimMarketing.toLocaleString()} USD</span>
                           </div>
                           <input 
                             type="range" 
@@ -11196,7 +11270,7 @@ Instrucciones generales de formato:
                             step="100" 
                             value={biSimMarketing} 
                             onChange={e => setBiSimMarketing(parseInt(e.target.value))}
-                            className="w-full accent-purple-500 bg-white/10 h-1 rounded-lg appearance-none cursor-pointer"
+                            className="w-full accent-purple-500 bg-white/10 h-1.5 rounded-lg appearance-none cursor-pointer"
                           />
                         </div>
                       </div>
@@ -11224,21 +11298,21 @@ Instrucciones generales de formato:
                               {/* Revenue Bar */}
                               <div className="flex flex-col items-center h-full justify-end group relative">
                                 <div style={{ height: `${revH}%` }} className="w-6 bg-gradient-to-t from-blue-600 to-blue-400 rounded-t-sm shadow-[0_0_10px_rgba(59,130,246,0.3)] transition-all" />
-                                <span className="text-[6.5px] text-slate-500 mt-1 uppercase font-black">Rev</span>
+                                <span className="text-[9px] text-slate-500 mt-1.5 uppercase font-black">Rev</span>
                               </div>
                               {/* Expense Bar */}
                               <div className="flex flex-col items-center h-full justify-end group relative">
                                 <div style={{ height: `${expH}%` }} className="w-6 bg-gradient-to-t from-red-600 to-red-400 rounded-t-sm shadow-[0_0_10px_rgba(239,68,68,0.3)] transition-all" />
-                                <span className="text-[6.5px] text-slate-500 mt-1 uppercase font-black">Exp</span>
+                                <span className="text-[9px] text-slate-500 mt-1.5 uppercase font-black">Exp</span>
                               </div>
                               {/* Net Profit Bar */}
                               <div className="flex flex-col items-center h-full justify-end group relative">
                                 <div style={{ height: `${netH}%` }} className="w-6 bg-gradient-to-t from-green-600 to-green-400 rounded-t-sm shadow-[0_0_10px_rgba(34,197,94,0.3)] transition-all" />
-                                <span className="text-[6.5px] text-slate-500 mt-1 uppercase font-black">Net</span>
+                                <span className="text-[9px] text-slate-500 mt-1.5 uppercase font-black">Net</span>
                               </div>
                             </div>
 
-                            <div className="space-y-1.5 uppercase text-[7.5px] font-black tracking-wider border-t border-white/5 pt-2">
+                            <div className="space-y-2 uppercase text-[10px] font-bold tracking-wider border-t border-white/5 pt-2">
                               <div className="flex justify-between">
                                 <span className="text-slate-500">MRR Proyectado:</span>
                                 <span className="text-blue-400 font-mono">${simRevenueVal.toLocaleString()}</span>
@@ -11247,7 +11321,7 @@ Instrucciones generales de formato:
                                 <span className="text-slate-500">Gastos Totales:</span>
                                 <span className="text-red-400 font-mono">${totalExpensesVal.toLocaleString()}</span>
                               </div>
-                              <div className="flex justify-between border-t border-white/5 pt-1.5 text-[8.5px]">
+                              <div className="flex justify-between border-t border-white/5 pt-1.5 text-xs font-black">
                                 <span className="text-slate-200">Utilidad Neta:</span>
                                 <span className="text-green-400 font-mono">${simNetProfit.toLocaleString()} ({marginPct}%)</span>
                               </div>
@@ -11263,18 +11337,18 @@ Instrucciones generales de formato:
                     <div className="flex justify-between items-center border-b border-white/5 pb-3">
                       <div>
                         <h3 className="text-xs font-black text-white uppercase tracking-widest font-display">⚠️ ALERTAS DE CHURN (RIESGO DE ABANDONO)</h3>
-                        <p className="text-[7.5px] text-slate-500 uppercase font-bold mt-0.5">Clientes que superaron su frecuencia de servicio o llevan más de 45 días inactivos</p>
+                        <p className="text-[10px] text-slate-500 uppercase font-bold mt-1">Clientes que superaron su frecuencia de servicio o llevan más de 45 días inactivos</p>
                       </div>
                       <div className="flex items-center gap-2">
-                        <span className="text-[8px] bg-red-500/10 text-red-400 border border-red-500/25 font-bold px-2 py-0.5 rounded-full uppercase">
+                        <span className="text-xs bg-red-500/10 text-red-400 border border-red-500/25 font-black px-2.5 py-1 rounded-full uppercase">
                           Score NPS Promedio: {finance.nps > 0 ? `+${finance.nps}` : finance.nps}
                         </span>
                       </div>
                     </div>
 
-                    <div className="space-y-2 max-h-[300px] overflow-y-auto custom-scroll pr-1">
+                    <div className="space-y-2.5 max-h-[300px] overflow-y-auto custom-scroll pr-1">
                       {finance.churn.length === 0 ? (
-                        <div className="text-center p-6 bg-white/[0.01] border border-white/5 rounded-xl text-slate-500 text-[8px] font-black uppercase">
+                        <div className="text-center py-8 bg-white/[0.01] border border-white/5 rounded-xl text-slate-500 text-xs font-bold uppercase">
                           No hay clientes con riesgo de churn detectados en este momento.
                         </div>
                       ) : (
@@ -11285,37 +11359,37 @@ Instrucciones generales de formato:
                           const clientNps = lastJob?.client_rating || 5; // default to 5-star
                           
                           return (
-                            <div key={client.name} className="flex flex-col sm:flex-row sm:items-center justify-between p-3.5 bg-black/40 border border-white/5 rounded-xl gap-3 hover:border-red-500/20 transition-all">
+                            <div key={client.name} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-black/40 border border-white/5 rounded-xl gap-3 hover:border-red-500/25 transition-all duration-300">
                               <div>
                                 <div className="flex items-center gap-2 flex-wrap">
-                                  <h4 className="text-xs font-black text-white uppercase italic">{client.name}</h4>
-                                  <span className="text-[6.5px] font-black px-1.5 py-0.5 rounded uppercase bg-red-950/40 text-red-400 border border-red-500/20 animate-pulse">
+                                  <h4 className="text-sm font-black text-white uppercase italic">{client.name}</h4>
+                                  <span className="text-[8px] font-black px-2 py-0.5 rounded uppercase bg-red-950/40 text-red-400 border border-red-500/20 animate-pulse">
                                     RIESGO DE CHURN
                                   </span>
-                                  <span className="text-[6.5px] font-bold px-1.5 py-0.5 rounded uppercase bg-white/5 text-slate-400 border border-white/5">
+                                  <span className="text-[8.5px] font-bold px-2 py-0.5 rounded uppercase bg-white/5 text-slate-400 border border-white/5">
                                     Inactivo: {daysInactive} días
                                   </span>
                                 </div>
-                                <p className="text-[7.5px] text-slate-400 font-bold uppercase mt-1">
+                                <p className="text-[10px] text-slate-400 font-bold uppercase mt-1.5">
                                   Frecuencia: {client.frequency || 'ocasional'} • Tel: {client.phone}
                                 </p>
-                                <p className="text-[7px] text-slate-500 italic mt-0.5">Última visita: {lastJob ? `${lastJob.service_type} (${fmtD(lastJob.scheduled_date)})` : 'Desconocida'}</p>
+                                <p className="text-[9px] text-slate-500 italic mt-1">Última visita: {lastJob ? `${lastJob.service_type} (${fmtD(lastJob.scheduled_date)})` : 'Desconocida'}</p>
                               </div>
                               
                               <div className="flex items-center gap-3">
                                 <div className="text-right">
-                                  <span className="text-slate-500 block text-[6px] uppercase font-bold">Satisfacción</span>
+                                  <span className="text-slate-500 block text-[8px] uppercase font-bold">Satisfacción</span>
                                   <div className="flex gap-0.5 mt-0.5">
                                     {Array.from({ length: 5 }, (_, i) => (
-                                      <span key={i} className={`text-[9px] ${i < clientNps ? 'text-[#F5C518]' : 'text-slate-700'}`}>★</span>
+                                      <span key={i} className={`text-xs ${i < clientNps ? 'text-[#F5C518]' : 'text-slate-700'}`}>★</span>
                                     ))}
                                   </div>
                                 </div>
                                 <button
                                   onClick={() => reactivateClientWithAI(client)}
-                                  className="px-3.5 py-2 bg-gradient-to-r from-amber-500 to-yellow-600 hover:from-amber-600 hover:to-yellow-700 text-black font-black uppercase text-[8px] rounded-xl active:scale-95 transition-all shadow-[0_0_15px_rgba(245,197,24,0.15)] flex items-center gap-1.5"
+                                  className="px-4 py-2 bg-gradient-to-r from-amber-500 to-yellow-600 hover:from-amber-600 hover:to-yellow-700 text-black font-black uppercase text-[10px] rounded-xl active:scale-95 transition-all shadow-[0_0_15px_rgba(245,197,24,0.15)] flex items-center gap-1.5"
                                 >
-                                  <Icon name="message-circle" className="w-3 h-3 text-black" />
+                                  <Icon name="message-circle" className="w-3.5 h-3.5 text-black" />
                                   IA Reactivar ⚡
                                 </button>
                               </div>
@@ -12981,6 +13055,7 @@ Instrucciones generales de formato:
                 );
               })()}
             </div>
+            </FeatureGate>
           )}
 
           {/* =====================================================================
@@ -13036,9 +13111,9 @@ Instrucciones generales de formato:
             };
 
             return (
-              <div className="space-y-4 animate-in fade-in pb-24">
+              <div className="space-y-5 animate-in fade-in slide-in-from-bottom-2 duration-500 pb-24">
                 {/* Operations Sub-tabs Switcher */}
-                <div className="flex gap-2 bg-black/45 p-1.5 rounded-2xl border border-white/5 overflow-x-auto nsb">
+                <div className="flex gap-2 bg-black/45 p-2 rounded-2xl border border-white/5 overflow-x-auto nsb">
                   {[
                     { id: 'calendar', name: '📅 Calendario de Misiones' },
                     { id: 'reminders', name: `🔔 Recordatorios (${remindersBadgeCount})` },
@@ -13050,9 +13125,9 @@ Instrucciones generales de formato:
                     <button
                       key={tab.id}
                       onClick={() => setOperationsTab(tab.id)}
-                      className={`px-4 py-2.5 rounded-xl text-[9px] font-black uppercase whitespace-nowrap active:scale-95 transition-all ${
+                      className={`px-4.5 py-3 rounded-xl text-[10px] font-black uppercase whitespace-nowrap active:scale-95 transition-all duration-300 ${
                         operationsTab === tab.id
-                          ? 'bg-[#F5C518] text-black shadow-lg shadow-[#F5C518]/15'
+                          ? 'bg-[#F5C518] text-black shadow-lg shadow-[#F5C518]/20 hover:brightness-110'
                           : 'bg-white/5 text-slate-400 hover:text-white hover:bg-white/10'
                       }`}
                     >
@@ -13067,13 +13142,13 @@ Instrucciones generales de formato:
                     <div className="bg-black/45 border border-white/5 rounded-xl p-1 flex gap-1">
                       <button
                         onClick={() => setAgendaView('calendar')}
-                        className={`px-3 py-1.5 rounded-lg text-[8px] font-black uppercase transition-all ${agendaView === 'calendar' ? 'bg-[#F5C518] text-black shadow-lg shadow-[#F5C518]/15' : 'text-slate-400 hover:text-white'}`}
+                        className={`px-3.5 py-2 rounded-lg text-[10px] font-black uppercase transition-all duration-300 ${agendaView === 'calendar' ? 'bg-[#F5C518] text-black shadow-md shadow-[#F5C518]/15' : 'text-slate-400 hover:text-white'}`}
                       >
                         📅 Calendario
                       </button>
                       <button
                         onClick={() => setAgendaView('list')}
-                        className={`px-3 py-1.5 rounded-lg text-[8px] font-black uppercase transition-all ${agendaView === 'list' ? 'bg-[#F5C518] text-black shadow-lg shadow-[#F5C518]/15' : 'text-slate-400 hover:text-white'}`}
+                        className={`px-3.5 py-2 rounded-lg text-[10px] font-black uppercase transition-all duration-300 ${agendaView === 'list' ? 'bg-[#F5C518] text-black shadow-md shadow-[#F5C518]/15' : 'text-slate-400 hover:text-white'}`}
                       >
                         📋 Lista
                       </button>
@@ -13084,7 +13159,7 @@ Instrucciones generales de formato:
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div className="flex gap-1.5 overflow-x-auto nsb pb-1">
                     {['all', 'lead', 'scheduled', 'in_progress', 'completed', 'paid', 'lost'].map(s => (
-                      <button key={s} onClick={() => setFSt(s)} className={`px-4 py-2 rounded-xl text-[8px] font-black uppercase whitespace-nowrap active:scale-95 transition-all ${fSt === s ? 'bg-[#F5C518] text-black shadow-lg shadow-[#F5C518]/15' : 'bg-white/5 text-slate-500'}`}>{s}</button>
+                      <button key={s} onClick={() => setFSt(s)} className={`px-4.5 py-2 rounded-xl text-[10px] font-black uppercase whitespace-nowrap active:scale-95 transition-all duration-300 ${fSt === s ? 'bg-[#F5C518] text-black shadow-md shadow-[#F5C518]/15' : 'bg-white/5 text-slate-400 hover:bg-white/10'}`}>{s}</button>
                     ))}
                   </div>
                   {agendaView === 'list' && (
@@ -13094,8 +13169,8 @@ Instrucciones generales de formato:
                       } else {
                         setSelectedJobs([...new Set([...selectedJobs, ...allFilteredIds])]);
                       }
-                    }} className="px-3.5 py-2 bg-white/5 hover:bg-white/10 border border-white/5 text-slate-400 hover:text-white rounded-xl text-[8px] font-black uppercase active:scale-95 transition-all flex items-center gap-1.5">
-                      <Icon name={isAllSelected ? "check-square" : "square"} className="w-3.5 h-3.5" />
+                    }} className="px-4 py-2.5 bg-white/5 hover:bg-white/10 border border-white/5 text-slate-300 hover:text-white rounded-xl text-[10px] font-black uppercase active:scale-95 transition-all duration-300 flex items-center gap-2">
+                      <Icon name={isAllSelected ? "check-square" : "square"} className="w-4 h-4" />
                       Select All ({filtered.length})
                     </button>
                   )}
@@ -13112,11 +13187,11 @@ Instrucciones generales de formato:
                             {new Date(calYear, calMonth).toLocaleDateString('es-ES', { month: 'long', year: 'numeric' })}
                           </span>
                         </h3>
-                        <p className="text-[7.5px] text-slate-500 uppercase font-bold mt-0.5">
+                        <p className="text-[10px] text-slate-500 uppercase font-bold mt-1">
                           Haz clic en un día vacío para programar, o en una misión para editar.
                         </p>
                       </div>
-                      <div className="flex gap-1">
+                      <div className="flex gap-1.5">
                         <button
                           onClick={() => {
                             if (calMonth === 0) {
@@ -13126,7 +13201,7 @@ Instrucciones generales de formato:
                               setCalMonth(m => m - 1);
                             }
                           }}
-                          className="px-3 py-2 bg-white/5 hover:bg-white/10 text-white rounded-xl active:scale-95 transition-all text-xs font-black"
+                          className="px-3.5 py-2.5 bg-white/5 hover:bg-white/10 text-white rounded-xl active:scale-95 transition-all text-xs font-black"
                         >
                           ◀
                         </button>
@@ -13135,7 +13210,7 @@ Instrucciones generales de formato:
                             setCalMonth(new Date().getMonth());
                             setCalYear(new Date().getFullYear());
                           }}
-                          className="px-3.5 py-2 bg-white/5 hover:bg-[#F5C518] hover:text-black text-white rounded-xl text-[8px] font-black uppercase active:scale-95 transition-all"
+                          className="px-4 py-2.5 bg-white/5 hover:bg-[#F5C518] hover:text-black text-white rounded-xl text-[10px] font-black uppercase active:scale-95 transition-all"
                         >
                           Hoy
                         </button>
@@ -13148,7 +13223,7 @@ Instrucciones generales de formato:
                               setCalMonth(m => m + 1);
                             }
                           }}
-                          className="px-3 py-2 bg-white/5 hover:bg-white/10 text-white rounded-xl active:scale-95 transition-all text-xs font-black"
+                          className="px-3.5 py-2.5 bg-white/5 hover:bg-white/10 text-white rounded-xl active:scale-95 transition-all text-xs font-black"
                         >
                           ▶
                         </button>
@@ -13156,9 +13231,9 @@ Instrucciones generales de formato:
                     </div>
 
                     {/* Day Names Grid */}
-                    <div className="grid grid-cols-7 gap-2 text-center text-[8px] font-black uppercase text-slate-500 tracking-wider">
+                    <div className="grid grid-cols-7 gap-2 text-center text-[10px] font-black uppercase text-slate-500 tracking-wider">
                       {['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'].map(d => (
-                        <div key={d} className="py-1 bg-white/[0.02] rounded-lg">{d}</div>
+                        <div key={d} className="py-1.5 bg-white/[0.02] rounded-lg">{d}</div>
                       ))}
                     </div>
 
@@ -13221,22 +13296,22 @@ Instrucciones generales de formato:
                                   tt(`Agendando misión para ${dateStr} 📅`);
                                 }
                               }}
-                              className={`min-h-[100px] p-2 bg-black/45 hover:bg-black/60 border rounded-2xl flex flex-col justify-between cursor-pointer transition-all ${
-                                dayObj.isCurrentMonth ? 'border-white/5 text-white' : 'border-transparent text-slate-600 opacity-30'
-                              } ${isToday ? 'border-[#F5C518] shadow-[0_0_15px_rgba(245,197,24,0.15)] bg-[#F5C518]/5' : ''}`}
+                              className={`min-h-[105px] p-2.5 bg-black/45 hover:bg-black/60 border rounded-2xl flex flex-col justify-between cursor-pointer transition-all duration-300 ${
+                                dayObj.isCurrentMonth ? 'border-white/5 text-white' : 'border-transparent text-slate-600 opacity-20'
+                              } ${isToday ? 'border-[#F5C518] shadow-[0_0_15px_rgba(245,197,24,0.2)] bg-[#F5C518]/5' : ''}`}
                             >
-                              <div className="flex justify-between items-center mb-1">
-                                <span className={`text-[9px] font-black ${isToday ? 'text-[#F5C518]' : 'text-slate-400'}`}>
+                              <div className="flex justify-between items-center mb-1.5">
+                                <span className={`text-[11px] font-black ${isToday ? 'text-[#F5C518]' : 'text-slate-400'}`}>
                                   {dayObj.day}
                                 </span>
                                 {dayJobs.length > 0 && (
-                                  <span className="text-[6.5px] px-1.5 py-0.5 bg-white/10 text-white font-bold rounded-full">
+                                  <span className="text-[9px] px-1.5 py-0.5 bg-white/10 text-white font-bold rounded-full">
                                     {dayJobs.length}
                                   </span>
                                 )}
                               </div>
 
-                              <div className="flex-1 space-y-1 overflow-y-auto max-h-[70px] nsb">
+                              <div className="flex-1 space-y-1 overflow-y-auto max-h-[72px] nsb">
                                 {dayJobs.map(job => {
                                   let statusColor = 'bg-slate-600/20 text-slate-400 border border-slate-500/20';
                                   if (job.status === 'paid') statusColor = 'bg-blue-600/20 text-blue-400 border border-blue-500/20';
@@ -13268,7 +13343,7 @@ Instrucciones generales de formato:
                                         setDtab('identity');
                                         tt(`Editando misión de ${job.client_name} 📝`);
                                       }}
-                                      className={`p-1 rounded-lg text-[6.5px] font-black uppercase truncate tracking-tight transition-all active:scale-95 ${statusColor} hover:brightness-125`}
+                                      className={`p-1 rounded-lg text-[9px] font-bold uppercase truncate tracking-tight transition-all active:scale-95 ${statusColor} hover:brightness-125`}
                                       title={`${job.client_name} - ${job.service_type}`}
                                     >
                                       {job.client_name.split(' ')[0]} - {job.service_type}
@@ -13284,8 +13359,8 @@ Instrucciones generales de formato:
                   </div>
                 ) : (
                   <>
-                    {filtered.length === 0 && <div className="g p-10 text-center text-slate-500 font-black italic uppercase bg-[rgba(255,255,255,0.04)] border-[rgba(255,255,255,0.08)]">No missions found.</div>}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {filtered.length === 0 && <div className="g p-10 text-center text-slate-500 font-black italic uppercase bg-[rgba(255,255,255,0.04)] border-[rgba(255,255,255,0.08)] text-xs rounded-2xl">No missions found.</div>}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                       {filtered.map(job => {
                         const isH = job.service_type === 'handyman';
                         const bal = job.total_price - job.deposit_paid;
@@ -13294,8 +13369,8 @@ Instrucciones generales de formato:
                         const profit = realProfit(job);
                         const bonus = calcBonus(job);
                         return (
-                          <div key={job.id} className={`g p-5 border-l-[7px] shadow-xl hover:bg-white/[0.01] transition-all bg-[rgba(255,255,255,0.04)] border-[rgba(255,255,255,0.08)] relative ${isH ? 'border-green-500' : job.status === 'paid' ? 'border-blue-500' : job.status === 'in_progress' ? 'border-green-400' : job.status === 'lead' ? 'border-[#F5C518]' : job.status === 'completed' ? 'border-purple-500' : job.status === 'lost' ? 'border-red-800' : 'border-amber-500'}`}>
-                            <div className="flex justify-between items-start mb-2">
+                          <div key={job.id} className={`g p-6 border border-white/5 border-l-[7px] shadow-2xl hover:border-white/10 hover:-translate-y-1 hover:shadow-[0_0_20px_rgba(245,197,24,0.04)] transition-all duration-300 bg-[rgba(255,255,255,0.04)] rounded-2xl relative ${isH ? 'border-green-500' : job.status === 'paid' ? 'border-blue-500' : job.status === 'in_progress' ? 'border-green-400' : job.status === 'lead' ? 'border-[#F5C518]' : job.status === 'completed' ? 'border-purple-500' : job.status === 'lost' ? 'border-red-800' : 'border-amber-500'}`}>
+                            <div className="flex justify-between items-start mb-3.5">
                               <div className="flex items-center gap-3 flex-1 min-w-0">
                                 <button onClick={() => {
                                   if (selectedJobs.includes(job.id)) {
@@ -13303,36 +13378,36 @@ Instrucciones generales de formato:
                                   } else {
                                     setSelectedJobs([...selectedJobs, job.id]);
                                   }
-                                }} className="w-5 h-5 rounded-lg border-2 border-white/10 hover:border-[#F5C518] flex items-center justify-center flex-shrink-0 transition-all">
+                                }} className="w-5.5 h-5.5 rounded-lg border-2 border-white/10 hover:border-[#F5C518] flex items-center justify-center flex-shrink-0 transition-all">
                                   {selectedJobs.includes(job.id) ? (
-                                    <div className="w-3 h-3 bg-[#F5C518] rounded-sm" />
+                                    <div className="w-3.5 h-3.5 bg-[#F5C518] rounded-sm" />
                                   ) : null}
                                 </button>
                                 <div className="flex-1 min-w-0">
-                                  <div className="flex items-center gap-1.5 flex-wrap mb-1">
-                                    <h3 onClick={() => setSelectedClient(clients.find(c => c.name === job.client_name) || { name: job.client_name, phone: job.client_phone, address: job.address })} className="text-base font-black uppercase italic text-white leading-none hover:text-[#F5C518] cursor-pointer transition-colors">{job.client_name}</h3>
-                                    <span className={`text-[6px] font-black px-1.5 py-0.5 rounded-full uppercase ${job.status === 'paid' ? 'bg-blue-600 text-white' : job.status === 'in_progress' ? 'bg-green-600 text-white' : job.status === 'lead' ? 'bg-[#F5C518] text-black' : job.status === 'completed' ? 'bg-purple-600 text-white' : job.status === 'lost' ? 'bg-red-900 text-red-300' : 'bg-slate-700 text-slate-300'}`}>{job.status}</span>
+                                  <div className="flex items-center gap-2 flex-wrap mb-1.5">
+                                    <h3 onClick={() => setSelectedClient(clients.find(c => c.name === job.client_name) || { name: job.client_name, phone: job.client_phone, address: job.address })} className="text-base md:text-lg font-black uppercase italic text-white leading-none hover:text-[#F5C518] cursor-pointer transition-colors">{job.client_name}</h3>
+                                    <span className={`text-[10px] font-black px-2 py-0.5 rounded-full uppercase ${job.status === 'paid' ? 'bg-blue-600 text-white' : job.status === 'in_progress' ? 'bg-green-600 text-white' : job.status === 'lead' ? 'bg-[#F5C518] text-black' : job.status === 'completed' ? 'bg-purple-600 text-white' : job.status === 'lost' ? 'bg-red-900 text-red-300' : 'bg-slate-700 text-slate-300'}`}>{job.status}</span>
                                     {job.specs?.gps_deviation && (
-                                      <span className="text-[6px] bg-red-600 text-white font-black px-1.5 py-0.5 rounded-full animate-pulse flex items-center gap-0.5">
-                                        <Icon name="alert-triangle" className="w-2 h-2" /> GPS DEV: {Math.round(job.specs.gps_deviation_meters || 0)}m
+                                      <span className="text-[10px] bg-red-600 text-white font-black px-2 py-0.5 rounded-full animate-pulse flex items-center gap-1">
+                                        <Icon name="alert-triangle" className="w-3 h-3" /> GPS DEV: {Math.round(job.specs.gps_deviation_meters || 0)}m
                                       </span>
                                     )}
-                                    {isH && <span className="text-[6px] bg-green-600 text-black font-black px-1.5 py-0.5 rounded-full">🛠️</span>}
+                                    {isH && <span className="text-[10px] bg-green-600 text-black font-black px-2 py-0.5 rounded-full">🛠️</span>}
                                     {job.specs?.referred_by && (
-                                      <span className="text-[6px] bg-[#F5C518]/10 text-[#F5C518] border border-[#F5C518]/25 font-black px-1.5 py-0.5 rounded-full flex items-center gap-0.5">
+                                      <span className="text-[10px] bg-[#F5C518]/10 text-[#F5C518] border border-[#F5C518]/25 font-black px-2 py-0.5 rounded-full flex items-center gap-1">
                                         🎁 Ref: {job.specs.referred_by.replace(/_/g, ' ')}
                                       </span>
                                     )}
                                   </div>
-                                  <p className="text-[8px] text-slate-400 uppercase">{job.service_type} • {fmtD(job.scheduled_date)} • Assigned: {job.team_assigned || 'No worker'}</p>
+                                  <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wide">{job.service_type} • {fmtD(job.scheduled_date)} • Assigned: {job.team_assigned || 'No worker'}</p>
                                   {job.check_in_time && (
-                                    <div className="mt-1 flex flex-wrap gap-1.5 items-center">
-                                      <span className="text-[7px] text-green-400 font-bold uppercase">▶ In: {new Date(job.check_in_time).toLocaleTimeString()}</span>
+                                    <div className="mt-2 flex flex-wrap gap-2 items-center">
+                                      <span className="text-[10px] text-green-400 font-black uppercase tracking-wider">▶ In: {new Date(job.check_in_time).toLocaleTimeString()}</span>
                                       {job.check_out_time && (
-                                        <span className="text-[7px] text-purple-400 font-bold uppercase">⏹ Out: {new Date(job.check_out_time).toLocaleTimeString()}</span>
+                                        <span className="text-[10px] text-purple-400 font-black uppercase tracking-wider">⏹ Out: {new Date(job.check_out_time).toLocaleTimeString()}</span>
                                       )}
                                       {job.gps_distance_meters !== undefined && job.gps_distance_meters !== null && (
-                                        <span className={`text-[7px] font-black px-1.5 py-0.5 rounded uppercase ${Number(job.gps_distance_meters) <= 150 ? 'bg-green-500/10 text-green-400 border border-green-500/25' : 'bg-amber-500/10 text-amber-400 border border-amber-500/25 animate-pulse'}`}>
+                                        <span className={`text-[10px] font-black px-2.5 py-0.5 rounded-lg uppercase ${Number(job.gps_distance_meters) <= 150 ? 'bg-green-500/10 text-green-400 border border-green-500/25' : 'bg-amber-500/10 text-amber-400 border border-amber-500/25 animate-pulse'}`}>
                                           📍 {Number(job.gps_distance_meters) <= 150 ? `On-Site (${job.gps_distance_meters}m)` : `Away (${job.gps_distance_meters}m)`}
                                         </span>
                                       )}
@@ -13340,23 +13415,23 @@ Instrucciones generales de formato:
                                   )}
                                 </div>
                               </div>
-                              <button onClick={() => { setMapAddress(job.address); setView('brief'); tt('🗺️ Mostrando mapa en Dashboard...'); }} className="p-2.5 bg-blue-900/30 text-blue-400 rounded-xl hover:bg-blue-600 transition-all flex items-center justify-center gap-1 text-[8px] font-black uppercase"><Icon name="navigation" className="w-3.5 h-3.5" />Map</button>
+                              <button onClick={() => { setMapAddress(job.address); setView('brief'); tt('🗺️ Mostrando mapa en Dashboard...'); }} className="p-3 bg-blue-950/40 border border-blue-500/10 text-blue-400 rounded-xl hover:bg-blue-600 hover:text-white transition-all flex items-center justify-center gap-1.5 text-[10px] font-black uppercase"><Icon name="navigation" className="w-3.5 h-3.5" />Map</button>
                             </div>
-                            <p className="text-[8px] text-slate-500 italic mb-2">{job.address}</p>
+                            <p className="text-[10.5px] text-slate-500 font-bold uppercase tracking-wide mb-3">{job.address}</p>
                             
-                            <div className="grid grid-cols-3 gap-1 mb-2">
+                            <div className="grid grid-cols-3 gap-1.5 mb-3.5">
                               {[['confirm', '✅'], ['reminder', '🔔'], ['review', '⭐'], ['quote', '📋'], ['referral', '🎁'], ['bundle', '🎯']].map(([tp, em]) => (
-                                <button key={tp} onClick={() => wa(job, tp)} className="py-1.5 bg-white/5 border border-white/5 rounded-xl text-[7px] font-black uppercase active:scale-95 text-slate-400 hover:text-white transition-all">{em} {tp}</button>
+                                <button key={tp} onClick={() => wa(job, tp)} className="py-2 bg-white/5 border border-white/5 rounded-xl text-[10px] font-black uppercase active:scale-95 text-slate-400 hover:text-white hover:bg-white/10 hover:border-white/10 transition-all duration-300">{em} {tp}</button>
                               ))}
                             </div>
 
-                            <div className="flex justify-between items-end border-t border-white/5 pt-3">
+                            <div className="flex justify-between items-end border-t border-white/5 pt-3.5">
                               <div>
-                                <p className="text-[8px] text-slate-500 italic font-black uppercase">Balance</p>
-                                <p className="text-3xl font-black italic tracking-tighter text-white leading-none">{fmt$(bal)}</p>
+                                <p className="text-[9px] text-slate-500 font-black uppercase tracking-wider">Balance</p>
+                                <p className="text-3xl font-black italic tracking-tighter text-white leading-none mt-1">{fmt$(bal)}</p>
                               </div>
-                              <div className="flex gap-1.5">
-                                <button onClick={() => setChatJob(job)} className="p-2.5 bg-blue-900/30 text-blue-400 rounded-xl hover:bg-blue-600 transition-all"><Icon name="message-square" className="w-4 h-4" /></button>
+                              <div className="flex gap-2">
+                                <button onClick={() => setChatJob(job)} className="p-2.5 bg-blue-900/35 border border-blue-500/10 text-blue-400 rounded-xl hover:bg-blue-600 hover:text-white transition-all"><Icon name="message-square" className="w-4 h-4" /></button>
                                 <button onClick={() => printInvoice(job)} className="p-2.5 bg-slate-800 text-[#F5C518] rounded-xl hover:scale-110 transition-all"><Icon name="file-text" className="w-4 h-4" /></button>
                                 <button onClick={() => {
                                   setEdit(job.id);
@@ -13389,14 +13464,14 @@ Instrucciones generales de formato:
                 {/* Bulk Actions Panel */}
                 {selectedJobs.length > 0 && (
                   <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 z-[1050] bg-slate-900/90 backdrop-blur-xl border border-white/10 px-6 py-4 rounded-2xl flex flex-wrap items-center gap-4 shadow-2xl animate-in slide-in-from-bottom duration-250">
-                    <span className="text-[10px] font-black text-white uppercase tracking-wider">
+                    <span className="text-[11px] font-black text-white uppercase tracking-wider">
                       Selected: <span className="text-[#F5C518]">{selectedJobs.length}</span>
                     </span>
                     <div className="flex gap-2">
-                      <button onClick={() => bulkMarkStatus('completed')} className="px-3 py-2 bg-purple-600 text-white rounded-xl text-[8px] font-black uppercase hover:bg-purple-700 active:scale-95 transition-all">Mark Completed</button>
-                      <button onClick={() => bulkMarkStatus('paid')} className="px-3 py-2 bg-blue-600 text-white rounded-xl text-[8px] font-black uppercase hover:bg-blue-700 active:scale-95 transition-all">Mark Paid</button>
-                      <button onClick={bulkWAReminders} className="px-3 py-2 bg-green-600 text-white rounded-xl text-[8px] font-black uppercase hover:bg-green-700 active:scale-95 transition-all">📱 WA Reminders</button>
-                      <button onClick={() => setSelectedJobs([])} className="px-3 py-2 bg-white/5 hover:bg-white/10 text-slate-400 rounded-xl text-[8px] font-black uppercase active:scale-95 transition-all">Cancel</button>
+                      <button onClick={() => bulkMarkStatus('completed')} className="px-3.5 py-2 bg-purple-600 text-white rounded-xl text-[10px] font-black uppercase hover:bg-purple-700 active:scale-95 transition-all">Mark Completed</button>
+                      <button onClick={() => bulkMarkStatus('paid')} className="px-3.5 py-2 bg-blue-600 text-white rounded-xl text-[10px] font-black uppercase hover:bg-blue-700 active:scale-95 transition-all">Mark Paid</button>
+                      <button onClick={bulkWAReminders} className="px-3.5 py-2 bg-green-600 text-white rounded-xl text-[10px] font-black uppercase hover:bg-green-700 active:scale-95 transition-all">📱 WA Reminders</button>
+                      <button onClick={() => setSelectedJobs([])} className="px-3.5 py-2 bg-white/5 hover:bg-white/10 text-slate-400 rounded-xl text-[10px] font-black uppercase active:scale-95 transition-all">Cancel</button>
                     </div>
                   </div>
                 )}
@@ -13408,9 +13483,9 @@ Instrucciones generales de formato:
               👑 ADMIN DASHBOARD CLIENTS TABS (clients)
               ===================================================================== */}
           {role === 'admin' && view === 'crm' && crmTab === 'dna' && (
-            <div className="space-y-4 animate-in fade-in pb-24">
+            <div className="space-y-5 animate-in fade-in slide-in-from-bottom-2 duration-500 pb-24">
               {/* CRM Sub-tabs Switcher */}
-              <div className="flex gap-2 bg-black/45 p-1.5 rounded-2xl border border-white/5 overflow-x-auto nsb">
+              <div className="flex gap-2 bg-black/45 p-2 rounded-2xl border border-white/5 overflow-x-auto nsb">
                 {[
                   { id: 'dna', name: '👥 DNA de Clientes' },
                   { id: 'vip', name: '💎 Membresías VIP' },
@@ -13423,9 +13498,9 @@ Instrucciones generales de formato:
                       setCrmTab(tab.id);
                       if (tab.id === 'vip') setMembersTab('vip');
                     }}
-                    className={`px-4 py-2.5 rounded-xl text-[9px] font-black uppercase whitespace-nowrap active:scale-95 transition-all ${
+                    className={`px-4.5 py-3 rounded-xl text-[10px] font-black uppercase whitespace-nowrap active:scale-95 transition-all duration-300 ${
                       crmTab === tab.id
-                        ? 'bg-[#F5C518] text-black shadow-lg shadow-[#F5C518]/15'
+                        ? 'bg-[#F5C518] text-black shadow-lg shadow-[#F5C518]/20 hover:brightness-110'
                         : 'bg-white/5 text-slate-400 hover:text-white hover:bg-white/10'
                     }`}
                   >
@@ -13434,45 +13509,45 @@ Instrucciones generales de formato:
                 ))}
               </div>
 
-              <div className="g p-5 border-t-4 border-purple-500 bg-[rgba(255,255,255,0.04)] border-[rgba(255,255,255,0.08)]">
+              <div className="g p-6 border border-white/5 border-t-4 border-purple-500 bg-[rgba(255,255,255,0.04)] rounded-2xl shadow-xl">
                 <h2 className="text-xl font-black tracking-widest uppercase text-white font-display">🧬 CLIENT DNA LEDGER</h2>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 {clients.map(client => {
                   const d = dna[client.name] || { score: 0, count: 0, spent: 0 };
                   const lv = lvl(d.count);
                   const daysSince = dAgo(d.last);
                   const lastJob = jobs.filter(j => j.client_name === client.name)[0];
                   return (
-                    <div key={client.name} className="g p-5 hover:bg-white/[0.02] transition-all border-l-4 bg-[rgba(255,255,255,0.04)] border-[rgba(255,255,255,0.08)] flex flex-col justify-between min-h-[170px]" style={{ borderColor: lv.color }}>
+                    <div key={client.name} className="g p-6 hover:bg-white/[0.02] transition-all border border-white/5 border-l-[6px] bg-[rgba(255,255,255,0.04)] rounded-2xl flex flex-col justify-between min-h-[190px] hover:border-white/10 hover:-translate-y-1 hover:shadow-[0_0_25px_rgba(245,197,24,0.05)] duration-300" style={{ borderLeftColor: lv.color }}>
                       <div className="flex justify-between items-start">
                         <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-1 flex-wrap">
-                            <h3 onClick={() => setSelectedClient(client)} className="text-base font-black uppercase italic text-white hover:text-[#F5C518] cursor-pointer transition-colors">{client.name}</h3>
-                            <span className="text-[7px] font-black px-2 py-0.5 rounded-full" style={{ background: lv.color, color: '#000' }}>{lv.name}</span>
-                            {daysSince >= 45 && <span className="text-[7px] bg-red-900/50 text-red-400 font-black px-2 py-0.5 rounded-full">⚠️ Churn Risk</span>}
+                          <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+                            <h3 onClick={() => setSelectedClient(client)} className="text-base md:text-lg font-black uppercase italic text-white hover:text-[#F5C518] cursor-pointer transition-colors leading-none">{client.name}</h3>
+                            <span className="text-[9.5px] font-black px-2.5 py-0.5 rounded-full uppercase" style={{ background: lv.color, color: '#000' }}>{lv.name}</span>
+                            {daysSince >= 45 && <span className="text-[9.5px] bg-red-900/50 text-red-400 font-black px-2.5 py-0.5 rounded-full animate-pulse uppercase">⚠️ Churn Risk</span>}
                           </div>
-                          <p className="text-[8px] text-slate-400 uppercase">{client.phone}{client.email ? ` • ${client.email}` : ''}</p>
-                          {client.birthday && <p className="text-[7.5px] text-pink-400 font-black uppercase mt-1">🎂 Bday: {fmtD(client.birthday)}</p>}
+                          <p className="text-[10px] md:text-xs text-slate-400 uppercase font-bold tracking-wide">{client.phone}{client.email ? ` • ${client.email}` : ''}</p>
+                          {client.birthday && <p className="text-[10px] text-pink-400 font-black uppercase mt-2 flex items-center gap-1">🎂 Bday: {fmtD(client.birthday)}</p>}
                           
-                          <div className="grid grid-cols-2 gap-2 mt-2.5 pt-2 border-t border-white/5 text-[8px] uppercase font-bold text-slate-400">
+                          <div className="grid grid-cols-2 gap-3 mt-3.5 pt-3.5 border-t border-white/5 text-[10px] uppercase font-bold text-slate-400">
                             <div>
-                              <span className="text-slate-500 block text-[6.5px]">Servicios</span>
-                              <span className="text-white font-black text-xs">{d.count}</span>
+                              <span className="text-slate-500 block text-[8px] tracking-wider">Servicios</span>
+                              <span className="text-white font-black text-sm md:text-base mt-0.5 block">{d.count}</span>
                             </div>
                             <div>
-                              <span className="text-slate-500 block text-[6.5px]">Recomendados</span>
-                              <span className="text-[#F5C518] font-black text-xs">
+                              <span className="text-slate-500 block text-[8px] tracking-wider">Recomendados</span>
+                              <span className="text-[#F5C518] font-black text-sm md:text-base mt-0.5 block">
                                 {jobs.filter(j => j.specs?.referred_by === client.name).length}
                               </span>
                             </div>
                           </div>
                         </div>
                       </div>
-                      <div className="flex gap-1.5 mt-3 flex-wrap">
-                        <button onClick={() => lastJob ? wa(lastJob, 'referral') : tt('No previous job', 'red')} className="flex-1 py-2 bg-pink-600/20 text-pink-400 rounded-xl text-[7px] font-black uppercase active:scale-95">🎁 Ref</button>
-                        <button onClick={() => lastJob ? wa(lastJob, 'bundle') : tt('No previous job', 'red')} className="flex-1 py-2 bg-blue-600/20 text-blue-400 rounded-xl text-[7px] font-black uppercase active:scale-95">🎯 Bundle</button>
-                        <button onClick={() => { setState({ ...INIT, ...client.specs, name: client.name, phone: client.phone, email: client.email, birthday: client.birthday, address: client.address }); setView('operations'); setOperationsTab('deploy'); setDtab('specs'); }} className="flex-1 py-2 bg-white/5 text-slate-400 rounded-xl text-[7px] font-black uppercase active:scale-95 hover:text-white transition-all">+ Job</button>
+                      <div className="flex gap-2 mt-4.5 flex-wrap">
+                        <button onClick={() => lastJob ? wa(lastJob, 'referral') : tt('No previous job', 'red')} className="flex-1 py-2.5 bg-pink-600/10 border border-pink-500/20 hover:bg-pink-600 hover:text-white text-pink-400 rounded-xl text-[10px] font-black uppercase active:scale-95 transition-all duration-300">🎁 Ref</button>
+                        <button onClick={() => lastJob ? wa(lastJob, 'bundle') : tt('No previous job', 'red')} className="flex-1 py-2.5 bg-blue-600/10 border border-blue-500/20 hover:bg-blue-600 hover:text-white text-blue-400 rounded-xl text-[10px] font-black uppercase active:scale-95 transition-all duration-300">🎯 Bundle</button>
+                        <button onClick={() => { setState({ ...INIT, ...client.specs, name: client.name, phone: client.phone, email: client.email, birthday: client.birthday, address: client.address }); setView('operations'); setOperationsTab('deploy'); setDtab('specs'); }} className="flex-1 py-2.5 bg-white/5 border border-white/5 text-slate-400 rounded-xl text-[10px] font-black uppercase active:scale-95 hover:text-white hover:bg-white/10 transition-all duration-300">+ Job</button>
                       </div>
                     </div>
                   );

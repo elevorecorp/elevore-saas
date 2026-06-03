@@ -1,6 +1,11 @@
 import Stripe from 'stripe';
+import { createClient } from '@supabase/supabase-js';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '');
+
+const supabaseUrl = process.env.VITE_SUPABASE_URL || '';
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY || '';
+const sb = (supabaseUrl && supabaseServiceKey) ? createClient(supabaseUrl, supabaseServiceKey) : null;
 
 export default async function handler(req, res) {
   // CORS configuration
@@ -110,6 +115,38 @@ export default async function handler(req, res) {
 
       return res.status(200).json({ url: session.url });
     } else {
+      // Check limits if tenant is on free plan and creating a new booking (no mission_id)
+      if (sb && !mission_id) {
+        try {
+          const { data: tenantData } = await sb
+            .from('tenants')
+            .select('stripe_subscription_status')
+            .eq('id', tenant_id)
+            .single();
+
+          if (tenantData && tenantData.stripe_subscription_status === 'free') {
+            const startOfMonth = new Date();
+            startOfMonth.setDate(1);
+            startOfMonth.setHours(0,0,0,0);
+
+            const { count, error: countErr } = await sb
+              .from('elevore_missions')
+              .select('id', { count: 'exact', head: true })
+              .eq('tenant_id', tenant_id)
+              .gte('created_at', startOfMonth.toISOString());
+
+            if (!countErr && count >= 2) {
+              console.warn(`[Limit Blocked]: Tenant ${tenant_id} on Free Plan reached monthly limit (2 jobs).`);
+              return res.status(403).json({ 
+                error: 'Free Plan limit exceeded. The business owner has reached the maximum limit of 2 missions per month for the Free Tier. Please ask them to upgrade.' 
+              });
+            }
+          }
+        } catch (dbErr) {
+          console.error('Error verifying free plan limits:', dbErr);
+        }
+      }
+
       // payment mode for cleaning customer
       if (!amount || isNaN(amount)) {
         return res.status(400).json({ error: 'Amount is required for payment mode' });
