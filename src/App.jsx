@@ -8,6 +8,7 @@ import { AICopilotMeetings } from './components/admin/AICopilotMeetings';
 import { SecurityLedger } from './components/admin/SecurityLedger';
 import { PublicQuoteProposal } from './components/PublicQuoteProposal';
 import { HyperDriveTab } from './components/admin/HyperDriveTab';
+import { FeatureGate } from './components/shared/FeatureGate';
 import PublicBookingWidget from './components/public/PublicBookingWidget';
 import TimeSlotPicker from './components/public/TimeSlotPicker';
 import { generateInvoiceReceiptPDF, generateQuotePDF } from './utils/pdfGenerator';
@@ -7003,6 +7004,38 @@ export default function App() {
     return new Date() > trialEnds;
   }, [tenant]);
 
+  const currentPlan = useMemo(() => {
+    if (!tenant) return 'free';
+    if (isTrialExpired) return 'free';
+    const status = tenant.stripe_subscription_status || 'trialing';
+    if (status.includes('vip')) return 'vip';
+    if (status.includes('premium')) return 'premium';
+    if (status.includes('basic')) return 'basic';
+    if (status === 'trialing') return 'premium'; // Trial has premium access
+    return 'free';
+  }, [tenant, isTrialExpired]);
+
+  const handleUpgradeSuccess = async (plan) => {
+    if (!tenant) return;
+    const newStatus = `active_${plan}`;
+    setTenant(prev => ({
+      ...prev,
+      stripe_subscription_status: newStatus
+    }));
+    try {
+      await sb
+        .from('tenants')
+        .update({ stripe_subscription_status: newStatus })
+        .eq('id', tenant.id);
+      
+      if (typeof tt === 'function') {
+        tt(prefLang === 'es' ? '¡Upgrade exitoso! Plan Empire activo.' : 'Upgrade successful! Empire plan active.');
+      }
+    } catch (err) {
+      console.error('Error updating plan:', err);
+    }
+  };
+
   // Billing states
   const [selectedBillingPlan, setSelectedBillingPlan] = useState('premium');
   const [billingCardName, setBillingCardName] = useState('');
@@ -13919,14 +13952,20 @@ Instrucciones generales de formato:
           )}
 
           {role === 'admin' && view === 'operations' && operationsTab === 'map' && (
-            <MapTab
-              jobs={jobs}
-              staff={staff}
-              operationsTab={operationsTab}
-              setOperationsTab={setOperationsTab}
-              tt={tt}
-              refresh={refresh}
-            />
+            <FeatureGate
+              requiredPlan="premium"
+              currentPlan={currentPlan}
+              onUpgradeSuccess={handleUpgradeSuccess}
+            >
+              <MapTab
+                jobs={jobs}
+                staff={staff}
+                operationsTab={operationsTab}
+                setOperationsTab={setOperationsTab}
+                tt={tt}
+                refresh={refresh}
+              />
+            </FeatureGate>
           )}
 
           {ENABLE_AI && role === 'admin' && view === 'operations' && operationsTab === 'meetings' && (
