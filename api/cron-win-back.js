@@ -9,9 +9,12 @@ const client = connectionString ? postgres(connectionString, { prepare: false })
 const db = client ? drizzle(client, { schema }) : null;
 
 export default async function handler(req, res) {
-  // Authorize Vercel Cron Request
+  // Authorize Vercel Cron Request (Allow local testing bypass)
   const authHeader = req.headers['authorization'];
-  if (process.env.VERCEL_ENV === 'production' && authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+  const host = req.headers.host || '';
+  const isLocal = host.includes('localhost') || host.includes('127.0.0.1');
+
+  if (process.env.VERCEL_ENV === 'production' && !isLocal && authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
 
@@ -58,8 +61,22 @@ export default async function handler(req, res) {
       ).limit(1);
 
       if (futureJobs.length === 0) {
+        // Fetch tenant details to get businessName and slug
+        const tenantList = await db.select().from(schema.tenants).where(eq(schema.tenants.id, job.tenantId)).limit(1);
+        const tenant = tenantList[0] || {};
+        const slug = tenant.slug || "";
+
+        // Fetch settings for custom keys
         const settings = (await db.select().from(schema.tenantSettings).where(eq(schema.tenantSettings.tenantId, job.tenantId)).limit(1))[0] || {};
-        const bizName = settings.businessFullName || "Elevore Premium Services";
+        const bizName = settings.businessFullName || tenant.businessName || "Elevore Premium Services";
+        
+        const apiKeyOverride = settings.customResendKey || null;
+        const fromName = bizName;
+
+        // Construct dynamic slug links with auto-applied discount parameter
+        const linkUrl = slug 
+          ? `https://elevore-saas.vercel.app/?t=${slug}&discount=10`
+          : `https://elevore-saas.vercel.app/?discount=10`;
 
         await sendEmail({
           to: email,
@@ -72,11 +89,13 @@ export default async function handler(req, res) {
               <p style="color: #1a202c; font-size: 18px; font-weight: bold; margin: 20px 0;">Get 10% OFF your next booking!</p>
               <p style="color: #4a5568; font-size: 14px;">Use coupon code: <span style="font-family: monospace; font-weight: bold; background: #f3f4f6; padding: 4px 8px; border-radius: 4px;">REGRESA10</span></p>
               <div style="margin: 25px 0;">
-                <a href="https://elevore-saas.vercel.app/" style="display: inline-block; padding: 12px 28px; background-color: #fbbf24; color: black; font-weight: bold; text-decoration: none; border-radius: 8px;">Book Now</a>
+                <a href="${linkUrl}" style="display: inline-block; padding: 12px 28px; background-color: #fbbf24; color: black; font-weight: bold; text-decoration: none; border-radius: 8px;">Book Now</a>
               </div>
               <p style="color: #718096; font-size: 12px;">Offer expires in 14 days.</p>
             </div>
-          `
+          `,
+          apiKeyOverride,
+          fromName
         });
         sentCount++;
       }

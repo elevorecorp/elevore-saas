@@ -23,9 +23,12 @@ function getPayoutPct(worker, settings) {
 }
 
 export default async function handler(req, res) {
-  // Authorize Vercel Cron Request
+  // Authorize Vercel Cron Request (Allow local testing bypass)
   const authHeader = req.headers['authorization'];
-  if (process.env.VERCEL_ENV === 'production' && authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+  const host = req.headers.host || '';
+  const isLocal = host.includes('localhost') || host.includes('127.0.0.1');
+
+  if (process.env.VERCEL_ENV === 'production' && !isLocal && authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
 
@@ -77,6 +80,9 @@ export default async function handler(req, res) {
 
       const settings = (await db.select().from(schema.tenantSettings).where(eq(schema.tenantSettings.tenantId, tenantId)).limit(1))[0] || {};
       const bizName = settings.businessFullName || tenant.businessName;
+
+      const apiKeyOverride = settings.customResendKey || null;
+      const fromName = bizName;
 
       const staffList = await db.select().from(schema.staffProfiles).where(eq(schema.staffProfiles.tenantId, tenantId));
 
@@ -149,7 +155,9 @@ export default async function handler(req, res) {
               Generated automatically by Elevore Cloud SaaS automations. Please cross-reference with Supabase ledger logs before sending payments.
             </p>
           </div>
-        `
+        `,
+        apiKeyOverride,
+        fromName
       });
 
       sentEmailsList.push(adminEmail);

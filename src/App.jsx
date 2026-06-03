@@ -272,6 +272,7 @@ const triggerOnMyWayEmail = async (job, bizName) => {
       body: JSON.stringify({
         to: email,
         subject: `🚀 On our way! Your ${bizName} team is heading over`,
+        tenant_id: job.tenant_id,
         html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border-top: 4px solid #10b981;">
             <h2>Hi ${job.client_name || 'Valued Customer'},</h2>
@@ -302,6 +303,7 @@ const triggerRatingSubmitEmail = async (job, val, bizName, reviewLink, sb, tenan
         body: JSON.stringify({
           to: email,
           subject: `Could you do us a quick favor? 🏠`,
+          tenant_id: tenantId || job.tenant_id,
           html: `
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 8px;">
               <h2 style="color: #1a202c; text-align: center;">You made our day! ⭐⭐⭐⭐⭐</h2>
@@ -328,6 +330,7 @@ const triggerRatingSubmitEmail = async (job, val, bizName, reviewLink, sb, tenan
           body: JSON.stringify({
             to: adminEmail,
             subject: `⚠️ ACTION REQUIRED: Low Customer Rating (${val}/5) ⚠️`,
+            tenant_id: tenantId,
             html: `
               <h3>Attention Admin,</h3>
               <p>A client has left a low rating for service ID: <strong>${job.id}</strong></p>
@@ -364,6 +367,7 @@ const triggerFeedbackRequestEmail = async (job, bizName) => {
       body: JSON.stringify({
         to: email,
         subject: `How did we do? Rate your service with ${bizName} ✨`,
+        tenant_id: job.tenant_id,
         html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 8px;">
             <h2 style="color: #1a202c; text-align: center;">Thank you for choosing ${bizName}!</h2>
@@ -388,10 +392,10 @@ const triggerFeedbackRequestEmail = async (job, bizName) => {
 };
 
 
-const triggerN8nEmail = async (job) => {
-  const webhookUrl = import.meta.env.VITE_N8N_WEBHOOK_URL;
+const triggerN8nEmail = async (job, customWebhookUrl = null) => {
+  const webhookUrl = customWebhookUrl || import.meta.env.VITE_N8N_WEBHOOK_URL;
   if (!webhookUrl) {
-    console.warn("n8n Webhook URL is not configured in .env");
+    console.warn("n8n Webhook URL is not configured");
     return;
   }
 
@@ -2342,7 +2346,7 @@ function Portal({ cjid }) {
     await sb.from('elevore_missions').update({ final_signature: sig, status: 'paid' }).eq('id', cjid);
     tt('🌟 Done!');
     if (job) {
-      triggerN8nEmail({ ...job, status: 'paid', final_signature: sig });
+      triggerN8nEmail({ ...job, status: 'paid', final_signature: sig }, tenantSettings?.n8n_webhook_url);
       await checkAndScheduleNextMission({ ...job, final_signature: sig, status: 'paid' });
       triggerFeedbackRequestEmail({ ...job, status: 'paid', final_signature: sig }, tenantSettings?.business_full_name || "Elevore Premium Services");
     }
@@ -4051,8 +4055,9 @@ function AIAdvisor({ jobs, clients, staff, isStaff, activeUser, onClose, tt, onO
 
   const callAI = async (userMessage) => {
     // --- BUILD SYSTEM PROMPT WITH REAL CONTEXT ---
+    const bizName = tenantSettings?.business_full_name || tenantName || 'Elevore';
     const systemPrompt = isStaff
-      ? `Eres el Asistente de Operaciones de Campo de Elevore, una empresa de servicios de limpieza y mantenimiento de hogar en Orlando, Florida.
+      ? `Eres el Asistente de Operaciones de Campo de ${bizName}, una empresa de servicios de limpieza y mantenimiento de hogar.
 Tu trabajo es ayudar al empleado de campo llamado "${activeUser}" con:
 - Técnicas profesionales de limpieza y procedimientos de campo
 - Protocolos de seguridad y manejo de situaciones difíciles
@@ -4066,8 +4071,8 @@ Reglas CRÍTICAS de seguridad:
 - Habla siempre en español, de forma directa y práctica
 - Tus respuestas deben ser concisas y accionables para alguien que está en campo con las manos ocupadas`
 
-      : `Eres el Asesor Estratégico de IA de Elevore, el motor de inteligencia de negocios del CEO "${activeUser}".
-Tienes acceso completo a los datos en tiempo real de su empresa de servicios en Orlando, Florida.
+      : `Eres el Asesor Estratégico de IA de ${bizName}, el motor de inteligencia de negocios del CEO "${activeUser}".
+Tienes acceso completo a los datos en tiempo real de su empresa de servicios.
 
 === DATOS EN TIEMPO REAL DE LA EMPRESA ===
 - Facturación Bruta Total: ${fmt$(stats.totalRev || 0)}
@@ -4077,8 +4082,8 @@ Tienes acceso completo a los datos en tiempo real de su empresa de servicios en 
 - Presupuestos sin firmar (leads pendientes): ${stats.unsigned?.length || 0}
 - Total de empleados en el sistema: ${staff.length}
 - Visitas de retención pendientes esta semana: ${stats.rent?.length || 0}
-- Meta de facturación: ${fmt$(DEFAULT_CFG.GOAL || 10000)}
-- Progreso hacia la meta: ${Math.round(((stats.totalRev || 0) / (DEFAULT_CFG.GOAL || 10000)) * 100)}%
+- Meta de facturación: ${fmt$(tenantSettings?.monthly_goal || DEFAULT_CFG.GOAL || 10000)}
+- Progreso hacia la meta: ${Math.round(((stats.totalRev || 0) / (tenantSettings?.monthly_goal || DEFAULT_CFG.GOAL || 10000)) * 100)}%
 ==========================================
 
 Eres un asesor de negocios de élite con experiencia en:
@@ -4086,7 +4091,7 @@ Eres un asesor de negocios de élite con experiencia en:
 - Estrategias de retención de clientes y reducción de churn
 - Copywriting persuasivo y scripts de WhatsApp marketing
 - Gestión de equipos y payroll para field service companies
-- Pricing strategy para el mercado de Orlando, FL
+- Pricing strategy para el mercado de servicios residenciales
 - Automatización y escala de operaciones SaaS
 
 Habla en español. Sé directo, estratégico y orientado a resultados. Si el CEO pide algo que requiere datos que no tienes, trabaja con lo que hay y ofrece una solución accionable.`;
@@ -4103,7 +4108,7 @@ Habla en español. Sé directo, estratégico y orientado a resultados. Si el CEO
         }
 
         const promptOverride = aiProvider === 'antigravity'
-          ? `Eres Antigravity AI, el cerebro operativo inteligente de Elevore. Tu sello distintivo es la precisión analítica, la empatía en el servicio y la automatización estratégica. Ayudas como el copiloto e inteligencia central del negocio.\n\n${systemPrompt}`
+          ? `Eres Antigravity AI, el cerebro operativo inteligente de ${bizName}. Tu sello distintivo es la precisión analítica, la empatía en el servicio y la automatización estratégica. Ayudas como el copiloto e inteligencia central del negocio.\n\n${systemPrompt}`
           : systemPrompt;
 
         const res = await fetch('/api/chat', {
@@ -4454,6 +4459,24 @@ function PublicLeadForm({ refCode }) {
       // Extract tenant from URL (?t=tenantId encoded in referral link)
       const urlParams = new URLSearchParams(window.location.search);
       const tenantFromUrl = urlParams.get('t');
+      
+      let resolvedTenantId = null;
+      if (tenantFromUrl) {
+        const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(tenantFromUrl);
+        if (isUUID) {
+          resolvedTenantId = tenantFromUrl;
+        } else {
+          const { data: tenantData } = await sb
+            .from('tenants')
+            .select('id')
+            .eq('slug', tenantFromUrl.toLowerCase())
+            .maybeSingle();
+          if (tenantData) {
+            resolvedTenantId = tenantData.id;
+          }
+        }
+      }
+
       const { data: inserted, error } = await sb.from('elevore_missions').insert([{
         client_name: form.name,
         client_phone: form.phone,
@@ -4461,7 +4484,7 @@ function PublicLeadForm({ refCode }) {
         service_type: form.service_type,
         status: 'lead',
         total_price: 0,
-        tenant_id: tenantFromUrl || null,
+        tenant_id: resolvedTenantId || null,
         specs: { referred_by: referrer, referral_discount: 25, referred_by_client_name: referrer },
         created_at: new Date().toISOString()
       }]).select();
@@ -4681,29 +4704,43 @@ function LoginFlow({ onLoginSuccess, onBack, tt }) {
     tt('Authenticating Field Access...', 'yellow');
     
     try {
-      // Fetch all staff profiles that match this passcode to handle passcode collisions safely
-      const { data: matchedStaffs, error } = await sb
+      // 1. Sign in via Supabase Auth
+      const { data: authData, error: authError } = await sb.auth.signInWithPassword({ email, password });
+      if (authError) {
+        setLoading(false);
+        return tt('Invalid credentials. Try again.', 'red');
+      }
+      
+      // 2. Fetch staff profile linked to this user_id
+      const { data: staffProfile, error: profileErr } = await sb
         .from('staff_profiles')
         .select('*')
-        .eq('passcode', pin);
-      
-      let matchedStaff = null;
-      if (Array.isArray(matchedStaffs) && matchedStaffs.length > 0) {
-        matchedStaff = matchedStaffs.find(s => {
-          const input = companyName.trim().toLowerCase();
-          const storedEmail = (s.staff_email || '').toLowerCase();
-          const storedName = (s.name || '').toLowerCase();
-          return storedEmail.includes(input) || storedName.includes(input);
-        });
-      }
-      
-      if (matchedStaff) {
-        tt(`Welcome ${matchedStaff.name} ✓`, 'green');
-        onLoginSuccess(matchedStaff.role, matchedStaff.tenant_id, null, matchedStaff, 'ELEVORE EMPIRE');
-      } else {
+        .eq('user_id', authData.user.id)
+        .maybeSingle();
+        
+      if (profileErr) {
+        await sb.auth.signOut();
         setLoading(false);
-        tt('Access Denied: Invalid Email, Name or PIN', 'red');
+        return tt('Failed to load profile details.', 'red');
       }
+      
+      if (!staffProfile) {
+        // Fallback: Check if they are actually the owner/admin
+        const { data: tenant } = await sb.from('tenants').select('*').eq('owner_id', authData.user.id).maybeSingle();
+        if (tenant) {
+          tt(`Welcome back to ${tenant.business_name}!`, 'green');
+          onLoginSuccess('admin', tenant.id, authData.user, { name: tenant.business_name + ' CEO', role: 'admin' }, tenant.business_name);
+          return;
+        }
+        
+        await sb.auth.signOut();
+        setLoading(false);
+        return tt('Staff profile not found. Contact your admin.', 'red');
+      }
+      
+      const { data: tenant } = await sb.from('tenants').select('*').eq('id', staffProfile.tenant_id).maybeSingle();
+      tt(`Welcome ${staffProfile.name} ✓`, 'green');
+      onLoginSuccess(staffProfile.role || 'staff', staffProfile.tenant_id, authData.user, staffProfile, tenant?.business_name || 'ELEVORE EMPIRE');
     } catch (err) {
       setLoading(false);
       tt('Connection error during login. Try again.', 'red');
@@ -4771,12 +4808,12 @@ function LoginFlow({ onLoginSuccess, onBack, tt }) {
         {tab === 'pin' && (
           <form onSubmit={handlePinLogin} className="space-y-4 text-left">
             <div className="space-y-1">
-              <label className="text-[9px] font-black uppercase text-slate-500 tracking-widest pl-1">Staff Email or Name</label>
-              <input required type="text" placeholder="e.g. jei or jei@gmail.com" className="inp w-full py-4 text-sm" value={companyName} onChange={e => setCompanyName(e.target.value)} disabled={loading} />
+              <label className="text-[9px] font-black uppercase text-slate-500 tracking-widest pl-1">Staff Email</label>
+              <input required type="email" placeholder="staff@company.com" className="inp w-full py-4 text-sm" value={email} onChange={e => setEmail(e.target.value)} disabled={loading} />
             </div>
             <div className="space-y-1">
-              <label className="text-[9px] font-black uppercase text-slate-500 tracking-widest pl-1">Access PIN</label>
-              <input required type="password" placeholder="••••" className="inp w-full py-4 text-center text-xl tracking-[0.5em] text-[#F5C518]" value={pin} onChange={e => setPin(e.target.value)} disabled={loading} />
+              <label className="text-[9px] font-black uppercase text-slate-500 tracking-widest pl-1">Password</label>
+              <input required type="password" placeholder="••••••••" className="inp w-full py-4 text-sm tracking-widest" value={password} onChange={e => setPassword(e.target.value)} disabled={loading} />
             </div>
             <button type="submit" disabled={loading} className="w-full bg-white/10 hover:bg-white/20 border border-white/10 text-white py-4 rounded-xl font-black uppercase active:scale-95 transition-all text-xs tracking-wider flex items-center justify-center gap-2 mt-4">
               {loading ? <Icon name="loader-2" className="w-5 h-5 animate-spin" /> : 'Access Field App'}
@@ -6958,6 +6995,14 @@ export default function App() {
   const [tenant, setTenant] = useState(null);
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
 
+  const isTrialExpired = useMemo(() => {
+    if (!tenant) return false;
+    const isSubscribed = tenant.stripe_subscription_status && tenant.stripe_subscription_status.startsWith('active');
+    if (isSubscribed) return false;
+    const trialEnds = new Date(tenant.trial_ends_at || 0);
+    return new Date() > trialEnds;
+  }, [tenant]);
+
   // Billing states
   const [selectedBillingPlan, setSelectedBillingPlan] = useState('premium');
   const [billingCardName, setBillingCardName] = useState('');
@@ -7201,6 +7246,8 @@ export default function App() {
   const [settingsPricePerSqft, setSettingsPricePerSqft] = useState('0.08');
   const [settingsMultDeep, setSettingsMultDeep] = useState('1.45');
   const [settingsMultMoveout, setSettingsMultMoveout] = useState('1.60');
+  const [settingsResendKey, setSettingsResendKey] = useState('');
+  const [settingsN8nUrl, setSettingsN8nUrl] = useState('');
 
   useEffect(() => {
     if (tenantSettings) {
@@ -7212,6 +7259,8 @@ export default function App() {
       setSettingsPricePerSqft(tenantSettings.booking_price_per_sqft !== undefined && tenantSettings.booking_price_per_sqft !== null ? String(tenantSettings.booking_price_per_sqft) : '0.08');
       setSettingsMultDeep(tenantSettings.booking_multiplier_deep !== undefined && tenantSettings.booking_multiplier_deep !== null ? String(tenantSettings.booking_multiplier_deep) : '1.45');
       setSettingsMultMoveout(tenantSettings.booking_multiplier_moveout !== undefined && tenantSettings.booking_multiplier_moveout !== null ? String(tenantSettings.booking_multiplier_moveout) : '1.60');
+      setSettingsResendKey(tenantSettings.custom_resend_key || '');
+      setSettingsN8nUrl(tenantSettings.n8n_webhook_url || '');
       
       if (tenantSettings.wa_template_booking) setBookingTemplateText(tenantSettings.wa_template_booking);
       if (tenantSettings.wa_template_route) setRouteTemplateText(tenantSettings.wa_template_route);
@@ -7232,7 +7281,9 @@ export default function App() {
         booking_base_price: Number(settingsBasePrice) || 100,
         booking_price_per_sqft: Number(settingsPricePerSqft) || 0.08,
         booking_multiplier_deep: Number(settingsMultDeep) || 1.45,
-        booking_multiplier_moveout: Number(settingsMultMoveout) || 1.60
+        booking_multiplier_moveout: Number(settingsMultMoveout) || 1.60,
+        custom_resend_key: settingsResendKey,
+        n8n_webhook_url: settingsN8nUrl
       };
 
       const { error } = await sb
@@ -7352,6 +7403,7 @@ Instrucciones:
   const [newStaffRole, setNewRole] = useState('staff');
   const [newStaffPhone, setNewStaffPhone] = useState('');
   const [newStaffPayoutPct, setNewStaffPayoutPct] = useState('');
+  const [newStaffPassword, setNewStaffPassword] = useState('');
 
   const tt = (m, c = 'green') => { setToast({ m, c }); setTimeout(() => setToast(null), 3500); };
   const log = m => setActLog(l => [{ m, time: new Date().toLocaleTimeString() }, ...l.slice(0, 49)]);
@@ -7813,7 +7865,7 @@ Instrucciones:
     tt(msg || 'Updated ✓');
     log((msg || 'Updated') + ': ' + job.client_name);
     if (patch.status === 'completed' || patch.status === 'paid') {
-      triggerN8nEmail({ ...job, ...patch });
+      triggerN8nEmail({ ...job, ...patch }, tenantSettings?.n8n_webhook_url);
       checkAndScheduleNextMission({ ...job, ...patch });
     }
     if (patch.status === 'paid') {
@@ -7856,7 +7908,7 @@ Instrucciones:
     }
 
     if (status === 'completed') {
-      triggerN8nEmail({ ...jobData, ...patch, status });
+      triggerN8nEmail({ ...jobData, ...patch, status }, tenantSettings?.n8n_webhook_url);
       checkAndScheduleNextMission({ ...jobData, ...patch, status });
     }
 
@@ -8030,6 +8082,7 @@ Instrucciones:
   // Add new employee dynamic code
   const handleAddEmployee = async () => {
     if (!newStaffName || !newStaffPIN || !newStaffEmail) return tt('Name, Email and PIN required', 'red');
+    if (!newStaffPassword || newStaffPassword.length < 6) return tt('Password is required (min 6 characters)', 'red');
     
     // Add locally for robust fallback
     const payoutPctVal = newStaffPayoutPct ? Number(newStaffPayoutPct) : (tenantSettings?.staff_pay_pct !== undefined ? Math.round(tenantSettings.staff_pay_pct * 100) : 40);
@@ -8046,24 +8099,39 @@ Instrucciones:
     };
     setStaff(prev => [...prev, newWorker]);
     
-    // Push to Supabase
+    // Push to Supabase Auth and Profiles using serverless API
     try {
-      const { data: inserted } = await sb.from('staff_profiles').insert([{
-        name: newStaffName,
-        staff_email: newStaffEmail,
-        role: newStaffRole,
-        passcode: newStaffPIN,
-        phone: newStaffPhone || null,
-        payout_pct: payoutPctVal,
-        wallet_balance: 0,
-        total_earned: 0,
-        tenant_id: tenantId
-      }]).select().single();
-      // Replace temp local entry with real DB entry (gets real UUID)
-      if (inserted) setStaff(prev => prev.map(s => s.id === newWorker.id ? inserted : s));
-      tt('Staff added successfully! 👤');
-    } catch {
-      tt('Local employee created ✓');
+      tt('Registrando empleado en Supabase Auth...', 'yellow');
+      const response = await fetch('/api/create-staff', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: newStaffEmail,
+          password: newStaffPassword,
+          name: newStaffName,
+          role: newStaffRole,
+          tenant_id: tenantId,
+          passcode: newStaffPIN,
+          phone: newStaffPhone || null,
+          payout_pct: payoutPctVal
+        })
+      });
+
+      const resData = await response.json();
+      if (!response.ok) {
+        throw new Error(resData.error || 'Server error creating staff account');
+      }
+
+      if (resData.profile) {
+        // Replace temp local entry with real DB entry
+        setStaff(prev => prev.map(s => s.id === newWorker.id ? resData.profile : s));
+        tt('¡Empleado registrado exitosamente en Supabase Auth! 👤', 'green');
+      } else {
+        throw new Error('No profile data returned');
+      }
+    } catch (err) {
+      console.error(err);
+      tt(`Error de base de datos: ${err.message}. Empleado creado de forma local.`, 'red');
     }
 
     // Always clear ALL form fields after adding
@@ -8073,6 +8141,7 @@ Instrucciones:
     setNewRole('staff');
     setNewStaffPhone('');
     setNewStaffPayoutPct('');
+    setNewStaffPassword('');
   };
 
   const handleDeleteEmployee = async (worker) => {
@@ -10086,7 +10155,56 @@ Instrucciones generales de formato:
         <main className="max-w-5xl mx-auto w-full p-4 md:p-8 space-y-6">
           {/* Seasonal Banner Disabled */}
 
-          {finance.mbTargets.length > 0 && role === 'admin' && (
+          {role === 'admin' && isTrialExpired && view !== 'settings' ? (
+            <div className="flex-1 flex items-center justify-center p-6 min-h-[50vh]">
+              <div className="max-w-md w-full g p-8 border-t-4 border-[#F5C518] space-y-6 text-center shadow-2xl relative overflow-hidden bg-black/40">
+                <div className="w-16 h-16 bg-[#F5C518]/10 border border-[#F5C518]/30 rounded-full flex items-center justify-center mx-auto mb-2 text-[#F5C518] animate-pulse">
+                  <Icon name="clock" className="w-8 h-8" />
+                </div>
+                <h2 className="text-2xl font-black italic text-white uppercase tracking-widest leading-none">PRUEBA DE 14 DÍAS EXPIRADA</h2>
+                <p className="text-slate-400 text-xs leading-relaxed uppercase font-bold tracking-wider">
+                  El período de prueba de tu negocio ({tenantName}) ha finalizado.
+                </p>
+                <p className="text-[10px] text-slate-500 leading-normal uppercase font-bold tracking-wide">
+                  Activa tu suscripción de Stripe para restaurar el acceso al panel del CEO, misiones de campo, cobros y el copiloto de IA.
+                </p>
+                <div className="space-y-4 pt-2">
+                  <div className="flex bg-white/5 rounded-xl p-1">
+                    <button onClick={() => setSelectedBillingPlan('basic')} className={`flex-1 py-2 text-[8px] font-black uppercase tracking-wider rounded-lg transition-all ${selectedBillingPlan === 'basic' ? 'bg-[#F5C518] text-black shadow-lg font-black' : 'text-slate-400'}`}>Basic ($49)</button>
+                    <button onClick={() => setSelectedBillingPlan('premium')} className={`flex-1 py-2 text-[8px] font-black uppercase tracking-wider rounded-lg transition-all ${selectedBillingPlan === 'premium' ? 'bg-[#F5C518] text-black shadow-lg font-black' : 'text-slate-400'}`}>Premium ($99)</button>
+                    <button onClick={() => setSelectedBillingPlan('vip')} className={`flex-1 py-2 text-[8px] font-black uppercase tracking-wider rounded-lg transition-all ${selectedBillingPlan === 'vip' ? 'bg-[#F5C518] text-black shadow-lg font-black' : 'text-slate-400'}`}>VIP ($199)</button>
+                  </div>
+                  
+                  {billingError && (
+                    <p className="text-[8.5px] font-black uppercase text-red-400 bg-red-950/20 border border-red-500/20 p-2.5 rounded-xl text-center">
+                      ⚠️ {billingError}
+                    </p>
+                  )}
+                  
+                  <button 
+                    onClick={handleActivateSubscription}
+                    disabled={billingLoading}
+                    className="w-full gold py-4 rounded-xl font-black uppercase text-xs active:scale-95 shadow-xl flex items-center justify-center gap-2"
+                  >
+                    <Icon name={billingLoading ? "loader-2" : "credit-card"} className={`w-4 h-4 text-black ${billingLoading ? 'animate-spin' : ''}`} />
+                    {billingLoading ? 'Procesando...' : 'Suscribirse Ahora con Stripe 💳'}
+                  </button>
+                  
+                  <button 
+                    onClick={() => {
+                      setView('settings');
+                      setSettingsTab('billing');
+                    }} 
+                    className="w-full bg-white/5 hover:bg-white/10 text-slate-400 py-2.5 rounded-xl font-black uppercase text-[9px] active:scale-95 transition-all"
+                  >
+                    Ver detalles del plan en Ajustes
+                  </button>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <>
+              {finance.mbTargets.length > 0 && role === 'admin' && (
             <div className="g p-4 border border-purple-500/20 bg-purple-500/[0.02] flex items-center justify-between shadow-md">
               <div>
                 <p className="text-[8px] font-black text-purple-400 uppercase">💎 {finance.mbTargets.length} Ready for Membership</p>
@@ -12630,7 +12748,7 @@ Instrucciones generales de formato:
                   const { error } = await sb.from('elevore_missions').update({ status }).eq('id', job.id);
                   if (!error) {
                     if (status === 'completed' || status === 'paid') {
-                      triggerN8nEmail({ ...job, status });
+                      triggerN8nEmail({ ...job, status }, tenantSettings?.n8n_webhook_url);
                     }
                   }
                 }
@@ -13147,7 +13265,7 @@ Instrucciones generales de formato:
                     <h2 className="text-2xl font-black uppercase tracking-widest text-white mb-2">⚙️ Company Settings</h2>
                     <p className="text-[10px] text-slate-400 font-bold uppercase mb-8">Administra la configuracion interna de tu imperio SaaS</p>
                     
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
                       <div className="space-y-4">
                         <h3 className="text-sm font-black uppercase text-[#F5C518]">Brand Identity</h3>
                         <div className="space-y-1">
@@ -13191,6 +13309,18 @@ Instrucciones generales de formato:
                             <label className="text-[8px] font-black uppercase text-slate-500 tracking-widest pl-1">Moveout Mult.</label>
                             <input className="inp w-full" type="number" step="0.01" value={settingsMultMoveout} onChange={e => setSettingsMultMoveout(e.target.value)} />
                           </div>
+                        </div>
+                      </div>
+
+                      <div className="space-y-4">
+                        <h3 className="text-sm font-black uppercase text-[#F5C518]">API & Integrations</h3>
+                        <div className="space-y-1">
+                          <label className="text-[9px] font-black uppercase text-slate-500 tracking-widest pl-1">Resend API Key</label>
+                          <input type="password" placeholder="re_..." className="inp w-full font-mono text-xs" value={settingsResendKey} onChange={e => setSettingsResendKey(e.target.value)} />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-[9px] font-black uppercase text-slate-500 tracking-widest pl-1">n8n Webhook URL</label>
+                          <input type="url" placeholder="https://..." className="inp w-full text-xs" value={settingsN8nUrl} onChange={e => setSettingsN8nUrl(e.target.value)} />
                         </div>
                       </div>
                     </div>
@@ -13516,6 +13646,7 @@ Instrucciones generales de formato:
                     <div className="space-y-3 pt-2">
                       <input className="inp uppercase text-xs" placeholder="Worker Name" value={newStaffName} onChange={e => setNewName(e.target.value)} />
                       <input type="email" className="inp text-xs" placeholder="Worker Email (Login ID)" value={newStaffEmail} onChange={e => setNewStaffEmail(e.target.value)} />
+                      <input type="password" className="inp text-xs" placeholder="Login Password (min. 6 chars)" value={newStaffPassword} onChange={e => setNewStaffPassword(e.target.value)} />
                       <input type="tel" className="inp text-xs" placeholder="Phone Number (e.g. +14075550199)" value={newStaffPhone} onChange={e => setNewStaffPhone(e.target.value)} />
                       <div className="grid grid-cols-2 gap-2">
                         <input className="inp text-xs w-full font-mono text-center tracking-widest" placeholder="Passcode PIN (e.g. 5566)" value={newStaffPIN} onChange={e => setNewPIN(e.target.value)} />
@@ -14356,7 +14487,7 @@ Respond ONLY in this exact JSON format (no explanation, no markdown, just raw JS
                       sqft: state.sqft,
                       qp: state.totalPrice || pricing.total,
                       lang: state.lang || 'en'
-                    });
+                    }, tenantSettings);
                     tt('Presupuesto PDF Descargado ✓', 'green');
                   }} className="px-5 bg-[#fbbf24] text-black py-5 rounded-2xl font-black text-sm uppercase active:scale-95 transition-all shadow-xl shadow-[#fbbf24]/10 tracking-widest flex items-center justify-center gap-2">
                     <Icon name="file-text" className="w-5 h-5" /> PDF
@@ -14834,9 +14965,6 @@ Respond ONLY in this exact JSON format (no explanation, no markdown, just raw JS
 
 
 
-          {/* =====================================================================
-              🔔 RECORDATORIOS — Smart Reminder & Notification System
-              ===================================================================== */}
           {role === 'admin' && view === 'operations' && operationsTab === 'reminders' && (
             <RemindersTab
               reminders={reminders}
@@ -14849,6 +14977,9 @@ Respond ONLY in this exact JSON format (no explanation, no markdown, just raw JS
               setOperationsTab={setOperationsTab}
               tt={tt}
             />
+          )}
+
+            </>
           )}
 
         </main>

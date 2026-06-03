@@ -3,11 +3,12 @@
  * Uses direct fetch calls to Resend API to send HTML emails.
  * Gracefully falls back to console logging when RESEND_API_KEY is not defined.
  */
-export async function sendEmail({ to, subject, html }) {
-  const apiKey = process.env.RESEND_API_KEY;
+export async function sendEmail({ to, subject, html, apiKeyOverride, fromName }) {
+  const apiKey = apiKeyOverride || process.env.RESEND_API_KEY;
+  const senderName = fromName || "Elevore";
   if (!apiKey) {
     console.log("=========================================");
-    console.log("📨 [MOCKED EMAIL SENT] (Missing RESEND_API_KEY)");
+    console.log(`📨 [MOCKED EMAIL SENT] (Missing RESEND_API_KEY, sender: ${senderName})`);
     console.log(`To: ${to}`);
     console.log(`Subject: ${subject}`);
     console.log("Content Preview:");
@@ -24,7 +25,7 @@ export async function sendEmail({ to, subject, html }) {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        from: "Elevore <onboarding@resend.dev>",
+        from: `${senderName} <onboarding@resend.dev>`,
         to,
         subject,
         html,

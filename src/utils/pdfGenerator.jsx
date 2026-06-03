@@ -183,11 +183,15 @@ const servicesMap = {
 };
 
 // React PDF Document
-const QuoteDocument = ({ quoteData }) => {
+const QuoteDocument = ({ quoteData, tenantSettings }) => {
   const lang = quoteData.lang === 'es' ? 'es' : 'en';
   const t = i18n[lang];
   const dateStr = new Date().toLocaleDateString(lang === 'es' ? 'es-ES' : 'en-US');
   const serviceName = servicesMap[lang][quoteData.svc] || String(quoteData.svc).toUpperCase();
+  const businessName = tenantSettings?.business_full_name || 'ELEVORE EMPIRE';
+  const thanksMsg = lang === 'es' 
+    ? `Gracias por elegir a ${businessName}.`
+    : `Thank you for choosing ${businessName}.`;
 
   return (
     <Document>
@@ -197,7 +201,7 @@ const QuoteDocument = ({ quoteData }) => {
         {/* HEADER */}
         <View style={styles.header}>
           <View style={styles.headerLeft}>
-            <Text style={styles.logo}>ELEVORE EMPIRE</Text>
+            <Text style={styles.logo}>{businessName.toUpperCase()}</Text>
             <Text style={styles.subtitle}>Premium Business Solutions</Text>
           </View>
           <View style={styles.headerRight}>
@@ -257,7 +261,7 @@ const QuoteDocument = ({ quoteData }) => {
  
         {/* FOOTER */}
         <View style={styles.footer}>
-          <Text style={styles.footerText}>{t.thanks}</Text>
+          <Text style={styles.footerText}>{thanksMsg}</Text>
           <Text style={styles.footerText}>{t.terms}</Text>
         </View>
       </Page>
@@ -265,13 +269,14 @@ const QuoteDocument = ({ quoteData }) => {
   );
 };
 
-export const generateQuotePDF = async (quoteData) => {
+export const generateQuotePDF = async (quoteData, tenantSettings) => {
   try {
-    const blob = await pdf(<QuoteDocument quoteData={quoteData} />).toBlob();
+    const blob = await pdf(<QuoteDocument quoteData={quoteData} tenantSettings={tenantSettings} />).toBlob();
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `Elevore_Quote_${quoteData.name ? quoteData.name.replace(/\s+/g, '_') : 'Cliente'}.pdf`;
+    const filePrefix = tenantSettings?.business_name ? tenantSettings.business_name.replace(/\s+/g, '_') : 'Elevore';
+    link.download = `${filePrefix}_Quote_${quoteData.name ? quoteData.name.replace(/\s+/g, '_') : 'Cliente'}.pdf`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);

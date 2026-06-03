@@ -47,23 +47,40 @@ export default function PublicBookingWidget({ tenantId: propTenantId }) {
       }
 
       try {
-        // Fetch tenant details
-        const { data: tenantData, error: tenantErr } = await sb
-          .from('tenants')
-          .select('*')
-          .eq('id', tenantId)
-          .maybeSingle();
+        const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(tenantId);
+        let tenantData = null;
 
-        if (tenantErr) throw tenantErr;
+        if (isUUID) {
+          // Fetch tenant details by ID
+          const { data, error: tenantErr } = await sb
+            .from('tenants')
+            .select('*')
+            .eq('id', tenantId)
+            .maybeSingle();
+          if (tenantErr) throw tenantErr;
+          tenantData = data;
+        } else {
+          // Fetch tenant details by Slug
+          const { data, error: tenantErr } = await sb
+            .from('tenants')
+            .select('*')
+            .eq('slug', tenantId.toLowerCase())
+            .maybeSingle();
+          if (tenantErr) throw tenantErr;
+          tenantData = data;
+        }
 
         if (tenantData) {
           setTenantInfo(tenantData);
+          if (tenantId !== tenantData.id) {
+            setTenantId(tenantData.id);
+          }
 
-          // Fetch tenant settings
+          // Fetch tenant settings using the resolved tenant ID
           const { data: settingsData, error: settingsErr } = await sb
             .from('tenant_settings')
             .select('*')
-            .eq('tenant_id', tenantId)
+            .eq('tenant_id', tenantData.id)
             .maybeSingle();
 
           if (settingsErr) throw settingsErr;
@@ -223,9 +240,9 @@ export default function PublicBookingWidget({ tenantId: propTenantId }) {
       <div className="min-h-screen bg-black flex flex-col items-center justify-center p-6 text-center text-white">
         <div className="max-w-md w-full bg-zinc-900 border border-white/10 rounded-3xl p-8 space-y-4">
           <Info className="w-12 h-12 text-[#F5C518] mx-auto mb-2" />
-          <h2 className="text-xl font-black uppercase tracking-widest italic">Portal de Reservas Elevore</h2>
+          <h2 className="text-xl font-black uppercase tracking-widest italic">Portal de Reservas de Servicios</h2>
           <p className="text-[10px] font-bold text-slate-400 uppercase leading-relaxed">
-            Este enlace de reservas públicas requiere un identificador de inquilino válido para sincronizar la pasarela.
+            Este enlace de reservas públicas requiere un identificador de negocio válido para sincronizar la pasarela.
           </p>
           <p className="text-[9px] text-slate-600 font-mono">
             Uso: ?t=id-de-inquilino

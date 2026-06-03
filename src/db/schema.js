@@ -7,6 +7,8 @@ export const tenants = pgTable("tenants", {
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   stripeCustomerId: text("stripe_customer_id"),
   stripeSubscriptionStatus: text("stripe_subscription_status").default("trialing"),
+  slug: text("slug").unique(),
+  trialEndsAt: timestamp("trial_ends_at", { withTimezone: true }),
 });
 
 export const tenantSettings = pgTable("tenant_settings", {
@@ -41,6 +43,15 @@ export const tenantSettings = pgTable("tenant_settings", {
     { id: "premium", name: "Premium", price: 349, color: "#3b82f6", perks: ["4 Cleans/mo", "10% off", "Free oven"] },
     { id: "vip", name: "VIP", price: 549, color: "#fbbf24", perks: ["6 Cleans/mo", "15% off", "All add-ons", "Dedicated team"] }
   ]),
+  customResendKey: text("custom_resend_key"),
+  n8nWebhookUrl: text("n8n_webhook_url"),
+  bookingBasePrice: numeric("booking_base_price", { precision: 10, scale: 2 }).default("100.00"),
+  bookingPricePerSqft: numeric("booking_price_per_sqft", { precision: 10, scale: 4 }).default("0.0800"),
+  bookingMultiplierDeep: numeric("booking_multiplier_deep", { precision: 4, scale: 2 }).default("1.45"),
+  bookingMultiplierMoveout: numeric("booking_multiplier_moveout", { precision: 4, scale: 2 }).default("1.60"),
+  waTemplateBooking: text("wa_template_booking"),
+  waTemplateRoute: text("wa_template_route"),
+  waTemplateReview: text("wa_template_review"),
 });
 
 export const staffProfiles = pgTable("staff_profiles", {
@@ -53,6 +64,7 @@ export const staffProfiles = pgTable("staff_profiles", {
   walletBalance: numeric("wallet_balance", { precision: 10, scale: 2 }).default("0.00"),
   totalEarned: numeric("total_earned", { precision: 10, scale: 2 }).default("0.00"),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  staffEmail: text("staff_email"),
 });
 
 export const clients = pgTable("clients", {
