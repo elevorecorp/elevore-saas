@@ -66,12 +66,20 @@ CREATE POLICY "Allow public read for settings"
     TO public 
     USING (true);
 
--- Edición completa para usuarios autenticados de la misma empresa (JWT tenant_id)
+-- Edición completa para usuarios autenticados de la misma empresa o el dueño
 CREATE POLICY "Allow admins to manage settings" 
     ON public.tenant_settings FOR ALL 
     TO authenticated 
-    USING (tenant_id::text = (auth.jwt() -> 'user_metadata' ->> 'tenant_id'))
-    WITH CHECK (tenant_id::text = (auth.jwt() -> 'user_metadata' ->> 'tenant_id'));
+    USING (
+        tenant_id::text = (auth.jwt() -> 'user_metadata' ->> 'tenant_id')
+        OR
+        tenant_id IN (SELECT id FROM public.tenants WHERE owner_id = auth.uid())
+    )
+    WITH CHECK (
+        tenant_id::text = (auth.jwt() -> 'user_metadata' ->> 'tenant_id')
+        OR
+        tenant_id IN (SELECT id FROM public.tenants WHERE owner_id = auth.uid())
+    );
 
 -- ─────────────────────────────────────────────────────────────────────
 -- 3. TABLA: staff_profiles (Perfiles de Empleados)
@@ -88,12 +96,20 @@ DROP POLICY IF EXISTS "role_based_staff" ON public.staff_profiles;
 DROP POLICY IF EXISTS "admin_only_staff_edit" ON public.staff_profiles;
 
 -- Bloqueo total a usuarios anónimos.
--- Aislamiento estricto para usuarios autenticados de la misma empresa.
+-- Aislamiento estricto para usuarios autenticados de la misma empresa o dueño.
 CREATE POLICY "tenant_isolation_staff" 
     ON public.staff_profiles FOR ALL 
     TO authenticated 
-    USING (tenant_id::text = (auth.jwt() -> 'user_metadata' ->> 'tenant_id'))
-    WITH CHECK (tenant_id::text = (auth.jwt() -> 'user_metadata' ->> 'tenant_id'));
+    USING (
+        tenant_id::text = (auth.jwt() -> 'user_metadata' ->> 'tenant_id')
+        OR
+        tenant_id IN (SELECT id FROM public.tenants WHERE owner_id = auth.uid())
+    )
+    WITH CHECK (
+        tenant_id::text = (auth.jwt() -> 'user_metadata' ->> 'tenant_id')
+        OR
+        tenant_id IN (SELECT id FROM public.tenants WHERE owner_id = auth.uid())
+    );
 
 -- ─────────────────────────────────────────────────────────────────────
 -- 4. TABLA: clients (Base de Clientes)
@@ -107,12 +123,20 @@ DROP POLICY IF EXISTS "admin_only_clients" ON public.clients;
 
 
 -- Bloqueo total a usuarios anónimos.
--- Aislamiento estricto para usuarios autenticados de la misma empresa.
+-- Aislamiento estricto para usuarios autenticados de la misma empresa o dueño.
 CREATE POLICY "tenant_isolation_clients" 
     ON public.clients FOR ALL 
     TO authenticated 
-    USING (tenant_id::text = (auth.jwt() -> 'user_metadata' ->> 'tenant_id'))
-    WITH CHECK (tenant_id::text = (auth.jwt() -> 'user_metadata' ->> 'tenant_id'));
+    USING (
+        tenant_id::text = (auth.jwt() -> 'user_metadata' ->> 'tenant_id')
+        OR
+        tenant_id IN (SELECT id FROM public.tenants WHERE owner_id = auth.uid())
+    )
+    WITH CHECK (
+        tenant_id::text = (auth.jwt() -> 'user_metadata' ->> 'tenant_id')
+        OR
+        tenant_id IN (SELECT id FROM public.tenants WHERE owner_id = auth.uid())
+    );
 
 -- ─────────────────────────────────────────────────────────────────────
 -- 5. TABLA: staff_payouts (Historial de Pagos)
@@ -122,12 +146,20 @@ DROP POLICY IF EXISTS "Enable ALL for staff_payouts" ON public.staff_payouts;
 DROP POLICY IF EXISTS "tenant_isolation_payouts" ON public.staff_payouts;
 
 -- Bloqueo total a usuarios anónimos.
--- Aislamiento estricto para usuarios autenticados de la misma empresa.
+-- Aislamiento estricto para usuarios autenticados de la misma empresa o dueño.
 CREATE POLICY "tenant_isolation_payouts" 
     ON public.staff_payouts FOR ALL 
     TO authenticated 
-    USING (tenant_id::text = (auth.jwt() -> 'user_metadata' ->> 'tenant_id'))
-    WITH CHECK (tenant_id::text = (auth.jwt() -> 'user_metadata' ->> 'tenant_id'));
+    USING (
+        tenant_id::text = (auth.jwt() -> 'user_metadata' ->> 'tenant_id')
+        OR
+        tenant_id IN (SELECT id FROM public.tenants WHERE owner_id = auth.uid())
+    )
+    WITH CHECK (
+        tenant_id::text = (auth.jwt() -> 'user_metadata' ->> 'tenant_id')
+        OR
+        tenant_id IN (SELECT id FROM public.tenants WHERE owner_id = auth.uid())
+    );
 
 -- ─────────────────────────────────────────────────────────────────────
 -- 6. TABLA: elevore_missions (Reservas y Misiones)
@@ -145,12 +177,20 @@ DROP POLICY IF EXISTS "Users can manage missions of their tenant" ON public.elev
 DROP POLICY IF EXISTS "Public anonymous clients can access their specific mission portal" ON public.elevore_missions;
 DROP POLICY IF EXISTS "Public anonymous clients can sign and rate their mission" ON public.elevore_missions;
 
--- Aislamiento estricto para usuarios autenticados de la misma empresa.
+-- Aislamiento estricto para usuarios autenticados de la misma empresa o dueño.
 CREATE POLICY "tenant_isolation_missions" 
     ON public.elevore_missions FOR ALL 
     TO authenticated 
-    USING (tenant_id::text = (auth.jwt() -> 'user_metadata' ->> 'tenant_id'))
-    WITH CHECK (tenant_id::text = (auth.jwt() -> 'user_metadata' ->> 'tenant_id'));
+    USING (
+        tenant_id::text = (auth.jwt() -> 'user_metadata' ->> 'tenant_id')
+        OR
+        tenant_id IN (SELECT id FROM public.tenants WHERE owner_id = auth.uid())
+    )
+    WITH CHECK (
+        tenant_id::text = (auth.jwt() -> 'user_metadata' ->> 'tenant_id')
+        OR
+        tenant_id IN (SELECT id FROM public.tenants WHERE owner_id = auth.uid())
+    );
 
 
 -- Permitir a usuarios públicos insertar misiones con estado 'lead' (reservas públicas)
@@ -171,3 +211,64 @@ CREATE POLICY "allow_anon_update_missions"
     TO anon 
     USING (true)
     WITH CHECK (true);
+
+-- ─────────────────────────────────────────────────────────────────────
+-- 7. DISPARADORES (TRIGGERS) PARA SINCRONIZAR METADATOS A AUTH.USERS
+-- ─────────────────────────────────────────────────────────────────────
+
+-- Función trigger para cuando se crea/actualiza un tenant (dueño)
+CREATE OR REPLACE FUNCTION public.sync_tenant_owner_metadata()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF NEW.owner_id IS NOT NULL THEN
+        UPDATE auth.users
+        SET raw_user_meta_data = 
+            COALESCE(raw_user_meta_data, '{}'::jsonb) || 
+            jsonb_build_object('tenant_id', NEW.id::text, 'role', 'admin')
+        WHERE id = NEW.owner_id;
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+DROP TRIGGER IF EXISTS on_tenant_owner_sync ON public.tenants;
+CREATE TRIGGER on_tenant_owner_sync
+    AFTER INSERT OR UPDATE OF owner_id ON public.tenants
+    FOR EACH ROW EXECUTE FUNCTION public.sync_tenant_owner_metadata();
+
+-- Función trigger para cuando se crea/actualiza un staff profile con user_id
+CREATE OR REPLACE FUNCTION public.sync_staff_user_metadata()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF NEW.user_id IS NOT NULL THEN
+        UPDATE auth.users
+        SET raw_user_meta_data = 
+            COALESCE(raw_user_meta_data, '{}'::jsonb) || 
+            jsonb_build_object('tenant_id', NEW.tenant_id::text, 'role', NEW.role)
+        WHERE id = NEW.user_id;
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+DROP TRIGGER IF EXISTS on_staff_user_sync ON public.staff_profiles;
+CREATE TRIGGER on_staff_user_sync
+    AFTER INSERT OR UPDATE OF user_id, role ON public.staff_profiles
+    FOR EACH ROW EXECUTE FUNCTION public.sync_staff_user_metadata();
+
+-- Sincronización Retroactiva
+-- 1. Dueños de tenants
+UPDATE auth.users u
+SET raw_user_meta_data = 
+    COALESCE(u.raw_user_meta_data, '{}'::jsonb) || 
+    jsonb_build_object('tenant_id', t.id::text, 'role', 'admin')
+FROM public.tenants t
+WHERE t.owner_id = u.id;
+
+-- 2. Staff Profiles
+UPDATE auth.users u
+SET raw_user_meta_data = 
+    COALESCE(u.raw_user_meta_data, '{}'::jsonb) || 
+    jsonb_build_object('tenant_id', s.tenant_id::text, 'role', s.role)
+FROM public.staff_profiles s
+WHERE s.user_id = u.id;
