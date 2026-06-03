@@ -4574,9 +4574,16 @@ function PublicLeadForm({ refCode }) {
 // =====================================================================
 // 🚀 SAAS ONBOARDING FLOW (REGISTRATION)
 // =====================================================================
-function OnboardingFlow({ onBack, tt }) {
-  const [form, setForm] = useState({ company: '', email: '', password: '' });
+function OnboardingFlow({ onBack, onLoginSuccess, tt }) {
+  const [form, setForm] = useState({ company: '', email: '', password: '', ownerName: '', phone: '' });
   const [loading, setLoading] = useState(false);
+  const [showSimulator, setShowSimulator] = useState(false);
+  const [missionId, setMissionId] = useState(null);
+  const [portalUrl, setPortalUrl] = useState(null);
+  const [isMock, setIsMock] = useState(true);
+  const [proposalStatus, setProposalStatus] = useState('lead');
+  const [signupSession, setSignupSession] = useState(null);
+  const [signupUser, setSignupUser] = useState(null);
 
   const handleRegister = async (e) => {
     e.preventDefault();
@@ -4596,6 +4603,10 @@ function OnboardingFlow({ onBack, tt }) {
       }
 
       if (data?.user) {
+        // Store session and user for automatic login post-simulation
+        setSignupSession(data.session);
+        setSignupUser(data.user);
+
         // 2. Create the tenant
         const { data: tenantData, error: tErr } = await sb.from('tenants').insert([
           { business_name: form.company, owner_id: data.user.id }
@@ -4608,11 +4619,34 @@ function OnboardingFlow({ onBack, tt }) {
 
         // 3. Create the admin staff profile so they can also use the PIN if needed
         await sb.from('staff_profiles').insert([
-          { tenant_id: tenantData.id, user_id: data.user.id, name: form.company + ' Admin', role: 'admin', passcode: form.password }
+          { tenant_id: tenantData.id, user_id: data.user.id, name: form.ownerName || (form.company + ' Admin'), role: 'admin', passcode: form.password }
         ]);
 
-        tt('Welcome to Elevore Empire! 🎉', 'green');
-        onBack(); // Redirect to login
+        // 4. Trigger Onboarding Simulator API
+        tt('Initializing Onboarding Simulator... 🚀', 'yellow');
+        const response = await fetch('/api/onboarding-start', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            businessName: form.company,
+            ownerPhone: form.phone,
+            ownerName: form.ownerName,
+            tenantId: tenantData.id
+          })
+        });
+
+        if (!response.ok) {
+          const errJson = await response.json();
+          console.warn('Simulator start failed:', errJson.error);
+        }
+
+        const resData = await response.json();
+        setMissionId(resData.missionId);
+        setPortalUrl(resData.portalUrl);
+        setIsMock(resData.mock);
+
+        tt('Account created! Let\'s run the demo.', 'green');
+        setShowSimulator(true);
       } else {
         setLoading(false);
         tt('Unexpected error: User not returned', 'red');
@@ -4620,8 +4654,177 @@ function OnboardingFlow({ onBack, tt }) {
     } catch (err) {
       setLoading(false);
       tt('System Error: ' + err.message, 'red');
+    } finally {
+      setLoading(false);
     }
   };
+
+  // Poll for proposal signature in database
+  useEffect(() => {
+    if (!missionId || proposalStatus === 'scheduled') return;
+
+    const interval = setInterval(async () => {
+      try {
+        const { data, error } = await sb
+          .from('elevore_missions')
+          .select('status')
+          .eq('id', missionId)
+          .single();
+
+        if (data && data.status === 'scheduled') {
+          setProposalStatus('scheduled');
+          tt('Proposal signed and scheduled! 🎉', 'green');
+          clearInterval(interval);
+          
+          // Auto-login after 3.5 seconds
+          setTimeout(() => {
+            if (signupSession && signupUser && onLoginSuccess) {
+              onLoginSuccess(signupUser, signupSession);
+            } else {
+              onBack();
+            }
+          }, 3500);
+        }
+      } catch (err) {
+        console.error("Error polling mission status:", err);
+      }
+    }, 2000);
+
+    return () => clearInterval(interval);
+  }, [missionId, proposalStatus, signupSession, signupUser]);
+
+  if (showSimulator) {
+    return (
+      <div className="min-h-screen bg-black flex flex-col items-center justify-center p-6 text-white bg-[radial-gradient(ellipse_at_top,rgba(245,197,24,0.15),transparent)]">
+        <div className="max-w-2xl w-full grid grid-cols-1 md:grid-cols-2 gap-8 items-center animate-in fade-in slide-in-from-bottom-4">
+          
+          {/* Left panel: Explainer */}
+          <div className="space-y-6 text-center md:text-left">
+            <span className="px-3 py-1 rounded-full bg-[#F5C518]/10 border border-[#F5C518]/25 text-[#F5C518] text-[7.5px] font-black uppercase tracking-widest inline-flex items-center gap-1.5 mx-auto md:mx-0">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span> DEMO DE ONBOARDING EN VIVO
+            </span>
+            <div className="space-y-2">
+              <h2 className="text-2xl md:text-3xl font-black uppercase tracking-tighter">Experimenta el <span className="text-gradient italic">Aha Moment</span></h2>
+              <p className="text-xs text-slate-400 leading-relaxed uppercase font-bold">
+                Hemos enviado una cotización de prueba para tu cliente ficticio **John Doe** usando la marca de tu empresa **{form.company}**.
+              </p>
+            </div>
+
+            <div className="bg-white/5 border border-white/5 rounded-2xl p-4 text-[9px] uppercase font-black text-slate-400 space-y-2">
+              <p className="text-white border-b border-white/5 pb-1">Instrucciones de Simulación</p>
+              <ol className="list-decimal pl-4 space-y-1.5 text-slate-300">
+                <li>Haz click en el link de la derecha para simular que abres el mensaje en tu móvil.</li>
+                <li>Dibuja tu firma digital con tu dedo o mouse y confirma.</li>
+                <li>Vuelve a esta pantalla para ver cómo se actualiza en tiempo real.</li>
+              </ol>
+            </div>
+
+            <button 
+              onClick={() => {
+                if (signupSession && signupUser && onLoginSuccess) {
+                  onLoginSuccess(signupUser, signupSession);
+                } else {
+                  onBack();
+                }
+              }}
+              className="text-[9px] text-slate-500 font-black uppercase flex items-center gap-2 hover:text-white transition-colors mx-auto md:mx-0"
+            >
+              Omitir Demo e ir al Dashboard <Icon name="arrow-right" className="w-3.5 h-3.5" />
+            </button>
+          </div>
+
+          {/* Right panel: Glassmorphic Smartphone frame */}
+          <div className="relative mx-auto w-[280px] h-[520px] rounded-[36px] border-4 border-zinc-800 bg-[#09090b] shadow-2xl shadow-black/80 flex flex-col overflow-hidden">
+            {/* Notch */}
+            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-28 h-4.5 bg-zinc-800 rounded-b-xl z-20"></div>
+
+            {/* Simulated WhatsApp screen */}
+            <div className="flex-1 flex flex-col text-xs font-sans">
+              {/* WhatsApp Header */}
+              <div className="bg-[#121212] border-b border-white/5 pt-6 pb-2.5 px-3 flex items-center gap-2">
+                <div className="w-7 h-7 rounded-full bg-amber-500 flex items-center justify-center font-bold text-black text-[10px]">
+                  E
+                </div>
+                <div>
+                  <p className="font-bold text-[9.5px] text-white">Elevore Dispatch</p>
+                  <p className="text-[7.5px] text-emerald-400">Online</p>
+                </div>
+              </div>
+
+              {/* Chat Message Area */}
+              <div className="flex-1 p-3 bg-[#050505] space-y-3 overflow-y-auto flex flex-col justify-end">
+                
+                {/* Outgoing Message Bubble (Stripe confirmation) */}
+                {proposalStatus === 'scheduled' && (
+                  <motion.div 
+                    initial={{ scale: 0.9, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    className="self-end max-w-[85%] bg-emerald-600 text-white p-2.5 rounded-2xl rounded-tr-none text-[8.5px] shadow space-y-1"
+                  >
+                    <p className="font-bold uppercase tracking-wide">✅ depósito confirmado</p>
+                    <p className="leading-normal">
+                      ¡Firma recibida de John Doe! Depósito de $36 USD procesado de forma segura. El trabajo ha sido agendado en Elevore.
+                    </p>
+                    <span className="block text-[6.5px] text-emerald-300 text-right">Justo ahora</span>
+                  </motion.div>
+                )}
+
+                {/* Main Message bubble */}
+                <div className="self-start max-w-[85%] bg-[#1c1c1e] text-slate-200 p-2.5 rounded-2xl rounded-tl-none text-[8.5px] shadow space-y-2">
+                  <p className="font-bold text-amber-400 uppercase tracking-widest text-[6px]">EMPIRE DEMO BOT</p>
+                  <p className="leading-normal">
+                    ¡Hola {form.ownerName || 'Socio'}! Tu espacio de **{form.company}** ha sido creado.
+                  </p>
+                  <p className="leading-normal">
+                    Para probar cómo tu cliente John Doe aprueba y firma tu propuesta digital de **$180 USD**, abre el siguiente link de simulación:
+                  </p>
+                  
+                  {proposalStatus === 'lead' ? (
+                    <a 
+                      href={portalUrl} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="block text-center py-2.5 bg-[#F5C518] hover:bg-amber-400 text-black font-black uppercase text-[7.5px] tracking-wider rounded-xl transition-all shadow shadow-[#F5C518]/10 cursor-pointer"
+                    >
+                      🔗 Abrir Propuesta de John Doe
+                    </a>
+                  ) : (
+                    <div className="py-2 bg-zinc-800 text-slate-400 font-black uppercase text-[7.5px] tracking-wider rounded-xl text-center">
+                      Firmado ✓
+                    </div>
+                  )}
+
+                  <span className="block text-[6.5px] text-slate-500 text-right">Hace 1 min</span>
+                </div>
+
+              </div>
+
+              {/* Status Banner at the bottom */}
+              <div className="bg-[#121212] border-t border-white/5 p-3.5 text-center">
+                {proposalStatus === 'lead' ? (
+                  <div className="flex items-center justify-center gap-1.5 text-slate-400 uppercase text-[8.5px] font-black tracking-wider animate-pulse">
+                    <span className="w-2 h-2 bg-amber-400 rounded-full"></span>
+                    Esperando firma digital...
+                  </div>
+                ) : (
+                  <motion.div 
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className="flex flex-col items-center justify-center gap-1 text-emerald-400 uppercase text-[8.5px] font-black tracking-wider"
+                  >
+                    <span className="flex items-center gap-1">🎉 ¡CONTRATO COMPLETO!</span>
+                    <span className="text-[7.5px] text-slate-400 font-medium">Redirigiendo a tu dashboard principal...</span>
+                  </motion.div>
+                )}
+              </div>
+
+            </div>
+          </div>
+
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-black flex items-center justify-center p-6 text-white bg-[radial-gradient(ellipse_at_top,rgba(245,197,24,0.1),transparent)]">
@@ -4636,14 +4839,26 @@ function OnboardingFlow({ onBack, tt }) {
         </div>
 
         <form onSubmit={handleRegister} className="space-y-4">
-          <div className="space-y-1">
-            <label className="text-[9px] font-black uppercase text-slate-500 tracking-widest pl-1">Business Name</label>
-            <input required type="text" placeholder="e.g. Sparkle Cleaning LLC" className="inp w-full py-4 text-sm" value={form.company} onChange={e => setForm({...form, company: e.target.value})} disabled={loading} />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <label className="text-[9px] font-black uppercase text-slate-500 tracking-widest pl-1">Your Name</label>
+              <input required type="text" placeholder="e.g. Jose Mario" className="inp w-full py-4 text-sm" value={form.ownerName} onChange={e => setForm({...form, ownerName: e.target.value})} disabled={loading} />
+            </div>
+            <div className="space-y-1">
+              <label className="text-[9px] font-black uppercase text-slate-500 tracking-widest pl-1">Business Name</label>
+              <input required type="text" placeholder="e.g. Sparkle Cleaning LLC" className="inp w-full py-4 text-sm" value={form.company} onChange={e => setForm({...form, company: e.target.value})} disabled={loading} />
+            </div>
           </div>
-          
-          <div className="space-y-1">
-            <label className="text-[9px] font-black uppercase text-slate-500 tracking-widest pl-1">Work Email</label>
-            <input required type="email" placeholder="ceo@company.com" className="inp w-full py-4 text-sm" value={form.email} onChange={e => setForm({...form, email: e.target.value})} disabled={loading} />
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <label className="text-[9px] font-black uppercase text-slate-500 tracking-widest pl-1">Work Email</label>
+              <input required type="email" placeholder="ceo@company.com" className="inp w-full py-4 text-sm" value={form.email} onChange={e => setForm({...form, email: e.target.value})} disabled={loading} />
+            </div>
+            <div className="space-y-1">
+              <label className="text-[9px] font-black uppercase text-slate-500 tracking-widest pl-1">Mobile (for WhatsApp Demo)</label>
+              <input required type="tel" placeholder="+1 (407) 555-0199" className="inp w-full py-4 text-sm font-mono" value={form.phone} onChange={e => setForm({...form, phone: e.target.value})} disabled={loading} />
+            </div>
           </div>
 
           <div className="space-y-1">
@@ -9823,7 +10038,7 @@ Instrucciones generales de formato:
       </div>
     );
   }
-  if (view === 'signup') return <OnboardingFlow onBack={() => setView('landing')} tt={tt} />;
+  if (view === 'signup') return <OnboardingFlow onBack={() => setView('landing')} onLoginSuccess={handleLoginSuccess} tt={tt} />;
   if (view === 'auth') return <LoginFlow onBack={() => setView('landing')} onLoginSuccess={handleLoginSuccess} tt={tt} />;
 
   // Staff View Mobile Operations Check-in Checklist
