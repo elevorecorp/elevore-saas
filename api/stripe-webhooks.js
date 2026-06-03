@@ -78,7 +78,7 @@ export default async function handler(req, res) {
           console.log(`Tenant ${tenant_id} upgraded successfully.`);
         }
       } else if (metadata.mode === 'payment') {
-        const { tenant_id, client_name, client_email, client_phone, address, service_type } = metadata;
+        const { tenant_id, client_name, client_email, client_phone, address, service_type, mission_id, payment_type } = metadata;
         let specs = {};
         try {
           specs = metadata.specs ? JSON.parse(metadata.specs) : {};
@@ -89,32 +89,83 @@ export default async function handler(req, res) {
         const totalPrice = session.amount_total ? session.amount_total / 100 : 0;
 
         if (sb) {
-          console.log(`Creating paid mission for customer ${client_name}...`);
-          const { data: inserted, error } = await sb
-            .from('elevore_missions')
-            .insert({
-              tenant_id: tenant_id || null,
-              client_name,
-              client_email,
-              client_phone,
-              address,
-              service_type,
-              status: 'paid',
-              total_price: totalPrice,
-              specs,
-              created_at: new Date().toISOString()
-            })
-            .select();
+          if (mission_id) {
+            console.log(`Updating existing mission ${mission_id} with Stripe payment...`);
+            
+            // Retrieve existing mission to merge specs
+            const { data: existing, error: fetchErr } = await sb
+              .from('elevore_missions')
+              .select('specs')
+              .eq('id', mission_id)
+              .maybeSingle();
 
-          if (error) {
-            console.error('Error inserting paid mission in Supabase:', error);
-            return res.status(500).json({ error: error.message });
-          }
+            const existingSpecs = (existing && existing.specs) ? existing.specs : {};
+            const updatedSpecs = {
+              ...existingSpecs,
+              ...specs,
+              deposit_paid: payment_type === 'deposit',
+              paid_in_full: payment_type === 'full' || payment_type === 'deposit' ? false : true,
+              stripe_session_id: session.id,
+              payment_method: 'stripe',
+              payment_amount: totalPrice,
+              paid_at: new Date().toISOString()
+            };
 
-          if (inserted && inserted[0]) {
-            console.log(`Paid mission created successfully with ID: ${inserted[0].id}`);
-            // Trigger Google Review booster and background jobs
-            await triggerInngestEvent('elevore/mission.paid', { jobId: inserted[0].id });
+            const updateData = {
+              specs: updatedSpecs
+            };
+
+            if (payment_type === 'full') {
+              updateData.status = 'paid';
+              updateData.total_price = totalPrice;
+            } else if (payment_type === 'deposit') {
+              updateData.status = 'scheduled';
+            } else {
+              updateData.status = 'paid';
+              updateData.total_price = totalPrice;
+            }
+
+            const { error: updateErr } = await sb
+              .from('elevore_missions')
+              .update(updateData)
+              .eq('id', mission_id);
+
+            if (updateErr) {
+              console.error('Error updating paid mission in Supabase:', updateErr);
+              return res.status(500).json({ error: updateErr.message });
+            }
+
+            console.log(`Mission ${mission_id} updated successfully.`);
+            await triggerInngestEvent('elevore/mission.paid', { jobId: mission_id });
+
+          } else {
+            console.log(`Creating paid mission for customer ${client_name}...`);
+            const { data: inserted, error } = await sb
+              .from('elevore_missions')
+              .insert({
+                tenant_id: tenant_id || null,
+                client_name,
+                client_email,
+                client_phone,
+                address,
+                service_type,
+                status: 'paid',
+                total_price: totalPrice,
+                specs,
+                created_at: new Date().toISOString()
+              })
+              .select();
+
+            if (error) {
+              console.error('Error inserting paid mission in Supabase:', error);
+              return res.status(500).json({ error: error.message });
+            }
+
+            if (inserted && inserted[0]) {
+              console.log(`Paid mission created successfully with ID: ${inserted[0].id}`);
+              // Trigger Google Review booster and background jobs
+              await triggerInngestEvent('elevore/mission.paid', { jobId: inserted[0].id });
+            }
           }
         }
       }

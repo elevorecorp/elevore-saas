@@ -21,7 +21,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { mode, tenant_id, plan, amount, currency = 'usd', client_name, client_email, client_phone, address, service_type, specs = {} } = req.body || {};
+    const { mode, tenant_id, plan, amount, currency = 'usd', client_name, client_email, client_phone, address, service_type, specs = {}, mission_id, payment_type } = req.body || {};
 
     if (!mode || !['subscription', 'payment'].includes(mode)) {
       return res.status(400).json({ error: 'Invalid or missing mode parameter' });
@@ -45,20 +45,24 @@ export default async function handler(req, res) {
       if (mode === 'subscription') {
         redirectUrl = `${origin}/?view=settings&settingsTab=billing&checkout_success=true&session_id=${sessionId}&tenant_id=${tenant_id}&plan=${plan}`;
       } else {
-        // Encode metadata & specs to pass back to client portal
-        const queryParams = new URLSearchParams({
-          booking_success: 'true',
-          session_id: sessionId,
-          tenant_id,
-          client_name: client_name || '',
-          client_email: client_email || '',
-          client_phone: client_phone || '',
-          address: address || '',
-          service_type: service_type || '',
-          amount: String(amount || 0),
-          specs: JSON.stringify(specs)
-        }).toString();
-        redirectUrl = `${origin}/?${queryParams}`;
+        if (mission_id) {
+          redirectUrl = `${origin}/?propuesta=${mission_id}&payment_success=true&session_id=${sessionId}&mock=true&amount=${amount}`;
+        } else {
+          // Encode metadata & specs to pass back to client portal
+          const queryParams = new URLSearchParams({
+            booking_success: 'true',
+            session_id: sessionId,
+            tenant_id,
+            client_name: client_name || '',
+            client_email: client_email || '',
+            client_phone: client_phone || '',
+            address: address || '',
+            service_type: service_type || '',
+            amount: String(amount || 0),
+            specs: JSON.stringify(specs)
+          }).toString();
+          redirectUrl = `${origin}/?${queryParams}`;
+        }
       }
 
       return res.status(200).json({ url: redirectUrl, mock: true });
@@ -113,6 +117,14 @@ export default async function handler(req, res) {
 
       const totalCents = Math.round(Number(amount) * 100);
 
+      let successUrl = `${origin}/?booking_success=true&session_id={CHECKOUT_SESSION_ID}&tenant_id=${tenant_id}&client_name=${encodeURIComponent(client_name)}&client_email=${encodeURIComponent(client_email)}&client_phone=${encodeURIComponent(client_phone)}&address=${encodeURIComponent(address)}&service_type=${encodeURIComponent(service_type)}&amount=${amount}&specs=${encodeURIComponent(JSON.stringify(specs))}`;
+      let cancelUrl = `${origin}/?booking_cancel=true&t=${tenant_id}`;
+
+      if (mission_id) {
+        successUrl = `${origin}/?propuesta=${mission_id}&payment_success=true&session_id={CHECKOUT_SESSION_ID}`;
+        cancelUrl = `${origin}/?propuesta=${mission_id}&payment_cancel=true`;
+      }
+
       const session = await stripe.checkout.sessions.create({
         payment_method_types: ['card'],
         mode: 'payment',
@@ -122,7 +134,7 @@ export default async function handler(req, res) {
             price_data: {
               currency,
               product_data: {
-                name: `${service_type.toUpperCase()} - Servicio de Limpieza`,
+                name: `${service_type.toUpperCase()} - ${payment_type === 'deposit' ? 'Depósito de Reserva' : 'Servicio de Limpieza'}`,
                 description: `Servicio programado en ${address}`,
               },
               unit_amount: totalCents,
@@ -138,10 +150,12 @@ export default async function handler(req, res) {
           client_phone,
           address,
           service_type,
-          specs: JSON.stringify(specs)
+          specs: JSON.stringify(specs),
+          mission_id: mission_id || '',
+          payment_type: payment_type || ''
         },
-        success_url: `${origin}/?booking_success=true&session_id={CHECKOUT_SESSION_ID}&tenant_id=${tenant_id}&client_name=${encodeURIComponent(client_name)}&client_email=${encodeURIComponent(client_email)}&client_phone=${encodeURIComponent(client_phone)}&address=${encodeURIComponent(address)}&service_type=${encodeURIComponent(service_type)}&amount=${amount}&specs=${encodeURIComponent(JSON.stringify(specs))}`,
-        cancel_url: `${origin}/?booking_cancel=true&t=${tenant_id}`,
+        success_url: successUrl,
+        cancel_url: cancelUrl,
       });
 
       return res.status(200).json({ url: session.url });

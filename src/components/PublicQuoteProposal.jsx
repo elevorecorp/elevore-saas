@@ -140,6 +140,7 @@ export function PublicQuoteProposal({ quoteId }) {
   const canvasRef = useRef(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const [hasSigned, setHasSigned] = useState(false);
+  const [payMethod, setPayMethod] = useState('card'); // 'card' or 'zelle'
 
   // Fetch initial proposal data
   useEffect(() => {
@@ -156,29 +157,66 @@ export function PublicQuoteProposal({ quoteId }) {
           throw new Error('Quote not found');
         }
 
-        setJob(jobData);
-        setLang(jobData.specs?.lang || 'es');
+        const urlParams = new URLSearchParams(window.location.search);
+        const paymentSuccess = urlParams.get('payment_success') === 'true';
+        
+        let jobDataToUse = jobData;
+        if (paymentSuccess && jobData.status !== 'scheduled' && jobData.status !== 'paid') {
+          // If return from successful Stripe checkout and status is still lead/pending,
+          // update the database immediately to be scheduled (or paid depending on deposit vs full).
+          // This is a client-side fallback/sync.
+          const isMock = urlParams.get('mock') === 'true';
+          const mockAmount = urlParams.get('amount') ? Number(urlParams.get('amount')) : null;
+          
+          const updatedSpecs = {
+            ...(jobData.specs || {}),
+            deposit_paid: true,
+            payment_method: 'stripe',
+            paid_at: new Date().toISOString(),
+            stripe_session_id: urlParams.get('session_id') || 'cs_mock_sync'
+          };
+          
+          const updateData = {
+            status: 'scheduled',
+            specs: updatedSpecs
+          };
+          if (mockAmount) {
+            updateData.total_price = mockAmount;
+          }
+          
+          const { error: updateErr } = await sb
+            .from('elevore_missions')
+            .update(updateData)
+            .eq('id', quoteId);
+            
+          if (!updateErr) {
+            jobDataToUse = { ...jobData, ...updateData };
+          }
+        }
+
+        setJob(jobDataToUse);
+        setLang(jobDataToUse.specs?.lang || 'es');
         
         // Auto-select tier if already selected in specs
-        if (jobData.specs?.selected_tier) {
-          setSelectedTier(jobData.specs.selected_tier);
+        if (jobDataToUse.specs?.selected_tier) {
+          setSelectedTier(jobDataToUse.specs.selected_tier);
         }
         
         // Auto-select add-ons if already saved
-        if (jobData.specs?.accepted_addons) {
-          setSelectedAddons(jobData.specs.accepted_addons);
+        if (jobDataToUse.specs?.accepted_addons) {
+          setSelectedAddons(jobDataToUse.specs.accepted_addons);
         } else {
           // Pre-populate from job columns
           const initialAddons = [];
-          if (jobData.specs?.oven) initialAddons.push('oven');
-          if (jobData.specs?.fridge) initialAddons.push('fridge');
-          if (jobData.specs?.windows) initialAddons.push('windows');
-          if (jobData.specs?.pethair) initialAddons.push('pethair');
-          if (jobData.specs?.garage) initialAddons.push('garage');
+          if (jobDataToUse.specs?.oven) initialAddons.push('oven');
+          if (jobDataToUse.specs?.fridge) initialAddons.push('fridge');
+          if (jobDataToUse.specs?.windows) initialAddons.push('windows');
+          if (jobDataToUse.specs?.pethair) initialAddons.push('pethair');
+          if (jobDataToUse.specs?.garage) initialAddons.push('garage');
           setSelectedAddons(initialAddons);
         }
 
-        if (jobData.status === 'scheduled' || jobData.status === 'in_progress' || jobData.status === 'completed' || jobData.status === 'paid') {
+        if (jobDataToUse.status === 'scheduled' || jobDataToUse.status === 'in_progress' || jobDataToUse.status === 'completed' || jobDataToUse.status === 'paid' || paymentSuccess) {
           setIsSuccess(true);
         }
 
@@ -186,7 +224,7 @@ export function PublicQuoteProposal({ quoteId }) {
         const { data: settingsData } = await sb
           .from('tenant_settings')
           .select('*')
-          .eq('tenant_id', jobData.tenant_id)
+          .eq('tenant_id', jobDataToUse.tenant_id)
           .maybeSingle();
 
         if (settingsData) {
@@ -336,11 +374,14 @@ export function PublicQuoteProposal({ quoteId }) {
       };
 
       const updateData = {
-        status: 'scheduled',
         total_price: priceCalculations.total,
         approval_signature: sigDataUrl,
         specs: updatedSpecs
       };
+
+      if (payMethod === 'zelle') {
+        updateData.status = 'scheduled';
+      }
 
       const { error: updateErr } = await sb
         .from('elevore_missions')
@@ -349,12 +390,46 @@ export function PublicQuoteProposal({ quoteId }) {
 
       if (updateErr) throw updateErr;
 
-      // Update local state to reflect success
-      setJob({ ...job, ...updateData });
-      setIsSuccess(true);
+      if (payMethod === 'card') {
+        // Redirigir a Stripe Checkout
+        const response = await fetch('/api/create-checkout-session', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            mode: 'payment',
+            tenant_id: job.tenant_id,
+            amount: priceCalculations.deposit,
+            currency: 'usd',
+            client_name: job.client_name,
+            client_email: job.client_email,
+            client_phone: job.client_phone,
+            address: job.address,
+            service_type: job.service_type,
+            mission_id: quoteId,
+            payment_type: 'deposit',
+            specs: updatedSpecs
+          })
+        });
+
+        if (!response.ok) {
+          const errJson = await response.json();
+          throw new Error(errJson.error || 'Fallo en Stripe Checkout');
+        }
+
+        const resData = await response.json();
+        if (resData.url) {
+          window.location.href = resData.url;
+        } else {
+          throw new Error('No checkout URL received');
+        }
+      } else {
+        // Update local state to reflect success
+        setJob({ ...job, ...updateData, status: 'scheduled' });
+        setIsSuccess(true);
+      }
     } catch (err) {
       console.error('Error accepting proposal:', err);
-      alert('Error updating status: ' + err.message);
+      alert('Error: ' + err.message);
     } finally {
       setLoading(false);
     }
@@ -518,7 +593,13 @@ export function PublicQuoteProposal({ quoteId }) {
             
             <div className="space-y-2">
               <h2 className="text-2xl font-black uppercase italic text-white tracking-wide font-display">{ls.successTitle}</h2>
-              <p className="text-xs text-slate-400">{ls.successSubtitle}</p>
+              {job?.specs?.deposit_paid || window.location.search.includes('payment_success=true') ? (
+                <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-500/15 border border-emerald-500/30 rounded-full text-emerald-400 text-[8px] font-black uppercase tracking-wider mx-auto">
+                  💳 Depósito Asegurado vía Stripe
+                </div>
+              ) : (
+                <p className="text-xs text-slate-400">{ls.successSubtitle}</p>
+              )}
             </div>
 
             <div className="bg-black/35 border border-white/5 rounded-2xl p-6 text-left space-y-3 print-card">
@@ -574,7 +655,7 @@ export function PublicQuoteProposal({ quoteId }) {
             </div>
 
             {/* Zelle payment information */}
-            {(tenantSettings?.zelle_phone || tenantSettings?.zelle_name) && (
+            {!(job?.specs?.deposit_paid || window.location.search.includes('payment_success=true')) && (tenantSettings?.zelle_phone || tenantSettings?.zelle_name) && (
               <div className="bg-blue-600/10 border border-blue-500/20 rounded-2xl p-5 text-center text-xs space-y-1 no-print">
                 <p className="text-slate-400 uppercase font-black text-[9px] tracking-wider">{ls.payZelle}</p>
                 {tenantSettings.zelle_phone && <p className="text-lg font-black text-white">{tenantSettings.zelle_phone}</p>}
@@ -800,8 +881,53 @@ export function PublicQuoteProposal({ quoteId }) {
                 )}
               </div>
 
-              {/* SIGNATURE SECTION CARD */}
+              {/* SIGNATURE & PAYMENT SECTION CARD */}
               <div className="g p-6 bg-gradient-to-br from-slate-950 via-zinc-900 to-black border border-white/10 rounded-3xl shadow-2xl space-y-4">
+                
+                {/* Selector de Método de Confirmación y Pago */}
+                <div className="space-y-2">
+                  <label className="text-[8.5px] font-black uppercase text-slate-500 tracking-widest pl-1">
+                    {lang === 'es' ? 'Método de Confirmación y Pago' : 'Confirmation & Payment Method'}
+                  </label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setPayMethod('card')}
+                      className={`flex flex-col items-center justify-center p-3 rounded-2xl border text-center transition-all duration-200 ${
+                        payMethod === 'card'
+                          ? 'bg-amber-500/10 border-[#F5C518] text-[#F5C518] font-extrabold shadow-lg shadow-[#F5C518]/5'
+                          : 'bg-black/40 border-white/5 text-slate-400 hover:border-white/10 hover:text-white'
+                      }`}
+                    >
+                      <span className="text-base mb-1">💳</span>
+                      <span className="text-[8.5px] font-black uppercase tracking-wider">
+                        {lang === 'es' ? 'Tarjeta' : 'Card'}
+                      </span>
+                      <span className="text-[6.5px] uppercase text-slate-500 mt-0.5 font-bold">
+                        {lang === 'es' ? '20% Depósito' : '20% Deposit'}
+                      </span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setPayMethod('zelle')}
+                      className={`flex flex-col items-center justify-center p-3 rounded-2xl border text-center transition-all duration-200 ${
+                        payMethod === 'zelle'
+                          ? 'bg-blue-500/10 border-blue-500 text-blue-400 font-extrabold shadow-lg shadow-blue-500/5'
+                          : 'bg-black/40 border-white/5 text-slate-400 hover:border-white/10 hover:text-white'
+                      }`}
+                    >
+                      <span className="text-base mb-1">🏦</span>
+                      <span className="text-[8.5px] font-black uppercase tracking-wider">
+                        Zelle
+                      </span>
+                      <span className="text-[6.5px] uppercase text-slate-500 mt-0.5 font-bold">
+                        {lang === 'es' ? 'Pago Manual' : 'Manual Pay'}
+                      </span>
+                    </button>
+                  </div>
+                </div>
+
                 <div>
                   <h3 className="text-xs font-black uppercase tracking-widest text-[#F5C518] font-display">{ls.sign}</h3>
                   <p className="text-[8px] text-slate-500 uppercase font-bold mt-1 leading-normal">{ls.terms}</p>
@@ -841,7 +967,12 @@ export function PublicQuoteProposal({ quoteId }) {
                   disabled={!hasSigned}
                   className={`w-full py-5 rounded-2xl font-black text-xs uppercase italic tracking-widest font-display transition-all shadow-xl active:scale-95 ${hasSigned ? 'bg-gradient-to-r from-amber-500 to-[#F5C518] text-black hover:brightness-110 shadow-[#F5C518]/10 cursor-pointer' : 'bg-white/5 border border-white/5 text-slate-600 cursor-not-allowed shadow-none'}`}
                 >
-                  {ls.confirm}
+                  {hasSigned 
+                    ? (payMethod === 'card' 
+                       ? `${lang === 'es' ? 'PAGAR DEPÓSITO Y CONFIRMAR' : 'PAY DEPOSIT & CONFIRM'} (${fmt$(priceCalculations.deposit)})`
+                       : (lang === 'es' ? 'ACEPTAR Y CONFIRMAR' : 'ACCEPT & CONFIRM'))
+                    : ls.confirm
+                  }
                 </button>
               </div>
 
