@@ -7215,6 +7215,7 @@ export default function App() {
     if (!tenant) return false;
     const isSubscribed = tenant.stripe_subscription_status && tenant.stripe_subscription_status.startsWith('active');
     if (isSubscribed) return false;
+    if (tenant.stripe_subscription_status === 'free') return false;
     const trialEnds = new Date(tenant.trial_ends_at || 0);
     return new Date() > trialEnds;
   }, [tenant]);
@@ -7227,6 +7228,7 @@ export default function App() {
     if (status.includes('premium')) return 'premium';
     if (status.includes('basic')) return 'basic';
     if (status === 'trialing') return 'premium'; // Trial has premium access
+    if (status === 'free') return 'free';
     return 'free';
   }, [tenant, isTrialExpired]);
 
@@ -7249,6 +7251,32 @@ export default function App() {
     } catch (err) {
       console.error('Error updating plan:', err);
     }
+  };
+
+  const handleChooseFreePlan = async () => {
+    if (!tenant) return;
+    setBillingLoading(true);
+    try {
+      const { error } = await sb
+        .from('tenants')
+        .update({ stripe_subscription_status: 'free' })
+        .eq('id', tenant.id);
+      
+      if (error) throw error;
+      
+      setTenant(prev => ({
+        ...prev,
+        stripe_subscription_status: 'free'
+      }));
+      if (typeof tt === 'function') {
+        tt(prefLang === 'es' ? '¡Modo Plan Gratuito activado!' : 'Free Plan mode activated!');
+      }
+    } catch (err) {
+      if (typeof tt === 'function') {
+        tt(prefLang === 'es' ? 'Error al activar plan gratuito: ' + err.message : 'Error activating free plan: ' + err.message, 'red');
+      }
+    }
+    setBillingLoading(false);
   };
 
   // Billing states
@@ -8046,7 +8074,7 @@ Instrucciones:
       setState(INIT); setEdit(null);
       log(`${editId ? 'Updated' : 'New'}: ${state.name} — ${fmt$(state.totalPrice || pricing.total)}`);
       tt(editId ? 'Updated! ⚡' : 'Deployed! 🚀');
-      setView('agenda'); refresh();
+      setView('operations'); setOperationsTab('calendar'); setAgendaView('list'); refresh();
     } catch (e) { tt('Error: ' + e.message, 'red'); }
     setLoad(false);
   };
@@ -10447,6 +10475,13 @@ Instrucciones generales de formato:
                   >
                     Ver detalles del plan en Ajustes
                   </button>
+                  
+                  <button 
+                    onClick={handleChooseFreePlan}
+                    className="w-full bg-[#22c55e]/10 border border-[#22c55e]/20 hover:bg-[#22c55e]/20 text-[#22c55e] py-2.5 rounded-xl font-black uppercase text-[9px] active:scale-95 transition-all"
+                  >
+                    {prefLang === 'es' ? 'Continuar con el Plan Gratuito (Limitado) ➔' : 'Continue with Free Plan (Limited) ➔'}
+                  </button>
                 </div>
               </div>
             </div>
@@ -10812,7 +10847,7 @@ Instrucciones generales de formato:
               <div>
                 <p className="text-xs font-bold text-slate-500 uppercase tracking-[0.2em] mb-3">⚡ Acción Rápida</p>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                  <button onClick={() => { setFSt('lead'); setView('agenda'); }} className="group relative rounded-2xl border border-[#F5C518]/20 bg-gradient-to-br from-amber-950/20 to-black p-5 text-left active:scale-[0.97] transition-all duration-300 hover:-translate-y-1 hover:border-[#F5C518]/50 hover:bg-gradient-to-br hover:from-amber-950/35 hover:to-black hover:shadow-[0_10px_20px_rgba(245,197,24,0.1)] overflow-hidden animate-in fade-in slide-in-from-bottom-2" style={{ animationDelay: '150ms', animationFillMode: 'both' }}>
+                  <button onClick={() => { setFSt('lead'); setView('operations'); setOperationsTab('calendar'); setAgendaView('list'); }} className="group relative rounded-2xl border border-[#F5C518]/20 bg-gradient-to-br from-amber-950/20 to-black p-5 text-left active:scale-[0.97] transition-all duration-300 hover:-translate-y-1 hover:border-[#F5C518]/50 hover:bg-gradient-to-br hover:from-amber-950/35 hover:to-black hover:shadow-[0_10px_20px_rgba(245,197,24,0.1)] overflow-hidden animate-in fade-in slide-in-from-bottom-2" style={{ animationDelay: '150ms', animationFillMode: 'both' }}>
                     <div className="absolute top-0 left-0 w-full h-[1.5px] bg-gradient-to-r from-[#F5C518]/50 to-transparent" />
                     <div className="w-10 h-10 rounded-2xl bg-[#F5C518]/10 border border-[#F5C518]/20 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300">
                       <Icon name="clock" className="w-5 h-5 text-[#F5C518]" />
@@ -10822,7 +10857,7 @@ Instrucciones generales de formato:
                     <p className="text-[11px] text-slate-500 mt-1 font-medium">{finance.pendSig.length} estimados sin firmar →</p>
                   </button>
 
-                  <button onClick={() => { setFSt('lead'); setView('agenda'); }} className="group relative rounded-2xl border border-red-500/20 bg-gradient-to-br from-red-950/20 to-black p-5 text-left active:scale-[0.97] transition-all duration-300 hover:-translate-y-1 hover:border-red-500/50 hover:shadow-[0_10px_20px_rgba(239,68,68,0.1)] overflow-hidden animate-in fade-in slide-in-from-bottom-2" style={{ animationDelay: '250ms', animationFillMode: 'both' }}>
+                  <button onClick={() => { setFSt('lead'); setView('operations'); setOperationsTab('calendar'); setAgendaView('list'); }} className="group relative rounded-2xl border border-red-500/20 bg-gradient-to-br from-red-950/20 to-black p-5 text-left active:scale-[0.97] transition-all duration-300 hover:-translate-y-1 hover:border-red-500/50 hover:shadow-[0_10px_20px_rgba(239,68,68,0.1)] overflow-hidden animate-in fade-in slide-in-from-bottom-2" style={{ animationDelay: '250ms', animationFillMode: 'both' }}>
                     <div className="absolute top-0 left-0 w-full h-[1.5px] bg-gradient-to-r from-red-400/50 to-transparent" />
                     <div className="w-10 h-10 rounded-2xl bg-red-500/10 border border-red-500/20 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300">
                       <Icon name="alert-triangle" className="w-5 h-5 text-red-400" />
@@ -10832,7 +10867,7 @@ Instrucciones generales de formato:
                     <p className="text-[11px] text-slate-500 mt-1 font-medium">vencen en menos de 6h →</p>
                   </button>
 
-                  <button onClick={() => { setFSt('completed'); setView('agenda'); }} className="group relative rounded-2xl border border-purple-500/20 bg-gradient-to-br from-purple-950/20 to-black p-5 text-left active:scale-[0.97] transition-all duration-300 hover:-translate-y-1 hover:border-purple-500/50 hover:shadow-[0_10px_20px_rgba(168,85,247,0.1)] overflow-hidden animate-in fade-in slide-in-from-bottom-2" style={{ animationDelay: '350ms', animationFillMode: 'both' }}>
+                  <button onClick={() => { setFSt('completed'); setView('operations'); setOperationsTab('calendar'); setAgendaView('list'); }} className="group relative rounded-2xl border border-purple-500/20 bg-gradient-to-br from-purple-950/20 to-black p-5 text-left active:scale-[0.97] transition-all duration-300 hover:-translate-y-1 hover:border-purple-500/50 hover:shadow-[0_10px_20px_rgba(168,85,247,0.1)] overflow-hidden animate-in fade-in slide-in-from-bottom-2" style={{ animationDelay: '350ms', animationFillMode: 'both' }}>
                     <div className="absolute top-0 left-0 w-full h-[1.5px] bg-gradient-to-r from-purple-400/50 to-transparent" />
                     <div className="w-10 h-10 rounded-2xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300">
                       <Icon name="camera" className="w-5 h-5 text-purple-400" />
@@ -10842,7 +10877,7 @@ Instrucciones generales de formato:
                     <p className="text-[11px] text-slate-500 mt-1 font-medium">necesita revisión →</p>
                   </button>
 
-                  <button onClick={() => { setFSt('paid'); setView('agenda'); }} className="group relative rounded-2xl border border-blue-500/20 bg-gradient-to-br from-blue-950/20 to-black p-5 text-left active:scale-[0.97] transition-all duration-300 hover:-translate-y-1 hover:border-blue-500/50 hover:shadow-[0_10px_20px_rgba(59,130,246,0.1)] overflow-hidden animate-in fade-in slide-in-from-bottom-2" style={{ animationDelay: '450ms', animationFillMode: 'both' }}>
+                  <button onClick={() => { setFSt('paid'); setView('operations'); setOperationsTab('calendar'); setAgendaView('list'); }} className="group relative rounded-2xl border border-blue-500/20 bg-gradient-to-br from-blue-950/20 to-black p-5 text-left active:scale-[0.97] transition-all duration-300 hover:-translate-y-1 hover:border-blue-500/50 hover:shadow-[0_10px_20px_rgba(59,130,246,0.1)] overflow-hidden animate-in fade-in slide-in-from-bottom-2" style={{ animationDelay: '450ms', animationFillMode: 'both' }}>
                     <div className="absolute top-0 left-0 w-full h-[1.5px] bg-gradient-to-r from-blue-400/50 to-transparent" />
                     <div className="w-10 h-10 rounded-2xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300">
                       <Icon name="message-circle" className="w-5 h-5 text-blue-400" />
