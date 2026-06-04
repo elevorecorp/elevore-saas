@@ -11255,7 +11255,7 @@ Instrucciones generales de formato:
             >
               <div className="space-y-6 animate-in fade-in">
               {/* Premium Sub-tabs Switcher */}
-              <div className="flex gap-2 bg-black/45 p-1.5 rounded-2xl border border-white/5 overflow-x-auto nsb">
+              <div className="flex flex-wrap gap-2 bg-black/45 p-2 rounded-2xl border border-white/5">
                 {[
                   { id: 'overview', name: '📊 Resumen General' },
                   { id: 'services', name: '🧹 Desglose por Servicio' },
@@ -13231,7 +13231,7 @@ Instrucciones generales de formato:
             return (
               <div className="space-y-5 animate-in fade-in slide-in-from-bottom-2 duration-500 pb-24">
                 {/* Operations Sub-tabs Switcher */}
-                <div className="flex gap-2 bg-black/45 p-2 rounded-2xl border border-white/5 overflow-x-auto nsb">
+                <div className="flex flex-wrap gap-2 bg-black/45 p-2 rounded-2xl border border-white/5">
                   {[
                     { id: 'calendar', name: '📅 Calendario de Misiones' },
                     { id: 'reminders', name: `🔔 Recordatorios (${remindersBadgeCount})` },
@@ -13630,7 +13630,7 @@ Instrucciones generales de formato:
           {role === 'admin' && view === 'crm' && crmTab === 'dna' && (
             <div className="space-y-5 animate-in fade-in slide-in-from-bottom-2 duration-500 pb-24">
               {/* CRM Sub-tabs Switcher */}
-              <div className="flex gap-2 bg-black/45 p-2 rounded-2xl border border-white/5 overflow-x-auto nsb">
+              <div className="flex flex-wrap gap-2 bg-black/45 p-2 rounded-2xl border border-white/5">
                 {[
                   { id: 'dna', name: '👥 DNA de Clientes' },
                   { id: 'vip', name: '💎 Membresías VIP' },
@@ -13705,7 +13705,7 @@ Instrucciones generales de formato:
           {role === 'admin' && view === 'settings' && (
             <div className="space-y-6 animate-in fade-in pb-24">
               {/* Settings Sub-tabs Switcher */}
-              <div className="flex gap-2 bg-black/45 p-1.5 rounded-2xl border border-white/5 overflow-x-auto nsb">
+              <div className="flex flex-wrap gap-2 bg-black/45 p-2 rounded-2xl border border-white/5">
                 {[
                   { id: 'company', name: '⚙️ Ajustes de Empresa' },
                   { id: 'billing', name: '👑 Plan SaaS Billing' }
@@ -14054,7 +14054,7 @@ Instrucciones generales de formato:
           {role === 'admin' && view === 'intel' && financeTab === 'payroll' && (
             <div className="space-y-6 animate-in fade-in pb-24">
               {/* Intel Sub-tabs Switcher */}
-              <div className="flex gap-2 bg-black/45 p-1.5 rounded-2xl border border-white/5 overflow-x-auto nsb">
+              <div className="flex flex-wrap gap-2 bg-black/45 p-2 rounded-2xl border border-white/5">
                 {[
                   { id: 'summary', name: '📈 Resumen Financiero' },
                   { id: 'services', name: '💼 Desglose por Servicio' },
@@ -14373,7 +14373,7 @@ Instrucciones generales de formato:
           {role === 'admin' && view === 'operations' && operationsTab === 'drive' && (
             <div className="space-y-4 animate-in fade-in pb-24">
               {/* Operations Sub-tabs Switcher */}
-              <div className="flex gap-2 bg-black/45 p-1.5 rounded-2xl border border-white/5 overflow-x-auto nsb">
+              <div className="flex flex-wrap gap-2 bg-black/45 p-2 rounded-2xl border border-white/5">
                 {[
                   { id: 'calendar', name: '📅 Calendario de Misiones' },
                   { id: 'reminders', name: `🔔 Recordatorios (${remindersBadgeCount})` },
@@ -14443,7 +14443,7 @@ Instrucciones generales de formato:
             >
               <div className="space-y-4 animate-in fade-in pb-24">
                 {/* Operations Sub-tabs Switcher */}
-                <div className="flex gap-2 bg-black/45 p-1.5 rounded-2xl border border-white/5 overflow-x-auto nsb">
+                <div className="flex flex-wrap gap-2 bg-black/45 p-2 rounded-2xl border border-white/5">
                   {[
                     { id: 'calendar', name: '📅 Calendario de Misiones' },
                     { id: 'reminders', name: `🔔 Recordatorios (${remindersBadgeCount})` },
@@ -14483,7 +14483,7 @@ Instrucciones generales de formato:
           {role === 'admin' && view === 'operations' && operationsTab === 'deploy' && (
             <div className="space-y-6 animate-in zoom-in-95 pb-32">
               {/* Operations Sub-tabs Switcher */}
-              <div className="flex gap-2 bg-black/45 p-1.5 rounded-2xl border border-white/5 overflow-x-auto nsb">
+              <div className="flex flex-wrap gap-2 bg-black/45 p-2 rounded-2xl border border-white/5">
                 {[
                   { id: 'calendar', name: '📅 Calendario de Misiones' },
                   { id: 'reminders', name: `🔔 Recordatorios (${remindersBadgeCount})` },
@@ -15028,7 +15028,7 @@ Respond ONLY in this exact JSON format (no explanation, no markdown, just raw JS
             return (
               <div className="space-y-5 animate-in fade-in pb-24">
                 {/* CRM Sub-tabs Switcher */}
-                <div className="flex gap-2 bg-black/45 p-1.5 rounded-2xl border border-white/5 overflow-x-auto nsb">
+                <div className="flex flex-wrap gap-2 bg-black/45 p-2 rounded-2xl border border-white/5">
                   {[
                     { id: 'dna', name: '👥 DNA de Clientes' },
                     { id: 'vip', name: '💎 Membresías VIP' },
@@ -15137,7 +15137,7 @@ Respond ONLY in this exact JSON format (no explanation, no markdown, just raw JS
             
             return (
               <div className="space-y-5 animate-in fade-in pb-24">
-                <div className="flex gap-2 bg-black/45 p-1.5 rounded-2xl border border-white/5 overflow-x-auto nsb">
+                <div className="flex flex-wrap gap-2 bg-black/45 p-2 rounded-2xl border border-white/5">
                   {[
                     { id: 'dna', name: '👥 DNA de Clientes' },
                     { id: 'vip', name: '💎 Membresías VIP' },
@@ -15275,7 +15275,7 @@ Respond ONLY in this exact JSON format (no explanation, no markdown, just raw JS
 
             return (
               <div className="space-y-5 animate-in fade-in pb-24">
-                <div className="flex gap-2 bg-black/45 p-1.5 rounded-2xl border border-white/5 overflow-x-auto nsb">
+                <div className="flex flex-wrap gap-2 bg-black/45 p-2 rounded-2xl border border-white/5">
                   {[
                     { id: 'dna', name: '👥 DNA de Clientes' },
                     { id: 'vip', name: '💎 Membresías VIP' },
