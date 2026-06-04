@@ -8707,7 +8707,32 @@ Instrucciones:
     };
   }, [jobs]);
 
-  const filtered = useMemo(() => jobs.filter(j => { const ms = fSt === 'all' || j.status === fSt; const q = sq.toLowerCase(); const mq = !sq || j.client_name?.toLowerCase().includes(q) || j.address?.toLowerCase().includes(q) || j.team_assigned?.toLowerCase().includes(q); return ms && mq; }), [jobs, fSt, sq]);
+  const filtered = useMemo(() => {
+    return jobs.filter(j => {
+      let ms = false;
+      if (fSt === 'all') {
+        ms = true;
+      } else if (fSt === 'money_waiting') {
+        ms = j.status === 'lead' && !j.specs?.signature_url;
+      } else if (fSt === 'expiring') {
+        ms = j.status === 'lead' && j.specs?.expires_at && (new Date(j.specs.expires_at) - new Date()) < 21600000;
+      } else if (fSt === 'qc_queue') {
+        ms = j.status === 'completed' && (!j.after_photos || j.after_photos.length === 0);
+      } else if (fSt === 'reviews') {
+        ms = j.status === 'paid' && !j.specs?.review_requested;
+      } else {
+        ms = j.status === fSt;
+      }
+      
+      const q = sq.toLowerCase();
+      const mq = !sq || 
+        j.client_name?.toLowerCase().includes(q) || 
+        j.address?.toLowerCase().includes(q) || 
+        j.team_assigned?.toLowerCase().includes(q);
+      
+      return ms && mq;
+    });
+  }, [jobs, fSt, sq]);
 
   const todayStr = new Date().toISOString().split('T')[0];
 
@@ -10905,7 +10930,7 @@ Instrucciones generales de formato:
               <div>
                 <p className="text-xs font-bold text-slate-500 uppercase tracking-[0.2em] mb-3">⚡ Acción Rápida</p>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                  <button onClick={() => { setFSt('lead'); setView('operations'); setOperationsTab('calendar'); setAgendaView('list'); }} className="group relative rounded-2xl border border-[#F5C518]/20 bg-gradient-to-br from-amber-950/20 to-black p-5 text-left active:scale-[0.97] transition-all duration-300 hover:-translate-y-1 hover:border-[#F5C518]/50 hover:bg-gradient-to-br hover:from-amber-950/35 hover:to-black hover:shadow-[0_10px_20px_rgba(245,197,24,0.1)] overflow-hidden animate-in fade-in slide-in-from-bottom-2" style={{ animationDelay: '150ms', animationFillMode: 'both' }}>
+                  <button onClick={() => { setFSt('money_waiting'); setView('operations'); setOperationsTab('calendar'); setAgendaView('list'); }} className="group relative rounded-2xl border border-[#F5C518]/20 bg-gradient-to-br from-amber-950/20 to-black p-5 text-left active:scale-[0.97] transition-all duration-300 hover:-translate-y-1 hover:border-[#F5C518]/50 hover:bg-gradient-to-br hover:from-amber-950/35 hover:to-black hover:shadow-[0_10px_20px_rgba(245,197,24,0.1)] overflow-hidden animate-in fade-in slide-in-from-bottom-2" style={{ animationDelay: '150ms', animationFillMode: 'both' }}>
                     <div className="absolute top-0 left-0 w-full h-[1.5px] bg-gradient-to-r from-[#F5C518]/50 to-transparent" />
                     <div className="w-10 h-10 rounded-2xl bg-[#F5C518]/10 border border-[#F5C518]/20 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300">
                       <Icon name="clock" className="w-5 h-5 text-[#F5C518]" />
@@ -10915,7 +10940,7 @@ Instrucciones generales de formato:
                     <p className="text-[11px] text-slate-500 mt-1 font-medium">{finance.pendSig.length} estimados sin firmar →</p>
                   </button>
 
-                  <button onClick={() => { setFSt('lead'); setView('operations'); setOperationsTab('calendar'); setAgendaView('list'); }} className="group relative rounded-2xl border border-red-500/20 bg-gradient-to-br from-red-950/20 to-black p-5 text-left active:scale-[0.97] transition-all duration-300 hover:-translate-y-1 hover:border-red-500/50 hover:shadow-[0_10px_20px_rgba(239,68,68,0.1)] overflow-hidden animate-in fade-in slide-in-from-bottom-2" style={{ animationDelay: '250ms', animationFillMode: 'both' }}>
+                  <button onClick={() => { setFSt('expiring'); setView('operations'); setOperationsTab('calendar'); setAgendaView('list'); }} className="group relative rounded-2xl border border-red-500/20 bg-gradient-to-br from-red-950/20 to-black p-5 text-left active:scale-[0.97] transition-all duration-300 hover:-translate-y-1 hover:border-red-500/50 hover:shadow-[0_10px_20px_rgba(239,68,68,0.1)] overflow-hidden animate-in fade-in slide-in-from-bottom-2" style={{ animationDelay: '250ms', animationFillMode: 'both' }}>
                     <div className="absolute top-0 left-0 w-full h-[1.5px] bg-gradient-to-r from-red-400/50 to-transparent" />
                     <div className="w-10 h-10 rounded-2xl bg-red-500/10 border border-red-500/20 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300">
                       <Icon name="alert-triangle" className="w-5 h-5 text-red-400" />
@@ -10925,7 +10950,7 @@ Instrucciones generales de formato:
                     <p className="text-[11px] text-slate-500 mt-1 font-medium">vencen en menos de 6h →</p>
                   </button>
 
-                  <button onClick={() => { setFSt('completed'); setView('operations'); setOperationsTab('calendar'); setAgendaView('list'); }} className="group relative rounded-2xl border border-purple-500/20 bg-gradient-to-br from-purple-950/20 to-black p-5 text-left active:scale-[0.97] transition-all duration-300 hover:-translate-y-1 hover:border-purple-500/50 hover:shadow-[0_10px_20px_rgba(168,85,247,0.1)] overflow-hidden animate-in fade-in slide-in-from-bottom-2" style={{ animationDelay: '350ms', animationFillMode: 'both' }}>
+                  <button onClick={() => { setFSt('qc_queue'); setView('operations'); setOperationsTab('calendar'); setAgendaView('list'); }} className="group relative rounded-2xl border border-purple-500/20 bg-gradient-to-br from-purple-950/20 to-black p-5 text-left active:scale-[0.97] transition-all duration-300 hover:-translate-y-1 hover:border-purple-500/50 hover:shadow-[0_10px_20px_rgba(168,85,247,0.1)] overflow-hidden animate-in fade-in slide-in-from-bottom-2" style={{ animationDelay: '350ms', animationFillMode: 'both' }}>
                     <div className="absolute top-0 left-0 w-full h-[1.5px] bg-gradient-to-r from-purple-400/50 to-transparent" />
                     <div className="w-10 h-10 rounded-2xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300">
                       <Icon name="camera" className="w-5 h-5 text-purple-400" />
@@ -10935,7 +10960,7 @@ Instrucciones generales de formato:
                     <p className="text-[11px] text-slate-500 mt-1 font-medium">necesita revisión →</p>
                   </button>
 
-                  <button onClick={() => { setFSt('paid'); setView('operations'); setOperationsTab('calendar'); setAgendaView('list'); }} className="group relative rounded-2xl border border-blue-500/20 bg-gradient-to-br from-blue-950/20 to-black p-5 text-left active:scale-[0.97] transition-all duration-300 hover:-translate-y-1 hover:border-blue-500/50 hover:shadow-[0_10px_20px_rgba(59,130,246,0.1)] overflow-hidden animate-in fade-in slide-in-from-bottom-2" style={{ animationDelay: '450ms', animationFillMode: 'both' }}>
+                  <button onClick={() => { setFSt('reviews'); setView('operations'); setOperationsTab('calendar'); setAgendaView('list'); }} className="group relative rounded-2xl border border-blue-500/20 bg-gradient-to-br from-blue-950/20 to-black p-5 text-left active:scale-[0.97] transition-all duration-300 hover:-translate-y-1 hover:border-blue-500/50 hover:shadow-[0_10px_20px_rgba(59,130,246,0.1)] overflow-hidden animate-in fade-in slide-in-from-bottom-2" style={{ animationDelay: '450ms', animationFillMode: 'both' }}>
                     <div className="absolute top-0 left-0 w-full h-[1.5px] bg-gradient-to-r from-blue-400/50 to-transparent" />
                     <div className="w-10 h-10 rounded-2xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300">
                       <Icon name="message-circle" className="w-5 h-5 text-blue-400" />
@@ -13251,8 +13276,35 @@ Instrucciones generales de formato:
                 </div>
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div className="flex gap-1.5 overflow-x-auto nsb pb-1">
-                    {['all', 'lead', 'scheduled', 'in_progress', 'completed', 'paid', 'lost'].map(s => (
-                      <button key={s} onClick={() => setFSt(s)} className={`px-4.5 py-2 rounded-xl text-[10px] font-black uppercase whitespace-nowrap active:scale-95 transition-all duration-300 ${fSt === s ? 'bg-[#F5C518] text-black shadow-md shadow-[#F5C518]/15' : 'bg-white/5 text-slate-400 hover:bg-white/10'}`}>{s}</button>
+                    {[
+                      { id: 'all', label: 'Todos', count: jobs.length },
+                      { id: 'money_waiting', label: '💸 Money Waiting', count: jobs.filter(j => j.status === 'lead' && !j.specs?.signature_url).length },
+                      { id: 'expiring', label: '⚠️ Expirando', count: jobs.filter(j => j.status === 'lead' && j.specs?.expires_at && (new Date(j.specs.expires_at) - new Date()) < 21600000).length },
+                      { id: 'lead', label: 'Leads / Est.', count: jobs.filter(j => j.status === 'lead').length },
+                      { id: 'scheduled', label: 'Programados', count: jobs.filter(j => j.status === 'scheduled').length },
+                      { id: 'in_progress', label: 'En Progreso', count: jobs.filter(j => j.status === 'in_progress').length },
+                      { id: 'qc_queue', label: '📸 QC Queue', count: jobs.filter(j => j.status === 'completed' && (!j.after_photos || j.after_photos.length === 0)).length },
+                      { id: 'completed', label: 'Completados', count: jobs.filter(j => j.status === 'completed').length },
+                      { id: 'reviews', label: '⭐ Reviews Queue', count: jobs.filter(j => j.status === 'paid' && !j.specs?.review_requested).length },
+                      { id: 'paid', label: 'Pagados', count: jobs.filter(j => j.status === 'paid').length },
+                      { id: 'lost', label: 'Perdidos', count: jobs.filter(j => j.status === 'lost').length }
+                    ].filter(f => f.count > 0 || f.id === 'all' || f.id === fSt).map(s => (
+                      <button
+                        key={s.id}
+                        onClick={() => setFSt(s.id)}
+                        className={`px-4.5 py-2.5 rounded-xl text-[10px] font-black uppercase whitespace-nowrap active:scale-95 transition-all duration-300 flex items-center gap-2 ${
+                          fSt === s.id
+                            ? 'bg-[#F5C518] text-black shadow-md shadow-[#F5C518]/15'
+                            : 'bg-white/5 text-slate-400 hover:text-white hover:bg-white/10'
+                        }`}
+                      >
+                        <span>{s.label}</span>
+                        <span className={`px-1.5 py-0.5 rounded text-[8.5px] font-black ${
+                          fSt === s.id ? 'bg-black/15 text-black' : 'bg-white/10 text-slate-400'
+                        }`}>
+                          {s.count}
+                        </span>
+                      </button>
                     ))}
                   </div>
                   {agendaView === 'list' && (
