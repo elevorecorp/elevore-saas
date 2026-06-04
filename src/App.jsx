@@ -7937,6 +7937,33 @@ Instrucciones:
     }
   };
 
+  // Restore session on mount
+  useEffect(() => {
+    const restoreSession = async () => {
+      try {
+        const { data: { session } } = await sb.auth.getSession();
+        if (session && session.user) {
+          // Check if admin
+          const { data: tenant } = await sb.from('tenants').select('*').eq('owner_id', session.user.id).maybeSingle();
+          if (tenant) {
+            const { data: emp } = await sb.from('staff_profiles').select('*').eq('user_id', session.user.id).limit(1).maybeSingle();
+            handleLoginSuccess('admin', tenant.id, session.user, emp || { name: tenant.business_name + ' CEO', role: 'admin' }, tenant.business_name);
+          } else {
+            // Check if staff
+            const { data: emp } = await sb.from('staff_profiles').select('*').eq('user_id', session.user.id).limit(1).maybeSingle();
+            if (emp) {
+              const { data: tnt } = await sb.from('tenants').select('*').eq('id', emp.tenant_id).maybeSingle();
+              handleLoginSuccess('staff', emp.tenant_id, session.user, emp, tnt?.business_name || 'ELEVORE EMPIRE');
+            }
+          }
+        }
+      } catch (err) {
+        console.error('Session restore failed:', err);
+      }
+    };
+    restoreSession();
+  }, []);
+
   // Only refresh data once we're past auth AND have a valid tenantId.
   useEffect(() => {
     if (view !== 'auth' && view !== 'landing' && tenantId) refresh();
@@ -13745,13 +13772,13 @@ Instrucciones generales de formato:
                           <button
                             onClick={async () => {
                               tt('Redirigiendo a Google OAuth...', 'blue');
-                              const { error } = await sb.auth.signInWithOAuth({
-                                provider: 'google',
-                                options: {
-                                  scopes: 'https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/calendar',
-                                  redirectTo: window.location.origin
-                                }
-                              });
+                               const { error } = await sb.auth.signInWithOAuth({
+                                 provider: 'google',
+                                 options: {
+                                   scopes: 'https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/calendar',
+                                   redirectTo: window.location.origin + '?view=settings'
+                                 }
+                               });
                               if (error) tt('Error de OAuth: ' + error.message, 'red');
                             }}
                             className="w-full py-3 bg-white text-black font-black uppercase text-[9px] rounded-xl hover:bg-slate-200 active:scale-95 transition-all flex items-center justify-center gap-2 shadow-[0_0_15px_rgba(255,255,255,0.15)]"
