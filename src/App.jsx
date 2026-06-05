@@ -13998,12 +13998,12 @@ Instrucciones generales de formato:
                       <div className="space-y-4">
                         <h3 className="text-sm font-black uppercase text-[#F5C518]">API & Integrations</h3>
                         <div className="space-y-1">
-                          <label className="text-[9px] font-black uppercase text-slate-500 tracking-widest pl-1">Resend API Key</label>
-                          <input type="password" placeholder="re_..." className="inp w-full font-mono text-xs" value={settingsResendKey} onChange={e => setSettingsResendKey(e.target.value)} />
+                          <label className="text-[9px] font-black uppercase text-slate-500 tracking-widest pl-1">API Key / Gmail App Password</label>
+                          <input type="password" placeholder="re_... o tu contraseña de aplicación de Google" className="inp w-full font-mono text-xs" value={settingsResendKey} onChange={e => setSettingsResendKey(e.target.value)} />
                         </div>
                         <div className="space-y-1">
-                          <label className="text-[9px] font-black uppercase text-slate-500 tracking-widest pl-1">Correo Remitente (Resend Sender Email)</label>
-                          <input type="email" placeholder="hola@tudominio.com" className="inp w-full text-xs" value={settingsSenderEmail} onChange={e => setSettingsSenderEmail(e.target.value)} />
+                          <label className="text-[9px] font-black uppercase text-slate-500 tracking-widest pl-1">Correo Remitente (Resend o Gmail)</label>
+                          <input type="email" placeholder="ejemplo@tudominio.com o tu@gmail.com" className="inp w-full text-xs" value={settingsSenderEmail} onChange={e => setSettingsSenderEmail(e.target.value)} />
                         </div>
                         <div className="space-y-1">
                           <label className="text-[9px] font-black uppercase text-slate-500 tracking-widest pl-1">n8n Webhook URL</label>

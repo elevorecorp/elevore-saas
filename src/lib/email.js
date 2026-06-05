@@ -1,12 +1,45 @@
+import nodemailer from 'nodemailer';
+
 /**
  * Robust Email Helper utility
- * Uses direct fetch calls to Resend API to send HTML emails.
- * Gracefully falls back to console logging when RESEND_API_KEY is not defined.
+ * Uses direct fetch calls to Resend API or direct Gmail SMTP via nodemailer.
+ * Gracefully falls back to console logging when RESEND_API_KEY/Password is not defined.
  */
 export async function sendEmail({ to, subject, html, apiKeyOverride, fromName, senderEmailOverride }) {
   const apiKey = apiKeyOverride || process.env.RESEND_API_KEY;
   const senderName = fromName || "Elevore";
   const fromEmail = senderEmailOverride || "onboarding@resend.dev";
+
+  // If using a Gmail address and we have an API key/Password, route through Gmail SMTP
+  if (fromEmail.toLowerCase().endsWith('@gmail.com') && apiKey) {
+    try {
+      console.log(`📨 Sending direct email via Gmail SMTP (from: ${fromEmail})...`);
+      const transporter = nodemailer.createTransport({
+        host: 'smtp.gmail.com',
+        port: 465,
+        secure: true,
+        auth: {
+          user: fromEmail,
+          pass: apiKey
+        }
+      });
+
+      const info = await transporter.sendMail({
+        from: `${senderName} <${fromEmail}>`,
+        to,
+        subject,
+        html
+      });
+
+      console.log(`📨 Email sent successfully via Gmail SMTP. ID: ${info.messageId}`);
+      return { id: info.messageId };
+    } catch (error) {
+      console.error("Error sending email via Gmail SMTP:", error);
+      return { id: "error_fallback_id_" + Date.now(), error: error.message };
+    }
+  }
+
+  // Fallback to Resend API
   if (!apiKey) {
     console.log("=========================================");
     console.log(`📨 [MOCKED EMAIL SENT] (Missing RESEND_API_KEY, sender: ${senderName}, from: ${fromEmail})`);
