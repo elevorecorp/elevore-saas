@@ -275,12 +275,23 @@ const triggerOnMyWayEmail = async (job, bizName) => {
         subject: `🚀 On our way! Your ${bizName} team is heading over`,
         tenant_id: job.tenant_id,
         html: `
-          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border-top: 4px solid #10b981;">
-            <h2>Hi ${job.client_name || 'Valued Customer'},</h2>
-            <p>Exciting news! Our service team is currently heading towards your address: <strong>${job.address || ''}</strong>.</p>
-            <p>We will be starting your <strong>${svcName}</strong> service shortly. You can expect us to arrive in approximately 20-30 minutes.</p>
-            <p>If you need to share any entry codes, parking details, or last-minute instructions, please let us know by replying to this message or calling us.</p>
-            <p>Thank you for choosing ${bizName}!</p>
+          <div style="background-color: #060609; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 30px; border: 2px solid #F5C518; border-radius: 16px; color: #ffffff; text-align: center;">
+            <div style="margin-bottom: 20px; font-size: 32px;">🚀</div>
+            <h2 style="color: #F5C518; margin-top: 0; font-size: 22px; font-weight: bold; letter-spacing: 1px; text-transform: uppercase;">We are on our way!</h2>
+            <p style="color: #a0aec0; font-size: 16px; line-height: 1.6; text-align: left; margin-bottom: 20px;">Hi ${job.client_name || 'Valued Customer'},</p>
+            <p style="color: #e2e8f0; font-size: 16px; line-height: 1.6; text-align: left; margin-bottom: 20px;">Exciting news! Our team is currently heading to your address:</p>
+            
+            <div style="background-color: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 18px 25px; margin-bottom: 25px; text-align: left;">
+              <strong style="color: #F5C518; font-size: 14px; text-transform: uppercase; letter-spacing: 0.5px;">Destination:</strong>
+              <p style="color: #ffffff; font-size: 16px; margin: 5px 0 0 0; font-weight: bold;">${job.address || ''}</p>
+            </div>
+            
+            <p style="color: #e2e8f0; font-size: 16px; line-height: 1.6; text-align: left; margin-bottom: 25px;">We will be starting your <strong>${svcName}</strong> service shortly. You can expect us to arrive in approximately 20-30 minutes.</p>
+            <p style="color: #a0aec0; font-size: 14px; line-height: 1.6; text-align: left; margin-bottom: 30px;">If you need to share any entry codes, parking details, or last-minute instructions, please reply to this email or call us directly.</p>
+            
+            <hr style="border: 0; border-top: 1px solid rgba(245, 197, 24, 0.15); margin: 30px 0;" />
+            <p style="color: #a0aec0; font-size: 14px; margin: 0;">Thank you for choosing the standard of excellence with</p>
+            <p style="color: #F5C518; font-size: 15px; font-weight: bold; margin: 5px 0 0 0; text-transform: uppercase; letter-spacing: 1px;">${bizName}</p>
           </div>
         `
       })
@@ -306,16 +317,18 @@ const triggerRatingSubmitEmail = async (job, val, bizName, reviewLink, sb, tenan
           subject: `Could you do us a quick favor? 🏠`,
           tenant_id: tenantId || job.tenant_id,
           html: `
-            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 8px;">
-              <h2 style="color: #1a202c; text-align: center;">You made our day! ⭐⭐⭐⭐⭐</h2>
-              <p style="color: #4a5568; font-size: 16px;">Hi ${job.client_name || 'Customer'},</p>
-              <p style="color: #4a5568; font-size: 16px; line-height: 1.5;">Thank you so much for your 5-star rating of our service! As a local business, online reviews mean the world to us and help others find us.</p>
-              <p style="color: #4a5568; font-size: 16px; line-height: 1.5;">Could you take 1 minute to share your experience on Google?</p>
-              <div style="text-align: center; margin: 30px 0;">
-                <a href="${reviewLink}" target="_blank" style="display: inline-block; padding: 15px 30px; background-color: #3b82f6; color: white; font-weight: bold; text-decoration: none; border-radius: 8px; font-size: 16px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);">Write a Google Review</a>
+            <div style="background-color: #060609; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 30px; border: 2px solid #F5C518; border-radius: 16px; color: #ffffff; text-align: center;">
+              <div style="margin-bottom: 20px; font-size: 32px;">🌟</div>
+              <h2 style="color: #F5C518; margin-top: 0; font-size: 24px; font-weight: bold; letter-spacing: 1px; text-transform: uppercase;">You made our day!</h2>
+              <div style="font-size: 20px; color: #F5C518; margin: 15px 0;">★★★★★</div>
+              <p style="color: #a0aec0; font-size: 16px; line-height: 1.6; text-align: left; margin-bottom: 20px;">Hi ${job.client_name || 'Customer'},</p>
+              <p style="color: #e2e8f0; font-size: 16px; line-height: 1.6; text-align: left; margin-bottom: 25px;">Thank you so much for your 5-star rating! As a premium local service provider, online reviews mean the world to us and help others discover our standard of excellence.</p>
+              <p style="color: #e2e8f0; font-size: 16px; line-height: 1.6; text-align: left; margin-bottom: 30px;">Could you take 1 minute to share your experience on Google?</p>
+              <div style="margin: 35px 0;">
+                <a href="${reviewLink}" target="_blank" style="display: inline-block; padding: 16px 36px; background: linear-gradient(135deg, #d4a310 0%, #F5C518 100%); color: #060609; font-weight: bold; text-decoration: none; border-radius: 30px; font-size: 15px; text-transform: uppercase; letter-spacing: 1px; box-shadow: 0 4px 15px rgba(245, 197, 24, 0.4);">Write a Google Review</a>
               </div>
-              <p style="color: #4a5568; font-size: 16px;">We appreciate your support so much!</p>
-              <p style="color: #718096; font-size: 14px;">— The team at ${bizName}</p>
+              <p style="color: #a0aec0; font-size: 16px; margin-top: 30px;">We appreciate your support so much!</p>
+              <p style="color: #F5C518; font-size: 14px; font-weight: bold; margin-top: 5px;">— The team at ${bizName}</p>
             </div>
           `
         })
@@ -333,16 +346,38 @@ const triggerRatingSubmitEmail = async (job, val, bizName, reviewLink, sb, tenan
             subject: `⚠️ ACTION REQUIRED: Low Customer Rating (${val}/5) ⚠️`,
             tenant_id: tenantId,
             html: `
-              <h3>Attention Admin,</h3>
-              <p>A client has left a low rating for service ID: <strong>${job.id}</strong></p>
-              <ul>
-                <li><strong>Client:</strong> ${job.client_name}</li>
-                <li><strong>Phone:</strong> ${job.client_phone}</li>
-                <li><strong>Rating:</strong> ${val}/5 Stars</li>
-                <li><strong>Service:</strong> ${job.service_type}</li>
-                <li><strong>Team Assigned:</strong> ${job.team_assigned || "Unassigned"}</li>
-              </ul>
-              <p>Please contact the client to resolve any issues and protect our service quality reputation.</p>
+              <div style="background-color: #060609; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 45px 35px; border: 2px solid #ef4444; border-radius: 16px; color: #ffffff;">
+                <div style="text-align: center; margin-bottom: 20px; font-size: 32px;">⚠️</div>
+                <h2 style="color: #ef4444; margin-top: 0; font-size: 22px; font-weight: bold; text-align: center; text-transform: uppercase; letter-spacing: 1px;">Attention Admin</h2>
+                <p style="color: #e2e8f0; font-size: 15px; line-height: 1.6; text-align: center; margin-bottom: 30px;">A client has left a low rating. Quick intervention is recommended to protect our service quality reputation.</p>
+                
+                <div style="background-color: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 25px; margin-bottom: 30px;">
+                  <table style="width: 100%; border-collapse: collapse; font-size: 14px; color: #e2e8f0;">
+                    <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+                      <td style="padding: 10px 0; font-weight: bold; color: #a0aec0; width: 40%;">Client Name:</td>
+                      <td style="padding: 10px 0; text-align: right; font-weight: 500;">${job.client_name}</td>
+                    </tr>
+                    <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+                      <td style="padding: 10px 0; font-weight: bold; color: #a0aec0;">Phone:</td>
+                      <td style="padding: 10px 0; text-align: right; font-weight: 500;">${job.client_phone}</td>
+                    </tr>
+                    <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+                      <td style="padding: 10px 0; font-weight: bold; color: #a0aec0;">Rating Given:</td>
+                      <td style="padding: 10px 0; text-align: right; font-weight: bold; color: #ef4444;">${val} / 5 Stars</td>
+                    </tr>
+                    <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+                      <td style="padding: 10px 0; font-weight: bold; color: #a0aec0;">Service Type:</td>
+                      <td style="padding: 10px 0; text-align: right; font-weight: 500;">${job.service_type}</td>
+                    </tr>
+                    <tr>
+                      <td style="padding: 10px 0; font-weight: bold; color: #a0aec0;">Team Assigned:</td>
+                      <td style="padding: 10px 0; text-align: right; font-weight: 500;">${job.team_assigned || "Unassigned"}</td>
+                    </tr>
+                  </table>
+                </div>
+                
+                <p style="color: #a0aec0; font-size: 13px; text-align: center; margin: 0;">Service ID: ${job.id}</p>
+              </div>
             `
           })
         });
@@ -370,18 +405,21 @@ const triggerFeedbackRequestEmail = async (job, bizName) => {
         subject: `How did we do? Rate your service with ${bizName} ✨`,
         tenant_id: job.tenant_id,
         html: `
-          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 8px;">
-            <h2 style="color: #1a202c; text-align: center;">Thank you for choosing ${bizName}!</h2>
-            <p style="color: #4a5568; font-size: 16px; line-height: 1.5;">Hi ${job.client_name || 'valued customer'},</p>
-            <p style="color: #4a5568; font-size: 16px; line-height: 1.5;">We completed your <strong>${job.service_type || 'service'}</strong>. We'd love to know how we did! Please take 5 seconds to rate your experience:</p>
-            <div style="text-align: center; margin: 30px 0;">
-              <a href="${ratingUrl}&rating=5" style="display: inline-block; padding: 12px 24px; margin: 5px; background-color: #fbbf24; color: black; font-weight: bold; text-decoration: none; border-radius: 8px; font-size: 18px;">⭐⭐⭐⭐⭐ Excellent</a>
-              <br/><br/>
-              <a href="${ratingUrl}&rating=4" style="display: inline-block; padding: 10px 20px; margin: 5px; background-color: #f3f4f6; color: #4a5568; text-decoration: none; border-radius: 8px;">⭐⭐⭐⭐ Good</a>
-              <a href="${ratingUrl}&rating=3" style="display: inline-block; padding: 10px 20px; margin: 5px; background-color: #f3f4f6; color: #4a5568; text-decoration: none; border-radius: 8px;">⭐⭐⭐ Okay</a>
-              <a href="${ratingUrl}&rating=1" style="display: inline-block; padding: 10px 20px; margin: 5px; background-color: #f3f4f6; color: #4a5568; text-decoration: none; border-radius: 8px;">⭐ Disappointed</a>
+          <div style="background-color: #060609; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 30px; border: 2px solid #F5C518; border-radius: 16px; color: #ffffff; text-align: center;">
+            <div style="margin-bottom: 20px; font-size: 32px;">✨</div>
+            <h2 style="color: #F5C518; margin-top: 0; font-size: 22px; font-weight: bold; letter-spacing: 1px; text-transform: uppercase;">Thank you for choosing ${bizName}!</h2>
+            <p style="color: #a0aec0; font-size: 16px; line-height: 1.6; text-align: left; margin-bottom: 20px;">Hi ${job.client_name || 'valued customer'},</p>
+            <p style="color: #e2e8f0; font-size: 16px; line-height: 1.6; text-align: left; margin-bottom: 25px;">We have completed your <strong>${job.service_type || 'service'}</strong>. We are committed to absolute perfection, and we would love to hear about your experience. Please take 5 seconds to rate us:</p>
+            
+            <div style="margin: 35px 0;">
+              <a href="${ratingUrl}&rating=5" style="display: block; width: 80%; margin: 10px auto; padding: 14px 20px; background: linear-gradient(135deg, #d4a310 0%, #F5C518 100%); color: #060609; font-weight: bold; text-decoration: none; border-radius: 30px; font-size: 15px; text-transform: uppercase; letter-spacing: 0.5px; box-shadow: 0 4px 10px rgba(245, 197, 24, 0.3);">★★★★★ Excellent</a>
+              <a href="${ratingUrl}&rating=4" style="display: inline-block; width: 40%; margin: 5px 2%; padding: 12px 10px; background-color: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.15); color: #e2e8f0; text-decoration: none; border-radius: 20px; font-size: 13px; font-weight: 500;">★★★★ Good</a>
+              <a href="${ratingUrl}&rating=3" style="display: inline-block; width: 40%; margin: 5px 2%; padding: 12px 10px; background-color: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.15); color: #e2e8f0; text-decoration: none; border-radius: 20px; font-size: 13px; font-weight: 500;">★★★ Okay</a>
+              <br/>
+              <a href="${ratingUrl}&rating=1" style="display: inline-block; width: 50%; margin: 12px auto 0; padding: 10px 10px; background-color: transparent; color: #a0aec0; text-decoration: underline; font-size: 12px;">★ Disappointed</a>
             </div>
-            <p style="color: #718096; font-size: 12px; text-align: center;">Clicking any button will take you to your client portal to submit comments.</p>
+            
+            <p style="color: #a0aec0; font-size: 12px; margin-top: 30px;">Clicking an option will direct you to your secure customer hub to submit feedback.</p>
           </div>
         `
       })
@@ -7210,6 +7248,7 @@ export default function App() {
   const [tenantSettings, setTenantSettings] = useState(null);
   const [tenant, setTenant] = useState(null);
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
+  const [googleAccessToken, setGoogleAccessToken] = useState(null);
 
   const isTrialExpired = useMemo(() => {
     if (!tenant) return false;
@@ -7554,6 +7593,7 @@ export default function App() {
   const [settingsMultDeep, setSettingsMultDeep] = useState('1.45');
   const [settingsMultMoveout, setSettingsMultMoveout] = useState('1.60');
   const [settingsResendKey, setSettingsResendKey] = useState('');
+  const [settingsSenderEmail, setSettingsSenderEmail] = useState('');
   const [settingsN8nUrl, setSettingsN8nUrl] = useState('');
 
   useEffect(() => {
@@ -7567,6 +7607,7 @@ export default function App() {
       setSettingsMultDeep(tenantSettings.booking_multiplier_deep !== undefined && tenantSettings.booking_multiplier_deep !== null ? String(tenantSettings.booking_multiplier_deep) : '1.45');
       setSettingsMultMoveout(tenantSettings.booking_multiplier_moveout !== undefined && tenantSettings.booking_multiplier_moveout !== null ? String(tenantSettings.booking_multiplier_moveout) : '1.60');
       setSettingsResendKey(tenantSettings.custom_resend_key || '');
+      setSettingsSenderEmail(tenantSettings.sender_email || '');
       setSettingsN8nUrl(tenantSettings.n8n_webhook_url || '');
       
       if (tenantSettings.wa_template_booking) setBookingTemplateText(tenantSettings.wa_template_booking);
@@ -7590,6 +7631,7 @@ export default function App() {
         booking_multiplier_deep: Number(settingsMultDeep) || 1.45,
         booking_multiplier_moveout: Number(settingsMultMoveout) || 1.60,
         custom_resend_key: settingsResendKey,
+        sender_email: settingsSenderEmail,
         n8n_webhook_url: settingsN8nUrl
       };
 
@@ -7960,7 +8002,11 @@ Instrucciones:
     if (tName) setTenantName(tName);
     if (authUser) setUser(authUser);
     if (activeEmp) setActiveEmp(activeEmp);
-    setView(assignedRole === 'admin' ? 'brief' : 'staff');
+    
+    // Respect the URL 'view' query parameter if present (important for OAuth redirects), ignoring auth/signup/landing
+    const urlView = new URLSearchParams(window.location.search).get('view');
+    const validView = (urlView && urlView !== 'auth' && urlView !== 'signup' && urlView !== 'landing') ? urlView : null;
+    setView(validView || (assignedRole === 'admin' ? 'brief' : 'staff'));
     
     // Solicitar permisos tras inicio de sesión
     if ('Notification' in window && Notification.permission === 'default') {
@@ -7968,12 +8014,132 @@ Instrucciones:
     }
   };
 
-  // Restore session on mount
+  const handleLogout = async () => {
+    setLoad(true);
+    try {
+      await sb.auth.signOut();
+    } catch (e) {
+      console.warn("Error signing out from Supabase:", e);
+    }
+    setTenantId(null);
+    setUser(null);
+    setRole('admin');
+    setView('landing');
+    setPass('');
+    setActiveEmp(null);
+    setJobs([]);
+    setClients([]);
+    setStaff([]);
+    setTenantSettings(null);
+    setTenant(null);
+    setGoogleAccessToken(null);
+    tt(prefLang === 'es' ? 'Sesión cerrada ✓' : 'Logged out ✓', 'blue');
+  };
+
+  const syncMissionToGoogleCalendar = async (job, action, token) => {
+    const accessToken = token || googleAccessToken;
+    if (!accessToken) {
+      console.log("[Google Calendar]: No active Google Access Token available. Skipping direct API sync.");
+      return;
+    }
+
+    let specsObj = null;
+    if (job.specs) {
+      if (typeof job.specs === 'object') {
+        specsObj = job.specs;
+      } else if (typeof job.specs === 'string') {
+        try {
+          specsObj = JSON.parse(job.specs);
+        } catch (e) {
+          console.warn("Failed to parse job.specs during Google Calendar sync:", e);
+        }
+      }
+    }
+
+    const eventId = specsObj?.google_event_id;
+    if (action === 'delete' && !eventId) return;
+
+    try {
+      const url = eventId && (action === 'update' || action === 'delete')
+        ? `https://www.googleapis.com/calendar/v3/calendars/primary/events/${eventId}`
+        : 'https://www.googleapis.com/calendar/v3/calendars/primary/events';
+
+      const method = action === 'delete' ? 'DELETE' : (eventId ? 'PUT' : 'POST');
+      
+      let body = null;
+      if (action !== 'delete') {
+        const dateVal = job.scheduled_date || new Date().toISOString();
+        const startIso = new Date(dateVal).toISOString();
+        const endIso = new Date(new Date(dateVal).getTime() + 2 * 60 * 60 * 1000).toISOString();
+        
+        body = JSON.stringify({
+          summary: `[${(job.status || 'scheduled').toUpperCase()}] ${job.client_name || 'Servicio Elevore'}`,
+          description: `Servicio: ${job.service_type || 'N/A'}\nDirección: ${job.address || 'N/A'}\nPrecio: $${job.total_price || 0} USD\nEstado: ${job.status || 'N/A'}\nTeléfono: ${job.client_phone || 'N/A'}`,
+          start: {
+            dateTime: startIso,
+            timeZone: 'UTC'
+          },
+          end: {
+            dateTime: endIso,
+            timeZone: 'UTC'
+          }
+        });
+      }
+
+      console.log(`[Google Calendar Sync]: Sending ${method} to ${url}...`);
+      const response = await fetch(url, {
+        method,
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json'
+        },
+        body
+      });
+
+      if (!response.ok) {
+        const errText = await response.text();
+        console.error("[Google Calendar Sync Error]:", errText);
+        return;
+      }
+
+      if (action === 'delete') {
+        console.log(`[Google Calendar Sync]: Event ${eventId} deleted successfully.`);
+        return;
+      }
+
+      const resData = await response.json();
+      console.log(`[Google Calendar Sync]: Event synced successfully. Google Event ID: ${resData.id}`);
+
+      // Save Google Event ID back to Supabase specs
+      if (!eventId && resData.id) {
+        const currentSpecs = specsObj || {};
+        const updatedSpecs = { ...currentSpecs, google_event_id: resData.id };
+        
+        const { error: dbErr } = await sb
+          .from('elevore_missions')
+          .update({ specs: updatedSpecs })
+          .eq('id', job.id);
+
+        if (dbErr) {
+          console.error("Failed to update Google Event ID in database:", dbErr);
+        } else {
+          console.log("Google Event ID successfully stored in database specs.");
+        }
+      }
+    } catch (e) {
+      console.error("[Google Calendar Sync Exception]:", e);
+    }
+  };
+
+  // Restore session on mount and listen to auth events
   useEffect(() => {
     const restoreSession = async () => {
       try {
         const { data: { session } } = await sb.auth.getSession();
         if (session && session.user) {
+          if (session.provider_token) {
+            setGoogleAccessToken(session.provider_token);
+          }
           // Check if admin
           const { data: tenant } = await sb.from('tenants').select('*').eq('owner_id', session.user.id).maybeSingle();
           if (tenant) {
@@ -7993,6 +8159,34 @@ Instrucciones:
       }
     };
     restoreSession();
+
+    // Listen for auth changes to capture provider token dynamically
+    const { data: { subscription } } = sb.auth.onAuthStateChange(async (event, session) => {
+      console.log(`[Auth Event]: ${event}`);
+      if (session && session.user) {
+        if (session.provider_token) {
+          setGoogleAccessToken(session.provider_token);
+        }
+      }
+      if (event === 'SIGNED_OUT') {
+        setTenantId(null);
+        setUser(null);
+        setRole('admin');
+        setView('landing');
+        setPass('');
+        setActiveEmp(null);
+        setJobs([]);
+        setClients([]);
+        setStaff([]);
+        setTenantSettings(null);
+        setTenant(null);
+        setGoogleAccessToken(null);
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
 
   // Only refresh data once we're past auth AND have a valid tenantId.
@@ -8122,6 +8316,11 @@ Instrucciones:
         : await sb.from('elevore_missions').insert([payload]).select();
       if (jErr) { tt('Mission Error: ' + jErr.message, 'red'); setLoad(false); return; }
       
+      // Sync with Google Calendar
+      if (insertedJobs && insertedJobs[0]) {
+        await syncMissionToGoogleCalendar(insertedJobs[0], editId ? 'update' : 'create');
+      }
+
       // Trigger Quote Chase if it is a new estimate/lead
       if (!editId && insertedJobs && insertedJobs[0]) {
         const job = insertedJobs[0];
@@ -8186,7 +8385,10 @@ Instrucciones:
         tenant_id: tenantId || job.tenant_id
       };
       
-      await sb.from('elevore_missions').insert([payload]);
+      const { data: newJobs, error: insertErr } = await sb.from('elevore_missions').insert([payload]).select();
+      if (!insertErr && newJobs && newJobs[0]) {
+        await syncMissionToGoogleCalendar(newJobs[0], 'create');
+      }
       tt(`Auto-agendado: Siguiente visita el ${dateStr} 🗓️`, 'green');
     } catch (e) {
       console.error("Error auto-scheduling:", e);
@@ -8198,6 +8400,10 @@ Instrucciones:
     if (error) return tt(error.message, 'red');
     tt(msg || 'Updated ✓');
     log((msg || 'Updated') + ': ' + job.client_name);
+    
+    // Sync with Google Calendar
+    await syncMissionToGoogleCalendar({ ...job, ...patch }, 'update');
+
     if (patch.status === 'completed' || patch.status === 'paid') {
       triggerN8nEmail({ ...job, ...patch }, tenantSettings?.n8n_webhook_url);
       checkAndScheduleNextMission({ ...job, ...patch });
@@ -8218,6 +8424,10 @@ Instrucciones:
     const { error: missionErr } = await sb.from('elevore_missions').update(patch).eq('id', jid);
     if (missionErr) throw missionErr;
     tt(type === 'check_in_time' ? '▶ Checked in!' : '⏹ Checked out!');
+    
+    // Sync with Google Calendar
+    await syncMissionToGoogleCalendar({ ...jobData, ...patch }, 'update');
+
     if (patch.status === 'in_progress') {
       triggerInngestEvent('elevore/mission.in_progress', { jobId: jid });
       triggerOnMyWayEmail(jobData, tenantSettings?.business_full_name || "Elevore Premium Services");
@@ -10470,7 +10680,7 @@ Instrucciones generales de formato:
                 <Icon name={isPrivate ? 'eye-off' : 'eye'} className="w-4 h-4" />
               </button>
             )}
-            <button onClick={() => { setTenantId(null); setUser(null); setRole('admin'); setView('landing'); setPass(''); setMobileMenuOpen(false); }} className="flex-1 py-3 bg-red-900/10 hover:bg-red-900/20 text-red-500 rounded-xl active:scale-95 flex items-center justify-center border border-red-500/10 transition-all font-black text-[10px] uppercase tracking-wider">
+            <button onClick={handleLogout} className="flex-1 py-3 bg-red-900/10 hover:bg-red-900/20 text-red-500 rounded-xl active:scale-95 flex items-center justify-center border border-red-500/10 transition-all font-black text-[10px] uppercase tracking-wider">
               <Icon name="log-out" className="w-4 h-4" />
             </button>
           </div>
@@ -13596,7 +13806,12 @@ Instrucciones generales de formato:
                                   setOperationsTab('deploy');
                                   setDtab('identity');
                                 }} className="p-2.5 bg-slate-800 text-white rounded-xl hover:bg-blue-600 transition-all"><Icon name="edit-3" className="w-4 h-4" /></button>
-                                <button onClick={() => { if (confirm('Archive?')) sb.from('elevore_missions').delete().eq('id', job.id).then(() => { tt('Archived ✓'); refresh(); }); }} className="p-2.5 bg-red-900/30 text-red-500 rounded-xl hover:bg-red-600 transition-all"><Icon name="trash-2" className="w-4 h-4" /></button>
+                                <button onClick={async () => { 
+                                  if (confirm('Archive?')) { 
+                                    await syncMissionToGoogleCalendar(job, 'delete');
+                                    sb.from('elevore_missions').delete().eq('id', job.id).then(() => { tt('Archived ✓'); refresh(); }); 
+                                  } 
+                                }} className="p-2.5 bg-red-900/30 text-red-500 rounded-xl hover:bg-red-600 transition-all"><Icon name="trash-2" className="w-4 h-4" /></button>
                                 <button onClick={() => window.open(`https://wa.me/${job.client_phone?.replace(/\D/g, '') || ''}`)} className="p-2.5 bg-green-600 text-white rounded-xl active:scale-90 transition-all"><Icon name="message-circle" className="w-4 h-4" /></button>
                               </div>
                             </div>
@@ -13785,6 +14000,10 @@ Instrucciones generales de formato:
                         <div className="space-y-1">
                           <label className="text-[9px] font-black uppercase text-slate-500 tracking-widest pl-1">Resend API Key</label>
                           <input type="password" placeholder="re_..." className="inp w-full font-mono text-xs" value={settingsResendKey} onChange={e => setSettingsResendKey(e.target.value)} />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-[9px] font-black uppercase text-slate-500 tracking-widest pl-1">Correo Remitente (Resend Sender Email)</label>
+                          <input type="email" placeholder="hola@tudominio.com" className="inp w-full text-xs" value={settingsSenderEmail} onChange={e => setSettingsSenderEmail(e.target.value)} />
                         </div>
                         <div className="space-y-1">
                           <label className="text-[9px] font-black uppercase text-slate-500 tracking-widest pl-1">n8n Webhook URL</label>

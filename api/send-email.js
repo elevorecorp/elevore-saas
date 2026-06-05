@@ -31,11 +31,12 @@ export default async function handler(req, res) {
 
     let apiKeyOverride = null;
     let fromName = null;
+    let senderEmailOverride = null;
 
     if (tenant_id && sb) {
       const { data: settings } = await sb
         .from('tenant_settings')
-        .select('custom_resend_key, business_full_name')
+        .select('custom_resend_key, business_full_name, sender_email')
         .eq('tenant_id', tenant_id)
         .maybeSingle();
 
@@ -46,10 +47,13 @@ export default async function handler(req, res) {
         if (settings.business_full_name) {
           fromName = settings.business_full_name;
         }
+        if (settings.sender_email) {
+          senderEmailOverride = settings.sender_email;
+        }
       }
     }
 
-    const result = await sendEmail({ to, subject, html, apiKeyOverride, fromName });
+    const result = await sendEmail({ to, subject, html, apiKeyOverride, fromName, senderEmailOverride });
     return res.status(200).json({ status: 'ok', id: result.id });
   } catch (error) {
     console.error('Error sending direct email:', error);
