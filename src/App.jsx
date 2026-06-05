@@ -1929,6 +1929,12 @@ function Portal({ cjid }) {
     };
 
     await sb.from('elevore_missions').update(updateData).eq('id', cjid);
+    
+    // Trigger email workflows for paid status
+    triggerN8nEmail({ ...job, ...updateData }, tenantSettings?.n8n_webhook_url);
+    triggerInngestEvent('elevore/mission.paid', { jobId: cjid });
+    triggerFeedbackRequestEmail({ ...job, ...updateData }, tenantSettings?.business_full_name || "Elevore Premium Services");
+
     await checkAndScheduleNextMission({ ...job, ...updateData });
 
     // Route 100% of tip to the worker
@@ -8310,7 +8316,29 @@ Instrucciones:
       if (cErr || !c) { tt('Clients Error: ' + (cErr?.message || 'Check RLS'), 'red'); setLoad(false); return; }
       const fd = { 'weekly': 7, 'bi-weekly': 14, 'monthly': 30, 'one-time': null }[state.frequency];
       let nv = null; if (fd && state.date) { const d = new Date(state.date); d.setDate(d.getDate() + fd); nv = d.toISOString().split('T')[0]; }
-      const payload = { client_name: state.name, client_phone: state.phone, address: state.address, service_type: state.svc, total_price: state.totalPrice || pricing.total, deposit_paid: state.deposit, team_assigned: state.team, status: state.status, specs: { ...state, referral: refCode || null }, scheduled_date: state.date || null, notes: state.notes || null, next_visit: nv, membership_plan: state.membership || null, urgency_expires: state.urgencyHours ? new Date(Date.now() + state.urgencyHours * 3600000).toISOString() : null, tenant_id: tenantId };
+      
+      const payload = { 
+        client_name: state.name, 
+        client_phone: state.phone, 
+        client_email: state.email || c?.email || null,
+        address: state.address, 
+        service_type: state.svc, 
+        total_price: state.totalPrice || pricing.total, 
+        deposit_paid: state.deposit, 
+        team_assigned: state.team, 
+        status: state.status, 
+        specs: { ...state, referral: refCode || null }, 
+        scheduled_date: state.date || null, 
+        notes: state.notes || null, 
+        next_visit: nv, 
+        membership_plan: state.membership || null, 
+        urgency_expires: state.urgencyHours ? new Date(Date.now() + state.urgencyHours * 3600000).toISOString() : null, 
+        tenant_id: tenantId 
+      };
+
+      const oldJob = editId ? jobs.find(j => j.id === editId) : null;
+      const statusChanged = !oldJob || oldJob.status !== payload.status;
+
       const { data: insertedJobs, error: jErr } = editId 
         ? await sb.from('elevore_missions').update(payload).eq('id', editId).select() 
         : await sb.from('elevore_missions').insert([payload]).select();
@@ -8318,7 +8346,24 @@ Instrucciones:
       
       // Sync with Google Calendar
       if (insertedJobs && insertedJobs[0]) {
-        await syncMissionToGoogleCalendar(insertedJobs[0], editId ? 'update' : 'create');
+        const job = insertedJobs[0];
+        await syncMissionToGoogleCalendar(job, editId ? 'update' : 'create');
+
+        // Trigger emails if status changed
+        if (statusChanged) {
+          if (job.status === 'completed' || job.status === 'paid') {
+            triggerN8nEmail(job, tenantSettings?.n8n_webhook_url);
+            checkAndScheduleNextMission(job);
+          }
+          if (job.status === 'paid') {
+            triggerInngestEvent('elevore/mission.paid', { jobId: job.id });
+            triggerFeedbackRequestEmail(job, tenantSettings?.business_full_name || "Elevore Premium Services");
+          }
+          if (job.status === 'in_progress') {
+            triggerInngestEvent('elevore/mission.in_progress', { jobId: job.id });
+            triggerOnMyWayEmail(job, tenantSettings?.business_full_name || "Elevore Premium Services");
+          }
+        }
       }
 
       // Trigger Quote Chase if it is a new estimate/lead
@@ -13400,6 +13445,15 @@ Instrucciones generales de formato:
                   if (!error) {
                     if (status === 'completed' || status === 'paid') {
                       triggerN8nEmail({ ...job, status }, tenantSettings?.n8n_webhook_url);
+                      checkAndScheduleNextMission({ ...job, status });
+                    }
+                    if (status === 'paid') {
+                      triggerInngestEvent('elevore/mission.paid', { jobId: job.id });
+                      triggerFeedbackRequestEmail({ ...job, status }, tenantSettings?.business_full_name || "Elevore Premium Services");
+                    }
+                    if (status === 'in_progress') {
+                      triggerInngestEvent('elevore/mission.in_progress', { jobId: job.id });
+                      triggerOnMyWayEmail({ ...job, status }, tenantSettings?.business_full_name || "Elevore Premium Services");
                     }
                   }
                 }
