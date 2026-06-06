@@ -8109,6 +8109,12 @@ export default function App() {
     }
   }, [staffJobs?.length, role, activeEmployee, addStaffNotification]);
   
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setHudTime(new Date());
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
   // Multi-tenant SaaS state
   const [tenantId, setTenantId] = useState(null);
   const [tenantName, setTenantName] = useState('ELEVORE EMPIRE');
@@ -8434,6 +8440,15 @@ export default function App() {
   const [payoutModalWorker, setPayoutModalWorker] = useState(null);
   const [routeModalOpen, setRouteModalOpen] = useState(false);
   const [staffMeetingOpen, setStaffMeetingOpen] = useState(false);
+
+  // --- STAFF COMMAND DECK UPGRADES ---
+  const [onDuty, setOnDuty] = useState(() => localStorage.getItem('elevore_staff_onduty') !== 'false');
+  const [hudTime, setHudTime] = useState(new Date());
+  const [cashoutSuccess, setCashoutSuccess] = useState(false);
+  const [cashoutAmountPaid, setCashoutAmountPaid] = useState(0);
+  const [activeBadgeDesc, setActiveBadgeDesc] = useState(null);
+  const [withdrawLogs, setWithdrawLogs] = useState(() => JSON.parse(localStorage.getItem('elevore_withdraw_logs') || '[]'));
+  const [sosAlerting, setSosAlerting] = useState(false);
   const [biSimClients, setBiSimClients] = useState(60);
   const [biSimPayoutPct, setBiSimPayoutPct] = useState(40);
   const [biSimMarketing, setBiSimMarketing] = useState(1500);
@@ -9665,6 +9680,22 @@ Instrucciones:
       await sb.from('staff_profiles').update({ wallet_balance: remainingBalance }).eq('id', worker.id);
     } catch (e) {
       console.warn("Could not update staff profile balance:", e);
+    }
+
+    if (role === 'staff' && activeEmployee?.id === worker.id) {
+      setCashoutAmountPaid(payoutVal);
+      setCashoutSuccess(true);
+      const newLog = {
+        id: String(Date.now()),
+        amount: payoutVal,
+        date: new Date().toISOString(),
+        ref: refNote || 'Transferencia Directa Zelle'
+      };
+      setWithdrawLogs(prev => {
+        const next = [newLog, ...prev].slice(0, 5);
+        localStorage.setItem('elevore_withdraw_logs', JSON.stringify(next));
+        return next;
+      });
     }
 
     tt(`Payout of ${fmt$(payoutVal)} for ${worker.name} processed! 💸`);
@@ -11279,6 +11310,82 @@ Instrucciones generales de formato:
       {aiOpen && <AIAdvisor jobs={jobs} clients={clients} staff={staff} isStaff={role === 'staff'} activeUser={activeEmployee?.name || 'User'} onClose={() => { setAIOpen(false); setAIQuery(null); }} tt={tt} onOpenReport={() => { setAIOpen(false); setAIReportOpen(true); }} initialQuery={aiQuery} />}
       {aiReportOpen && <AIReportModal jobs={jobs} clients={clients} staff={staff} onClose={() => setAIReportOpen(false)} tt={tt} />}
 
+      {/* 🔮 ALERTA SOS OVERLAY */}
+      {sosAlerting && (
+        <div className="fixed inset-0 bg-red-950/95 backdrop-blur-lg z-[3000] flex flex-col items-center justify-center p-6 text-center animate-in fade-in duration-300">
+          <div className="w-20 h-20 bg-red-500/10 border border-red-500/30 rounded-full flex items-center justify-center mb-6 text-red-500 relative animate-pulse">
+            <span className="absolute inset-0 rounded-full bg-red-500/40 animate-ping"></span>
+            <Icon name="alert-triangle" className="w-10 h-10 text-red-500" />
+          </div>
+          <h2 className="text-2xl font-black uppercase tracking-widest text-white mb-2 italic text-red-500">ALERTA SOS ACTIVA</h2>
+          <p className="text-xs text-slate-400 font-bold uppercase tracking-wider max-w-xs mb-6">
+            Se ha enviado tu ubicación actual y una solicitud de ayuda prioritaria a los administradores del centro de control.
+          </p>
+          <div className="max-w-xs w-full bg-black/40 border border-red-500/20 rounded-xl p-3 space-y-2 text-left text-[8.5px] text-red-400 font-mono">
+            <p>🛰️ COORDENADAS: OBTENIENDO GPS...</p>
+            <p>🚨 CANAL: SOPORTE CRÍTICO ELEVORE</p>
+            <p>👷 USUARIO: {activeEmployee?.name || 'User'}</p>
+          </div>
+          <button
+            onClick={() => setSosAlerting(false)}
+            className="mt-8 px-6 py-3 bg-red-600 hover:bg-red-500 text-white font-black uppercase text-[10px] tracking-wider rounded-xl active:scale-95 transition-all shadow-[0_0_20px_rgba(239,68,68,0.4)]"
+          >
+            Cancelar Alerta
+          </button>
+        </div>
+      )}
+
+      {/* 💸 ZELLE CASHOUT SUCCESS OVERLAY */}
+      {cashoutSuccess && (
+        <div className="fixed inset-0 bg-slate-950/95 backdrop-blur-lg z-[3000] flex flex-col items-center justify-center p-6 text-center animate-in fade-in duration-300">
+          <div className="w-24 h-24 bg-emerald-500/10 border border-emerald-500/30 rounded-full flex items-center justify-center mb-6 text-emerald-400 relative">
+            <span className="absolute inset-0 rounded-full bg-emerald-500/20 animate-ping"></span>
+            <Icon name="check-circle" className="w-12 h-12 text-emerald-400 animate-bounce" />
+          </div>
+          <h2 className="text-2xl font-black uppercase tracking-widest text-white mb-2 italic">¡Transferencia Procesada!</h2>
+          <p className="text-xs text-slate-400 font-bold uppercase tracking-wider mb-6">El retiro a Zelle se ha realizado exitosamente</p>
+          <div className="max-w-xs w-full bg-white/[0.02] border border-white/5 rounded-2xl p-4 space-y-3 text-left font-sans text-[10px] uppercase">
+            <div className="flex justify-between border-b border-white/5 pb-2">
+              <span className="text-slate-500">Monto Enviado:</span>
+              <span className="font-mono text-emerald-400 font-black text-sm">{fmt$(cashoutAmountPaid)}</span>
+            </div>
+            <div className="flex justify-between border-b border-white/5 pb-2">
+              <span className="text-slate-500">Beneficiario:</span>
+              <span className="text-white font-bold">{activeEmployee?.name || 'User'}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-slate-500">Destino:</span>
+              <span className="text-white font-bold">Zelle Transfer Direct</span>
+            </div>
+          </div>
+          <button
+            onClick={() => setCashoutSuccess(false)}
+            className="mt-8 px-6 py-3 bg-gradient-to-r from-emerald-500 to-green-500 text-black font-black uppercase text-[10px] tracking-wider rounded-xl active:scale-95 transition-all shadow-[0_0_20px_rgba(16,185,129,0.3)]"
+          >
+            Entendido ✓
+          </button>
+        </div>
+      )}
+
+      {/* 🛡️ GAMIFICATION BADGE INFO OVERLAY */}
+      {activeBadgeDesc && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[2500] flex items-center justify-center p-4" onClick={() => setActiveBadgeDesc(null)}>
+          <div className="g p-6 w-full max-w-sm space-y-4 border border-indigo-500/30 bg-slate-950 rounded-2xl text-center shadow-2xl animate-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
+            <div className="w-16 h-16 rounded-full bg-indigo-500/10 border border-indigo-500/30 flex items-center justify-center mx-auto text-2xl">
+              {activeBadgeDesc.emoji || '🏆'}
+            </div>
+            <h3 className="text-base font-black text-white uppercase tracking-wider">{activeBadgeDesc.label}</h3>
+            <p className="text-xs text-slate-400 font-bold uppercase tracking-wide px-2 leading-relaxed">{activeBadgeDesc.description}</p>
+            <button
+              onClick={() => setActiveBadgeDesc(null)}
+              className="w-full py-2.5 bg-white/5 hover:bg-white/10 text-white rounded-xl text-[9px] font-black uppercase tracking-wider border border-white/5 active:scale-95 transition-all"
+            >
+              Cerrar
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* OVERLAY DE SIMULACIÓN DE COBRO RECURRENTE */}
       {chargingClient && (
         <div className="fixed inset-0 bg-slate-950/95 backdrop-blur-lg z-[3000] flex flex-col items-center justify-center p-6 text-center animate-in fade-in duration-300">
@@ -11697,214 +11804,485 @@ Instrucciones generales de formato:
           {/* =====================================================================
               👷 STAFF OPERATIONS WORKSPACE
               ===================================================================== */}
-          {role === 'staff' && (
-            <div className="space-y-6 animate-in fade-in">
-              <div className="flex justify-between items-center pt-2">
-                <div>
-                  <h2 className="text-xl font-black uppercase tracking-widest text-white font-display">MISIONES ASIGNADAS</h2>
-                  <p className="text-[9px] text-slate-500 uppercase font-black">{activeEmployee?.name} • 👷 {activeEmployee?.role?.toUpperCase()}</p>
-                </div>
-                {ENABLE_AI && (
-                  <button onClick={() => setAIOpen(true)} className="px-4 py-2.5 bg-[#F5C518] hover:bg-[#F5C518]/90 text-black font-black uppercase text-[9px] flex items-center gap-1 active:scale-95 shadow-lg shadow-[#F5C518]/15 rounded-xl transition-all">🧠 Operaciones IA</button>
-                )}
-              </div>
+          {role === 'staff' && (() => {
+            const badgeDescriptions = {
+              empire: { emoji: '👑', label: 'Empire Admin', description: 'Control total de operaciones y Command Deck del sistema Elevore.' },
+              veteran: { emoji: '🛡️', label: 'Veteran Staff', description: 'Has completado exitosamente 3 o más misiones asignadas.' },
+              star: { emoji: '⭐', label: 'Perfect Rating', description: 'Promedio estelar de calificación del cliente de 4.8 o más.' },
+              gold: { emoji: '💰', label: 'Gold Maker', description: 'Has ganado más de $1,000 en comisiones totales de misiones.' },
+              qc: { emoji: '⚡', label: 'Sign Master', description: 'Maestro de cierre de servicios con verificación de firma digital.' },
+              rookie: { emoji: '⚡', label: 'Rising Star', description: 'Misiones iniciales asignadas. ¡Estrella en ascenso en el equipo!' }
+            };
 
-              {/* Notificaciones Recibidas en Vivo */}
-              <div className="g p-5 bg-black/40 border border-white/5 rounded-2xl space-y-4">
-                <div className="flex justify-between items-center border-b border-white/5 pb-2">
-                  <div className="flex items-center gap-2">
-                    <span className="relative flex h-2 w-2">
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#F5C518] opacity-75"></span>
-                      <span className="relative inline-flex rounded-full h-2 w-2 bg-[#F5C518]"></span>
-                    </span>
-                    <h3 className="text-[10px] font-black text-white uppercase tracking-widest">🔔 Centro de Notificaciones en Vivo</h3>
-                  </div>
-                  <button 
-                    onClick={() => {
-                      addStaffNotification(
-                        'Simulación: Nueva Tarea Asignada 🚗',
-                        `El administrador te ha asignado un servicio de mudanza en 450 N Orange Ave.`
-                      );
-                    }}
-                    className="px-2.5 py-1 bg-[#F5C518]/10 hover:bg-[#F5C518] hover:text-black border border-[#F5C518]/30 text-[#F5C518] rounded-lg text-[7.5px] font-black uppercase tracking-wider active:scale-95 transition-all"
-                  >
-                    ⚡ Simular Push Alert
-                  </button>
-                </div>
-
-                <div className="space-y-2 max-h-[140px] overflow-y-auto nsb pr-1">
-                  {staffNotifications.length === 0 ? (
-                    <p className="text-[8px] text-slate-500 italic text-center py-4">No tienes notificaciones pendientes.</p>
-                  ) : (
-                    staffNotifications.map(notif => (
-                      <div 
-                        key={notif.id} 
-                        onClick={() => {
-                          setStaffNotifications(prev => prev.map(n => n.id === notif.id ? { ...n, unread: false } : n));
-                        }}
-                        className={`p-3 rounded-xl border transition-all cursor-pointer flex justify-between items-start gap-3 ${
-                          notif.unread 
-                            ? 'bg-[#F5C518]/[0.03] border-[#F5C518]/20 shadow-[0_0_10px_rgba(245,197,24,0.02)]' 
-                            : 'bg-white/[0.01] border-white/5 opacity-70'
-                        }`}
-                      >
-                        <div className="space-y-1">
-                          <div className="flex items-center gap-1.5">
-                            {notif.unread && <span className="w-1.5 h-1.5 rounded-full bg-[#F5C518]" />}
-                            <p className="text-[9px] font-black text-white uppercase">{notif.title}</p>
-                          </div>
-                          <p className="text-[8px] text-slate-400 font-bold uppercase">{notif.desc}</p>
-                        </div>
-                        <span className="text-[6.5px] text-slate-600 font-bold uppercase">{notif.time}</span>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </div>
-
-              {/* Today's Missions Prominent Widget */}
-              {(() => {
-                const todayJobs = staffJobs.filter(j => j.scheduled_date === todayStr);
-                const todayCompleted = todayJobs.filter(j => j.status === 'completed' || j.status === 'paid').length;
-                const todayPending = todayJobs.filter(j => j.status !== 'completed' && j.status !== 'paid').length;
-                const activeJob = todayJobs.find(j => j.status === 'in_progress');
-
-                return (
-                  <div className="g p-6 bg-gradient-to-br from-slate-950 via-zinc-900 to-black border border-[#F5C518]/20 rounded-2xl relative overflow-hidden shadow-2xl space-y-4">
-                    <div className="absolute top-0 right-0 w-32 h-32 bg-[#F5C518]/5 rounded-full blur-3xl pointer-events-none"></div>
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-[7px] font-black text-[#F5C518] uppercase tracking-wider">🎯 STATUS HOY</p>
-                        <h3 className="text-sm font-black text-white uppercase tracking-widest mt-0.5">Misiones de Hoy</h3>
-                      </div>
-                      <span className="text-[8px] font-black text-slate-400 uppercase bg-white/5 border border-white/5 px-2.5 py-1 rounded-lg">
-                        {todayCompleted}/{todayJobs.length} Completadas
-                      </span>
+            return (
+              <div className="space-y-6 animate-in fade-in pb-24 font-sans">
+                
+                {/* ── HEADER HUD ── */}
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 pt-2 border-b border-white/5 pb-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-[#F5C518]/25 to-amber-600/10 border border-[#F5C518]/30 flex items-center justify-center font-black text-[#F5C518] shadow-[0_0_20px_rgba(245,197,24,0.2)] relative group overflow-hidden">
+                      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
+                      {activeEmployee?.name?.slice(0, 2).toUpperCase()}
                     </div>
-
-                    {todayJobs.length > 0 ? (
-                      <div className="w-full bg-white/5 h-1.5 rounded-full overflow-hidden">
-                        <div 
-                          className="bg-gradient-to-r from-[#F5C518] to-amber-500 h-full transition-all duration-500" 
-                          style={{ width: `${(todayCompleted / todayJobs.length) * 100}%` }}
-                        />
-                      </div>
-                    ) : null}
-
-                    <div className="grid grid-cols-2 gap-3 pt-1">
-                      <div className="bg-black/35 border border-white/5 p-3 rounded-xl">
-                        <p className="text-[7px] text-slate-500 uppercase font-black">Pendientes</p>
-                        <p className="text-xl font-black text-white mt-0.5">{todayPending}</p>
-                      </div>
-                      <div className="bg-black/35 border border-white/5 p-3 rounded-xl">
-                        <p className="text-[7px] text-slate-500 uppercase font-black">Misión Activa</p>
-                        <p className={`text-[10px] font-black mt-1.5 truncate ${activeJob ? 'text-green-400' : 'text-slate-500'}`}>
-                          {activeJob ? activeJob.client_name : 'Ninguna'}
+                    <div>
+                      <h2 className="text-xl font-black uppercase tracking-widest text-white font-display leading-none">DECK DE OPERACIONES</h2>
+                      <div className="flex flex-wrap items-center gap-2 mt-1.5">
+                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">
+                          {activeEmployee?.name} • <span className="text-[#F5C518]">👷 {activeEmployee?.role?.toUpperCase()}</span>
                         </p>
+                        <span className="w-1 h-1 rounded-full bg-slate-700" />
+                        <div className="flex items-center gap-1.5">
+                          <span className={`w-2 h-2 rounded-full ${onDuty ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'}`} />
+                          <span className={`text-[8px] font-black uppercase tracking-wider ${onDuty ? 'text-emerald-400' : 'text-rose-400'}`}>
+                            {onDuty ? 'Activo para Despacho' : 'Fuera de Servicio'}
+                          </span>
+                        </div>
                       </div>
                     </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                      {todayJobs.length > 0 && (
-                        <button 
-                          onClick={() => setRouteModalOpen(true)}
-                          className="w-full bg-slate-900 border border-[#F5C518]/30 hover:bg-[#F5C518]/10 text-[#F5C518] py-2.5 rounded-xl text-[9px] font-black uppercase tracking-wider flex items-center justify-center gap-2 active:scale-95 transition-all"
-                        >
-                          <Icon name="map" className="w-3.5 h-3.5" />
-                          Optimizar Ruta GPS (Leaflet)
-                        </button>
-                      )}
-                      <button 
-                        onClick={() => setStaffMeetingOpen(true)}
-                        className={`w-full bg-indigo-950/40 border border-indigo-500/30 hover:bg-indigo-500/20 text-indigo-400 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-wider flex items-center justify-center gap-2 active:scale-95 transition-all ${todayJobs.length === 0 ? 'sm:col-span-2' : ''}`}
+                  </div>
+
+                  <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
+                    {/* Shift Duty Toggle Button */}
+                    <button
+                      onClick={() => {
+                        const next = !onDuty;
+                        setOnDuty(next);
+                        localStorage.setItem('elevore_staff_onduty', String(next));
+                        tt(next ? 'Shift iniciado: ¡Activo para despacho! 👷' : 'Shift terminado: Fuera de servicio. 👋', next ? 'green' : 'red');
+                      }}
+                      className={`px-4 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-wider flex items-center justify-center gap-1.5 active:scale-95 transition-all border ${
+                        onDuty 
+                          ? 'bg-rose-950/20 hover:bg-rose-900/30 text-rose-400 border-rose-500/20' 
+                          : 'bg-emerald-950/20 hover:bg-emerald-900/30 text-emerald-400 border-emerald-500/20'
+                      }`}
+                    >
+                      <Icon name={onDuty ? "power" : "play"} className="w-3.5 h-3.5" />
+                      {onDuty ? 'Terminar Turno' : 'Iniciar Turno'}
+                    </button>
+
+                    {ENABLE_AI && (
+                      <button onClick={() => setAIOpen(true)} className="px-5 py-2.5 bg-[#F5C518] hover:bg-[#F5C518]/90 text-black font-black uppercase text-[9px] tracking-wider flex items-center justify-center gap-1.5 active:scale-95 shadow-lg shadow-[#F5C518]/15 rounded-xl transition-all btn-gold">
+                        <Icon name="brain" className="w-3.5 h-3.5" /> AI Copilot
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Offline Manual Sync Banner */}
+                {(() => {
+                  const queuedStr = localStorage.getItem('elevore_offline_missions') || '{}';
+                  const count = Object.keys(JSON.parse(queuedStr)).length;
+                  if (count === 0) return null;
+                  return (
+                    <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-2xl flex flex-col sm:flex-row justify-between items-center gap-3 animate-pulse">
+                      <div className="flex items-center gap-2">
+                        <Icon name="wifi-off" className="w-5 h-5 text-[#F5C518]" />
+                        <div>
+                          <p className="text-[10px] font-black text-white uppercase tracking-wider">MISIONES GUARDADAS LOCALMENTE ({count})</p>
+                          <p className="text-[8px] text-slate-400 uppercase font-semibold">Tienes actualizaciones offline pendientes de sincronizar.</p>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => syncOfflineMissions(tenantId, tt, refresh)}
+                        className="w-full sm:w-auto px-4 py-2 bg-[#F5C518] text-black font-black uppercase text-[8px] tracking-wider rounded-xl active:scale-95 transition-all"
                       >
-                        <Icon name="mic" className="w-3.5 h-3.5 text-indigo-400 animate-pulse" />
-                        Unirse a Habitación IA
+                        Sincronizar Ahora 🚀
                       </button>
                     </div>
+                  );
+                })()}
+
+                {/* THREE-COLUMN RESPONSIVE LAYOUT */}
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                  
+                  {/* COLUMN 1: Profile HUD, Debit Card & Level circular */}
+                  <div className="space-y-6">
+                    
+                    {/* Profile HUD Ticking Clock */}
+                    <div className="g p-5 space-y-4 bg-black/40 border border-white/5 rounded-2xl">
+                      <div className="flex justify-between items-center border-b border-white/5 pb-2">
+                        <span className="text-[7.5px] font-black text-slate-500 uppercase tracking-widest">DECK CLOCK & TIME</span>
+                        <span className="text-[7px] text-emerald-400 font-mono font-bold bg-emerald-500/10 border border-emerald-500/20 px-1.5 py-0.5 rounded uppercase tracking-wider animate-pulse">SYSTEM ACTIVE</span>
+                      </div>
+                      <div className="text-center py-2">
+                        <p className="text-[9px] text-[#F5C518] font-black uppercase tracking-widest">Hora del Turno Actual</p>
+                        <h3 className="text-3xl font-black italic tracking-tighter text-white font-mono-values mt-0.5">
+                          {hudTime.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                        </h3>
+                        <p className="text-[7px] text-slate-500 uppercase tracking-widest font-bold mt-1">
+                          {hudTime.toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}
+                        </p>
+                      </div>
+                      {/* Shift Statistics */}
+                      <div className="grid grid-cols-2 gap-2 text-center border-t border-white/5 pt-3 text-[9px] uppercase font-bold">
+                        <div className="bg-white/[0.01] p-2 rounded-xl border border-white/5">
+                          <span className="text-slate-500 block text-[7px] mb-0.5">Turno</span>
+                          <span className={onDuty ? 'text-green-400' : 'text-slate-500'}>{onDuty ? 'ON DUTY' : 'OFF DUTY'}</span>
+                        </div>
+                        <div className="bg-white/[0.01] p-2 rounded-xl border border-white/5">
+                          <span className="text-slate-500 block text-[7px] mb-0.5">Conectividad</span>
+                          <span className={isOffline ? 'text-red-400' : 'text-emerald-400'}>{isOffline ? 'OFFLINE' : 'ONLINE ✓'}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Holographic Wallet debit card */}
+                    <div className="relative rounded-3xl overflow-hidden border border-white/5 bg-gradient-to-br from-zinc-950 via-[#0a1510] to-slate-950 p-6 shadow-2xl flex flex-col justify-between min-h-[190px] group card-3d">
+                      <div className="absolute top-0 left-0 w-full h-[2px] bg-gradient-to-r from-emerald-500/50 via-[#F5C518]/30 to-transparent" />
+                      <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_120%,rgba(16,185,129,0.08),transparent)] pointer-events-none" />
+                      <div className="absolute -bottom-10 -right-10 w-32 h-32 bg-emerald-500/5 rounded-full blur-3xl pointer-events-none" />
+                      
+                      <div className="flex justify-between items-start relative z-10">
+                        <div>
+                          <p className="text-[7.5px] font-black text-slate-400 uppercase tracking-[0.25em]">Elevore Crew Wallet</p>
+                          <span className="text-[6.5px] font-black px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 uppercase tracking-widest mt-1.5 inline-block">Direct Payouts</span>
+                        </div>
+                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#F5C518] to-amber-600 flex items-center justify-center font-black text-black text-[10px] shadow-lg shadow-amber-500/20 italic">E</div>
+                      </div>
+
+                      {/* Chip card simulation */}
+                      <div className="w-9 h-7 bg-gradient-to-br from-amber-200 via-amber-400 to-amber-600 rounded-lg border border-white/10 my-3 flex flex-col justify-between p-1 opacity-85">
+                        <div className="w-4 h-[1px] bg-black/30 rounded"></div>
+                        <div className="w-5 h-[1px] bg-black/30 rounded"></div>
+                        <div className="w-3 h-[1px] bg-black/30 rounded"></div>
+                      </div>
+
+                      <div className="my-2 relative z-10">
+                        <span className="text-slate-500 block text-[7.5px] uppercase font-black tracking-widest">Saldo Disponible</span>
+                        <span className="text-3xl font-black text-white italic tracking-tight font-mono-values leading-none">{fmt$(activeEmployee?.wallet_balance || 0)}</span>
+                      </div>
+
+                      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-3 border-t border-white/5 pt-4 relative z-10">
+                        <div className="text-[7.5px] text-slate-500 uppercase font-black tracking-wider space-y-0.5">
+                          <p>Beneficiario: <span className="text-slate-300 font-bold">{activeEmployee?.name}</span></p>
+                          <p>Total Acumulado: <span className="text-slate-300 font-bold">{fmt$(activeEmployee?.total_earned || 0)}</span></p>
+                        </div>
+                        {(activeEmployee?.wallet_balance || 0) > 0 ? (
+                          <button onClick={() => handleCashout(activeEmployee)} className="w-full sm:w-auto px-4 py-2.5 bg-gradient-to-r from-emerald-500 to-green-500 hover:from-emerald-400 hover:to-green-400 text-black font-black uppercase text-[8.5px] tracking-wider rounded-xl active:scale-95 transition-all shadow-[0_0_20px_rgba(16,185,129,0.3)] flex items-center justify-center gap-1 font-sans">
+                            💸 Zelle Cashout
+                          </button>
+                        ) : (
+                          <span className="w-full sm:w-auto text-center text-[8.5px] bg-white/5 border border-white/5 text-slate-500 px-3.5 py-2 rounded-xl uppercase font-black">Cobrado ✓</span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Cashout Logs history card */}
+                    <div className="g p-5 space-y-3 bg-black/40 border border-white/5 rounded-2xl">
+                      <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest border-b border-white/5 pb-1.5">Historial de Retiros Recientes</p>
+                      <div className="space-y-2 max-h-[120px] overflow-y-auto nsb pr-1">
+                        {withdrawLogs.length === 0 ? (
+                          <p className="text-[7.5px] text-slate-500 italic text-center py-4 uppercase">No hay retiros registrados</p>
+                        ) : (
+                          withdrawLogs.map((lg) => (
+                            <div key={lg.id} className="flex justify-between items-center text-[9px] bg-white/[0.01] border border-white/5 p-2 rounded-xl">
+                              <div>
+                                <p className="text-white font-bold truncate max-w-[120px]">{lg.ref}</p>
+                                <p className="text-[7px] text-slate-500 font-mono">{new Date(lg.date).toLocaleString('es-ES')}</p>
+                              </div>
+                              <span className="font-mono text-emerald-400 font-bold">-{fmt$(lg.amount)}</span>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Gamification Circle Card */}
+                    {(() => {
+                      const stats = getStaffStats(activeEmployee, jobs);
+                      return (
+                        <div className="g p-6 shadow-xl bg-gradient-to-br from-indigo-950/20 via-slate-900/40 to-black border border-indigo-500/20 rounded-2xl relative overflow-hidden space-y-4">
+                          <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/5 rounded-full blur-3xl pointer-events-none"></div>
+                          <div className="flex items-center justify-between border-b border-white/5 pb-2">
+                            <div>
+                              <p className="text-[7.5px] font-black text-indigo-400 uppercase tracking-wider">🛡️ GAMIFICATION SYSTEM</p>
+                              <h3 className="text-xs font-black text-white uppercase tracking-widest mt-0.5">Progreso y Logros</h3>
+                            </div>
+                          </div>
+
+                          {/* Circular level ring */}
+                          <div className="flex items-center gap-4 py-1">
+                            <div className="relative w-16 h-16 flex items-center justify-center flex-shrink-0">
+                              <svg className="w-full h-full transform -rotate-90">
+                                <circle cx="32" cy="32" r="28" stroke="rgba(255,255,255,0.05)" strokeWidth="4" fill="transparent" />
+                                <circle cx="32" cy="32" r="28" stroke="#F5C518" strokeWidth="4" fill="transparent"
+                                  strokeDasharray={175.9}
+                                  strokeDashoffset={175.9 - (175.9 * stats.progress) / 100}
+                                  strokeLinecap="round"
+                                  className="transition-all duration-1000 ease-out"
+                                />
+                              </svg>
+                              <div className="absolute inset-0 flex flex-col items-center justify-center">
+                                <span className="text-[8px] font-black text-slate-500 leading-none">LVL</span>
+                                <span className="text-base font-black text-white italic leading-none mt-0.5">{stats.level}</span>
+                              </div>
+                            </div>
+
+                            <div className="flex-1 space-y-1">
+                              <div className="flex justify-between text-[8px] font-bold text-slate-400 uppercase">
+                                <span>XP: {stats.xp}</span>
+                                <span>{stats.progress}%</span>
+                              </div>
+                              <p className="text-[7.5px] text-indigo-400 uppercase font-black">Faltan {800 - (stats.xp % 800)} XP para Nivel {stats.level + 1}</p>
+                            </div>
+                          </div>
+
+                          <div className="space-y-1.5 pt-1.5 border-t border-white/5">
+                            <p className="text-[8px] font-black text-slate-500 uppercase tracking-wider">Logros Obtenidos ({stats.badges.length})</p>
+                            <div className="flex flex-wrap gap-1.5">
+                              {stats.badges.map((badge, idx) => {
+                                const badgeMeta = badgeDescriptions[badge.id] || { emoji: '🏆', label: badge.label, description: 'Logro operacional completado.' };
+                                return (
+                                  <button 
+                                    key={idx} 
+                                    onClick={() => setActiveBadgeDesc(badgeMeta)}
+                                    className={`text-[8.5px] font-black px-2.5 py-1 rounded-lg border uppercase hover:scale-105 active:scale-95 transition-all cursor-pointer ${badge.color}`}
+                                  >
+                                    {badge.label}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })()}
+
                   </div>
-                );
-              })()}
 
-              {/* Dynamic Wallet Dashboard for Active Employee */}
-              <div className="g p-6 flex items-center justify-between shadow-xl bg-[rgba(255,255,255,0.04)] border border-[rgba(255,255,255,0.08)] rounded-2xl relative overflow-hidden">
-                <span className="absolute top-4 right-4 bg-green-500/10 text-green-400 border border-green-500/20 text-[8px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">BALANCE</span>
-                <div>
-                  <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Mi Billetera Elevore</p>
-                  <h3 className="text-4xl font-black text-white italic mt-1">{fmt$(activeEmployee?.wallet_balance || 0)}</h3>
-                  <p className="text-[8px] text-slate-500 font-bold uppercase mt-1">Total ganado histórico: {fmt$(activeEmployee?.total_earned || 0)}</p>
-                </div>
-                {(activeEmployee?.wallet_balance || 0) > 0 ? (
-                  <button onClick={() => handleCashout(activeEmployee)} className="gold px-4 py-3 rounded-xl font-black text-[9px] uppercase active:scale-95 flex items-center gap-1">💸 Zelle Cashout</button>
-                ) : (
-                  <span className="text-[8px] bg-white/5 border border-white/5 text-slate-500 px-3 py-2 rounded-xl uppercase font-black">Paid ✓</span>
-                )}
-              </div>
+                  {/* COLUMN 2 & 3: Daily Operations progress, quick actions, timeline, and missions list */}
+                  <div className="space-y-6 lg:col-span-2">
+                    
+                    {/* Today's Missions Progress Widget */}
+                    {(() => {
+                      const todayJobs = staffJobs.filter(j => j.scheduled_date === todayStr);
+                      const todayCompleted = todayJobs.filter(j => j.status === 'completed' || j.status === 'paid').length;
+                      const todayPending = todayJobs.filter(j => j.status !== 'completed' && j.status !== 'paid').length;
+                      const activeJob = todayJobs.find(j => j.status === 'in_progress');
 
-              {/* Staff Gamification Portal */}
-              {(() => {
-                const stats = getStaffStats(activeEmployee, jobs);
-                return (
-                  <div className="g p-6 shadow-xl bg-gradient-to-br from-indigo-950/20 via-slate-900/40 to-black border border-indigo-500/20 rounded-2xl relative overflow-hidden space-y-4">
-                    <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/5 rounded-full blur-3xl pointer-events-none"></div>
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-[7px] font-black text-indigo-400 uppercase tracking-wider">🛡️ GAMIFICATION PORTAL</p>
-                        <h3 className="text-sm font-black text-white uppercase tracking-widest mt-0.5">Progreso y Logros</h3>
-                      </div>
-                      <span className="text-[10px] font-black text-[#F5C518] uppercase bg-amber-400/10 border border-amber-400/25 px-2.5 py-1 rounded-lg">
-                        Nivel {stats.level}
-                      </span>
-                    </div>
+                      return (
+                        <div className="g p-6 bg-gradient-to-br from-slate-950 via-zinc-900 to-black border border-[#F5C518]/25 rounded-2xl relative overflow-hidden shadow-2xl space-y-5">
+                          <div className="absolute top-0 right-0 w-32 h-32 bg-[#F5C518]/5 rounded-full blur-3xl pointer-events-none"></div>
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="text-[7.5px] font-black text-[#F5C518] uppercase tracking-wider">🎯 OPERATIONS DECK</p>
+                              <h3 className="text-sm font-black text-white uppercase tracking-widest mt-0.5">Control de Turno</h3>
+                            </div>
+                            <span className="text-[8px] font-black text-slate-400 uppercase bg-white/5 border border-white/5 px-2.5 py-1 rounded-lg">
+                              {todayCompleted}/{todayJobs.length} Completadas
+                            </span>
+                          </div>
 
-                    <div className="space-y-1">
-                      <div className="flex justify-between text-[8px] font-bold text-slate-400 uppercase">
-                        <span>XP: {stats.xp}</span>
-                        <span>{stats.progress}% para Nivel {stats.level + 1}</span>
-                      </div>
-                      <div className="w-full bg-white/5 h-2 rounded-full overflow-hidden border border-white/5 p-[1px]">
-                        <div 
-                          className="bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 h-full rounded-full transition-all duration-500" 
-                          style={{ width: `${stats.progress}%` }}
-                        />
-                      </div>
-                    </div>
+                          {todayJobs.length > 0 ? (
+                            <div className="w-full bg-white/5 h-1.5 rounded-full overflow-hidden border border-white/5 p-[1px]">
+                              <div 
+                                className="bg-gradient-to-r from-[#F5C518] to-amber-500 h-full rounded-full transition-all duration-500" 
+                                style={{ width: `${(todayCompleted / todayJobs.length) * 100}%` }}
+                              />
+                            </div>
+                          ) : null}
 
-                    <div className="space-y-1.5 pt-1">
-                      <p className="text-[8px] font-black text-slate-500 uppercase">Logros Obtenidos ({stats.badges.length})</p>
-                      <div className="flex flex-wrap gap-1.5">
-                        {stats.badges.map((badge, idx) => (
-                          <span 
-                            key={idx} 
-                            className={`text-[8.5px] font-black px-2.5 py-1 rounded-lg border uppercase ${badge.color}`}
-                          >
-                            {badge.label}
+                          <div className="grid grid-cols-2 gap-3">
+                            <div className="bg-black/35 border border-white/5 p-3 rounded-xl relative overflow-hidden group hover:border-[#F5C518]/20 transition-all duration-300">
+                              <p className="text-[7.5px] text-slate-500 uppercase font-black">Pendientes Hoy</p>
+                              <p className="text-xl font-black text-white mt-0.5 font-mono-values">{todayPending}</p>
+                            </div>
+                            <div className="bg-black/35 border border-white/5 p-3 rounded-xl relative overflow-hidden group hover:border-green-500/20 transition-all duration-300">
+                              <p className="text-[7.5px] text-slate-500 uppercase font-black">Misión en Progreso</p>
+                              <p className={`text-[10px] font-black mt-1.5 truncate ${activeJob ? 'text-green-400' : 'text-slate-500'}`}>
+                                {activeJob ? activeJob.client_name : 'Ninguna activa'}
+                              </p>
+                            </div>
+                          </div>
+
+                          {/* Tactical Action Menu Dock */}
+                          <div className="space-y-2">
+                            <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest border-t border-white/5 pt-3">Consola de Acciones Tácticas</p>
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                              {todayJobs.length > 0 && (
+                                <button 
+                                  onClick={() => setRouteModalOpen(true)}
+                                  className="bg-slate-900 border border-[#F5C518]/30 hover:bg-[#F5C518]/10 hover:border-[#F5C518]/50 text-[#F5C518] p-2 rounded-xl text-[8px] font-black uppercase tracking-wider flex flex-col items-center justify-center gap-1 active:scale-95 transition-all shadow-lg"
+                                >
+                                  <Icon name="map" className="w-3.5 h-3.5" />
+                                  <span>Optimizar Ruta GPS</span>
+                                </button>
+                              )}
+                              <button 
+                                onClick={() => setStaffMeetingOpen(true)}
+                                className={`bg-indigo-950/40 border border-indigo-500/30 hover:bg-indigo-500/20 text-indigo-400 p-2 rounded-xl text-[8px] font-black uppercase tracking-wider flex flex-col items-center justify-center gap-1 active:scale-95 transition-all ${todayJobs.length === 0 ? 'col-span-2' : ''} shadow-lg`}
+                              >
+                                <Icon name="mic" className="w-3.5 h-3.5 text-indigo-400 animate-pulse" />
+                                <span>Canal IA</span>
+                              </button>
+                              <button
+                                onClick={() => setSosAlerting(true)}
+                                className="bg-red-950/30 border border-red-500/30 hover:bg-red-500/20 text-red-400 p-2 rounded-xl text-[8px] font-black uppercase tracking-wider flex flex-col items-center justify-center gap-1 active:scale-95 transition-all shadow-lg"
+                              >
+                                <Icon name="alert-triangle" className="w-3.5 h-3.5 text-red-500 animate-pulse" />
+                                <span>Alerta SOS</span>
+                              </button>
+                              <button
+                                onClick={() => {
+                                  tt('Reportando tráfico y demora a la central de control... 🚗', 'yellow');
+                                  addStaffNotification('Tráfico Demorado 🚗', 'Demora reportada en ruta. El administrador ha sido notificado.');
+                                }}
+                                className="bg-amber-950/20 border border-amber-500/20 hover:bg-amber-500/10 text-amber-400 p-2 rounded-xl text-[8px] font-black uppercase tracking-wider flex flex-col items-center justify-center gap-1 active:scale-95 transition-all shadow-lg"
+                              >
+                                <Icon name="clock" className="w-3.5 h-3.5 text-amber-500" />
+                                <span>Trafico / Demora</span>
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })()}
+
+                    {/* Live notifications panel */}
+                    <div className="g p-5 bg-black/40 border border-white/5 rounded-2xl space-y-4">
+                      <div className="flex justify-between items-center border-b border-white/5 pb-2">
+                        <div className="flex items-center gap-2">
+                          <span className="relative flex h-2 w-2">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#F5C518] opacity-75"></span>
+                            <span className="relative inline-flex rounded-full h-2 w-2 bg-[#F5C518]"></span>
                           </span>
-                        ))}
+                          <h3 className="text-[10px] font-black text-white uppercase tracking-widest">🔔 Centro de Notificaciones en Vivo</h3>
+                        </div>
+                        <button 
+                          onClick={() => {
+                            addStaffNotification(
+                              'Simulación: Nueva Tarea Asignada 🚗',
+                              `El administrador te ha asignado un servicio de mudanza en 450 N Orange Ave.`
+                            );
+                          }}
+                          className="px-2.5 py-1 bg-[#F5C518]/10 hover:bg-[#F5C518] hover:text-black border border-[#F5C518]/30 text-[#F5C518] rounded-lg text-[7.5px] font-black uppercase tracking-wider active:scale-95 transition-all"
+                        >
+                          ⚡ Simular Push Alert
+                        </button>
                       </div>
-                    </div>
-                  </div>
-                );
-              })()}
 
-              {(staffJobs || []).length === 0 && <div className="g p-10 text-center text-slate-500 font-black italic uppercase bg-[rgba(255,255,255,0.04)] border border-[rgba(255,255,255,0.08)]">No tienes misiones asignadas hoy.</div>}
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {(staffJobs || []).map(job => (
-                  <button key={job.id} onClick={() => setAStaff(job)} className="w-full g p-5 text-left active:scale-95 transition-all bg-[rgba(255,255,255,0.04)] border border-[rgba(255,255,255,0.08)] flex flex-col justify-between min-h-[140px] hover:border-[#F5C518]/30">
-                    <div className="flex justify-between items-start w-full">
-                      <div>
-                        <h3 className="text-lg font-black uppercase italic text-white leading-tight">{job.client_name}</h3>
-                        <p className="text-[9px] text-slate-400 uppercase mt-1">{job.service_type} • {fmtD(job.scheduled_date)}</p>
-                        <p className="text-[8px] text-slate-500 mt-1 italic truncate w-48">{job.address}</p>
+                      <div className="space-y-2 max-h-[140px] overflow-y-auto nsb pr-1">
+                        {staffNotifications.length === 0 ? (
+                          <p className="text-[8px] text-slate-500 italic text-center py-4">No tienes notificaciones pendientes.</p>
+                        ) : (
+                          staffNotifications.map(notif => (
+                            <div 
+                              key={notif.id} 
+                              onClick={() => {
+                                setStaffNotifications(prev => prev.map(n => n.id === notif.id ? { ...n, unread: false } : n));
+                              }}
+                              className={`p-3 rounded-xl border transition-all cursor-pointer flex justify-between items-start gap-3 ${
+                                notif.unread 
+                                  ? 'bg-[#F5C518]/[0.03] border-[#F5C518]/20 shadow-[0_0_10px_rgba(245,197,24,0.02)]' 
+                                  : 'bg-white/[0.01] border-white/5 opacity-70'
+                              }`}
+                            >
+                              <div className="space-y-1">
+                                <div className="flex items-center gap-1.5">
+                                  {notif.unread && <span className="w-1.5 h-1.5 rounded-full bg-[#F5C518]" />}
+                                  <p className="text-[9px] font-black text-white uppercase">{notif.title}</p>
+                                </div>
+                                <p className="text-[8px] text-slate-400 font-bold uppercase">{notif.desc}</p>
+                              </div>
+                              <span className="text-[6.5px] text-slate-600 font-bold uppercase">{notif.time}</span>
+                            </div>
+                          ))
+                        )}
                       </div>
-                      <span className={`text-[7px] font-black px-2 py-1 rounded-full uppercase ml-2 flex-shrink-0 ${job.status === 'in_progress' ? 'bg-green-600 text-white' : job.status === 'completed' ? 'bg-purple-600 text-white' : 'bg-[#F5C518] text-black'}`}>{job.status}</span>
                     </div>
-                    <p className="text-[8px] font-black text-[#F5C518] uppercase mt-3 self-end flex items-center gap-1">Iniciar misión <Icon name="arrow-right" className="w-3 h-3" /></p>
-                  </button>
-                ))}
+
+                    {/* Tactical Missions Grid */}
+                    <div className="space-y-3.5">
+                      <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest pl-1">📋 MISIONES ASIGNADAS HOY</p>
+                      
+                      {(staffJobs || []).length === 0 && (
+                        <div className="g p-10 text-center text-slate-500 font-black italic uppercase bg-[rgba(255,255,255,0.04)] border border-[rgba(255,255,255,0.08)]">
+                          No tienes misiones asignadas hoy.
+                        </div>
+                      )}
+                      
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {(staffJobs || []).map(job => {
+                          const doneTasks = Object.values(job.specs?.checklist || {}).filter(Boolean).length;
+                          const totalTasks = job.specs?.custom_checklist?.length || CHECKS.length;
+                          const isCurrent = job.status === 'in_progress';
+                          const isCompleted = job.status === 'completed' || job.status === 'paid';
+                          
+                          // VIP check
+                          const isVIP = job.client_membership && job.client_membership !== 'none';
+                          const paymentType = job.payment_method || 'Base';
+
+                          return (
+                            <button 
+                              key={job.id} 
+                              onClick={() => setAStaff(job)} 
+                              className="w-full g p-6 text-left active:scale-[0.98] transition-all bg-[rgba(255,255,255,0.03)] border border-white/5 rounded-2xl flex flex-col justify-between min-h-[175px] hover:border-[#F5C518]/30 hover:shadow-[0_12px_24px_rgba(0,0,0,0.5)] group relative overflow-hidden"
+                            >
+                              {/* Subtle status glowing indicator */}
+                              <div className={`absolute -top-12 -right-12 w-24 h-24 rounded-full blur-2xl pointer-events-none opacity-20 transition-all ${
+                                isCurrent ? 'bg-green-500' : isCompleted ? 'bg-purple-500' : 'bg-amber-500'
+                              }`} />
+                              
+                              <div className="flex justify-between items-start w-full relative z-10">
+                                <div className="space-y-1 flex-1">
+                                  <div className="flex flex-wrap items-center gap-1.5">
+                                    <span className={`text-[6.5px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider ${
+                                      isCurrent ? 'bg-green-500/10 text-green-400 border border-green-500/20' : 
+                                      isCompleted ? 'bg-purple-500/10 text-purple-400 border border-purple-500/20' : 
+                                      'bg-amber-500/10 text-[#F5C518] border border-amber-500/20'
+                                    }`}>
+                                      {job.status.toUpperCase()}
+                                    </span>
+                                    {isVIP && (
+                                      <span className="text-[6.5px] font-black px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 uppercase tracking-widest">
+                                        💎 VIP Client
+                                      </span>
+                                    )}
+                                    <span className="text-[6.5px] font-black px-2 py-0.5 rounded-full bg-white/5 text-slate-400 border border-white/5 uppercase tracking-wide">
+                                      {paymentType}
+                                    </span>
+                                  </div>
+                                  <h3 className="text-lg font-black uppercase italic text-white leading-tight group-hover:text-amber-400 transition-colors pt-2">{job.client_name}</h3>
+                                  <p className="text-[9px] text-slate-400 uppercase font-bold tracking-wider">{job.service_type} • {fmtD(job.scheduled_date)}</p>
+                                  <p className="text-[8px] text-slate-500 font-bold uppercase tracking-wider flex items-center gap-1 pt-1">
+                                    <Icon name="navigation" className="w-3 h-3 text-slate-600" />
+                                    {job.address}
+                                  </p>
+                                </div>
+                              </div>
+
+                              <div className="w-full border-t border-white/5 pt-4 mt-4 flex items-center justify-between relative z-10">
+                                {isCurrent ? (
+                                  <div className="flex items-center gap-2 text-[8px] font-black uppercase text-green-400">
+                                    <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-ping" />
+                                    <span>Progreso: {doneTasks}/{totalTasks} Tareas</span>
+                                  </div>
+                                ) : isCompleted ? (
+                                  <span className="text-[8px] font-black text-purple-400 uppercase flex items-center gap-1">
+                                    <Icon name="check-circle" className="w-3.5 h-3.5" /> Completado ✓
+                                  </span>
+                                ) : (
+                                  <span className="text-[8px] font-black text-slate-500 uppercase">Misión Asignada</span>
+                                )}
+                                
+                                <p className="text-[8px] font-black text-[#F5C518] uppercase flex items-center gap-1 group-hover:translate-x-1 transition-transform">
+                                  {isCurrent ? 'Continuar misión' : 'Iniciar misión'}
+                                  <Icon name="arrow-right" className="w-3 h-3" />
+                                </p>
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                  </div>
+
+                </div>
+
               </div>
-            </div>
-          )}
+            );
+          })()}
 
           {/* =====================================================================
               👑 ADMIN DASHBOARD BRIEF TABS
