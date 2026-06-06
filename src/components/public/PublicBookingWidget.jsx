@@ -118,14 +118,14 @@ export default function PublicBookingWidget({ tenantId: propTenantId }) {
     return day === 1 || day === 3;
   };
 
+  // Expose pricing configurations for both calculation and UI display
+  const baseFee = settings?.booking_base_price !== undefined && settings?.booking_base_price !== null ? Number(settings.booking_base_price) : 100;
+  const perSqft = settings?.booking_price_per_sqft !== undefined && settings?.booking_price_per_sqft !== null ? Number(settings.booking_price_per_sqft) : 0.08;
+  const multDeep = settings?.booking_multiplier_deep !== undefined && settings?.booking_multiplier_deep !== null ? Number(settings.booking_multiplier_deep) : 1.45;
+  const multMoveout = settings?.booking_multiplier_moveout !== undefined && settings?.booking_multiplier_moveout !== null ? Number(settings.booking_multiplier_moveout) : 1.60;
+
   // Calculate pricing
   const calculatePricing = () => {
-    // Load custom pricing from settings with default fallbacks
-    const baseFee = settings?.booking_base_price !== undefined && settings?.booking_base_price !== null ? Number(settings.booking_base_price) : 100;
-    const perSqft = settings?.booking_price_per_sqft !== undefined && settings?.booking_price_per_sqft !== null ? Number(settings.booking_price_per_sqft) : 0.08;
-    const multDeep = settings?.booking_multiplier_deep !== undefined && settings?.booking_multiplier_deep !== null ? Number(settings.booking_multiplier_deep) : 1.45;
-    const multMoveout = settings?.booking_multiplier_moveout !== undefined && settings?.booking_multiplier_moveout !== null ? Number(settings.booking_multiplier_moveout) : 1.60;
-
     // Base price calculation based on SQFT
     let basePrice = baseFee + (form.sqft * perSqft);
     
@@ -457,14 +457,14 @@ export default function PublicBookingWidget({ tenantId: propTenantId }) {
               <div className="space-y-2.5 border-y border-white/5 py-4">
                 <div className="flex justify-between text-[9px] font-bold uppercase">
                   <span className="text-slate-400">Servicio Básico</span>
-                  <span className="text-white font-mono">${Math.round(100 + (form.sqft * 0.08))}</span>
+                  <span className="text-white font-mono">${Math.round(baseFee + (form.sqft * perSqft))}</span>
                 </div>
                 
                 {form.serviceType !== 'Limpieza Regular' && (
                   <div className="flex justify-between text-[9px] font-bold uppercase">
                     <span className="text-slate-400">Multiplicador {form.serviceType}</span>
                     <span className="text-white font-mono">
-                      {form.serviceType === 'Limpieza Profunda' ? 'x1.45' : 'x1.60'}
+                      {form.serviceType === 'Limpieza Profunda' ? `x${multDeep}` : `x${multMoveout}`}
                     </span>
                   </div>
                 )}
