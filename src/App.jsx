@@ -168,6 +168,64 @@ const RISK = [
 
 const CHECKS = ['Entrance', 'Kitchen', 'Bathrooms', 'Floors', 'Bedrooms', 'Windows', 'Trash', 'Final walkthrough'];
 
+const CHECKLIST_TRANSLATIONS = {
+  'Entrance': 'Entrada',
+  'Kitchen': 'Cocina',
+  'Bathrooms': 'Baños',
+  'Floors': 'Pisos',
+  'Bedrooms': 'Dormitorios',
+  'Windows': 'Ventanas',
+  'Trash': 'Basura',
+  'Final walkthrough': 'Inspección final',
+  'Kitchen surfaces': 'Superficies de cocina',
+  'Living room dusting': 'Polvo en sala de estar',
+  'Bathroom sanitation': 'Desinfección de baño',
+  'Detail baseboards': 'Detalle de zócalos',
+  'Deep scrub kitchen grease': 'Desengrasado de cocina',
+  'Deep sanitize bathrooms': 'Sanitización profunda de baños',
+  'Behind appliances': 'Detrás de electrodomésticos',
+  'Inside cabinets': 'Limpieza interior de gabinetes',
+  'Inside oven & fridge': 'Limpieza interior de horno y nevera',
+  'Baseboards & doors': 'Zócalos y puertas',
+  'Full vacuum & mop': 'Aspirado y mapeado profundo',
+  'Clean interior oven': 'Limpieza interior de horno',
+  'Clean interior fridge': 'Limpieza interior de nevera',
+  'Clean interior windows': 'Limpieza interior de ventanas',
+  'Deep steam carpets': 'Lavado profundo de alfombras',
+  'Sweep balcony/patio': 'Barrido de balcón/patio'
+};
+
+const getTranslatedItem = (item, lang) => {
+  if (lang === 'es') {
+    return CHECKLIST_TRANSLATIONS[item] || item;
+  }
+  return item;
+};
+
+const generateDynamicChecklist = (serviceType, addons) => {
+  let list = ['Entrance'];
+  const type = (serviceType || '').toLowerCase();
+  
+  if (type.includes('profunda') || type.includes('deep')) {
+    list.push('Detail baseboards', 'Deep scrub kitchen grease', 'Deep sanitize bathrooms', 'Behind appliances');
+  } else if (type.includes('mudanza') || type.includes('move')) {
+    list.push('Inside cabinets', 'Inside oven & fridge', 'Baseboards & doors', 'Full vacuum & mop');
+  } else {
+    list.push('Kitchen surfaces', 'Living room dusting', 'Bathroom sanitation');
+  }
+  
+  const addList = Array.isArray(addons) ? addons : [];
+  if (addList.includes('oven')) list.push('Clean interior oven');
+  if (addList.includes('fridge')) list.push('Clean interior fridge');
+  if (addList.includes('windows')) list.push('Clean interior windows');
+  if (addList.includes('carpet')) list.push('Deep steam carpets');
+  if (addList.includes('balcony')) list.push('Sweep balcony/patio');
+  
+  list.push('Trash', 'Final walkthrough');
+  return Array.from(new Set(list)).filter(Boolean);
+};
+
+
 const MBS = [
   { id: 'none', name: 'None', price: 0, color: '#6b7280' },
   { id: 'basic', name: 'Basic', price: 199, color: '#6b7280', perks: ['2 Cleans/mo', '5% off', 'Priority'] },
@@ -2797,7 +2855,7 @@ function Portal({ cjid }) {
 
                   <button
                     type="submit"
-                    className="w-full gold py-3.5 rounded-2xl font-black uppercase text-xs tracking-wider shadow-lg active:scale-95 transition-all mt-2 cursor-pointer"
+                    className="w-full btn-gold py-3.5 rounded-2xl font-black uppercase text-xs tracking-wider shadow-lg active:scale-95 transition-all mt-2 cursor-pointer"
                   >
                     💳 {lang === 'es' ? `Pagar ${fmt$(chargeTotal)}` : `Pay ${fmt$(chargeTotal)}`}
                   </button>
@@ -2827,6 +2885,7 @@ function Portal({ cjid }) {
               </div>
             )}
 
+            {/* Final signature check */}
             {job.final_signature && (
               <div className="g p-5 border border-purple-600/30 text-center space-y-2">
                 <p className="text-[9px] text-purple-400 font-black uppercase">🏁 {tr(lang, 'complete')}</p>
@@ -2867,7 +2926,7 @@ function Portal({ cjid }) {
                   disabled={!rating || (rating <= 3 && !feedbackComment.trim())} 
                   className={`w-full py-4 rounded-xl font-black uppercase text-[10px] active:scale-95 transition-all ${
                     (rating && (rating >= 4 || feedbackComment.trim())) 
-                      ? 'gold shadow-[0_0_20px_rgba(245,197,24,0.15)]' 
+                      ? 'btn-gold shadow-[0_0_20px_rgba(245,197,24,0.15)]' 
                       : 'bg-white/5 text-slate-600 cursor-not-allowed'
                   }`}
                 >
@@ -2923,7 +2982,7 @@ function Portal({ cjid }) {
                             tt(lang === 'es' ? '📋 Copiado al portapapeles' : '📋 Copied to clipboard', 'green');
                             window.open(tenantSettings?.google_review_link || DEFAULT_CFG.GOOGLE, '_blank');
                           }}
-                          className="w-full gold py-3.5 rounded-xl font-black uppercase text-[10px] active:scale-95 transition-all flex items-center justify-center gap-2 shadow-lg shadow-[#F5C518]/15"
+                          className="w-full btn-gold py-3.5 rounded-xl font-black uppercase text-[10px] active:scale-95 transition-all flex items-center justify-center gap-2 shadow-lg shadow-[#F5C518]/15"
                         >
                           <Icon name="external-link" className="w-4 h-4" />
                           {lang === 'es' ? 'Copiar y Dejar Reseña en Google' : 'Copy & Leave Review on Google'}
@@ -2932,7 +2991,7 @@ function Portal({ cjid }) {
                     ) : (
                       <button
                         onClick={() => window.open(tenantSettings?.google_review_link || DEFAULT_CFG.GOOGLE, '_blank')}
-                        className="w-full gold py-4 rounded-xl font-black uppercase text-xs active:scale-95 transition-all flex items-center justify-center gap-2 shadow-lg shadow-[#F5C518]/15"
+                        className="w-full btn-gold py-4 rounded-xl font-black uppercase text-xs active:scale-95 transition-all flex items-center justify-center gap-2 shadow-lg shadow-[#F5C518]/15"
                       >
                         <Icon name="external-link" className="w-4.5 h-4.5" />
                         {lang === 'es' ? 'Dejar Reseña en Google' : 'Leave Review on Google'}
@@ -3452,13 +3511,26 @@ function Portal({ cjid }) {
 }
 
 // StaffJob Component
-function StaffJob({ job, onBack, onRefresh, tt, recTime, upsell, update, employee, isOffline }) {
+function StaffJob({ job, onBack, onRefresh, tt, recTime, upsell, update, employee, isOffline, lang, onAskCopilot }) {
   const [chk, setChk] = useState(() => job.specs?.checklist || {});
   const [localJob, setLocalJob] = useState(job);
+  const activeChecklist = useMemo(() => {
+    return localJob.specs?.custom_checklist || CHECKS;
+  }, [localJob.specs?.custom_checklist]);
   const [isScanning, setIsScanning] = useState(false);
   const [scanUrl, setScanUrl] = useState('');
   const [scanStep, setScanStep] = useState(0);
   const [loadingAction, setLoadingAction] = useState(null);
+
+  // --- VOICE MODE STATES & REFS ---
+  const [handsFreeActive, setHandsFreeActive] = useState(false);
+  const [lastSpokenCmd, setLastSpokenCmd] = useState('');
+  const [isListening, setIsListening] = useState(false);
+
+  const voiceStateRef = useRef({ chk, localJob, activeChecklist });
+  useEffect(() => {
+    voiceStateRef.current = { chk, localJob, activeChecklist };
+  });
 
   useEffect(() => {
     setLocalJob(job);
@@ -3523,7 +3595,9 @@ function StaffJob({ job, onBack, onRefresh, tt, recTime, upsell, update, employe
   }, [employee?.id, localJob.specs?.en_route, localJob.check_in_time, localJob.check_out_time, localJob.tenant_id, employee?.tenant_id]);
 
 
-  const done = Object.values(chk).filter(Boolean).length;
+  const done = useMemo(() => {
+    return activeChecklist.reduce((sum, item, idx) => sum + (chk[idx] ? 1 : 0), 0);
+  }, [activeChecklist, chk]);
   
   // Custom smart speed & quality bonus calculation
   const bonus = (localJob.status === 'paid' && localJob.final_signature && localJob.check_in_time && localJob.check_out_time && (Math.round((new Date(localJob.check_out_time) - new Date(localJob.check_in_time)) / 60000)) <= 180 && (localJob.client_rating || 0) >= 4) ? 5 : 0;
@@ -3574,6 +3648,405 @@ function StaffJob({ job, onBack, onRefresh, tt, recTime, upsell, update, employe
       setChk(chk);
     }
   };
+
+  const handleCheckIn = async () => {
+    if (loadingAction || localJob.check_in_time) return;
+    setLoadingAction('check_in');
+    const time = new Date().toISOString();
+    const generated = generateDynamicChecklist(localJob.service_type, localJob.specs?.addons);
+    const updatedSpecs = {
+      ...(localJob.specs || {}),
+      custom_checklist: generated
+    };
+    if (isOffline) {
+      setLocalJob(prev => {
+        const nextJob = { ...prev, check_in_time: time, status: 'in_progress', specs: updatedSpecs };
+        queueOfflineUpdate(localJob.id, { check_in_time: time, status: 'in_progress', specs: updatedSpecs });
+        return nextJob;
+      });
+      tt('Check-in guardado localmente (Modo Offline) 📶', 'yellow');
+      setLoadingAction(null);
+      return;
+    }
+    // Optimistic UI Update
+    setLocalJob(prev => ({ ...prev, check_in_time: time, status: 'in_progress', specs: updatedSpecs }));
+    try {
+      await recTime(localJob.id, 'check_in_time');
+    } catch (e) {
+      tt('Error check-in: ' + e.message, 'red');
+      // Revert if error
+      setLocalJob(prev => ({ ...prev, check_in_time: null, status: prev.status === 'in_progress' ? 'scheduled' : prev.status }));
+    } finally {
+      setLoadingAction(null);
+    }
+  };
+
+  const handleCheckOut = async () => {
+    const missingChecklist = done < activeChecklist.length;
+    const missingBeforePhoto = !(localJob.before_photos && localJob.before_photos.length >= 1);
+    const missingAfterPhoto = !(localJob.after_photos && localJob.after_photos.length >= 1);
+    const missingSignature = !localJob.final_signature;
+    const canCheckout = !missingChecklist && !missingBeforePhoto && !missingAfterPhoto && !missingSignature;
+
+    if (!canCheckout) {
+      let missingMsg = 'Requisitos pendientes:';
+      if (missingChecklist) missingMsg += ' Checklist incompleto.';
+      if (missingBeforePhoto) missingMsg += ' Falta foto del antes.';
+      if (missingAfterPhoto) missingMsg += ' Falta foto del después.';
+      if (missingSignature) missingMsg += ' Falta firma del cliente.';
+      tt(missingMsg, 'red');
+      return;
+    }
+
+    if (loadingAction) return;
+    setLoadingAction('close');
+    if (isOffline) {
+      const time = new Date().toISOString();
+      const newSpecs = { ...(localJob.specs || {}), checklist_done_at: time };
+      queueOfflineUpdate(localJob.id, { status: 'completed', specs: newSpecs });
+      tt('Misión finalizada localmente (Modo Offline) 📶', 'green');
+      setLoadingAction(null);
+      onBack();
+      return;
+    }
+    try {
+      await update(localJob, { status: 'completed', specs: { ...(localJob.specs || {}), checklist_done_at: new Date().toISOString() } }, 'Sent to QC ✅'); 
+      onBack(); 
+      onRefresh(); 
+    } catch (e) {
+      tt('Error: ' + e.message, 'red');
+    } finally {
+      setLoadingAction(null);
+    }
+  };
+
+  // --- HELPER STRINGS Normalizer and Matcher for Voice Commands ---
+  const removeAccents = (str) => {
+    return str.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  };
+
+  const matchChecklistItem = (spokenTaskText, checklist, langCode) => {
+    const cleanSpoken = removeAccents(spokenTaskText.trim().toLowerCase());
+    if (!cleanSpoken) return -1;
+    
+    for (let i = 0; i < checklist.length; i++) {
+      const translatedItem = getTranslatedItem(checklist[i], langCode);
+      const cleanItem = removeAccents(translatedItem.toLowerCase());
+      
+      if (cleanItem.includes(cleanSpoken) || cleanSpoken.includes(cleanItem)) {
+        return i;
+      }
+    }
+    
+    const spokenWords = cleanSpoken.split(/\s+/).filter(w => w.length > 2);
+    if (spokenWords.length > 0) {
+      for (let i = 0; i < checklist.length; i++) {
+        const translatedItem = getTranslatedItem(checklist[i], langCode);
+        const cleanItem = removeAccents(translatedItem.toLowerCase());
+        for (const word of spokenWords) {
+          if (cleanItem.includes(word)) {
+            return i;
+          }
+        }
+      }
+    }
+    return -1;
+  };
+
+  const handleAddNote = async (newNote) => {
+    const currentNotes = voiceStateRef.current.localJob.specs?.staff_notes || '';
+    const updatedNotes = currentNotes ? `${currentNotes}\n${newNote}` : newNote;
+    const updatedSpecs = {
+      ...(voiceStateRef.current.localJob.specs || {}),
+      staff_notes: updatedNotes
+    };
+    
+    if (isOffline) {
+      setLocalJob(prev => {
+        const nextJob = { ...prev, specs: updatedSpecs };
+        queueOfflineUpdate(localJob.id, { specs: updatedSpecs });
+        return nextJob;
+      });
+      tt(lang === 'es' ? "Nota guardada localmente (Modo Offline) 📶" : "Note saved locally (Offline Mode) 📶", "yellow");
+      return;
+    }
+    
+    try {
+      const { error } = await sb.from('elevore_missions').update({ specs: updatedSpecs }).eq('id', voiceStateRef.current.localJob.id);
+      if (error) throw error;
+      setLocalJob(prev => ({ ...prev, specs: updatedSpecs }));
+      onRefresh();
+      tt(lang === 'es' ? "Nota guardada correctamente ✓" : "Note saved successfully ✓", "green");
+    } catch (err) {
+      console.error("Failed to save staff note:", err);
+      tt("Error: " + err.message, "red");
+    }
+  };
+
+  const playCommandChime = (success = true) => {
+    try {
+      const AudioContext = window.AudioContext || window.webkitAudioContext;
+      if (!AudioContext) return;
+      const ctx = new AudioContext();
+      
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      
+      if (success) {
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(880, ctx.currentTime); // A5
+        gain.gain.setValueAtTime(0.08, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.12);
+        osc.start(ctx.currentTime);
+        osc.stop(ctx.currentTime + 0.12);
+        
+        const osc2 = ctx.createOscillator();
+        const gain2 = ctx.createGain();
+        osc2.connect(gain2);
+        gain2.connect(ctx.destination);
+        osc2.type = 'sine';
+        osc2.frequency.setValueAtTime(1174.66, ctx.currentTime + 0.08); // D6 pitch
+        gain2.gain.setValueAtTime(0.08, ctx.currentTime + 0.08);
+        gain2.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.22);
+        osc2.start(ctx.currentTime + 0.08);
+        osc2.stop(ctx.currentTime + 0.22);
+      } else {
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(220, ctx.currentTime); // A3
+        gain.gain.setValueAtTime(0.04, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.18);
+        osc.start(ctx.currentTime);
+        osc.stop(ctx.currentTime + 0.18);
+      }
+    } catch (e) {
+      console.warn("AudioContext failed:", e);
+    }
+  };
+
+  const handleVoiceInput = (text) => {
+    const cleaned = text.trim().toLowerCase();
+    setLastSpokenCmd(text);
+    
+    let isCheck = false;
+    let isUncheck = false;
+    let taskQuery = '';
+    
+    if (lang === 'es') {
+      const checkRegex = /^(?:marcar|activar|chequear|poner check|check|completar|hecho)\s+(.+)$/i;
+      const uncheckRegex = /^(?:desmarcar|desactivar|quitar check|uncheck|quitar|pendiente)\s+(.+)$/i;
+      
+      let match = cleaned.match(checkRegex);
+      if (match) {
+        isCheck = true;
+        taskQuery = match[1];
+      } else {
+        match = cleaned.match(uncheckRegex);
+        if (match) {
+          isUncheck = true;
+          taskQuery = match[1];
+        }
+      }
+      
+      if (isCheck || isUncheck) {
+        const idx = matchChecklistItem(taskQuery, voiceStateRef.current.activeChecklist, 'es');
+        if (idx !== -1) {
+          const currentVal = !!voiceStateRef.current.chk[idx];
+          if (isCheck && !currentVal) {
+            toggleCheck(idx);
+            playCommandChime(true);
+            tt(`Comando de Voz: "${getTranslatedItem(voiceStateRef.current.activeChecklist[idx], 'es')}" marcado`, 'green');
+          } else if (isUncheck && currentVal) {
+            toggleCheck(idx);
+            playCommandChime(true);
+            tt(`Comando de Voz: "${getTranslatedItem(voiceStateRef.current.activeChecklist[idx], 'es')}" desmarcado`, 'yellow');
+          }
+          return;
+        }
+      }
+      
+      if (/^(?:iniciar misión|empezar misión|comenzar misión|iniciar|check in|arribar)$/i.test(cleaned)) {
+        if (!voiceStateRef.current.localJob.check_in_time) {
+          handleCheckIn();
+          playCommandChime(true);
+          tt('Comando de Voz: Iniciar Misión', 'green');
+        } else {
+          tt('La misión ya está iniciada', 'yellow');
+        }
+        return;
+      }
+      
+      if (/^(?:completar misión|terminar misión|finalizar misión|checkout|salir|cerrar misión)$/i.test(cleaned)) {
+        handleCheckOut();
+        playCommandChime(true);
+        tt('Comando de Voz: Completar Misión', 'green');
+        return;
+      }
+      
+      const notesRegex = /^(?:agregar nota|añadir nota|nota|grabar nota)\s+(.+)$/i;
+      const notesMatch = cleaned.match(notesRegex);
+      if (notesMatch) {
+        const dictation = notesMatch[1];
+        handleAddNote(dictation);
+        playCommandChime(true);
+        tt(`Comando de Voz: Nota guardada`, 'green');
+        return;
+      }
+      
+      const copilotRegex = /^(?:preguntar copiloto|copiloto|preguntar al copiloto|preguntar copiloto sobre|pregunta copiloto)\s+(.+)$/i;
+      const copilotMatch = cleaned.match(copilotRegex);
+      if (copilotMatch) {
+        const query = copilotMatch[1];
+        if (onAskCopilot) {
+          onAskCopilot(query);
+          playCommandChime(true);
+          tt(`Consulta al Copiloto: "${query}"`, 'green');
+        }
+        return;
+      }
+      
+    } else {
+      const checkRegex = /^(?:check|mark|complete|enable|done)\s+(.+)$/i;
+      const uncheckRegex = /^(?:uncheck|unmark|disable|quitar|quitar check)\s+(.+)$/i;
+      
+      let match = cleaned.match(checkRegex);
+      if (match) {
+        isCheck = true;
+        taskQuery = match[1];
+      } else {
+        match = cleaned.match(uncheckRegex);
+        if (match) {
+          isUncheck = true;
+          taskQuery = match[1];
+        }
+      }
+      
+      if (isCheck || isUncheck) {
+        const idx = matchChecklistItem(taskQuery, voiceStateRef.current.activeChecklist, 'en');
+        if (idx !== -1) {
+          const currentVal = !!voiceStateRef.current.chk[idx];
+          if (isCheck && !currentVal) {
+            toggleCheck(idx);
+            playCommandChime(true);
+            tt(`Voice Command: "${voiceStateRef.current.activeChecklist[idx]}" marked`, 'green');
+          } else if (isUncheck && currentVal) {
+            toggleCheck(idx);
+            playCommandChime(true);
+            tt(`Voice Command: "${voiceStateRef.current.activeChecklist[idx]}" unmarked`, 'yellow');
+          }
+          return;
+        }
+      }
+      
+      if (/^(?:start mission|begin mission|check in|start)$/i.test(cleaned)) {
+        if (!voiceStateRef.current.localJob.check_in_time) {
+          handleCheckIn();
+          playCommandChime(true);
+          tt('Voice Command: Start Mission', 'green');
+        } else {
+          tt('Mission already started', 'yellow');
+        }
+        return;
+      }
+      
+      if (/^(?:complete mission|finish mission|check out|finish|close mission)$/i.test(cleaned)) {
+        handleCheckOut();
+        playCommandChime(true);
+        tt('Voice Command: Complete Mission', 'green');
+        return;
+      }
+      
+      const notesRegex = /^(?:add note|note|record note)\s+(.+)$/i;
+      const notesMatch = cleaned.match(notesRegex);
+      if (notesMatch) {
+        const dictation = notesMatch[1];
+        handleAddNote(dictation);
+        playCommandChime(true);
+        tt(`Voice Command: Note saved`, 'green');
+        return;
+      }
+      
+      const copilotRegex = /^(?:ask copilot|copilot|ask copilot about|question copilot)\s+(.+)$/i;
+      const copilotMatch = cleaned.match(copilotRegex);
+      if (copilotMatch) {
+        const query = copilotMatch[1];
+        if (onAskCopilot) {
+          onAskCopilot(query);
+          playCommandChime(true);
+          tt(`Copilot Query: "${query}"`, 'green');
+        }
+        return;
+      }
+    }
+    
+    playCommandChime(false);
+  };
+
+  useEffect(() => {
+    if (!handsFreeActive) {
+      setIsListening(false);
+      return;
+    }
+
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      tt(lang === 'es' ? "Speech Recognition no soportado en este navegador." : "Speech Recognition not supported in this browser.", "red");
+      setHandsFreeActive(false);
+      return;
+    }
+
+    const rec = new SpeechRecognition();
+    rec.continuous = true;
+    rec.interimResults = false;
+    rec.lang = lang === 'es' ? 'es-ES' : 'en-US';
+
+    rec.onstart = () => {
+      setIsListening(true);
+    };
+
+    rec.onend = () => {
+      setIsListening(false);
+      if (handsFreeActive) {
+        try {
+          rec.start();
+        } catch (e) {
+          console.error("Failed to restart speech recognition:", e);
+        }
+      }
+    };
+
+    rec.onerror = (e) => {
+      console.error("Speech Recognition error:", e);
+      if (e.error === 'not-allowed') {
+        tt(lang === 'es' ? "Permiso de micrófono denegado." : "Microphone permission denied.", "red");
+        setHandsFreeActive(false);
+      }
+    };
+
+    rec.onresult = (event) => {
+      const resultIndex = event.resultIndex;
+      const transcript = event.results[resultIndex][0].transcript;
+      console.log("Speech Result:", transcript);
+      handleVoiceInput(transcript);
+    };
+
+    try {
+      rec.start();
+    } catch (e) {
+      console.error("Failed to start speech recognition:", e);
+    }
+
+    return () => {
+      rec.onend = null;
+      rec.onerror = null;
+      rec.onresult = null;
+      try {
+        rec.stop();
+      } catch (e) {}
+    };
+  }, [handsFreeActive, lang]);
 
   const addAP = async url => {
     // 🧠 AI VISION INSPECTOR SIMULATION 🧠
@@ -3788,31 +4261,7 @@ function StaffJob({ job, onBack, onRefresh, tt, recTime, upsell, update, employe
             {/* Check In Button */}
             <button 
               disabled={loadingAction || localJob.check_in_time}
-              onClick={async () => {
-                setLoadingAction('check_in');
-                const time = new Date().toISOString();
-                if (isOffline) {
-                  setLocalJob(prev => {
-                    const nextJob = { ...prev, check_in_time: time, status: 'in_progress' };
-                    queueOfflineUpdate(localJob.id, { check_in_time: time, status: 'in_progress' });
-                    return nextJob;
-                  });
-                  tt('Check-in guardado localmente (Modo Offline) 📶', 'yellow');
-                  setLoadingAction(null);
-                  return;
-                }
-                // Optimistic UI Update
-                setLocalJob(prev => ({ ...prev, check_in_time: time, status: 'in_progress' }));
-                try {
-                  await recTime(localJob.id, 'check_in_time');
-                } catch (e) {
-                  tt('Error check-in: ' + e.message, 'red');
-                  // Revert if error
-                  setLocalJob(prev => ({ ...prev, check_in_time: null, status: prev.status === 'in_progress' ? 'scheduled' : prev.status }));
-                } finally {
-                  setLoadingAction(null);
-                }
-              }} 
+              onClick={handleCheckIn} 
               className={`py-3 rounded-xl font-black uppercase text-[9px] active:scale-95 flex items-center justify-center gap-1.5 transition-all ${
                 localJob.check_in_time 
                   ? 'bg-green-950/40 border border-green-500/20 text-green-400 cursor-not-allowed opacity-80' 
@@ -3930,7 +4379,52 @@ function StaffJob({ job, onBack, onRefresh, tt, recTime, upsell, update, employe
         </div>
 
         <div className="g p-5"><p className="text-[9px] font-black text-amber-500 uppercase tracking-widest mb-3">⚡ Upsell Strike</p><div className="grid grid-cols-2 gap-2">{ADDONS.filter(a => !localJob.specs?.[a.id]).map(a => { const sent = (localJob.upsell_sent || []).includes(a.id); return (<button key={a.id} disabled={sent} onClick={() => upsell(localJob, a.id)} className={`p-3 rounded-xl border text-[8px] font-black uppercase active:scale-95 ${sent ? 'bg-green-900/30 border-green-600/30 text-green-600' : 'bg-amber-500/10 border-amber-500/30 text-amber-400'}`}>{sent ? '✅ ' : ''}{a.en} ${a.p}</button>); })}</div></div>
-        <div className="g p-5 space-y-2"><div className="flex justify-between items-center mb-2"><p className="text-[9px] font-black uppercase text-amber-500">Checklist</p><span className="text-[9px] font-black text-white">{done}/{CHECKS.length}</span></div><div className="pb mb-3"><div className="pf" style={{ width: `${(done / CHECKS.length) * 100}%` }}></div></div>{CHECKS.map((item, i) => (<button key={i} onClick={() => toggleCheck(i)} className={`w-full flex items-center gap-3 p-3 rounded-xl border transition-all active:scale-95 ${chk[i] ? 'bg-green-600/20 border-green-600/40 text-green-400' : 'bg-white/5 border-white/5 text-slate-400'}`}><div className={`w-5 h-5 rounded-lg border-2 flex items-center justify-center flex-shrink-0 ${chk[i] ? 'bg-green-600 border-green-600' : 'border-slate-600'}`}>{chk[i] && <Icon name="check" className="w-3 h-3 text-white" />}</div><span className="text-[10px] font-black uppercase text-left">{item}</span></button>))}</div>
+        <div className="g p-5 space-y-2"><div className="flex justify-between items-center mb-2"><p className="text-[9px] font-black uppercase text-amber-500">Checklist</p><span className="text-[9px] font-black text-white">{done}/{activeChecklist.length}</span></div><div className="pb mb-3"><div className="pf" style={{ width: `${(done / activeChecklist.length) * 100}%` }}></div></div>{activeChecklist.map((item, i) => (<button key={i} onClick={() => toggleCheck(i)} className={`w-full flex items-center gap-3 p-3 rounded-xl border transition-all active:scale-95 ${chk[i] ? 'bg-green-600/20 border-green-600/40 text-green-400' : 'bg-white/5 border-white/5 text-slate-400'}`}><div className={`w-5 h-5 rounded-lg border-2 flex items-center justify-center flex-shrink-0 ${chk[i] ? 'bg-green-600 border-green-600' : 'border-slate-600'}`}>{chk[i] && <Icon name="check" className="w-3 h-3 text-white" />}</div><span className="text-[10px] font-black uppercase text-left">{getTranslatedItem(item, lang)}</span></button>))}</div>
+        {/* Dictated Notes Card */}
+        {localJob.specs?.staff_notes && (
+          <div className="g p-5 border border-purple-500/30 bg-purple-950/15 relative overflow-hidden mb-5">
+            <div className="absolute top-0 left-0 w-1 h-full bg-purple-500"></div>
+            <div className="flex justify-between items-center mb-2">
+              <p className="text-[9px] font-black text-purple-400 uppercase tracking-widest flex items-center gap-1.5">
+                <Icon name="mic" className="w-3.5 h-3.5" /> {lang === 'es' ? 'Notas de Campo Dictadas' : 'Dictated Field Notes'}
+              </p>
+              <button
+                onClick={async () => {
+                  if (confirm(lang === 'es' ? "¿Estás seguro de borrar las notas de campo?" : "Are you sure you want to clear field notes?")) {
+                    const updatedSpecs = {
+                      ...(localJob.specs || {}),
+                      staff_notes: null
+                    };
+                    if (isOffline) {
+                      setLocalJob(prev => {
+                        const nextJob = { ...prev, specs: updatedSpecs };
+                        queueOfflineUpdate(localJob.id, { specs: updatedSpecs });
+                        return nextJob;
+                      });
+                      tt(lang === 'es' ? "Notas eliminadas localmente (Modo Offline) 📶" : "Notes cleared locally (Offline Mode) 📶", "yellow");
+                      return;
+                    }
+                    try {
+                      await sb.from('elevore_missions').update({ specs: updatedSpecs }).eq('id', localJob.id);
+                      setLocalJob(prev => ({ ...prev, specs: updatedSpecs }));
+                      onRefresh();
+                      tt(lang === 'es' ? "Notas eliminadas ✓" : "Notes cleared ✓", "green");
+                    } catch (e) {
+                      tt("Error: " + e.message, "red");
+                    }
+                  }
+                }}
+                className="text-[8px] font-black text-red-400 uppercase hover:text-red-300"
+              >
+                {lang === 'es' ? 'Limpiar' : 'Clear'}
+              </button>
+            </div>
+            <p className="text-[10px] text-slate-300 font-medium whitespace-pre-line leading-relaxed italic">
+              "{localJob.specs.staff_notes}"
+            </p>
+          </div>
+        )}
+
         <div className="g p-5 border border-amber-500/20 bg-amber-500/5 relative overflow-hidden mb-5">
           <div className="absolute top-0 left-0 w-1 h-full bg-amber-500"></div>
           <div className="flex justify-between items-center mb-1">
@@ -3992,7 +4486,7 @@ function StaffJob({ job, onBack, onRefresh, tt, recTime, upsell, update, employe
 
         {/* VALIDATION FEEDBACK & CHECKOUT BUTTON */}
         {(() => {
-          const missingChecklist = done < CHECKS.length;
+          const missingChecklist = done < activeChecklist.length;
           const missingBeforePhoto = !(localJob.before_photos && localJob.before_photos.length >= 1);
           const missingAfterPhoto = !(localJob.after_photos && localJob.after_photos.length >= 1);
           const missingSignature = !localJob.final_signature;
@@ -4005,7 +4499,7 @@ function StaffJob({ job, onBack, onRefresh, tt, recTime, upsell, update, employe
                 <div className="flex items-center justify-between text-[10px] font-bold uppercase">
                   <span className="flex items-center gap-2">
                     <Icon name={missingChecklist ? "alert-circle" : "check-circle"} className={`w-4 h-4 ${missingChecklist ? 'text-red-500' : 'text-green-500'}`} />
-                    Tareas Completadas ({done}/{CHECKS.length})
+                    Tareas Completadas ({done}/{activeChecklist.length})
                   </span>
                   <span className={missingChecklist ? 'text-red-400' : 'text-green-400'}>{missingChecklist ? 'Pendiente' : 'Listo'}</span>
                 </div>
@@ -4034,28 +4528,7 @@ function StaffJob({ job, onBack, onRefresh, tt, recTime, upsell, update, employe
               
               <button 
                 disabled={!canCheckout || loadingAction}
-                onClick={async () => {
-                  if (!canCheckout) return;
-                  setLoadingAction('close');
-                  if (isOffline) {
-                    const time = new Date().toISOString();
-                    const newSpecs = { ...(localJob.specs || {}), checklist_done_at: time };
-                    queueOfflineUpdate(localJob.id, { status: 'completed', specs: newSpecs });
-                    tt('Misión finalizada localmente (Modo Offline) 📶', 'green');
-                    setLoadingAction(null);
-                    onBack();
-                    return;
-                  }
-                  try {
-                    await update(localJob, { status: 'completed', specs: { ...(localJob.specs || {}), checklist_done_at: new Date().toISOString() } }, 'Sent to QC ✅'); 
-                    onBack(); 
-                    onRefresh(); 
-                  } catch (e) {
-                    tt('Error: ' + e.message, 'red');
-                  } finally {
-                    setLoadingAction(null);
-                  }
-                }} 
+                onClick={handleCheckOut} 
                 className={`w-full py-5 rounded-2xl font-black uppercase text-base transition-all flex items-center justify-center ${
                   canCheckout && !loadingAction ? 'gold shadow-[0_0_30px_rgba(245,197,24,0.3)] active:scale-95 hover:bg-amber-400 text-black' : 'bg-white/5 border border-white/5 text-slate-500 cursor-not-allowed'
                 }`}
@@ -4069,6 +4542,63 @@ function StaffJob({ job, onBack, onRefresh, tt, recTime, upsell, update, employe
             </div>
           );
         })()}
+      {/* 🎤 Modo Manos Libres Floating Control Panel */}
+      <div className="fixed bottom-6 right-6 z-[1000] flex flex-col items-end gap-3 font-sans">
+        {handsFreeActive && (
+          <div className="bg-black/95 backdrop-blur-xl border border-purple-500/30 rounded-2xl p-4 shadow-[0_10px_40px_rgba(168,85,247,0.25)] max-w-[280px] w-64 animate-in slide-in-from-bottom duration-300 space-y-2">
+            <div className="flex items-center justify-between border-b border-white/5 pb-2">
+              <div className="flex items-center gap-2">
+                <span className={`w-2.5 h-2.5 rounded-full ${isListening ? 'bg-purple-500 animate-ping' : 'bg-slate-500'}`}></span>
+                <p className="text-[10px] font-black text-purple-400 uppercase tracking-wider">
+                  {isListening ? (lang === 'es' ? 'Escuchando Voz' : 'Listening Hands-Free') : (lang === 'es' ? 'Micrófono Inactivo' : 'Mic Inactive')}
+                </p>
+              </div>
+              <span className="text-[8px] bg-purple-500/20 text-purple-300 px-1.5 py-0.5 rounded font-black uppercase">
+                {lang === 'es' ? 'ES' : 'EN'}
+              </span>
+            </div>
+            
+            <p className="text-[9px] text-slate-400 uppercase font-black tracking-widest mt-1">
+              {lang === 'es' ? 'Último comando escuchado:' : 'Last Command Heard:'}
+            </p>
+            <div className="bg-white/5 border border-white/5 rounded-xl p-2.5 text-[11px] text-slate-300 italic min-h-[36px] flex items-center">
+              {lastSpokenCmd ? `"${lastSpokenCmd}"` : (lang === 'es' ? 'Habla ahora...' : 'Say a command...')}
+            </div>
+            
+            <div className="text-[7.5px] text-slate-500 uppercase space-y-0.5 pt-1 border-t border-white/5 font-bold">
+              <p>💡 {lang === 'es' ? 'Comandos sugeridos:' : 'Suggested commands:'}</p>
+              <p>• {lang === 'es' ? '"marcar [tarea]" / "desmarcar [tarea]"' : '"check [task]" / "uncheck [task]"'}</p>
+              <p>• {lang === 'es' ? '"iniciar misión" / "completar misión"' : '"start mission" / "complete mission"'}</p>
+              <p>• {lang === 'es' ? '"agregar nota [texto]"' : '"add note [text]"'}</p>
+              <p>• {lang === 'es' ? '"preguntar copiloto [pregunta]"' : '"ask copilot [question]"'}</p>
+            </div>
+          </div>
+        )}
+        
+        <button
+          onClick={() => {
+            const nextActive = !handsFreeActive;
+            setHandsFreeActive(nextActive);
+            if (nextActive) {
+              tt(lang === 'es' ? "Modo Manos Libres activado. Di un comando." : "Hands-Free Voice Mode activated. Say a command.", "green");
+            } else {
+              tt(lang === 'es' ? "Modo Manos Libres desactivado." : "Hands-Free Voice Mode deactivated.", "yellow");
+            }
+          }}
+          className={`h-14 w-14 rounded-full flex items-center justify-center shadow-lg transition-all active:scale-95 duration-300 ${
+            handsFreeActive 
+              ? 'bg-purple-600 hover:bg-purple-500 text-white animate-pulse shadow-[0_0_20px_rgba(168,85,247,0.6)] border border-purple-400/30' 
+              : 'bg-slate-900 border border-white/10 hover:border-purple-500/50 hover:bg-slate-800 text-slate-400'
+          }`}
+          title={lang === 'es' ? "Modo Manos Libres (Comandos de Voz)" : "Hands-Free Mode (Voice Commands)"}
+        >
+          {handsFreeActive ? (
+            <Icon name="mic" className="w-6 h-6 animate-bounce" />
+          ) : (
+            <Icon name="mic-off" className="w-6 h-6" />
+          )}
+        </button>
+      </div>
       </div></div>
   );
 }
@@ -4076,7 +4606,7 @@ function StaffJob({ job, onBack, onRefresh, tt, recTime, upsell, update, employe
 // AI Advisor Component
 // STRICT PRIVACY PROTECTION: When 'isStaff' is true, it strictly operates as an Operational Task Assistant.
 // It will NEVER mention financial goals, MRR, balances, or revenue!
-function AIAdvisor({ jobs, clients, staff, isStaff, activeUser, onClose, tt, onOpenReport }) {
+function AIAdvisor({ jobs, clients, staff, isStaff, activeUser, onClose, tt, onOpenReport, initialQuery }) {
   const initialText = isStaff 
     ? `¡Hola ${activeUser}! Soy tu **Manual de Operaciones con IA**. Estoy aquí para ayudarte en tu trabajo de campo. 🛠️ Pregúntame cómo limpiar orificios, parchar drywall, remover manchas de alfombras, o cómo actuar frente a un cliente difícil.`
     : `¡Hola ${activeUser}! Soy tu **Asesor de IA Elevore**. Estoy conectado a tu base de datos en tiempo real. 📊 ¿En qué puedo ayudarte hoy?`;
@@ -4346,7 +4876,26 @@ Habla en español. Sé directo, estratégico y orientado a resultados. Si el CEO
     }
   };
 
-  const handleSend = async (overrideText) => {
+  const speakText = (text, langCode) => {
+    try {
+      if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+        const cleanText = text
+          .replace(/\*\*/g, '')
+          .replace(/#/g, '')
+          .replace(/- /g, '')
+          .replace(/`[^`]+`/g, '')
+          .replace(/[\u2700-\u27BF]|[\uE000-\uF8FF]|\uD83C[\uDC00-\uDFFF]|\uD83D[\uDC00-\uDFFF]|[\u2011-\u26FF]|\uD83E[\uDD10-\uDDFF]/g, '');
+        const utterance = new SpeechSynthesisUtterance(cleanText);
+        utterance.lang = langCode === 'es' ? 'es-ES' : 'en-US';
+        window.speechSynthesis.speak(utterance);
+      }
+    } catch (e) {
+      console.warn("TTS failed:", e);
+    }
+  };
+
+  async function handleSend(overrideText) {
     const txt = (overrideText || input).trim();
     if (!txt) return;
     setMessages(prev => [...prev, { from: 'user', text: txt, time: new Date().toLocaleTimeString() }]);
@@ -4355,12 +4904,23 @@ Habla en español. Sé directo, estratégico y orientado a resultados. Si el CEO
     try {
       const reply = await callAI(txt);
       setMessages(prev => [...prev, { from: 'ai', text: reply, time: new Date().toLocaleTimeString() }]);
+      if (overrideText || initialQuery) {
+        speakText(reply, isStaff ? 'es' : 'en');
+      }
     } catch (err) {
       setMessages(prev => [...prev, { from: 'ai', text: '⚠️ Error de conexión con la IA. Verifica tu conexión a internet o la configuración del servidor local e intenta de nuevo.', time: new Date().toLocaleTimeString() }]);
     } finally {
       setIsTyping(false);
     }
-  };
+  }
+
+  const initialSentRef = useRef(false);
+  useEffect(() => {
+    if (initialQuery && !initialSentRef.current) {
+      initialSentRef.current = true;
+      handleSend(initialQuery);
+    }
+  }, [initialQuery]);
 
   return (
     <div className="fixed inset-0 bg-black/95 z-[1500] flex items-end p-4" onClick={e => e.target === e.currentTarget && onClose()}>
@@ -4492,14 +5052,25 @@ Habla en español. Sé directo, estratégico y orientado a resultados. Si el CEO
         <div className="flex-1 overflow-y-auto my-4 space-y-4 pr-1 nsb">
           {messages.map((m, i) => (
             <div key={i} className={`flex flex-col ${m.from === 'user' ? 'items-end' : 'items-start'}`}>
-              <div className={`p-4 rounded-2xl text-xs max-w-[85%] leading-relaxed ${m.from === 'user' ? 'bg-amber-500 text-black font-semibold' : 'bg-white/5 text-slate-200 border border-white/5 shadow-md'}`}>
-                {m.text.split('\n').map((line, idx) => {
-                  if (line.startsWith('### ')) return <h4 key={idx} className="text-amber-400 font-bold uppercase text-[10px] tracking-widest mt-2 mb-1">{line.replace('### ', '')}</h4>;
-                  if (line.startsWith('* ') || line.startsWith('- ')) return <p key={idx} className="pl-2 mt-1">✨ {line.replace(/^[*-] /, '')}</p>;
-                  if (line.match(/^\d+\./)) return <p key={idx} className="pl-2 mt-1">{line}</p>;
-                  if (line.startsWith('**') && line.endsWith('**')) return <p key={idx} className="font-bold text-white mt-1">{line.replace(/\*\*/g, '')}</p>;
-                  return <p key={idx} className="mt-1">{line}</p>;
-                })}
+              <div className="flex items-start gap-2 max-w-[85%]">
+                <div className={`p-4 rounded-2xl text-xs leading-relaxed ${m.from === 'user' ? 'bg-amber-500 text-black font-semibold' : 'bg-white/5 text-slate-200 border border-white/5 shadow-md'}`}>
+                  {m.text.split('\n').map((line, idx) => {
+                    if (line.startsWith('### ')) return <h4 key={idx} className="text-amber-400 font-bold uppercase text-[10px] tracking-widest mt-2 mb-1">{line.replace('### ', '')}</h4>;
+                    if (line.startsWith('* ') || line.startsWith('- ')) return <p key={idx} className="pl-2 mt-1">✨ {line.replace(/^[*-] /, '')}</p>;
+                    if (line.match(/^\d+\./)) return <p key={idx} className="pl-2 mt-1">{line}</p>;
+                    if (line.startsWith('**') && line.endsWith('**')) return <p key={idx} className="font-bold text-white mt-1">{line.replace(/\*\*/g, '')}</p>;
+                    return <p key={idx} className="mt-1">{line}</p>;
+                  })}
+                </div>
+                {m.from === 'ai' && (
+                  <button 
+                    onClick={() => speakText(m.text, isStaff ? 'es' : 'en')}
+                    className="p-2 rounded-xl bg-white/5 border border-white/5 text-slate-400 hover:text-white hover:bg-white/10 transition-all self-center active:scale-90"
+                    title={isStaff ? "Leer en voz alta" : "Read aloud"}
+                  >
+                    <Icon name="volume-2" className="w-3.5 h-3.5" />
+                  </button>
+                )}
               </div>
               <span className="text-[6px] text-slate-600 mt-1 font-bold">{m.time}</span>
             </div>
@@ -5047,6 +5618,72 @@ function OnboardingFlow({ onBack, onLoginSuccess, tt }) {
 }
 
 // =====================================================================
+// 👥 TEAM WORKER CARD (PAYROLL & RENDIMIENTO)
+// =====================================================================
+function WorkerCard({ worker, onCashout, fmt$ }) {
+  const [showPin, setShowPin] = useState(false);
+  const initials = (worker.name || 'W')
+    .split(' ')
+    .map(w => w.charAt(0))
+    .join('')
+    .slice(0, 2)
+    .toUpperCase();
+
+  return (
+    <div className="relative rounded-2xl overflow-hidden border border-white/5 bg-black/40 p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-all duration-300 hover:border-slate-500/20 hover:shadow-[0_10px_20px_rgba(255,255,255,0.02)] group">
+      {/* Subtle top shimmer effect */}
+      <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-slate-500/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+
+      <div className="flex items-center gap-4">
+        {/* Avatar badge */}
+        <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-slate-900 to-zinc-950 border border-white/10 flex items-center justify-center font-black text-sm text-slate-300 group-hover:scale-105 group-hover:border-slate-500/30 transition-all duration-300 shadow-inner">
+          {initials}
+        </div>
+        
+        <div className="space-y-1">
+          <div className="flex items-center gap-2 flex-wrap">
+            <h4 className="text-sm font-black text-white uppercase tracking-wide group-hover:text-amber-400 transition-colors">{worker.name}</h4>
+            <span className="text-[6.5px] font-black px-2.5 py-0.5 rounded-full uppercase bg-white/5 text-slate-400 border border-white/5 tracking-wider">
+              {worker.role}
+            </span>
+          </div>
+          <div className="flex gap-4 text-[8px] uppercase text-slate-500 font-bold tracking-wider">
+            <span>Acumulado: <strong className="text-slate-300">{fmt$(worker.total_earned || 0)}</strong></span>
+            <span className="flex items-center gap-1.5">
+              PIN Code: 
+              <strong className="text-slate-300 font-mono tracking-widest bg-white/5 px-2 py-0.5 rounded border border-white/5 flex items-center gap-1">
+                {showPin ? worker.passcode : '••••'}
+                <button 
+                  type="button"
+                  onClick={() => setShowPin(!showPin)} 
+                  className="text-slate-500 hover:text-white p-0.5 rounded transition-colors active:scale-90"
+                  title={showPin ? "Ocultar PIN" : "Mostrar PIN"}
+                >
+                  <Icon name={showPin ? "eye-off" : "eye"} className="w-2.5 h-2.5" />
+                </button>
+              </strong>
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <div className="flex items-center gap-4 justify-between sm:justify-end border-t border-white/5 sm:border-t-0 pt-4 sm:pt-0">
+        <div className="text-left sm:text-right">
+          <span className="text-slate-500 block text-[6.5px] uppercase font-black tracking-widest">Saldo Pendiente</span>
+          <span className="text-lg font-black text-white leading-none font-mono-values">{fmt$(worker.wallet_balance || 0)}</span>
+        </div>
+        <button
+          onClick={() => onCashout(worker)}
+          className="px-4 py-2.5 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-black font-black uppercase text-[8px] tracking-wider rounded-xl active:scale-95 transition-all shadow-[0_0_15px_rgba(16,185,129,0.1)] flex items-center gap-1.5 hover:shadow-[0_0_25px_rgba(16,185,129,0.25)]"
+        >
+          💸 Zelle Payout
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// =====================================================================
 // 🔑 LOGIN FLOW (EMAIL OR PIN)
 // =====================================================================
 function LoginFlow({ onLoginSuccess, onBack, tt }) {
@@ -5160,18 +5797,38 @@ function LoginFlow({ onLoginSuccess, onBack, tt }) {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-6 mesh-bg animate-in fade-in duration-1000 text-white">
-      <div className="g p-10 w-full max-w-sm text-center space-y-6 border-t-4 border-[#F5C518] shadow-[0_0_50px_rgba(245,197,24,0.15)] bg-black/60 backdrop-blur-2xl">
+    <div className="min-h-screen flex items-center justify-center p-6 mesh-bg animate-in fade-in duration-1000 text-white relative overflow-hidden">
+      {/* Background Hero Orbs for Premium Ambient Glow */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none select-none z-0">
+        <div className="hero-orb-1 top-[-10%] left-[-15%] opacity-25"></div>
+        <div className="hero-orb-2 bottom-[-10%] right-[-15%] opacity-20"></div>
+        <div className="hero-orb-3 top-[35%] left-[55%] opacity-10"></div>
+      </div>
+
+      {/* Floating particles backdrop */}
+      <div className="absolute inset-0 pointer-events-none overflow-hidden select-none z-0">
+        <div className="particle w-1 h-1 opacity-20" style={{ left: '10%', bottom: '10%', animationDuration: '8s', animationDelay: '0s' }} />
+        <div className="particle w-1.5 h-1.5 opacity-30" style={{ left: '20%', bottom: '15%', animationDuration: '12s', animationDelay: '2s' }} />
+        <div className="particle w-1 h-1 opacity-25" style={{ left: '40%', bottom: '5%', animationDuration: '10s', animationDelay: '4s' }} />
+        <div className="particle w-2 h-2 opacity-20" style={{ left: '60%', bottom: '20%', animationDuration: '14s', animationDelay: '1s' }} />
+        <div className="particle w-1 h-1 opacity-30" style={{ left: '80%', bottom: '12%', animationDuration: '9s', animationDelay: '5s' }} />
+        <div className="particle w-1.5 h-1.5 opacity-15" style={{ left: '90%', bottom: '8%', animationDuration: '11s', animationDelay: '3s' }} />
+      </div>
+
+      <div className="g p-10 w-full max-w-sm text-center space-y-6 border-t-4 border-[#F5C518] shadow-[0_0_50px_rgba(245,197,24,0.15)] bg-black/60 backdrop-blur-2xl relative overflow-hidden z-10">
+        {/* Subtle top shimmer effect */}
+        <div className="absolute top-0 left-0 w-full h-0.5 bg-gradient-to-r from-transparent via-[#F5C518]/30 to-transparent opacity-85"></div>
+
         <button onClick={onBack} disabled={loading} className="text-[10px] text-slate-500 font-black uppercase flex items-center gap-2 hover:text-white transition-colors mb-2">
           <Icon name="arrow-left" className="w-3 h-3" /> Back
         </button>
         
         <img src="/elevore-logo.png" alt="Elevore Logo" className="w-16 h-16 object-contain mx-auto drop-shadow-[0_0_20px_rgba(245,197,24,0.4)] animate-pulse" />
         
-        <div className="flex bg-white/5 rounded-xl p-1 mb-6">
-          <button onClick={() => setTab('email')} className={`flex-1 py-2 text-[8px] font-black uppercase tracking-wider rounded-lg transition-all ${tab === 'email' ? 'bg-[#F5C518] text-black shadow-lg' : 'text-slate-400 hover:text-white'}`}>CEO</button>
-          <button onClick={() => setTab('pin')} className={`flex-1 py-2 text-[8px] font-black uppercase tracking-wider rounded-lg transition-all ${tab === 'pin' ? 'bg-[#F5C518] text-black shadow-lg' : 'text-slate-400 hover:text-white'}`}>Staff</button>
-          <button onClick={() => setTab('client')} className={`flex-1 py-2 text-[8px] font-black uppercase tracking-wider rounded-lg transition-all ${tab === 'client' ? 'bg-[#F5C518] text-black shadow-lg' : 'text-slate-400 hover:text-white'}`}>Client Portal</button>
+        <div className="flex bg-white/5 rounded-xl p-1 mb-6 border border-white/5 relative z-10">
+          <button onClick={() => setTab('email')} className={`flex-1 py-2 text-[8px] font-black uppercase tracking-wider rounded-lg transition-all ${tab === 'email' ? 'bg-[#F5C518] text-black shadow-lg shadow-[#F5C518]/25' : 'text-slate-400 hover:text-white'}`}>CEO</button>
+          <button onClick={() => setTab('pin')} className={`flex-1 py-2 text-[8px] font-black uppercase tracking-wider rounded-lg transition-all ${tab === 'pin' ? 'bg-[#F5C518] text-black shadow-lg shadow-[#F5C518]/25' : 'text-slate-400 hover:text-white'}`}>Staff</button>
+          <button onClick={() => setTab('client')} className={`flex-1 py-2 text-[8px] font-black uppercase tracking-wider rounded-lg transition-all ${tab === 'client' ? 'bg-[#F5C518] text-black shadow-lg shadow-[#F5C518]/25' : 'text-slate-400 hover:text-white'}`}>Client Portal</button>
         </div>
 
         {tab === 'email' && (
@@ -5184,7 +5841,7 @@ function LoginFlow({ onLoginSuccess, onBack, tt }) {
               <label className="text-[9px] font-black uppercase text-slate-500 tracking-widest pl-1">Master Password</label>
               <input required type="password" placeholder="••••••••" className="inp w-full py-4 text-sm tracking-widest" value={password} onChange={e => setPassword(e.target.value)} disabled={loading} />
             </div>
-            <button type="submit" disabled={loading} className="w-full gold py-4 rounded-xl font-black uppercase text-sm shadow-[0_0_30px_rgba(245,197,24,0.2)] mt-4 active:scale-95 transition-all flex items-center justify-center gap-2">
+            <button type="submit" disabled={loading} className="w-full btn-gold py-4 rounded-xl font-black uppercase text-sm shadow-[0_0_30px_rgba(245,197,24,0.2)] mt-4 active:scale-95 transition-all flex items-center justify-center gap-2">
               {loading ? <Icon name="loader-2" className="w-5 h-5 animate-spin" /> : 'Enter Empire'}
             </button>
           </form>
@@ -5200,7 +5857,7 @@ function LoginFlow({ onLoginSuccess, onBack, tt }) {
               <label className="text-[9px] font-black uppercase text-slate-500 tracking-widest pl-1">Password</label>
               <input required type="password" placeholder="••••••••" className="inp w-full py-4 text-sm tracking-widest" value={password} onChange={e => setPassword(e.target.value)} disabled={loading} />
             </div>
-            <button type="submit" disabled={loading} className="w-full bg-white/10 hover:bg-white/20 border border-white/10 text-white py-4 rounded-xl font-black uppercase active:scale-95 transition-all text-xs tracking-wider flex items-center justify-center gap-2 mt-4">
+            <button type="submit" disabled={loading} className="w-full bg-white/5 hover:bg-white/10 border border-white/10 text-white hover:text-[#F5C518] hover:border-[#F5C518]/30 py-4 rounded-xl font-black uppercase active:scale-95 transition-all text-xs tracking-wider flex items-center justify-center gap-2 mt-4 shadow-lg hover:shadow-[#F5C518]/5">
               {loading ? <Icon name="loader-2" className="w-5 h-5 animate-spin" /> : 'Access Field App'}
             </button>
           </form>
@@ -5213,9 +5870,9 @@ function LoginFlow({ onLoginSuccess, onBack, tt }) {
               <input required type="tel" placeholder="Ej: (407) 952-4228" className="inp w-full py-4 text-sm" value={phone} onChange={e => setPhone(e.target.value)} disabled={loading} />
             </div>
             <p className="text-[7.5px] text-slate-500 leading-normal uppercase font-bold tracking-wider pt-1">
-              * Enter the phone number you used for your booking. We'll automatically find your active mission portal and referral link.
+              * Enter the phone number you used for your booking. We\'ll automatically find your active mission portal and referral link.
             </p>
-            <button type="submit" disabled={loading} className="w-full gold py-4 rounded-xl font-black uppercase text-sm shadow-[0_0_30px_rgba(245,197,24,0.2)] mt-4 active:scale-95 transition-all flex items-center justify-center gap-2">
+            <button type="submit" disabled={loading} className="w-full btn-gold py-4 rounded-xl font-black uppercase text-sm shadow-[0_0_30px_rgba(245,197,24,0.2)] mt-4 active:scale-95 transition-all flex items-center justify-center gap-2">
               {loading ? <Icon name="loader-2" className="w-5 h-5 animate-spin" /> : 'Find My Portal →'}
             </button>
           </form>
@@ -7698,6 +8355,7 @@ export default function App() {
   // Custom states
   const [activeMapAddress, setMapAddress] = useState('');
   const [aiOpen, setAIOpen] = useState(false);
+  const [aiQuery, setAIQuery] = useState(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [mapTab, setMapTab] = useState('radar');
   const [aiReportOpen, setAIReportOpen] = useState(false);
@@ -8719,6 +9377,13 @@ Instrucciones:
     if (!jobData) throw new Error("Mission not found");
 
     const patch = { [type]: time, status };
+    if (type === 'check_in_time') {
+      const generated = generateDynamicChecklist(jobData.service_type, jobData.specs?.addons);
+      patch.specs = {
+        ...(jobData.specs || {}),
+        custom_checklist: generated
+      };
+    }
 
     if (navigator.geolocation) {
       await new Promise((resolve, reject) => {
@@ -8746,7 +9411,7 @@ Instrucciones:
                   patch.gps_distance_meters = dist;
                   if (dist > 300) {
                     patch.specs = {
-                      ...(jobData.specs || {}),
+                      ...(patch.specs || jobData.specs || {}),
                       gps_deviation: true,
                       gps_deviation_meters: dist
                     };
@@ -10603,7 +11268,7 @@ Instrucciones generales de formato:
 
   // Staff View Mobile Operations Check-in Checklist
   if (role === 'staff' && aStaff) {
-    return <StaffJob job={aStaff} onBack={() => setAStaff(null)} onRefresh={refresh} tt={tt} recTime={recTime} upsell={upsell} update={update} employee={activeEmployee} isOffline={isOffline} />;
+    return <StaffJob job={aStaff} onBack={() => setAStaff(null)} onRefresh={refresh} tt={tt} recTime={recTime} upsell={upsell} update={update} employee={activeEmployee} isOffline={isOffline} lang={lang} onAskCopilot={(query) => { setAIQuery(query); setAIOpen(true); }} />;
   }
 
   return (
@@ -10611,7 +11276,7 @@ Instrucciones generales de formato:
       <Toast />
       {quickMode && <QQ onClose={() => setQM(false)} />}
       {chatJob && <ChatModal />}
-      {aiOpen && <AIAdvisor jobs={jobs} clients={clients} staff={staff} isStaff={role === 'staff'} activeUser={activeEmployee?.name || 'User'} onClose={() => setAIOpen(false)} tt={tt} onOpenReport={() => { setAIOpen(false); setAIReportOpen(true); }} />}
+      {aiOpen && <AIAdvisor jobs={jobs} clients={clients} staff={staff} isStaff={role === 'staff'} activeUser={activeEmployee?.name || 'User'} onClose={() => { setAIOpen(false); setAIQuery(null); }} tt={tt} onOpenReport={() => { setAIOpen(false); setAIReportOpen(true); }} initialQuery={aiQuery} />}
       {aiReportOpen && <AIReportModal jobs={jobs} clients={clients} staff={staff} onClose={() => setAIReportOpen(false)} tt={tt} />}
 
       {/* OVERLAY DE SIMULACIÓN DE COBRO RECURRENTE */}
@@ -11368,61 +12033,71 @@ Instrucciones generales de formato:
               {/* ── KPI CARDS (4 column) ── */}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 {/* Jobs Today */}
-                <div className="relative rounded-2xl overflow-hidden border border-green-500/20 bg-gradient-to-br from-green-950/30 to-black p-5 flex flex-col justify-between min-h-[140px] hover:-translate-y-1.5 hover:border-green-500/40 hover:shadow-[0_15px_30px_rgba(34,197,94,0.15)] transition-all duration-300 ease-out group animate-in fade-in slide-in-from-bottom-2">
+                <div className="relative rounded-2xl overflow-hidden border border-green-500/20 bg-gradient-to-br from-green-950/30 to-black p-5 flex flex-col justify-between min-h-[140px] hover:-translate-y-1.5 hover:border-green-500/40 hover:shadow-[0_15px_30px_rgba(34,197,94,0.2)] transition-all duration-300 ease-out group animate-in fade-in slide-in-from-bottom-2">
                   <div className="absolute top-0 left-0 w-full h-[2px] bg-gradient-to-r from-green-400/70 to-transparent" />
+                  <div className="absolute -bottom-6 -right-6 w-24 h-24 bg-green-500/10 rounded-full blur-2xl group-hover:bg-green-500/20 transition-all duration-500 pointer-events-none" />
                   <div className="flex items-center justify-between">
                     <div className="w-10 h-10 rounded-2xl bg-green-500/10 border border-green-500/20 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
                       <Icon name="shield-check" className="w-5 h-5 text-green-400" />
                     </div>
-                    <span className="text-[10px] font-black text-green-400 bg-green-500/10 border border-green-500/20 px-2.5 py-1 rounded-full uppercase tracking-wider">LIVE</span>
+                    <span className="text-[10px] font-black text-green-400 bg-green-500/10 border border-green-500/20 px-2.5 py-1 rounded-full uppercase tracking-wider flex items-center gap-1.5">
+                      <span className="relative flex h-1.5 w-1.5">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-green-500"></span>
+                      </span>
+                      LIVE
+                    </span>
                   </div>
-                  <div className="mt-3">
-                    <p className="text-4xl font-black text-white tracking-tight leading-none">{finance.todayJobs.length}</p>
+                  <div className="mt-3 relative z-10">
+                    <p className="text-4xl font-black text-white tracking-tight leading-none font-mono-values">{finance.todayJobs.length}</p>
                     <p className="text-xs text-green-400/70 font-bold uppercase tracking-wider mt-1.5">Jobs Hoy</p>
                   </div>
                 </div>
 
                 {/* MRR */}
-                <div className="relative rounded-2xl overflow-hidden border border-blue-500/20 bg-gradient-to-br from-blue-950/30 to-black p-5 flex flex-col justify-between min-h-[140px] hover:-translate-y-1.5 hover:border-blue-500/40 hover:shadow-[0_15px_30px_rgba(59,130,246,0.15)] transition-all duration-300 ease-out group animate-in fade-in slide-in-from-bottom-2" style={{ animationDelay: '100ms', animationFillMode: 'both' }}>
+                <div className="relative rounded-2xl overflow-hidden border border-blue-500/20 bg-gradient-to-br from-blue-950/30 to-black p-5 flex flex-col justify-between min-h-[140px] hover:-translate-y-1.5 hover:border-blue-500/40 hover:shadow-[0_15px_30px_rgba(59,130,246,0.2)] transition-all duration-300 ease-out group animate-in fade-in slide-in-from-bottom-2" style={{ animationDelay: '100ms', animationFillMode: 'both' }}>
                   <div className="absolute top-0 left-0 w-full h-[2px] bg-gradient-to-r from-blue-400/70 to-transparent" />
+                  <div className="absolute -bottom-6 -right-6 w-24 h-24 bg-blue-500/10 rounded-full blur-2xl group-hover:bg-blue-500/20 transition-all duration-500 pointer-events-none" />
                   <div className="flex items-center justify-between">
                     <div className="w-10 h-10 rounded-2xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
                       <Icon name="repeat" className="w-5 h-5 text-blue-400" />
                     </div>
                     <span className="text-[10px] font-black text-blue-400 bg-blue-500/10 border border-blue-500/20 px-2.5 py-1 rounded-full uppercase tracking-wider">MRR</span>
                   </div>
-                  <div className="mt-3">
-                    <p className="text-2xl font-black text-white tracking-tight leading-none">{isPrivate ? '•••' : fmt$(finance.mrr)}</p>
+                  <div className="mt-3 relative z-10">
+                    <p className="text-2xl font-black text-white tracking-tight leading-none font-mono-values">{isPrivate ? '•••' : fmt$(finance.mrr)}</p>
                     <p className="text-xs text-blue-400/70 font-bold uppercase tracking-wider mt-1.5">Recurrente Mes</p>
                   </div>
                 </div>
 
                 {/* Avg Ticket */}
-                <div className="relative rounded-2xl overflow-hidden border border-amber-500/20 bg-gradient-to-br from-amber-950/20 to-black p-5 flex flex-col justify-between min-h-[140px] hover:-translate-y-1.5 hover:border-amber-500/40 hover:shadow-[0_15px_30px_rgba(245,197,24,0.12)] transition-all duration-300 ease-out group animate-in fade-in slide-in-from-bottom-2" style={{ animationDelay: '200ms', animationFillMode: 'both' }}>
+                <div className="relative rounded-2xl overflow-hidden border border-amber-500/20 bg-gradient-to-br from-amber-950/20 to-black p-5 flex flex-col justify-between min-h-[140px] hover:-translate-y-1.5 hover:border-amber-500/40 hover:shadow-[0_15px_30px_rgba(245,197,24,0.18)] transition-all duration-300 ease-out group animate-in fade-in slide-in-from-bottom-2" style={{ animationDelay: '200ms', animationFillMode: 'both' }}>
                   <div className="absolute top-0 left-0 w-full h-[2px] bg-gradient-to-r from-[#F5C518]/70 to-transparent" />
+                  <div className="absolute -bottom-6 -right-6 w-24 h-24 bg-amber-500/10 rounded-full blur-2xl group-hover:bg-amber-500/20 transition-all duration-500 pointer-events-none" />
                   <div className="flex items-center justify-between">
                     <div className="w-10 h-10 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
                       <Icon name="trending-up" className="w-5 h-5 text-[#F5C518]" />
                     </div>
                     <span className="text-[10px] font-black text-[#F5C518] bg-amber-500/10 border border-amber-500/20 px-2.5 py-1 rounded-full uppercase tracking-wider">AVG</span>
                   </div>
-                  <div className="mt-3">
-                    <p className="text-2xl font-black text-white tracking-tight leading-none">{isPrivate ? '•••' : fmt$(finance.avg || 0)}</p>
+                  <div className="mt-3 relative z-10">
+                    <p className="text-2xl font-black text-gradient tracking-tight leading-none font-mono-values">{isPrivate ? '•••' : fmt$(finance.avg || 0)}</p>
                     <p className="text-xs text-amber-400/70 font-bold uppercase tracking-wider mt-1.5">Ticket Promedio</p>
                   </div>
                 </div>
 
                 {/* Net Profit Margin */}
-                <div className="relative rounded-2xl overflow-hidden border border-purple-500/20 bg-gradient-to-br from-purple-950/30 to-black p-5 flex flex-col justify-between min-h-[140px] hover:-translate-y-1.5 hover:border-purple-500/40 hover:shadow-[0_15px_30px_rgba(168,85,247,0.15)] transition-all duration-300 ease-out group animate-in fade-in slide-in-from-bottom-2" style={{ animationDelay: '300ms', animationFillMode: 'both' }}>
+                <div className="relative rounded-2xl overflow-hidden border border-purple-500/20 bg-gradient-to-br from-purple-950/30 to-black p-5 flex flex-col justify-between min-h-[140px] hover:-translate-y-1.5 hover:border-purple-500/40 hover:shadow-[0_15px_30px_rgba(168,85,247,0.2)] transition-all duration-300 ease-out group animate-in fade-in slide-in-from-bottom-2" style={{ animationDelay: '300ms', animationFillMode: 'both' }}>
                   <div className="absolute top-0 left-0 w-full h-[2px] bg-gradient-to-r from-purple-400/70 to-transparent" />
+                  <div className="absolute -bottom-6 -right-6 w-24 h-24 bg-purple-500/10 rounded-full blur-2xl group-hover:bg-purple-500/20 transition-all duration-500 pointer-events-none" />
                   <div className="flex items-center justify-between">
                     <div className="w-10 h-10 rounded-2xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
                       <Icon name="percent" className="w-5 h-5 text-purple-400" />
                     </div>
                     <span className="text-[10px] font-black text-purple-400 bg-purple-500/10 border border-purple-500/20 px-2.5 py-1 rounded-full uppercase tracking-wider">MARGIN</span>
                   </div>
-                  <div className="mt-3">
-                    <p className="text-4xl font-black text-white tracking-tight leading-none">{finance.profitMargin}<span className="text-2xl text-purple-400/80">%</span></p>
+                  <div className="mt-3 relative z-10">
+                    <p className="text-4xl font-black text-white tracking-tight leading-none font-mono-values">{finance.profitMargin}<span className="text-2xl text-purple-400/80">%</span></p>
                     <p className="text-xs text-purple-400/70 font-bold uppercase tracking-wider mt-1.5">Margen Neto</p>
                   </div>
                 </div>
@@ -11432,44 +12107,48 @@ Instrucciones generales de formato:
               <div>
                 <p className="text-xs font-bold text-slate-500 uppercase tracking-[0.2em] mb-3">⚡ Acción Rápida</p>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                  <button onClick={() => { setFSt('money_waiting'); setView('operations'); setOperationsTab('calendar'); setAgendaView('list'); }} className="group relative rounded-2xl border border-[#F5C518]/20 bg-gradient-to-br from-amber-950/20 to-black p-5 text-left active:scale-[0.97] transition-all duration-300 hover:-translate-y-1 hover:border-[#F5C518]/50 hover:bg-gradient-to-br hover:from-amber-950/35 hover:to-black hover:shadow-[0_10px_20px_rgba(245,197,24,0.1)] overflow-hidden animate-in fade-in slide-in-from-bottom-2" style={{ animationDelay: '150ms', animationFillMode: 'both' }}>
+                  <button onClick={() => { setFSt('money_waiting'); setView('operations'); setOperationsTab('calendar'); setAgendaView('list'); }} className="group relative rounded-2xl border border-[#F5C518]/20 bg-gradient-to-br from-[#F5C518]/5 via-[#F5C518]/2 to-black p-5 text-left active:scale-[0.97] transition-all duration-300 hover:-translate-y-1 hover:border-[#F5C518]/50 hover:shadow-[0_10px_20px_rgba(245,197,24,0.12)] overflow-hidden animate-in fade-in slide-in-from-bottom-2" style={{ animationDelay: '150ms', animationFillMode: 'both' }}>
                     <div className="absolute top-0 left-0 w-full h-[1.5px] bg-gradient-to-r from-[#F5C518]/50 to-transparent" />
-                    <div className="w-10 h-10 rounded-2xl bg-[#F5C518]/10 border border-[#F5C518]/20 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300">
+                    <div className="absolute -bottom-10 -right-10 w-24 h-24 bg-[#F5C518]/5 rounded-full blur-2xl group-hover:bg-[#F5C518]/10 transition-all duration-500 pointer-events-none" />
+                    <div className="w-10 h-10 rounded-2xl bg-[#F5C518]/10 border border-[#F5C518]/20 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300 relative z-10">
                       <Icon name="clock" className="w-5 h-5 text-[#F5C518]" />
                     </div>
-                    <p className="text-2xl font-black text-white leading-none">{isPrivate ? '•••' : fmt$(finance.moneyTable)}</p>
-                    <p className="text-xs font-bold text-[#F5C518]/70 uppercase tracking-wider mt-1.5">Money Waiting</p>
-                    <p className="text-[11px] text-slate-500 mt-1 font-medium">{finance.pendSig.length} estimados sin firmar →</p>
+                    <p className="text-2xl font-black text-white leading-none font-mono-values relative z-10">{isPrivate ? '•••' : fmt$(finance.moneyTable)}</p>
+                    <p className="text-xs font-bold text-[#F5C518]/70 uppercase tracking-wider mt-1.5 relative z-10">Money Waiting</p>
+                    <p className="text-[11px] text-slate-500 mt-1 font-medium relative z-10">{finance.pendSig.length} estimados sin firmar →</p>
                   </button>
 
-                  <button onClick={() => { setFSt('expiring'); setView('operations'); setOperationsTab('calendar'); setAgendaView('list'); }} className="group relative rounded-2xl border border-red-500/20 bg-gradient-to-br from-red-950/20 to-black p-5 text-left active:scale-[0.97] transition-all duration-300 hover:-translate-y-1 hover:border-red-500/50 hover:shadow-[0_10px_20px_rgba(239,68,68,0.1)] overflow-hidden animate-in fade-in slide-in-from-bottom-2" style={{ animationDelay: '250ms', animationFillMode: 'both' }}>
+                  <button onClick={() => { setFSt('expiring'); setView('operations'); setOperationsTab('calendar'); setAgendaView('list'); }} className="group relative rounded-2xl border border-red-500/20 bg-gradient-to-br from-red-950/10 via-red-950/2 to-black p-5 text-left active:scale-[0.97] transition-all duration-300 hover:-translate-y-1 hover:border-red-500/50 hover:shadow-[0_10px_20px_rgba(239,68,68,0.12)] overflow-hidden animate-in fade-in slide-in-from-bottom-2" style={{ animationDelay: '250ms', animationFillMode: 'both' }}>
                     <div className="absolute top-0 left-0 w-full h-[1.5px] bg-gradient-to-r from-red-400/50 to-transparent" />
-                    <div className="w-10 h-10 rounded-2xl bg-red-500/10 border border-red-500/20 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300">
+                    <div className="absolute -bottom-10 -right-10 w-24 h-24 bg-red-500/5 rounded-full blur-2xl group-hover:bg-red-500/10 transition-all duration-500 pointer-events-none" />
+                    <div className="w-10 h-10 rounded-2xl bg-red-500/10 border border-red-500/20 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300 relative z-10">
                       <Icon name="alert-triangle" className="w-5 h-5 text-red-400" />
                     </div>
-                    <p className="text-2xl font-black text-white leading-none">{finance.expiring.length}</p>
-                    <p className="text-xs font-bold text-red-400/70 uppercase tracking-wider mt-1.5">Expirando</p>
-                    <p className="text-[11px] text-slate-500 mt-1 font-medium">vencen en menos de 6h →</p>
+                    <p className="text-2xl font-black text-white leading-none font-mono-values relative z-10">{finance.expiring.length}</p>
+                    <p className="text-xs font-bold text-red-400/70 uppercase tracking-wider mt-1.5 relative z-10">Expirando</p>
+                    <p className="text-[11px] text-slate-500 mt-1 font-medium relative z-10">vencen en menos de 6h →</p>
                   </button>
 
-                  <button onClick={() => { setFSt('qc_queue'); setView('operations'); setOperationsTab('calendar'); setAgendaView('list'); }} className="group relative rounded-2xl border border-purple-500/20 bg-gradient-to-br from-purple-950/20 to-black p-5 text-left active:scale-[0.97] transition-all duration-300 hover:-translate-y-1 hover:border-purple-500/50 hover:shadow-[0_10px_20px_rgba(168,85,247,0.1)] overflow-hidden animate-in fade-in slide-in-from-bottom-2" style={{ animationDelay: '350ms', animationFillMode: 'both' }}>
+                  <button onClick={() => { setFSt('qc_queue'); setView('operations'); setOperationsTab('calendar'); setAgendaView('list'); }} className="group relative rounded-2xl border border-purple-500/20 bg-gradient-to-br from-purple-950/15 via-purple-950/3 to-black p-5 text-left active:scale-[0.97] transition-all duration-300 hover:-translate-y-1 hover:border-purple-500/50 hover:shadow-[0_10px_20px_rgba(168,85,247,0.12)] overflow-hidden animate-in fade-in slide-in-from-bottom-2" style={{ animationDelay: '350ms', animationFillMode: 'both' }}>
                     <div className="absolute top-0 left-0 w-full h-[1.5px] bg-gradient-to-r from-purple-400/50 to-transparent" />
-                    <div className="w-10 h-10 rounded-2xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300">
+                    <div className="absolute -bottom-10 -right-10 w-24 h-24 bg-purple-500/5 rounded-full blur-2xl group-hover:bg-purple-500/10 transition-all duration-500 pointer-events-none" />
+                    <div className="w-10 h-10 rounded-2xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300 relative z-10">
                       <Icon name="camera" className="w-5 h-5 text-purple-400" />
                     </div>
-                    <p className="text-2xl font-black text-white leading-none">{finance.qcQ.length}</p>
-                    <p className="text-xs font-bold text-purple-400/70 uppercase tracking-wider mt-1.5">QC Queue</p>
-                    <p className="text-[11px] text-slate-500 mt-1 font-medium">necesita revisión →</p>
+                    <p className="text-2xl font-black text-white leading-none font-mono-values relative z-10">{finance.qcQ.length}</p>
+                    <p className="text-xs font-bold text-purple-400/70 uppercase tracking-wider mt-1.5 relative z-10">QC Queue</p>
+                    <p className="text-[11px] text-slate-500 mt-1 font-medium relative z-10">necesita revisión →</p>
                   </button>
 
-                  <button onClick={() => { setFSt('reviews'); setView('operations'); setOperationsTab('calendar'); setAgendaView('list'); }} className="group relative rounded-2xl border border-blue-500/20 bg-gradient-to-br from-blue-950/20 to-black p-5 text-left active:scale-[0.97] transition-all duration-300 hover:-translate-y-1 hover:border-blue-500/50 hover:shadow-[0_10px_20px_rgba(59,130,246,0.1)] overflow-hidden animate-in fade-in slide-in-from-bottom-2" style={{ animationDelay: '450ms', animationFillMode: 'both' }}>
+                  <button onClick={() => { setFSt('reviews'); setView('operations'); setOperationsTab('calendar'); setAgendaView('list'); }} className="group relative rounded-2xl border border-blue-500/20 bg-gradient-to-br from-blue-950/15 via-blue-950/3 to-black p-5 text-left active:scale-[0.97] transition-all duration-300 hover:-translate-y-1 hover:border-blue-500/50 hover:shadow-[0_10px_20px_rgba(59,130,246,0.12)] overflow-hidden animate-in fade-in slide-in-from-bottom-2" style={{ animationDelay: '450ms', animationFillMode: 'both' }}>
                     <div className="absolute top-0 left-0 w-full h-[1.5px] bg-gradient-to-r from-blue-400/50 to-transparent" />
-                    <div className="w-10 h-10 rounded-2xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300">
+                    <div className="absolute -bottom-10 -right-10 w-24 h-24 bg-blue-500/5 rounded-full blur-2xl group-hover:bg-blue-500/10 transition-all duration-500 pointer-events-none" />
+                    <div className="w-10 h-10 rounded-2xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300 relative z-10">
                       <Icon name="message-circle" className="w-5 h-5 text-blue-400" />
                     </div>
-                    <p className="text-2xl font-black text-white leading-none">{finance.reviewQ.length}</p>
-                    <p className="text-xs font-bold text-blue-400/70 uppercase tracking-wider mt-1.5">Reviews</p>
-                    <p className="text-[11px] text-slate-500 mt-1 font-medium">pedir estrellas a clientes →</p>
+                    <p className="text-2xl font-black text-white leading-none font-mono-values relative z-10">{finance.reviewQ.length}</p>
+                    <p className="text-xs font-bold text-blue-400/70 uppercase tracking-wider mt-1.5 relative z-10">Reviews</p>
+                    <p className="text-[11px] text-slate-500 mt-1 font-medium relative z-10">pedir estrellas a clientes →</p>
                   </button>
                 </div>
               </div>
@@ -11477,12 +12156,14 @@ Instrucciones generales de formato:
               {/* ── AI INSIGHT + PROGRESS RINGS ── */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* AI Predictive */}
-                <div className="relative rounded-2xl overflow-hidden border border-blue-500/20 bg-gradient-to-br from-blue-950/25 to-black p-7">
+                <div className="relative rounded-2xl overflow-hidden border border-blue-500/20 bg-gradient-to-br from-blue-950/25 to-black p-7 holo-card animate-in fade-in slide-in-from-bottom-2">
                   <div className="absolute top-0 left-0 w-full h-[2px] bg-gradient-to-r from-blue-400/70 to-transparent" />
                   <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(59,130,246,0.06),transparent)] pointer-events-none" />
+                  <div className="absolute -bottom-10 -right-10 w-28 h-28 bg-blue-500/5 rounded-full blur-2xl pointer-events-none" />
                   <div className="flex items-center gap-3 mb-5">
-                    <div className="w-11 h-11 rounded-2xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center flex-shrink-0">
-                      <Icon name="brain" className="w-5 h-5 text-blue-400" />
+                    <div className="w-11 h-11 rounded-2xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center flex-shrink-0 relative">
+                      <span className="animate-ping absolute inline-flex h-5 w-5 rounded-full bg-blue-400 opacity-20"></span>
+                      <Icon name="brain" className="w-5 h-5 text-blue-400 relative z-10" />
                     </div>
                     <div>
                       <p className="text-sm font-black text-white">🧠 AI Revenue Intelligence</p>
@@ -11500,11 +12181,12 @@ Instrucciones generales de formato:
                       <p className="text-xs text-slate-400 leading-relaxed">Capacidad al 80%. IA sugiere multiplicador 1.2x en nuevos estimados por 48h para maximizar margen neto.</p>
                     </>
                   )}
-                  <button onClick={deploySmartCampaign} className="mt-5 px-5 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-black text-xs uppercase tracking-wider active:scale-95 shadow-lg shadow-blue-600/20 transition-all hover:shadow-blue-500/30">Deploy Campaign →</button>
+                  <button onClick={deploySmartCampaign} className="mt-5 px-5 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-xl font-black text-xs uppercase tracking-wider active:scale-95 shadow-lg shadow-blue-500/10 hover:shadow-blue-500/30 transition-all duration-300 relative overflow-hidden">Deploy Campaign →</button>
                 </div>
 
                 {/* ── PROGRESS RINGS ── */}
-                <div className="relative rounded-2xl overflow-hidden border border-white/8 bg-gradient-to-br from-white/[0.025] to-black p-7">
+                <div className="relative rounded-2xl overflow-hidden border border-white/8 bg-gradient-to-br from-white/[0.025] to-black p-7 transition-all duration-300 hover:border-white/20 hover:shadow-[0_15px_30px_rgba(255,255,255,0.02)]">
+                  <div className="absolute -bottom-10 -right-10 w-24 h-24 bg-white/5 rounded-full blur-2xl pointer-events-none" />
                   <p className="text-xs font-bold text-slate-500 uppercase tracking-[0.2em] mb-6">Progreso de Metas</p>
                   <div className="flex items-center justify-around">
                     <div className="flex flex-col items-center gap-3">
@@ -12183,33 +12865,7 @@ Instrucciones generales de formato:
 
                   <div className="grid grid-cols-1 gap-4">
                     {staff.map(worker => (
-                      <div key={worker.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-black/40 border border-white/5 rounded-2xl gap-4 hover:border-slate-500/20 transition-all">
-                        <div>
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <h4 className="text-sm font-black text-white uppercase italic">{worker.name}</h4>
-                            <span className="text-[6.5px] font-black px-2 py-0.5 rounded-full uppercase bg-white/5 text-slate-400 border border-white/5">
-                              {worker.role}
-                            </span>
-                          </div>
-                          <div className="flex gap-4 text-[8px] uppercase text-slate-500 mt-2 font-bold">
-                            <span>Acumulado: <strong className="text-slate-300">{fmt$(worker.total_earned || 0)}</strong></span>
-                            <span>Código PIN: <strong className="text-slate-300">{worker.passcode}</strong></span>
-                          </div>
-                        </div>
-
-                        <div className="flex items-center gap-4 justify-between sm:justify-end">
-                          <div className="text-right">
-                            <span className="text-slate-500 block text-[6.5px] uppercase font-black">Saldo Pendiente</span>
-                            <span className="text-lg font-black text-white leading-none">{fmt$(worker.wallet_balance || 0)}</span>
-                          </div>
-                          <button
-                            onClick={() => handleCashout(worker)}
-                            className="px-4 py-2.5 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-black font-black uppercase text-[8px] rounded-xl active:scale-95 transition-all shadow-[0_0_15px_rgba(16,185,129,0.1)] flex items-center gap-1.5"
-                          >
-                            💸 Zelle Payout
-                          </button>
-                        </div>
-                      </div>
+                      <WorkerCard key={worker.id} worker={worker} onCashout={handleCashout} fmt$={fmt$} />
                     ))}
                   </div>
                 </div>
@@ -12227,21 +12883,24 @@ Instrucciones generales de formato:
 
                   {/* Summary Cards */}
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    <div className="bg-white/5 border border-white/5 rounded-2xl p-4">
-                      <p className="text-[7.5px] text-slate-500 uppercase font-black tracking-wider">Total Ad Spend</p>
-                      <p className="text-2xl font-black text-red-400 mt-1">
+                    <div className="relative overflow-hidden bg-white/5 border border-white/5 hover:border-red-500/30 rounded-2xl p-4 transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_10px_20px_rgba(239,68,68,0.05)] group">
+                      <div className="absolute -bottom-6 -right-6 w-20 h-20 bg-red-500/5 rounded-full blur-2xl group-hover:bg-red-500/10 transition-all duration-500 pointer-events-none" />
+                      <p className="text-[7.5px] text-slate-500 uppercase font-black tracking-wider relative z-10">Total Ad Spend</p>
+                      <p className="text-2xl font-black text-red-400 mt-1 font-mono-values relative z-10">
                         {fmt$(finance.channelReport?.reduce((sum, ch) => sum + (ch.spend || 0), 0) || 0)}
                       </p>
                     </div>
-                    <div className="bg-white/5 border border-white/5 rounded-2xl p-4">
-                      <p className="text-[7.5px] text-slate-500 uppercase font-black tracking-wider">Total LTV Generated</p>
-                      <p className="text-2xl font-black text-green-400 mt-1">
+                    <div className="relative overflow-hidden bg-white/5 border border-white/5 hover:border-green-500/30 rounded-2xl p-4 transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_10px_20px_rgba(34,197,94,0.05)] group">
+                      <div className="absolute -bottom-6 -right-6 w-20 h-20 bg-green-500/5 rounded-full blur-2xl group-hover:bg-green-500/10 transition-all duration-500 pointer-events-none" />
+                      <p className="text-[7.5px] text-slate-500 uppercase font-black tracking-wider relative z-10">Total LTV Generated</p>
+                      <p className="text-2xl font-black text-green-400 mt-1 font-mono-values relative z-10">
                         {fmt$(finance.channelReport?.reduce((sum, ch) => sum + (ch.ltv || 0), 0) || 0)}
                       </p>
                     </div>
-                    <div className="bg-white/5 border border-white/5 rounded-2xl p-4">
-                      <p className="text-[7.5px] text-slate-500 uppercase font-black tracking-wider">Average CAC</p>
-                      <p className="text-2xl font-black text-orange-400 mt-1">
+                    <div className="relative overflow-hidden bg-white/5 border border-white/5 hover:border-orange-500/30 rounded-2xl p-4 transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_10px_20px_rgba(249,115,22,0.05)] group">
+                      <div className="absolute -bottom-6 -right-6 w-20 h-20 bg-orange-500/5 rounded-full blur-2xl group-hover:bg-orange-500/10 transition-all duration-500 pointer-events-none" />
+                      <p className="text-[7.5px] text-slate-500 uppercase font-black tracking-wider relative z-10">Average CAC</p>
+                      <p className="text-2xl font-black text-orange-400 mt-1 font-mono-values relative z-10">
                         {(() => {
                           const report = finance.channelReport || [];
                           const withCac = report.filter(ch => ch.cac > 0);
@@ -12251,9 +12910,10 @@ Instrucciones generales de formato:
                         })()}
                       </p>
                     </div>
-                    <div className="bg-white/5 border border-white/5 rounded-2xl p-4">
-                      <p className="text-[7.5px] text-slate-500 uppercase font-black tracking-wider">Overall Marketing ROI</p>
-                      <p className="text-2xl font-black text-[#F5C518] mt-1">
+                    <div className="relative overflow-hidden bg-white/5 border border-white/5 hover:border-amber-500/30 rounded-2xl p-4 transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_10px_20px_rgba(245,197,24,0.05)] group">
+                      <div className="absolute -bottom-6 -right-6 w-20 h-20 bg-amber-500/5 rounded-full blur-2xl group-hover:bg-amber-500/10 transition-all duration-500 pointer-events-none" />
+                      <p className="text-[7.5px] text-slate-500 uppercase font-black tracking-wider relative z-10">Overall Marketing ROI</p>
+                      <p className="text-2xl font-black text-[#F5C518] mt-1 font-mono-values relative z-10">
                         {(() => {
                           const spend = finance.channelReport?.reduce((sum, ch) => sum + (ch.spend || 0), 0) || 0;
                           const ltv = finance.channelReport?.reduce((sum, ch) => sum + (ch.ltv || 0), 0) || 0;

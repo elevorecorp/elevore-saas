@@ -4,8 +4,14 @@ const { exec } = require('child_process');
 console.log('Starting Vite preview server for testing...');
 const previewProcess = exec('npm.cmd run preview', { cwd: 'c:\\Users\\Jose Mario\\OneDrive\\Escritorio\\Nuevo proyecto Saas' });
 
+let port = 4173;
 previewProcess.stdout.on('data', (data) => {
   console.log(`[Preview Server]: ${data.trim()}`);
+  const match = data.match(/localhost:(\d+)/);
+  if (match) {
+    port = parseInt(match[1], 10);
+    console.log(`Detected preview server port: ${port}`);
+  }
 });
 
 setTimeout(async () => {
@@ -70,6 +76,46 @@ setTimeout(async () => {
             }
           ])
         });
+      } else if (url.includes('/auth/v1/token')) {
+        console.log('[Puppeteer Intercept]: Mocking Auth Token request...');
+        request.respond({
+          status: 200,
+          headers: {
+            'access-control-allow-origin': '*',
+            'content-type': 'application/json'
+          },
+          body: JSON.stringify({
+            access_token: 'mocked_access_token',
+            token_type: 'bearer',
+            expires_in: 3600,
+            refresh_token: 'mocked_refresh_token',
+            user: {
+              id: '2',
+              email: 'team_alpha@company.com',
+              user_metadata: {
+                name: 'Team Alpha',
+                role: 'staff',
+                tenant_id: 'tenant-1'
+              }
+            }
+          })
+        });
+      } else if (url.includes('/rest/v1/tenants')) {
+        console.log('[Puppeteer Intercept]: Mocking tenants query...');
+        request.respond({
+          status: 200,
+          headers: {
+            'access-control-allow-origin': '*',
+            'content-type': 'application/json'
+          },
+          body: JSON.stringify([
+            {
+              id: 'tenant-1',
+              business_name: 'Elevore Empire',
+              stripe_subscription_status: 'trialing'
+            }
+          ])
+        });
       } else if (url.includes('/rest/v1/staff_profiles')) {
         console.log('[Puppeteer Intercept]: Mocking staff_profiles query...');
         request.respond({
@@ -81,6 +127,7 @@ setTimeout(async () => {
           body: JSON.stringify([
             {
               id: '2',
+              user_id: '2',
               name: 'Team Alpha',
               role: 'staff',
               passcode: '1122',
@@ -90,6 +137,41 @@ setTimeout(async () => {
               total_earned: 1450
             }
           ])
+        });
+      } else if (url.includes('/rest/v1/clients')) {
+        console.log('[Puppeteer Intercept]: Mocking clients query...');
+        request.respond({
+          status: 200,
+          headers: {
+            'access-control-allow-origin': '*',
+            'content-type': 'application/json'
+          },
+          body: JSON.stringify([])
+        });
+      } else if (url.includes('/rest/v1/tenant_settings')) {
+        console.log('[Puppeteer Intercept]: Mocking tenant_settings query...');
+        request.respond({
+          status: 200,
+          headers: {
+            'access-control-allow-origin': '*',
+            'content-type': 'application/json'
+          },
+          body: JSON.stringify({
+            id: 'settings-1',
+            tenant_id: 'tenant-1',
+            business_full_name: 'Elevore Empire',
+            google_review_link: 'https://g.page/r/review'
+          })
+        });
+      } else if (url.includes('/rest/v1/staff_payouts')) {
+        console.log('[Puppeteer Intercept]: Mocking staff_payouts query...');
+        request.respond({
+          status: 200,
+          headers: {
+            'access-control-allow-origin': '*',
+            'content-type': 'application/json'
+          },
+          body: JSON.stringify([])
         });
       } else if (url.includes('nominatim.openstreetmap.org/search')) {
         console.log('[Puppeteer Intercept]: Mocking Nominatim Geocoding...');
@@ -150,8 +232,8 @@ setTimeout(async () => {
       console.error(`[BROWSER RUNTIME ERROR]:`, err.stack);
     });
 
-    console.log('Navigating to http://localhost:4173/?view=auth ...');
-    await page.goto('http://localhost:4173/?view=auth', { waitUntil: 'networkidle0', timeout: 15000 });
+    console.log(`Navigating to http://localhost:${port}/?view=auth ...`);
+    await page.goto(`http://localhost:${port}/?view=auth`, { waitUntil: 'networkidle0', timeout: 15000 });
 
     // Click "Staff" tab button
     console.log('Selecting Staff Tab...');
@@ -159,7 +241,7 @@ setTimeout(async () => {
     for (const tab of tabs) {
       const text = await page.evaluate(el => el.textContent, tab);
       if (text.trim() === 'Staff') {
-        await tab.click();
+        await page.evaluate(el => el.click(), tab);
         break;
       }
     }
@@ -183,7 +265,7 @@ setTimeout(async () => {
     for (const btn of buttons) {
       const text = await page.evaluate(el => el.textContent, btn);
       if (text.includes('Access Field App')) {
-        await btn.click();
+        await page.evaluate(el => el.click(), btn);
         break;
       }
     }
@@ -203,7 +285,7 @@ setTimeout(async () => {
       const text = await page.evaluate(el => el.textContent, btn);
       if (text.includes('Optimizar Ruta')) {
         console.log('Found button: Clicking...');
-        await btn.click();
+        await page.evaluate(el => el.click(), btn);
         clicked = true;
         break;
       }

@@ -72,11 +72,10 @@ export const AICopilotMeetings = ({ jobs, staff, tt, refresh, activeUser }) => {
     }
 
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SpeechRecognition) {
-      console.warn('Speech Recognition not supported in this browser.');
-      tt('El navegador no soporta Speech Recognition. Usando simulador local.', 'amber');
-      
-      // Fallback: Mock Conversations timed intervals
+    let simulatorTimeouts = [];
+
+    const startSimulator = () => {
+      tt('Usando simulador local de conversación.', 'amber');
       const mockConversations = [
         { speaker: activeUser || 'Administrador (Tú)', text: 'Buenos días equipo. Sincronización de ruta para hoy en Pine St.', time: '10:00:02', delay: 1000 },
         { speaker: getOtherSpeakerName(1), text: 'Vamos en camino a Pine St de Jose Mario. Listos.', time: '10:00:08', delay: 3500 },
@@ -85,12 +84,17 @@ export const AICopilotMeetings = ({ jobs, staff, tt, refresh, activeUser }) => {
         { speaker: getOtherSpeakerName(1), text: 'Copiado. Agregaremos limpieza de alfombras por $75 USD.', time: '10:00:30', delay: 14000 }
       ];
 
-      const timeouts = mockConversations.map(msg => {
+      return mockConversations.map(msg => {
         return setTimeout(() => {
           setTranscripts(prev => [...prev, msg]);
         }, msg.delay);
       });
-      return () => timeouts.forEach(t => clearTimeout(t));
+    };
+
+    if (!SpeechRecognition) {
+      console.warn('Speech Recognition not supported in this browser.');
+      simulatorTimeouts = startSimulator();
+      return () => simulatorTimeouts.forEach(t => clearTimeout(t));
     }
 
     const rec = new SpeechRecognition();
@@ -113,6 +117,14 @@ export const AICopilotMeetings = ({ jobs, staff, tt, refresh, activeUser }) => {
       if (err.error !== 'no-speech') {
         tt('Micrófono: ' + err.error, 'amber');
       }
+      if (err.error === 'not-allowed' || err.error === 'audio-capture' || err.error === 'service-not-allowed') {
+        console.warn('Speech Recognition critical error. Falling back to simulator.');
+        rec.onend = null;
+        try {
+          rec.stop();
+        } catch (e) {}
+        simulatorTimeouts = startSimulator();
+      }
     };
 
     rec.onend = () => {
@@ -127,12 +139,15 @@ export const AICopilotMeetings = ({ jobs, staff, tt, refresh, activeUser }) => {
     try {
       rec.start();
     } catch (e) {
-      console.error('Failed to start speech recognition:', e);
+      console.error('Failed to start speech recognition. Falling back to simulator:', e);
+      simulatorTimeouts = startSimulator();
     }
 
     return () => {
+      simulatorTimeouts.forEach(t => clearTimeout(t));
       if (recognitionRef.current) {
         try {
+          recognitionRef.current.onend = null;
           recognitionRef.current.stop();
         } catch (e) {}
       }

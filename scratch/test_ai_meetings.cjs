@@ -4,8 +4,14 @@ const { exec } = require('child_process');
 console.log('Starting Vite preview server for testing...');
 const previewProcess = exec('npm.cmd run preview', { cwd: 'c:\\Users\\Jose Mario\\OneDrive\\Escritorio\\Nuevo proyecto Saas' });
 
+let port = 4173;
 previewProcess.stdout.on('data', (data) => {
   console.log(`[Preview Server]: ${data.trim()}`);
+  const match = data.match(/localhost:(\d+)/);
+  if (match) {
+    port = parseInt(match[1], 10);
+    console.log(`Detected preview server port: ${port}`);
+  }
 });
 
 setTimeout(async () => {
@@ -99,8 +105,8 @@ setTimeout(async () => {
       console.error(`[BROWSER RUNTIME ERROR]:`, err.stack);
     });
 
-    console.log('Navigating to http://localhost:4173/?view=operations ...');
-    await page.goto('http://localhost:4173/?view=operations', { waitUntil: 'networkidle0', timeout: 15000 });
+    console.log(`Navigating to http://localhost:${port}/?view=operations ...`);
+    await page.goto(`http://localhost:${port}/?view=operations`, { waitUntil: 'networkidle0', timeout: 15000 });
 
     await new Promise(r => setTimeout(r, 4000));
     await page.screenshot({ path: 'scratch/ops_dashboard_loaded.png' });
@@ -113,7 +119,7 @@ setTimeout(async () => {
       const text = await page.evaluate(el => el.textContent, btn);
       if (text.includes('Reuniones IA')) {
         console.log('Found "🎙️ Reuniones IA" button! Clicking...');
-        await btn.click();
+        await page.evaluate(el => el.click(), btn);
         foundMeetings = true;
         break;
       }
@@ -137,7 +143,7 @@ setTimeout(async () => {
       const text = await page.evaluate(el => el.textContent, btn);
       if (text.includes('Iniciar Reunión')) {
         console.log('Found "Iniciar Reunión" button! Clicking...');
-        await btn.click();
+        await page.evaluate(el => el.click(), btn);
         startedMeeting = true;
         break;
       }
@@ -156,12 +162,14 @@ setTimeout(async () => {
     // Click "Finalizar y Resumir con IA"
     console.log('Searching for "Finalizar y Resumir con IA" button...');
     const actionButtons = await page.$$('button');
+    console.log(`Found ${actionButtons.length} buttons on the page:`);
     let finishedMeeting = false;
     for (const btn of actionButtons) {
       const text = await page.evaluate(el => el.textContent, btn);
+      console.log(`- Button text: "${text.trim()}"`);
       if (text.includes('Finalizar y Resumir')) {
         console.log('Found "Finalizar y Resumir" button! Clicking...');
-        await btn.click();
+        await page.evaluate(el => el.click(), btn);
         finishedMeeting = true;
         break;
       }
