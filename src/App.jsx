@@ -1833,6 +1833,7 @@ function Portal({ cjid }) {
   const [suggestedReview, setSuggestedReview] = useState('');
   const [isGeneratingReview, setIsGeneratingReview] = useState(false);
   const [clientMissions, setClientMissions] = useState([]);
+  const [clientReferrals, setClientReferrals] = useState([]);
   const [clientProfile, setClientProfile] = useState(null);
   const [tenantSettings, setTenantSettings] = useState(null);
 
@@ -1912,7 +1913,7 @@ function Portal({ cjid }) {
     setCardCvc(e.target.value.replace(/\D/g, '').substring(0, 4));
   };
 
-  const completePaymentFlow = async (paymentId, tipVal, totalVal) => {
+  const completePaymentFlow = async (paymentId, tipVal, totalVal, discountVal = 0) => {
     setPayStage('success');
     await new Promise(r => setTimeout(r, 800));
 
@@ -1924,6 +1925,7 @@ function Portal({ cjid }) {
         stripe_payment_id: paymentId,
         tip_amount: tipVal,
         total_paid_amount: totalVal,
+        applied_referral_discount: discountVal,
         paid_at: new Date().toISOString()
       }
     };
@@ -2041,7 +2043,7 @@ function Portal({ cjid }) {
         }
 
         if (paymentIntent.status === 'succeeded') {
-          await completePaymentFlow(paymentIntent.id, tipVal, totalVal);
+          await completePaymentFlow(paymentIntent.id, tipVal, totalVal, discountToApply);
         }
       } catch (err) {
         setPayStage('');
@@ -2062,7 +2064,7 @@ function Portal({ cjid }) {
       setPayStage('routing');
       await new Promise(r => setTimeout(r, 800));
 
-      await completePaymentFlow('pi_simulated_' + Math.random().toString(36).substring(2, 11), tipVal, totalVal);
+      await completePaymentFlow('pi_simulated_' + Math.random().toString(36).substring(2, 11), tipVal, totalVal, discountToApply);
     }
   };
 
@@ -2178,6 +2180,18 @@ function Portal({ cjid }) {
       // Load settings
       if (data.tenant_id) {
         await loadTenantSettings(data.tenant_id);
+      }
+
+      // Fetch referrals
+      try {
+        const { data: refs } = await sb.from('elevore_missions')
+          .select('*')
+          .eq('specs->>referred_by', data.client_name);
+        if (refs) {
+          setClientReferrals(refs);
+        }
+      } catch (err) {
+        console.warn("Failed to fetch referrals:", err);
       }
 
       // Fetch assigned staff profile to get their UUID for GPS updates
@@ -2378,11 +2392,22 @@ function Portal({ cjid }) {
   };
 
   if (loading || !job) return <div className="min-h-screen flex items-center justify-center text-white font-black animate-pulse">{tr(lang, 'syncing')}</div>;
+  
+  const paidRefs = clientReferrals.filter(r => r.status === 'paid' || r.status === 'completed');
+  const discountSpent = clientMissions
+    .filter(j => j.status === 'paid' || j.status === 'completed')
+    .reduce((sum, j) => sum + (j.specs?.applied_referral_discount || 0), 0);
+  const totalDiscountEarned = paidRefs.length * 25;
+  const availableDiscount = Math.max(0, totalDiscountEarned - discountSpent);
+
   const bal = job.total_price - job.deposit_paid;
+  const discountToApply = (job.status !== 'paid' && job.status !== 'completed') ? Math.min(bal, availableDiscount) : (job.specs?.applied_referral_discount || 0);
+  const balAfterDiscount = Math.max(0, bal - discountToApply);
+
   const calculatedTip = tipOption === 'none' ? 0 : 
                         tipOption === 'custom' ? (parseFloat(customTip) || 0) : 
-                        Math.round(bal * (parseInt(tipOption) / 100) * 100) / 100;
-  const chargeTotal = bal + calculatedTip;
+                        Math.round(balAfterDiscount * (parseInt(tipOption) / 100) * 100) / 100;
+  const chargeTotal = balAfterDiscount + calculatedTip;
   const sm = { lead: 10, scheduled: 30, in_progress: 65, completed: 90, paid: 100 };
   const urgent = job.urgency_expires ? Math.max(0, Math.round((new Date(job.urgency_expires) - Date.now()) / 3600000)) : null;
 
@@ -2471,7 +2496,8 @@ function Portal({ cjid }) {
     { id: 'history', label: tr(lang, 'tabHistory'), icon: 'calendar' },
     { id: 'preferences', label: tr(lang, 'tabPreferences'), icon: 'sliders' },
     { id: 'membership', label: tr(lang, 'tabMembership'), icon: 'award' },
-    { id: 'booking', label: tr(lang, 'tabBooking'), icon: 'plus-circle' }
+    { id: 'booking', label: tr(lang, 'tabBooking'), icon: 'plus-circle' },
+    { id: 'referrals', label: tr(lang, 'tabReferral'), icon: 'gift' }
   ];
 
   return (
@@ -2619,7 +2645,12 @@ function Portal({ cjid }) {
             {/* Balance Due Card */}
             <div className="g p-6 text-center space-y-4">
               <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest">{tr(lang, 'balance')}</p>
-              <h3 className="text-6xl font-black italic tracking-tighter text-white">{fmt$(bal)}</h3>
+              <h3 className="text-6xl font-black italic tracking-tighter text-white">{fmt$(balAfterDiscount)}</h3>
+              {discountToApply > 0 && (
+                <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-500/10 border border-amber-500/25 rounded-full text-amber-400 text-[8.5px] font-black uppercase tracking-wider mx-auto">
+                  🎁 {lang === 'es' ? 'Descuento de Referido Aplicado: -' : 'Referral Discount Applied: -'}${discountToApply}
+                </div>
+              )}
               <p className="text-[9px] text-green-500 font-black uppercase pt-1">💸 {tr(lang, 'pay')}: {tenantSettings?.zelle_phone || DEFAULT_CFG.ZELLE}</p>
               
               <button
@@ -3285,6 +3316,100 @@ function Portal({ cjid }) {
                 {bookingSaving ? <Icon name="loader-2" className="w-5 h-5 animate-spin text-black" /> : `📅 ${lang === 'es' ? 'Solicitar Servicio' : 'Request Service'}`}
               </button>
             </form>
+          );
+        })()}
+
+        {/* ── TAB 6: REFERRALS HUB ── */}
+        {activeTab === 'referrals' && (() => {
+          const refLink = `${location.origin}${location.pathname}?ref=${job.client_name?.replace(/\s/g, '_')}&t=${job.tenant_id || ''}`;
+          
+          return (
+            <div className="space-y-6 text-left animate-in fade-in duration-500">
+              <div className="g p-6 space-y-4 bg-black/45 border border-white/5 rounded-3xl relative overflow-hidden">
+                <div className="absolute top-0 left-0 w-full h-[1.5px] bg-gradient-to-r from-[#F5C518] via-amber-500 to-transparent" />
+                
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-xl bg-[#F5C518]/10 flex items-center justify-center">
+                    <Icon name="gift" className="w-4 h-4 text-[#F5C518]" />
+                  </div>
+                  <h3 className="text-xs font-black uppercase tracking-widest text-white">{lang === 'es' ? 'Programa de Referidos Especial' : 'Exclusive Referral Program'}</h3>
+                </div>
+
+                <p className="text-[9px] text-slate-400 leading-relaxed uppercase font-bold tracking-wider">
+                  {lang === 'es' 
+                    ? '¡Invita a tus amigos a Elevore! Comparte tu enlace personal y ambos obtendrán $25 de descuento cuando ellos completen su primer servicio de limpieza.'
+                    : 'Invite your friends to Elevore! Share your personal link and you will both receive $25 off when they complete their first cleaning service.'}
+                </p>
+
+                <div className="space-y-2 pt-2">
+                  <label className="text-[8px] font-black uppercase text-slate-500 tracking-widest block">{lang === 'es' ? 'Tu Enlace Único' : 'Your Unique Link'}</label>
+                  <div className="flex gap-2">
+                    <input 
+                      readOnly 
+                      value={refLink} 
+                      className="flex-1 bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-[8.5px] font-mono text-slate-400 outline-none select-all"
+                    />
+                    <button 
+                      type="button"
+                      onClick={() => { 
+                        navigator.clipboard?.writeText(refLink); 
+                        tt(tr(lang, 'copied')); 
+                      }} 
+                      className="px-4 py-2.5 bg-[#F5C518] hover:bg-amber-400 text-black font-black uppercase text-[8px] tracking-wider rounded-xl active:scale-95 transition-all shadow-lg shadow-[#F5C518]/10"
+                    >
+                      {lang === 'es' ? 'Copiar' : 'Copy'}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3 pt-2">
+                  <div className="bg-white/5 border border-white/5 p-3 rounded-2xl">
+                    <p className="text-[7.5px] text-slate-500 uppercase font-black">{lang === 'es' ? 'Descuento Acumulado' : 'Total Discount Earned'}</p>
+                    <p className="text-xl font-black text-white mt-0.5">${totalDiscountEarned}</p>
+                  </div>
+                  <div className="bg-white/5 border border-white/5 p-3 rounded-2xl">
+                    <p className="text-[7.5px] text-slate-500 uppercase font-black">{lang === 'es' ? 'Disponible para Próxima Factura' : 'Available Discount'}</p>
+                    <p className="text-xl font-black text-emerald-400 mt-0.5">${availableDiscount}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Referred Friends list */}
+              <div className="g p-6 space-y-4 bg-black/45 border border-white/5 rounded-3xl">
+                <h4 className="text-[10px] font-black text-white uppercase tracking-widest pb-2.5 border-b border-white/5 flex items-center gap-1.5">
+                  <Icon name="users" className="w-4 h-4 text-amber-500" />
+                  <span>{lang === 'es' ? 'Tus Amigos Referidos' : 'Referred Friends'}</span>
+                </h4>
+
+                <div className="space-y-2">
+                  {clientReferrals.length === 0 ? (
+                    <p className="text-[8px] text-slate-500 italic text-center py-6 uppercase font-bold tracking-wider">{lang === 'es' ? 'Aún no has referido a ningún amigo' : 'No referred friends yet'}</p>
+                  ) : (
+                    clientReferrals.map(ref => {
+                      const isPaid = ref.status === 'paid' || ref.status === 'completed';
+                      return (
+                        <div key={ref.id} className="flex justify-between items-center bg-white/[0.01] border border-white/5 p-3 rounded-2xl">
+                          <div>
+                            <p className="text-[9.5px] font-black text-white uppercase">{ref.client_name}</p>
+                            <p className="text-[7.5px] text-slate-500 font-bold uppercase mt-0.5">{lang === 'es' ? 'Servicio: ' : 'Service: '}{ref.service_type}</p>
+                          </div>
+                          
+                          <span className={`text-[7.5px] font-black uppercase tracking-wider px-2 py-1 rounded-lg border ${
+                            isPaid 
+                              ? 'bg-green-500/10 border-green-500/25 text-green-400' 
+                              : 'bg-orange-500/10 border-orange-500/25 text-orange-400'
+                          }`}>
+                            {isPaid 
+                              ? (lang === 'es' ? 'Completado ($25 Ganado)' : 'Completed ($25 Earned)')
+                              : (lang === 'es' ? 'Pendiente' : 'Pending')}
+                          </span>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              </div>
+            </div>
           );
         })()}
 
@@ -7246,6 +7371,86 @@ export default function App() {
     { id: '3', name: 'Team Beta', role: 'staff', passcode: '3344', wallet_balance: 180, total_earned: 920 }
   ]);
   const [activeEmployee, setActiveEmp] = useState(null);
+
+  const todayStr = new Date().toISOString().split('T')[0];
+
+  const staffJobs = useMemo(() => {
+    const basicFiltered = jobs.filter(j => j.scheduled_date === todayStr || j.status === 'scheduled' || j.status === 'in_progress');
+    if (activeEmployee && activeEmployee.name && activeEmployee.name !== 'General Staff' && role === 'staff') {
+      const nameLower = activeEmployee.name.toLowerCase();
+      return basicFiltered.filter(j => j.team_assigned && typeof j.team_assigned === 'string' && j.team_assigned.toLowerCase().includes(nameLower));
+    }
+    return basicFiltered;
+  }, [jobs, todayStr, activeEmployee, role]);
+
+  // Live Notifications Center for Field Workers
+  const [staffNotifications, setStaffNotifications] = useState([
+    { id: '1', title: 'Nueva Misión Asignada', desc: 'Limpieza Regular en 100 E Pine St', time: 'Hace 5 min', unread: true },
+    { id: '2', title: 'Pago Recibido', desc: 'El cliente Juan Pérez completó su pago de $150', time: 'Hace 2 horas', unread: false }
+  ]);
+
+  const playNotificationSound = useCallback(() => {
+    try {
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      if (!AudioCtx) return;
+      const ctx = new AudioCtx();
+      const osc1 = ctx.createOscillator();
+      const osc2 = ctx.createOscillator();
+      const gain = ctx.createGain();
+      
+      osc1.type = 'sine';
+      osc1.frequency.setValueAtTime(587.33, ctx.currentTime); // D5
+      osc1.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + 0.15); // A5
+      
+      osc2.type = 'triangle';
+      osc2.frequency.setValueAtTime(293.66, ctx.currentTime); // D4
+      osc2.frequency.exponentialRampToValueAtTime(440, ctx.currentTime + 0.15); // A4
+      
+      gain.gain.setValueAtTime(0.15, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.3);
+      
+      osc1.connect(gain);
+      osc2.connect(gain);
+      gain.connect(ctx.destination);
+      
+      osc1.start();
+      osc2.start();
+      osc1.stop(ctx.currentTime + 0.35);
+      osc2.stop(ctx.currentTime + 0.35);
+    } catch (e) {
+      console.warn("AudioContext blocked:", e);
+    }
+  }, []);
+
+  const addStaffNotification = useCallback((title, desc) => {
+    setStaffNotifications(prev => [
+      {
+        id: String(Date.now()),
+        title,
+        desc,
+        time: 'Ahora mismo',
+        unread: true
+      },
+      ...prev
+    ]);
+    playNotificationSound();
+  }, [playNotificationSound]);
+
+  const prevStaffJobsCount = useRef(0);
+
+  useEffect(() => {
+    if (role === 'staff' && activeEmployee) {
+      if (prevStaffJobsCount.current > 0 && staffJobs.length > prevStaffJobsCount.current) {
+        addStaffNotification(
+          'Nueva Misión Asignada 🚀',
+          `Se ha agregado un nuevo servicio a tu agenda. Total hoy: ${staffJobs.length} misiones.`
+        );
+      }
+      prevStaffJobsCount.current = staffJobs.length;
+    } else {
+      prevStaffJobsCount.current = 0;
+    }
+  }, [staffJobs?.length, role, activeEmployee, addStaffNotification]);
   
   // Multi-tenant SaaS state
   const [tenantId, setTenantId] = useState(null);
@@ -8989,8 +9194,6 @@ Instrucciones:
     });
   }, [jobs, fSt, sq]);
 
-  const todayStr = new Date().toISOString().split('T')[0];
-
   const tomorrowStr = useMemo(() => {
     const d = new Date();
     d.setDate(d.getDate() + 1);
@@ -9003,15 +9206,6 @@ Instrucciones:
     const tomorrowAuto = jobs.filter(j => j.scheduled_date === tomorrowStr && j.status === 'scheduled').length;
     return pendingManual + unpaidCompleted + tomorrowAuto;
   }, [reminders, jobs, tomorrowStr]);
-
-  const staffJobs = useMemo(() => {
-    const basicFiltered = jobs.filter(j => j.scheduled_date === todayStr || j.status === 'scheduled' || j.status === 'in_progress');
-    if (activeEmployee && activeEmployee.name && activeEmployee.name !== 'General Staff' && role === 'staff') {
-      const nameLower = activeEmployee.name.toLowerCase();
-      return basicFiltered.filter(j => j.team_assigned && typeof j.team_assigned === 'string' && j.team_assigned.toLowerCase().includes(nameLower));
-    }
-    return basicFiltered;
-  }, [jobs, todayStr, activeEmployee, role]);
 
   const seasons = season();
 
@@ -10848,6 +11042,59 @@ Instrucciones generales de formato:
                 {ENABLE_AI && (
                   <button onClick={() => setAIOpen(true)} className="px-4 py-2.5 bg-[#F5C518] hover:bg-[#F5C518]/90 text-black font-black uppercase text-[9px] flex items-center gap-1 active:scale-95 shadow-lg shadow-[#F5C518]/15 rounded-xl transition-all">🧠 Operaciones IA</button>
                 )}
+              </div>
+
+              {/* Notificaciones Recibidas en Vivo */}
+              <div className="g p-5 bg-black/40 border border-white/5 rounded-2xl space-y-4">
+                <div className="flex justify-between items-center border-b border-white/5 pb-2">
+                  <div className="flex items-center gap-2">
+                    <span className="relative flex h-2 w-2">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#F5C518] opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-[#F5C518]"></span>
+                    </span>
+                    <h3 className="text-[10px] font-black text-white uppercase tracking-widest">🔔 Centro de Notificaciones en Vivo</h3>
+                  </div>
+                  <button 
+                    onClick={() => {
+                      addStaffNotification(
+                        'Simulación: Nueva Tarea Asignada 🚗',
+                        `El administrador te ha asignado un servicio de mudanza en 450 N Orange Ave.`
+                      );
+                    }}
+                    className="px-2.5 py-1 bg-[#F5C518]/10 hover:bg-[#F5C518] hover:text-black border border-[#F5C518]/30 text-[#F5C518] rounded-lg text-[7.5px] font-black uppercase tracking-wider active:scale-95 transition-all"
+                  >
+                    ⚡ Simular Push Alert
+                  </button>
+                </div>
+
+                <div className="space-y-2 max-h-[140px] overflow-y-auto nsb pr-1">
+                  {staffNotifications.length === 0 ? (
+                    <p className="text-[8px] text-slate-500 italic text-center py-4">No tienes notificaciones pendientes.</p>
+                  ) : (
+                    staffNotifications.map(notif => (
+                      <div 
+                        key={notif.id} 
+                        onClick={() => {
+                          setStaffNotifications(prev => prev.map(n => n.id === notif.id ? { ...n, unread: false } : n));
+                        }}
+                        className={`p-3 rounded-xl border transition-all cursor-pointer flex justify-between items-start gap-3 ${
+                          notif.unread 
+                            ? 'bg-[#F5C518]/[0.03] border-[#F5C518]/20 shadow-[0_0_10px_rgba(245,197,24,0.02)]' 
+                            : 'bg-white/[0.01] border-white/5 opacity-70'
+                        }`}
+                      >
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-1.5">
+                            {notif.unread && <span className="w-1.5 h-1.5 rounded-full bg-[#F5C518]" />}
+                            <p className="text-[9px] font-black text-white uppercase">{notif.title}</p>
+                          </div>
+                          <p className="text-[8px] text-slate-400 font-bold uppercase">{notif.desc}</p>
+                        </div>
+                        <span className="text-[6.5px] text-slate-600 font-bold uppercase">{notif.time}</span>
+                      </div>
+                    ))
+                  )}
+                </div>
               </div>
 
               {/* Today's Missions Prominent Widget */}
@@ -13421,6 +13668,129 @@ Instrucciones generales de formato:
                           </div>
                         </div>
 
+                    </div>
+                  </div>
+
+                    {/* Option 5: PREVISIÓN DE INGRESOS (MRR) Y CONTROL DE CHURN */}
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 pt-6">
+                      
+                      {/* Subscriptions Forecasting */}
+                      <div className="p-5 border border-white/5 bg-black/45 rounded-2xl shadow-lg space-y-4">
+                        <h4 className="text-[10px] font-black text-white uppercase tracking-widest pb-2.5 border-b border-white/5 flex justify-between items-center">
+                          <span>📊 Proyección de Membresías y MRR (6 Meses)</span>
+                          <span className="text-[7px] text-emerald-400 font-bold uppercase">Predicción</span>
+                        </h4>
+                        
+                        {(() => {
+                          const mrrBasic = clients.filter(c => c.membership === 'basic').length * 199;
+                          const mrrPremium = clients.filter(c => c.membership === 'premium').length * 349;
+                          const mrrVip = clients.filter(c => c.membership === 'vip').length * 549;
+                          const currentMRR = mrrBasic + mrrPremium + mrrVip;
+                          const activeSubscribers = clients.filter(c => c.membership && c.membership !== 'none').length;
+
+                          const monthlyGrowthRate = 0.08;
+                          const monthlyChurnRate = 0.045;
+                          const netGrowth = monthlyGrowthRate - monthlyChurnRate;
+
+                          const forecastData = Array.from({ length: 6 }).map((_, i) => {
+                            const monthIndex = (new Date().getMonth() + i) % 12;
+                            const monthsNames = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+                            
+                            let seasonalBoost = 1.0;
+                            if (monthIndex === 5 || monthIndex === 6 || monthIndex === 7) seasonalBoost = 1.08;
+                            if (monthIndex === 11) seasonalBoost = 1.15;
+
+                            const projectedMRR = Math.round(currentMRR * Math.pow(1 + netGrowth, i) * seasonalBoost);
+                            return { l: monthsNames[monthIndex], v: projectedMRR };
+                          });
+
+                          return (
+                            <div className="space-y-4">
+                              <div className="grid grid-cols-3 gap-2 text-left">
+                                <div className="p-3 bg-white/[0.02] border border-white/5 rounded-xl">
+                                  <p className="text-[7px] text-slate-500 uppercase font-black">Miembros Activos</p>
+                                  <p className="text-lg font-black text-white mt-0.5">{activeSubscribers}</p>
+                                </div>
+                                <div className="p-3 bg-white/[0.02] border border-white/5 rounded-xl">
+                                  <p className="text-[7px] text-slate-500 uppercase font-black">MRR de Membresía</p>
+                                  <p className="text-lg font-black text-[#F5C518] mt-0.5">${currentMRR.toLocaleString()}</p>
+                                </div>
+                                <div className="p-3 bg-white/[0.02] border border-white/5 rounded-xl">
+                                  <p className="text-[7px] text-slate-500 uppercase font-black">MRR Proyectado (Mes 6)</p>
+                                  <p className="text-lg font-black text-emerald-400 mt-0.5">${forecastData[5].v.toLocaleString()}</p>
+                                </div>
+                              </div>
+
+                              <div className="p-3 bg-black/30 border border-white/5 rounded-xl">
+                                <p className="text-[8px] font-black text-slate-400 uppercase tracking-wider mb-2">📈 Curva de Proyección (MRR Proyectado)</p>
+                                <SleekAreaChart data={forecastData} color="#10b981" />
+                              </div>
+                            </div>
+                          );
+                        })()}
+                      </div>
+
+                      {/* Churn Prevention Center */}
+                      <div className="p-5 border border-white/5 bg-black/45 rounded-2xl shadow-lg space-y-4">
+                        <h4 className="text-[10px] font-black text-white uppercase tracking-widest pb-2.5 border-b border-white/5 flex justify-between items-center">
+                          <span>🚨 Prevención de Churn y Clientes en Riesgo</span>
+                          <span className="text-[7px] text-red-500 font-bold uppercase">Alertas</span>
+                        </h4>
+
+                        {(() => {
+                          const clientsAtRisk = clients.filter(c => {
+                            const cj = jobs.filter(j => j.client_name === c.name && (j.status === 'paid' || j.status === 'completed'));
+                            if (!cj.length) return false;
+                            const last = cj.sort((a, b) => new Date(b.scheduled_date || 0) - new Date(a.scheduled_date || 0))[0];
+                            return dAgo(last.scheduled_date) >= 45;
+                          }).map(c => {
+                            const cj = jobs.filter(j => j.client_name === c.name && (j.status === 'paid' || j.status === 'completed'));
+                            const last = cj.sort((a, b) => new Date(b.scheduled_date || 0) - new Date(a.scheduled_date || 0))[0];
+                            return {
+                              ...c,
+                              daysInactive: dAgo(last.scheduled_date),
+                              lastService: last?.service_type || 'Limpieza'
+                            };
+                          }).sort((a, b) => b.daysInactive - a.daysInactive);
+
+                          return (
+                            <div className="space-y-4">
+                              <div className="p-3 bg-red-950/10 border border-red-500/15 rounded-xl flex items-center justify-between">
+                                <div>
+                                  <p className="text-[8px] font-black text-red-400 uppercase tracking-widest">Alerta de Deserción (Churn)</p>
+                                  <p className="text-[7.5px] text-slate-400 uppercase font-semibold mt-0.5 leading-relaxed">
+                                    {clientsAtRisk.length} clientes no han reservado servicios en más de 45 días.
+                                  </p>
+                                </div>
+                                <span className="text-xs font-black text-red-400 bg-red-500/10 border border-red-500/20 px-2 py-1 rounded-lg">
+                                  {clients.length > 0 ? Math.round((clientsAtRisk.length / clients.length) * 100) : 0}% Riesgo
+                                </span>
+                              </div>
+
+                              <div className="space-y-2 max-h-[170px] overflow-y-auto nsb pr-1">
+                                {clientsAtRisk.length === 0 ? (
+                                  <p className="text-[8px] text-slate-500 italic text-center py-8">¡Excelente! Ningún cliente se encuentra inactivo.</p>
+                                ) : (
+                                  clientsAtRisk.slice(0, 4).map(client => (
+                                    <div key={client.name} className="flex justify-between items-center bg-white/[0.01] border border-white/5 p-2.5 rounded-xl text-left">
+                                      <div>
+                                        <p className="text-[9.5px] font-black text-white uppercase">{client.name}</p>
+                                        <p className="text-[7.5px] text-slate-500 font-bold uppercase mt-0.5">Último: {client.lastService} hace {client.daysInactive} días</p>
+                                      </div>
+                                      
+                                      <button
+                                        onClick={() => reactivateClientWithAI(client)}
+                                        className="px-3 py-1.5 bg-[#F5C518]/10 hover:bg-[#F5C518] hover:text-black text-[#F5C518] rounded-lg text-[7.5px] font-black uppercase tracking-wider transition-all duration-300 active:scale-95"
+                                      >
+                                        ⚡ Reactivar con IA
+                                      </button>
+                                    </div>
+                                  ))
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })()}
                       </div>
 
                     </div>
