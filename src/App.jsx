@@ -6243,23 +6243,33 @@ function LoginFlow({ onLoginSuccess, onBack, tt }) {
     tt('Authenticating Field Access...', 'yellow');
     
     try {
-      // 1. Try legacy passcode/PIN login first (directly in staff_profiles where user_id might be null)
+      // 1. Try legacy passcode/PIN login first via secure serverless API
       const cleanEmail = (email || '').trim().toLowerCase();
-      const { data: matchedStaff, error: pinErr } = await sb
-        .from('staff_profiles')
-        .select('*')
-        .eq('passcode', password)
-        .limit(1)
-        .maybeSingle();
+      try {
+        const response = await fetch('/api/login-staff', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ email: cleanEmail, passcode: password }),
+        });
 
-      if (!pinErr && matchedStaff) {
-        const storedEmail = (matchedStaff.staff_email || matchedStaff.name || '').toLowerCase();
-        if (storedEmail.includes(cleanEmail) || cleanEmail.includes(storedEmail)) {
-          const { data: tenant } = await sb.from('tenants').select('*').eq('id', matchedStaff.tenant_id).maybeSingle();
-          tt(`Welcome back ${matchedStaff.name} ✓`, 'green');
-          onLoginSuccess(matchedStaff.role || 'staff', matchedStaff.tenant_id, null, matchedStaff, tenant?.business_name || 'ELEVORE EMPIRE');
-          return;
+        if (response.ok) {
+          const resData = await response.json();
+          if (resData.success && resData.profile) {
+            tt(`Welcome back ${resData.profile.name} ✓`, 'green');
+            onLoginSuccess(
+              resData.profile.role || 'staff',
+              resData.profile.tenant_id,
+              null,
+              resData.profile,
+              resData.tenantName || 'ELEVORE EMPIRE'
+            );
+            return;
+          }
         }
+      } catch (apiErr) {
+        console.warn('API PIN login failed or error response, falling back to official Auth:', apiErr);
       }
 
       // 2. Fall back to official Supabase Auth email/password login
@@ -8918,6 +8928,11 @@ export default function App() {
     aStaffRef.current = aStaff;
   }, [aStaff]);
 
+  const jobsRef = useRef(jobs);
+  useEffect(() => {
+    jobsRef.current = jobs;
+  }, [jobs]);
+
   const activeEmployeeRef = useRef(activeEmployee);
   useEffect(() => {
     activeEmployeeRef.current = activeEmployee;
@@ -8960,6 +8975,10 @@ export default function App() {
   const [chatJob, setChatJob] = useState(null);
   const [chatMsg, setChatMsg] = useState('');
   const [chatLog, setChatLog] = useState([]);
+  const [selectedInboxJobId, setSelectedInboxJobId] = useState(null);
+  const [inboxSearchQuery, setInboxSearchQuery] = useState('');
+  const [inboxFilter, setInboxFilter] = useState('all');
+  const [inboxMsg, setInboxMsg] = useState('');
   const [copilotOpen, setCopilotOpen] = useState(false);
   const [copilotMsgs, setCopilotMsgs] = useState([{role: 'assistant', content: 'Hola socio. Soy tu Copiloto IA. ¿En qué te ayudo hoy?'}]);
   const [copilotInput, setCopilotInput] = useState('');
@@ -9622,6 +9641,8 @@ Instrucciones:
         if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
           const newJob = payload.new;
           const oldJob = payload.old;
+          
+          // Staff notification for new assignment
           const isAssignedToMe = activeEmployee && newJob.team_assigned === activeEmployee.name;
           const transitionedToScheduled = newJob.status === 'scheduled' && (!oldJob || oldJob.status !== 'scheduled');
           
@@ -9633,6 +9654,22 @@ Instrucciones:
               });
             }
           }
+
+          // Admin notification for incoming chat messages
+          if (payload.eventType === 'UPDATE' && role === 'admin') {
+            const oldJobInState = jobsRef.current.find(j => j.id === newJob.id);
+            if (oldJobInState) {
+              const oldMsgs = oldJobInState.specs?.chat_messages || [];
+              const newMsgs = newJob.specs?.chat_messages || [];
+              if (newMsgs.length > oldMsgs.length) {
+                const lastMsg = newMsgs[newMsgs.length - 1];
+                if (lastMsg.sender !== 'admin') {
+                  playSynthPing();
+                  tt(`Nuevo mensaje de ${lastMsg.sender === 'client' ? 'Cliente' : 'Staff'} (${newJob.client_name}) 💬`, 'green');
+                }
+              }
+            }
+          }
         }
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'staff_profiles' }, () => {
@@ -9641,7 +9678,7 @@ Instrucciones:
       .subscribe();
     setRT(true);
     return () => { sb.removeChannel(ch); setRT(false); };
-  }, [view, refresh, activeEmployee]);
+  }, [view, refresh, activeEmployee, role]);
 
   // Set selected map default to first active job (only if no active map address is selected yet)
   useEffect(() => {
@@ -10438,6 +10475,15 @@ Instrucciones:
     const tomorrowAuto = jobs.filter(j => j.scheduled_date === tomorrowStr && j.status === 'scheduled').length;
     return pendingManual + unpaidCompleted + tomorrowAuto;
   }, [reminders, jobs, tomorrowStr]);
+
+  const unreadChatsCount = useMemo(() => {
+    return jobs.filter(j => {
+      const msgs = j.specs?.chat_messages || [];
+      if (msgs.length === 0) return false;
+      const lastMsg = msgs[msgs.length - 1];
+      return lastMsg.sender !== 'admin';
+    }).length;
+  }, [jobs]);
 
   const seasons = season();
 
@@ -12158,9 +12204,10 @@ Instrucciones generales de formato:
 
           {/* Navigation Links */}
           <nav className="space-y-1.5 flex-1">
-            {role === 'admin' ? (
+           {role === 'admin' ? (
               [
                 { id: 'brief', label: 'Dashboard', icon: 'sun' },
+                { id: 'inbox', label: 'Bandeja de Entrada', icon: 'message-square' },
                 { id: 'operations', label: 'Operaciones', icon: 'shield-check' },
                 { id: 'crm', label: 'Clientes & CRM', icon: 'users' },
                 { id: 'intel', label: 'Finanzas & Equipos', icon: 'bar-chart-2' },
@@ -12183,6 +12230,11 @@ Instrucciones generales de formato:
                     {item.id === 'operations' && remindersBadgeCount > 0 && (
                       <span className="bg-red-600 text-white font-bold text-[8px] px-1.5 py-0.5 rounded-full shadow-[0_0_8px_rgba(239,68,68,0.5)]">
                         {remindersBadgeCount}
+                      </span>
+                    )}
+                    {item.id === 'inbox' && unreadChatsCount > 0 && (
+                      <span className="bg-amber-500 text-black font-bold text-[8px] px-1.5 py-0.5 rounded-full shadow-[0_0_8px_rgba(245,197,24,0.5)]">
+                        {unreadChatsCount}
                       </span>
                     )}
                   </button>
@@ -12821,6 +12873,333 @@ Instrucciones generales de formato:
           })()}
 
           {/* =====================================================================
+              ✉️ ADMIN REALTIME CENTRAL INBOX
+              ===================================================================== */}
+          {role === 'admin' && view === 'inbox' && (
+            <div className="space-y-5 animate-in fade-in pb-24">
+              {/* Header */}
+              <div className="flex justify-between items-center pt-1">
+                <div>
+                  <p className="text-xs font-bold text-[#F5C518] uppercase tracking-[0.25em] mb-1">
+                    CENTRAL DE COMUNICACIONES 👋
+                  </p>
+                  <h2 className="text-4xl font-black tracking-widest uppercase text-white font-display leading-none">
+                    INBOX EN VIVO
+                  </h2>
+                  <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider mt-1.5">
+                    Gestiona y responde todas las conversaciones activas con clientes y técnicos
+                  </p>
+                </div>
+              </div>
+
+              {/* Inbox Container */}
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 h-[620px]">
+                {/* Left Panel: Conversations List (col-span-4) */}
+                <div className="lg:col-span-4 flex flex-col g border border-white/5 bg-slate-950/60 rounded-2xl overflow-hidden h-full">
+                  {/* Search and Filters */}
+                  <div className="p-4 border-b border-white/5 space-y-3">
+                    <div className="relative">
+                      <input
+                        type="text"
+                        placeholder="Buscar cliente o servicio..."
+                        value={inboxSearchQuery}
+                        onChange={e => setInboxSearchQuery(e.target.value)}
+                        className="inp text-xs pl-8 py-2.5"
+                      />
+                      <div className="absolute left-2.5 top-3 text-slate-500">
+                        <Icon name="search" className="w-3.5 h-3.5" />
+                      </div>
+                    </div>
+                    {/* Inbox Filters */}
+                    <div className="flex gap-1 bg-white/5 p-1 rounded-xl">
+                      <button
+                        onClick={() => setInboxFilter('all')}
+                        className={`flex-1 py-1.5 text-[8.5px] font-black uppercase rounded-lg transition-all ${inboxFilter === 'all' ? 'bg-[#F5C518] text-black' : 'text-slate-400 hover:text-white'}`}
+                      >
+                        Todas
+                      </button>
+                      <button
+                        onClick={() => setInboxFilter('unread')}
+                        className={`flex-1 py-1.5 text-[8.5px] font-black uppercase rounded-lg transition-all flex items-center justify-center gap-1 ${inboxFilter === 'unread' ? 'bg-[#F5C518] text-black' : 'text-slate-400 hover:text-white'}`}
+                      >
+                        Pendientes
+                        {unreadChatsCount > 0 && (
+                          <span className={`px-1.5 py-0.5 rounded-full text-[7px] font-bold ${inboxFilter === 'unread' ? 'bg-black text-white' : 'bg-amber-500 text-black'}`}>
+                            {unreadChatsCount}
+                          </span>
+                        )}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Conversations List */}
+                  <div className="flex-1 overflow-y-auto nsb p-2 space-y-1.5">
+                    {(() => {
+                      // Filter and prepare list of missions
+                      const activeMissions = jobs.filter(j => {
+                        const hasMessages = (j.specs?.chat_messages || []).length > 0;
+                        const isRecent = ['scheduled', 'in_progress', 'completed', 'paid'].includes(j.status);
+                        return isRecent || hasMessages;
+                      });
+
+                      const query = inboxSearchQuery.toLowerCase().trim();
+                      let filteredMissions = activeMissions.filter(j => {
+                        return !query || 
+                               j.client_name?.toLowerCase().includes(query) || 
+                               j.service_type?.toLowerCase().includes(query) ||
+                               j.team_assigned?.toLowerCase().includes(query);
+                      });
+
+                      if (inboxFilter === 'unread') {
+                        filteredMissions = filteredMissions.filter(j => {
+                          const msgs = j.specs?.chat_messages || [];
+                          if (msgs.length === 0) return false;
+                          const lastMsg = msgs[msgs.length - 1];
+                          return lastMsg.sender !== 'admin';
+                        });
+                      }
+
+                      if (filteredMissions.length === 0) {
+                        return (
+                          <p className="text-[10px] text-slate-500 italic text-center py-10 font-bold uppercase">
+                            No se encontraron chats.
+                          </p>
+                        );
+                      }
+
+                      return filteredMissions.map(j => {
+                        const isSelected = selectedInboxJobId === j.id;
+                        const msgs = j.specs?.chat_messages || [];
+                        const lastMsg = msgs.length > 0 ? msgs[msgs.length - 1] : null;
+                        const isPending = lastMsg && lastMsg.sender !== 'admin';
+
+                        return (
+                          <button
+                            key={j.id}
+                            onClick={() => setSelectedInboxJobId(j.id)}
+                            className={`w-full text-left p-3.5 rounded-xl border transition-all active:scale-95 duration-200 flex items-start gap-3 relative ${isSelected ? 'bg-[#F5C518]/10 border-[#F5C518]/30 shadow-md shadow-[#F5C518]/5' : isPending ? 'bg-white/5 border-amber-500/20 hover:bg-white/10' : 'bg-white/[0.02] border-white/5 hover:bg-white/5'}`}
+                          >
+                            <span className={`w-2.5 h-2.5 rounded-full flex-shrink-0 mt-1.5 ${j.status === 'in_progress' ? 'bg-green-500 shadow-[0_0_8px_#22c55e]' : j.status === 'completed' ? 'bg-purple-500' : j.status === 'paid' ? 'bg-blue-500' : 'bg-amber-500'}`} />
+
+                            <div className="flex-1 min-w-0">
+                              <div className="flex justify-between items-start gap-1">
+                                <h4 className="text-[10.5px] font-black text-white uppercase truncate flex-1 leading-tight">
+                                  {j.client_name}
+                                </h4>
+                                <span className="text-[7.5px] text-slate-500 font-bold whitespace-nowrap">
+                                  {fmtD(j.scheduled_date)}
+                                </span>
+                              </div>
+                              <p className="text-[8px] text-[#F5C518] font-bold uppercase tracking-wider mt-0.5">
+                                {j.service_type?.replace('_', ' ')} • {j.team_assigned || 'SIN ASIGNAR'}
+                              </p>
+                              <p className="text-[8.5px] text-slate-400 truncate mt-1">
+                                {lastMsg ? (
+                                  <span>
+                                    <strong className="text-slate-300">
+                                      {lastMsg.sender === 'admin' ? 'Tú: ' : lastMsg.sender === 'client' ? 'Cliente: ' : 'Técnico: '}
+                                    </strong>
+                                    {lastMsg.text}
+                                  </span>
+                                ) : (
+                                  <span className="italic text-slate-600">Sin mensajes de chat</span>
+                                )}
+                              </p>
+                            </div>
+
+                            {isPending && (
+                              <span className="absolute right-3.5 bottom-3.5 w-2.5 h-2.5 bg-amber-500 rounded-full animate-pulse shadow-[0_0_10px_#f5c518]" />
+                            )}
+                          </button>
+                        );
+                      });
+                    })()}
+                  </div>
+                </div>
+
+                {/* Right Panel: Selected Chat Conversation Window (col-span-8) */}
+                <div className="lg:col-span-8 flex flex-col g border border-white/5 bg-slate-950/60 rounded-2xl overflow-hidden h-full">
+                  {(() => {
+                    const activeJob = jobs.find(j => j.id === selectedInboxJobId);
+                    if (!activeJob) {
+                      return (
+                        <div className="flex-1 flex flex-col items-center justify-center p-8 text-center space-y-4">
+                          <div className="w-16 h-16 bg-white/5 border border-white/10 rounded-2xl flex items-center justify-center text-slate-500">
+                            <Icon name="message-square" className="w-7 h-7" />
+                          </div>
+                          <div>
+                            <h3 className="text-sm font-black text-white uppercase tracking-widest">
+                              Bandeja de Entrada Activa
+                            </h3>
+                            <p className="text-[10px] text-slate-500 uppercase tracking-wider mt-1">
+                              Selecciona una conversación del panel izquierdo para chatear en tiempo real.
+                            </p>
+                          </div>
+                        </div>
+                      );
+                    }
+
+                    const msgs = activeJob.specs?.chat_messages || [];
+
+                    const send = async () => {
+                      if (!inboxMsg.trim()) return;
+                      const textToSend = inboxMsg.trim();
+                      setInboxMsg('');
+
+                      const newMsg = {
+                        id: Math.random().toString(36).substring(2, 9),
+                        sender: 'admin',
+                        text: textToSend,
+                        time: new Date().toISOString()
+                      };
+
+                      const updatedSpecs = {
+                        ...(activeJob.specs || {}),
+                        chat_messages: [...msgs, newMsg]
+                      };
+
+                      setJobs(prev => prev.map(j => j.id === activeJob.id ? { ...j, specs: updatedSpecs } : j));
+
+                      try {
+                        const { error } = await sb.from('elevore_missions').update({ specs: updatedSpecs }).eq('id', activeJob.id);
+                        if (error) throw error;
+                      } catch (err) {
+                        console.error("Error sending admin chat message:", err);
+                        tt("Error al enviar mensaje", "red");
+                      }
+                    };
+
+                    const escalateToWhatsApp = () => {
+                      if (!inboxMsg.trim()) return;
+                      const p = activeJob.client_phone?.replace(/\D/g, '') || '';
+                      const ph = p.length === 10 ? '1' + p : p;
+                      window.open(`https://wa.me/${ph}?text=${encodeURIComponent(inboxMsg.trim())}`, '_blank');
+                    };
+
+                    return (
+                      <div className="flex-1 flex flex-col h-full min-h-0">
+                        {/* Conversation Header */}
+                        <div className="p-4 border-b border-white/5 bg-gradient-to-r from-white/[0.02] to-transparent flex items-center justify-between flex-shrink-0">
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <h3 className="text-xs font-black text-white uppercase tracking-wider">
+                                {activeJob.client_name}
+                              </h3>
+                              <span className={`text-[7px] font-black px-2 py-0.5 rounded-md uppercase ${activeJob.status === 'in_progress' ? 'bg-green-600 text-white animate-pulse' : activeJob.status === 'completed' ? 'bg-purple-600 text-white' : activeJob.status === 'paid' ? 'bg-blue-600 text-white' : 'bg-amber-500 text-black'}`}>
+                                {activeJob.status}
+                              </span>
+                            </div>
+                            <p className="text-[8.5px] text-slate-500 font-bold uppercase tracking-widest mt-1">
+                              {activeJob.service_type?.toUpperCase()} • {activeJob.address}
+                            </p>
+                          </div>
+                          
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => window.open(`${location.origin}${location.pathname}?mision=${activeJob.id}`, '_blank')}
+                              className="px-3 py-2 bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white rounded-xl text-[8px] font-black uppercase active:scale-95 transition-all flex items-center gap-1.5 border border-white/5"
+                            >
+                              <Icon name="external-link" className="w-3.5 h-3.5" />
+                              Ver Portal
+                            </button>
+                            <button
+                              onClick={() => {
+                                const p = activeJob.client_phone?.replace(/\D/g, '') || '';
+                                const ph = p.length === 10 ? '1' + p : p;
+                                window.open(`https://wa.me/${ph}`, '_blank');
+                              }}
+                              className="px-3 py-2 bg-green-950/30 hover:bg-green-900/40 text-green-400 hover:text-green-300 rounded-xl text-[8px] font-black uppercase active:scale-95 transition-all flex items-center gap-1.5 border border-green-500/10"
+                            >
+                              <Icon name="message-circle" className="w-3.5 h-3.5" />
+                              WhatsApp
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Messages Area */}
+                        <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-black/15 min-h-0 animate-in fade-in duration-300">
+                          {msgs.length === 0 ? (
+                            <div className="h-full flex items-center justify-center flex-col text-center p-6">
+                              <p className="text-[10px] text-slate-600 italic font-bold uppercase">
+                                No hay mensajes en esta conversación.
+                              </p>
+                              <p className="text-[8px] text-slate-700 uppercase tracking-widest mt-1">
+                                Escribe abajo para iniciar el chat con el cliente y el staff.
+                              </p>
+                            </div>
+                          ) : (
+                            msgs.map((m) => {
+                              const isAdmin = m.sender === 'admin';
+                              const isClient = m.sender === 'client';
+                              const isStaff = m.sender === 'staff';
+
+                              return (
+                                <div
+                                  key={m.id}
+                                  className={`flex flex-col ${isAdmin ? 'items-end' : 'items-start'}`}
+                                >
+                                  <span className="text-[7px] text-slate-500 font-bold uppercase tracking-wider mb-1 px-1">
+                                    {isAdmin ? 'Tú (CEO)' : isClient ? `Cliente (${activeJob.client_name})` : `Técnico (${activeJob.team_assigned || 'Staff'})`}
+                                  </span>
+                                  <div
+                                    className={`px-4 py-2.5 rounded-2xl max-w-sm text-[9.5px] font-black leading-relaxed shadow-sm border ${isAdmin ? 'bg-[#F5C518]/10 text-white border-[#F5C518]/30 rounded-tr-none' : isClient ? 'bg-blue-900/10 text-blue-100 border-blue-500/20 rounded-tl-none' : 'bg-purple-900/10 text-purple-100 border-purple-500/20 rounded-tl-none'}`}
+                                  >
+                                    <p>{m.text}</p>
+                                    <span className="text-[6.5px] text-slate-600 mt-1 block text-right font-normal">
+                                      {new Date(m.time).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}
+                                    </span>
+                                  </div>
+                                </div>
+                              );
+                            })
+                          )}
+                        </div>
+
+                        {/* Message Input Area */}
+                        <div className="p-4 border-t border-white/5 bg-gradient-to-t from-white/[0.02] to-transparent flex-shrink-0">
+                          <form
+                            onSubmit={e => {
+                              e.preventDefault();
+                              send();
+                            }}
+                            className="flex gap-2"
+                          >
+                            <input
+                              type="text"
+                              value={inboxMsg}
+                              onChange={e => setInboxMsg(e.target.value)}
+                              placeholder="Escribe un mensaje en tiempo real..."
+                              className="inp text-xs flex-1"
+                            />
+                            {inboxMsg.trim() && (
+                              <button
+                                type="button"
+                                onClick={escalateToWhatsApp}
+                                className="px-3.5 bg-green-700/20 hover:bg-green-600/30 text-green-400 rounded-xl active:scale-95 border border-green-500/20 transition-all flex items-center justify-center"
+                                title="Escalar / Enviar a WhatsApp"
+                              >
+                                <Icon name="message-circle" className="w-4 h-4" />
+                              </button>
+                            )}
+                            <button
+                              type="submit"
+                              disabled={!inboxMsg.trim()}
+                              className={`px-5 rounded-xl font-black text-[9px] uppercase tracking-wider flex items-center gap-1 active:scale-95 transition-all ${inboxMsg.trim() ? 'bg-[#F5C518] text-black shadow-lg shadow-[#F5C518]/15' : 'bg-white/5 text-slate-600 cursor-not-allowed'}`}
+                            >
+                              <Icon name="send" className="w-3.5 h-3.5" />
+                              Responder
+                            </button>
+                          </form>
+                        </div>
+                      </div>
+                    );
+                  })()}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* =====================================================================
               👑 ADMIN DASHBOARD BRIEF TABS
               ===================================================================== */}
           {role === 'admin' && view === 'brief' && (
@@ -12832,14 +13211,15 @@ Instrucciones generales de formato:
                   <p className="text-xs font-bold text-[#F5C518] uppercase tracking-[0.25em] mb-1">
                     {(() => {
                       const hour = new Date().getHours();
+                      const displayName = user?.user_metadata?.name || activeEmployee?.name || 'Admin';
                       if (prefLang === 'es') {
-                        if (hour < 12) return `Buenos días, ${activeEmployee?.name || 'Admin'} 👋`;
-                        if (hour < 19) return `Buenas tardes, ${activeEmployee?.name || 'Admin'} 👋`;
-                        return `Buenas noches, ${activeEmployee?.name || 'Admin'} 👋`;
+                        if (hour < 12) return `Buenos días, ${displayName} 👋`;
+                        if (hour < 19) return `Buenas tardes, ${displayName} 👋`;
+                        return `Buenas noches, ${displayName} 👋`;
                       } else {
-                        if (hour < 12) return `Good morning, ${activeEmployee?.name || 'Admin'} 👋`;
-                        if (hour < 19) return `Good afternoon, ${activeEmployee?.name || 'Admin'} 👋`;
-                        return `Good evening, ${activeEmployee?.name || 'Admin'} 👋`;
+                        if (hour < 12) return `Good morning, ${displayName} 👋`;
+                        if (hour < 19) return `Good afternoon, ${displayName} 👋`;
+                        return `Good evening, ${displayName} 👋`;
                       }
                     })()}
                   </p>

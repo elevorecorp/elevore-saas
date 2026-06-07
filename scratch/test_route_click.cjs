@@ -116,6 +116,30 @@ setTimeout(async () => {
             }
           ])
         });
+      } else if (url.includes('/api/login-staff')) {
+        console.log('[Puppeteer Intercept]: Mocking /api/login-staff endpoint...');
+        request.respond({
+          status: 200,
+          headers: {
+            'access-control-allow-origin': '*',
+            'content-type': 'application/json'
+          },
+          body: JSON.stringify({
+            success: true,
+            profile: {
+              id: '2',
+              user_id: '2',
+              name: 'Team Alpha',
+              role: 'staff',
+              passcode: '1122',
+              staff_email: 'team_alpha@company.com',
+              tenant_id: 'tenant-1',
+              wallet_balance: 240,
+              total_earned: 1450
+            },
+            tenantName: 'Elevore Empire'
+          })
+        });
       } else if (url.includes('/rest/v1/staff_profiles')) {
         console.log('[Puppeteer Intercept]: Mocking staff_profiles query...');
         request.respond({
