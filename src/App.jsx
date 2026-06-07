@@ -6243,14 +6243,33 @@ function LoginFlow({ onLoginSuccess, onBack, tt }) {
     tt('Authenticating Field Access...', 'yellow');
     
     try {
-      // 1. Sign in via Supabase Auth
+      // 1. Try legacy passcode/PIN login first (directly in staff_profiles where user_id might be null)
+      const cleanEmail = (email || '').trim().toLowerCase();
+      const { data: matchedStaff, error: pinErr } = await sb
+        .from('staff_profiles')
+        .select('*')
+        .eq('passcode', password)
+        .limit(1)
+        .maybeSingle();
+
+      if (!pinErr && matchedStaff) {
+        const storedEmail = (matchedStaff.staff_email || matchedStaff.name || '').toLowerCase();
+        if (storedEmail.includes(cleanEmail) || cleanEmail.includes(storedEmail)) {
+          const { data: tenant } = await sb.from('tenants').select('*').eq('id', matchedStaff.tenant_id).maybeSingle();
+          tt(`Welcome back ${matchedStaff.name} ✓`, 'green');
+          onLoginSuccess(matchedStaff.role || 'staff', matchedStaff.tenant_id, null, matchedStaff, tenant?.business_name || 'ELEVORE EMPIRE');
+          return;
+        }
+      }
+
+      // 2. Fall back to official Supabase Auth email/password login
       const { data: authData, error: authError } = await sb.auth.signInWithPassword({ email, password });
       if (authError) {
         setLoading(false);
         return tt('Invalid credentials. Try again.', 'red');
       }
       
-      // 2. Fetch staff profile linked to this user_id
+      // Fetch staff profile linked to this user_id
       const { data: staffProfile, error: profileErr } = await sb
         .from('staff_profiles')
         .select('*')
