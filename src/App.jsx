@@ -8574,11 +8574,29 @@ export default function App() {
     { id: '3', name: 'Team Beta', role: 'staff', passcode: '3344', wallet_balance: 180, total_earned: 920 }
   ]);
   const [activeEmployee, setActiveEmp] = useState(null);
+  const [staffTab, setStaffTab] = useState('today');
 
   const todayStr = new Date().toISOString().split('T')[0];
 
   const staffJobs = useMemo(() => {
     const basicFiltered = jobs.filter(j => j.scheduled_date === todayStr || j.status === 'scheduled' || j.status === 'in_progress');
+    if (activeEmployee && activeEmployee.name && activeEmployee.name !== 'General Staff' && role === 'staff') {
+      const nameLower = activeEmployee.name.toLowerCase();
+      return basicFiltered.filter(j => j.team_assigned && typeof j.team_assigned === 'string' && j.team_assigned.toLowerCase().includes(nameLower));
+    }
+    return basicFiltered;
+  }, [jobs, todayStr, activeEmployee, role]);
+
+  const weeklyStaffJobs = useMemo(() => {
+    const dates = [];
+    const base = new Date(todayStr + 'T00:00:00');
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(base);
+      d.setDate(base.getDate() + i);
+      dates.push(d.toISOString().split('T')[0]);
+    }
+    
+    let basicFiltered = jobs.filter(j => j.scheduled_date && dates.includes(j.scheduled_date));
     if (activeEmployee && activeEmployee.name && activeEmployee.name !== 'General Staff' && role === 'staff') {
       const nameLower = activeEmployee.name.toLowerCase();
       return basicFiltered.filter(j => j.team_assigned && typeof j.team_assigned === 'string' && j.team_assigned.toLowerCase().includes(nameLower));
@@ -12402,6 +12420,106 @@ Instrucciones generales de formato:
               rookie: { emoji: '⚡', label: 'Rising Star', description: 'Misiones iniciales asignadas. ¡Estrella en ascenso en el equipo!' }
             };
 
+            const renderJobCard = (job) => {
+              if (!job) return null;
+              const doneTasks = Object.values(job.specs?.checklist || {}).filter(Boolean).length;
+              const totalTasks = job.specs?.custom_checklist?.length || CHECKS.length;
+              const isCurrent = job.status === 'in_progress';
+              const isCompleted = job.status === 'completed' || job.status === 'paid';
+              
+              // VIP check
+              const isVIP = job.client_membership && job.client_membership !== 'none';
+              const paymentType = job.payment_method || 'Base';
+
+              return (
+                <button 
+                  key={job.id} 
+                  onClick={() => setAStaff(job)} 
+                  className="w-full g p-6 text-left active:scale-[0.98] transition-all bg-[rgba(255,255,255,0.03)] border border-white/5 rounded-2xl flex flex-col justify-between min-h-[175px] hover:border-[#F5C518]/30 hover:shadow-[0_12px_24px_rgba(0,0,0,0.5)] group relative overflow-hidden"
+                >
+                  {/* Subtle status glowing indicator */}
+                  <div className={`absolute -top-12 -right-12 w-24 h-24 rounded-full blur-2xl pointer-events-none opacity-20 transition-all ${
+                    isCurrent ? 'bg-green-500' : isCompleted ? 'bg-purple-500' : 'bg-amber-500'
+                  }`} />
+                  
+                  <div className="flex justify-between items-start w-full relative z-10">
+                    <div className="space-y-1 flex-1">
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <span className={`text-[6.5px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider ${
+                          isCurrent ? 'bg-green-500/10 text-green-400 border border-green-500/20' : 
+                          isCompleted ? 'bg-purple-500/10 text-purple-400 border border-purple-500/20' : 
+                          'bg-amber-500/10 text-[#F5C518] border border-amber-500/20'
+                        }`}>
+                          {job.status.toUpperCase()}
+                        </span>
+                        {isVIP && (
+                          <span className="text-[6.5px] font-black px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 uppercase tracking-widest">
+                            💎 VIP Client
+                          </span>
+                        )}
+                        <span className="text-[6.5px] font-black px-2 py-0.5 rounded-full bg-white/5 text-slate-400 border border-white/5 uppercase tracking-wide">
+                          {paymentType}
+                        </span>
+                      </div>
+                      <h3 className="text-lg font-black uppercase italic text-white leading-tight group-hover:text-amber-400 transition-colors pt-2">{job.client_name}</h3>
+                      <p className="text-[9px] text-slate-400 uppercase font-bold tracking-wider">{job.service_type} • {fmtD(job.scheduled_date)}</p>
+                      <p className="text-[8px] text-slate-500 font-bold uppercase tracking-wider flex items-center gap-1 pt-1">
+                        <Icon name="navigation" className="w-3 h-3 text-slate-600" />
+                        {job.address}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="w-full border-t border-white/5 pt-4 mt-4 flex items-center justify-between relative z-10">
+                    {isCurrent ? (
+                      <div className="flex items-center gap-2 text-[8px] font-black uppercase text-green-400">
+                        <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-ping" />
+                        <span>Progreso: {doneTasks}/{totalTasks} Tareas</span>
+                      </div>
+                    ) : isCompleted ? (
+                      <span className="text-[8px] font-black text-purple-400 uppercase flex items-center gap-1">
+                        <Icon name="check-circle" className="w-3.5 h-3.5" /> Completado ✓
+                      </span>
+                    ) : (
+                      <span className="text-[8px] font-black text-slate-500 uppercase">Misión Asignada</span>
+                    )}
+                    
+                    <p className="text-[8px] font-black text-[#F5C518] uppercase flex items-center gap-1 group-hover:translate-x-1 transition-transform">
+                      {isCurrent ? 'Continuar misión' : 'Iniciar misión'}
+                      <Icon name="arrow-right" className="w-3 h-3" />
+                    </p>
+                  </div>
+                </button>
+              );
+            };
+
+            const groupedJobsByDay = [];
+            const baseDate = new Date(todayStr + 'T00:00:00');
+            const isEs = prefLang === 'es';
+            for (let i = 0; i < 7; i++) {
+              const d = new Date(baseDate);
+              d.setDate(baseDate.getDate() + i);
+              const dateStr = d.toISOString().split('T')[0];
+              let dayLabel = '';
+              if (i === 0) {
+                dayLabel = isEs ? 'Hoy' : 'Today';
+              } else if (i === 1) {
+                dayLabel = isEs ? 'Mañana' : 'Tomorrow';
+              } else {
+                dayLabel = d.toLocaleDateString(isEs ? 'es-ES' : 'en-US', { 
+                  weekday: 'long', 
+                  month: 'short', 
+                  day: 'numeric' 
+                });
+              }
+              const dayJobs = weeklyStaffJobs.filter(j => j.scheduled_date === dateStr);
+              groupedJobsByDay.push({
+                dateStr,
+                dayLabel: dayLabel.toUpperCase(),
+                jobs: dayJobs
+              });
+            }
+
             return (
               <div className="space-y-6 animate-in fade-in pb-24 font-sans">
                 
@@ -12781,87 +12899,90 @@ Instrucciones generales de formato:
 
                     {/* Tactical Missions Grid */}
                     <div className="space-y-3.5">
-                      <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest pl-1">📋 MISIONES ASIGNADAS HOY</p>
-                      
-                      {(staffJobs || []).length === 0 && (
-                        <div className="g p-10 text-center text-slate-500 font-black italic uppercase bg-[rgba(255,255,255,0.04)] border border-[rgba(255,255,255,0.08)]">
-                          No tienes misiones asignadas hoy.
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b border-white/5">
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1 flex items-center gap-1.5">
+                          <Icon name="calendar" className="w-3.5 h-3.5 text-[#F5C518]" />
+                          <span>📋 {prefLang === 'es' ? 'Agenda de Operaciones' : 'Operations Agenda'}</span>
+                        </p>
+                        
+                        <div className="flex bg-white/5 border border-white/10 rounded-xl p-0.5 self-start sm:self-auto shadow-inner">
+                          <button
+                            onClick={() => setStaffTab('today')}
+                            className={`px-3 py-1 text-[8px] font-black uppercase tracking-wider rounded-lg transition-all cursor-pointer ${
+                              staffTab === 'today' 
+                                ? 'bg-[#F5C518] text-black shadow-lg shadow-amber-500/10' 
+                                : 'text-slate-400 hover:text-white'
+                            }`}
+                          >
+                            {prefLang === 'es' ? 'Hoy' : 'Today'} ({staffJobs.length})
+                          </button>
+                          <button
+                            onClick={() => setStaffTab('week')}
+                            className={`px-3 py-1 text-[8px] font-black uppercase tracking-wider rounded-lg transition-all cursor-pointer ${
+                              staffTab === 'week' 
+                                ? 'bg-[#F5C518] text-black shadow-lg shadow-amber-500/10' 
+                                : 'text-slate-400 hover:text-white'
+                            }`}
+                          >
+                            {prefLang === 'es' ? 'Esta Semana' : 'This Week'} ({weeklyStaffJobs.length})
+                          </button>
+                        </div>
+                      </div>
+
+                      {staffTab === 'today' ? (
+                        <>
+                          {(staffJobs || []).length === 0 && (
+                            <div className="g p-10 text-center text-slate-500 font-black italic uppercase bg-[rgba(255,255,255,0.04)] border border-[rgba(255,255,255,0.08)]">
+                              {prefLang === 'es' ? 'No tienes misiones asignadas hoy.' : 'No missions assigned today.'}
+                            </div>
+                          )}
+                          
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {(staffJobs || []).map(job => renderJobCard(job))}
+                          </div>
+                        </>
+                      ) : (
+                        <div className="space-y-6">
+                          {groupedJobsByDay.map((day, dIdx) => (
+                            <div key={day.dateStr} className="space-y-3 relative pl-4">
+                              {/* Vertical connecting line */}
+                              {dIdx < 6 && (
+                                <div className="absolute left-[7px] top-[14px] bottom-[-24px] w-[1px] bg-white/5 pointer-events-none" />
+                              )}
+                              
+                              <div className="flex items-center gap-2 relative">
+                                {/* Timeline indicator dot */}
+                                <div className={`absolute left-[-13px] w-2 h-2 rounded-full border transition-all ${
+                                  day.jobs.length > 0 
+                                    ? 'bg-[#F5C518] border-[#F5C518] shadow-[0_0_8px_rgba(245,197,24,0.3)]' 
+                                    : 'bg-[#000] border-white/10'
+                                }`} />
+                                
+                                <h4 className="text-[9px] font-black text-slate-400 uppercase tracking-widest pl-2">
+                                  {day.dayLabel}
+                                </h4>
+                                <span className={`text-[7px] font-black px-1.5 py-0.5 rounded uppercase ${
+                                  day.jobs.length > 0 
+                                    ? 'bg-[#F5C518]/10 text-[#F5C518] border border-[#F5C518]/20' 
+                                    : 'bg-white/5 text-slate-600'
+                                }`}>
+                                  {day.jobs.length} {day.jobs.length === 1 ? (prefLang === 'es' ? 'Misión' : 'Mission') : (prefLang === 'es' ? 'Misiones' : 'Missions')}
+                                </span>
+                              </div>
+                              
+                              {day.jobs.length === 0 ? (
+                                <p className="text-[8px] text-slate-600 uppercase italic pl-2 py-1">
+                                  {prefLang === 'es' ? 'Sin misiones asignadas' : 'No missions assigned'}
+                                </p>
+                              ) : (
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pl-2">
+                                  {day.jobs.map(job => renderJobCard(job))}
+                                </div>
+                              )}
+                            </div>
+                          ))}
                         </div>
                       )}
-                      
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {(staffJobs || []).map(job => {
-                          const doneTasks = Object.values(job.specs?.checklist || {}).filter(Boolean).length;
-                          const totalTasks = job.specs?.custom_checklist?.length || CHECKS.length;
-                          const isCurrent = job.status === 'in_progress';
-                          const isCompleted = job.status === 'completed' || job.status === 'paid';
-                          
-                          // VIP check
-                          const isVIP = job.client_membership && job.client_membership !== 'none';
-                          const paymentType = job.payment_method || 'Base';
-
-                          return (
-                            <button 
-                              key={job.id} 
-                              onClick={() => setAStaff(job)} 
-                              className="w-full g p-6 text-left active:scale-[0.98] transition-all bg-[rgba(255,255,255,0.03)] border border-white/5 rounded-2xl flex flex-col justify-between min-h-[175px] hover:border-[#F5C518]/30 hover:shadow-[0_12px_24px_rgba(0,0,0,0.5)] group relative overflow-hidden"
-                            >
-                              {/* Subtle status glowing indicator */}
-                              <div className={`absolute -top-12 -right-12 w-24 h-24 rounded-full blur-2xl pointer-events-none opacity-20 transition-all ${
-                                isCurrent ? 'bg-green-500' : isCompleted ? 'bg-purple-500' : 'bg-amber-500'
-                              }`} />
-                              
-                              <div className="flex justify-between items-start w-full relative z-10">
-                                <div className="space-y-1 flex-1">
-                                  <div className="flex flex-wrap items-center gap-1.5">
-                                    <span className={`text-[6.5px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider ${
-                                      isCurrent ? 'bg-green-500/10 text-green-400 border border-green-500/20' : 
-                                      isCompleted ? 'bg-purple-500/10 text-purple-400 border border-purple-500/20' : 
-                                      'bg-amber-500/10 text-[#F5C518] border border-amber-500/20'
-                                    }`}>
-                                      {job.status.toUpperCase()}
-                                    </span>
-                                    {isVIP && (
-                                      <span className="text-[6.5px] font-black px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 uppercase tracking-widest">
-                                        💎 VIP Client
-                                      </span>
-                                    )}
-                                    <span className="text-[6.5px] font-black px-2 py-0.5 rounded-full bg-white/5 text-slate-400 border border-white/5 uppercase tracking-wide">
-                                      {paymentType}
-                                    </span>
-                                  </div>
-                                  <h3 className="text-lg font-black uppercase italic text-white leading-tight group-hover:text-amber-400 transition-colors pt-2">{job.client_name}</h3>
-                                  <p className="text-[9px] text-slate-400 uppercase font-bold tracking-wider">{job.service_type} • {fmtD(job.scheduled_date)}</p>
-                                  <p className="text-[8px] text-slate-500 font-bold uppercase tracking-wider flex items-center gap-1 pt-1">
-                                    <Icon name="navigation" className="w-3 h-3 text-slate-600" />
-                                    {job.address}
-                                  </p>
-                                </div>
-                              </div>
-
-                              <div className="w-full border-t border-white/5 pt-4 mt-4 flex items-center justify-between relative z-10">
-                                {isCurrent ? (
-                                  <div className="flex items-center gap-2 text-[8px] font-black uppercase text-green-400">
-                                    <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-ping" />
-                                    <span>Progreso: {doneTasks}/{totalTasks} Tareas</span>
-                                  </div>
-                                ) : isCompleted ? (
-                                  <span className="text-[8px] font-black text-purple-400 uppercase flex items-center gap-1">
-                                    <Icon name="check-circle" className="w-3.5 h-3.5" /> Completado ✓
-                                  </span>
-                                ) : (
-                                  <span className="text-[8px] font-black text-slate-500 uppercase">Misión Asignada</span>
-                                )}
-                                
-                                <p className="text-[8px] font-black text-[#F5C518] uppercase flex items-center gap-1 group-hover:translate-x-1 transition-transform">
-                                  {isCurrent ? 'Continuar misión' : 'Iniciar misión'}
-                                  <Icon name="arrow-right" className="w-3 h-3" />
-                                </p>
-                              </div>
-                            </button>
-                          );
-                        })}
-                      </div>
                     </div>
 
                   </div>
