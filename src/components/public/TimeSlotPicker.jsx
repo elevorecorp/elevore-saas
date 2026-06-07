@@ -15,6 +15,8 @@ export default function TimeSlotPicker({
   const [loading, setLoading] = useState(false);
   const [days, setDays] = useState([]);
   const [activeDayIndex, setActiveDayIndex] = useState(0);
+  const [calendarModalOpen, setCalendarModalOpen] = useState(false);
+  const [currentMonthDate, setCurrentMonthDate] = useState(new Date());
 
   // Time Slots Definition
   const SLOTS = [
@@ -152,6 +154,14 @@ export default function TimeSlotPicker({
         <div className="flex gap-1">
           <button 
             type="button" 
+            onClick={() => setCalendarModalOpen(true)}
+            className="px-2 py-1 bg-white/5 hover:bg-white/10 rounded-lg border border-white/10 transition-all text-[7.5px] font-black uppercase text-slate-300 hover:text-white flex items-center gap-1 active:scale-95"
+          >
+            <Calendar className="w-3 h-3 text-[#F5C518]" />
+            {lang === 'es' ? 'Calendario' : 'Calendar'}
+          </button>
+          <button 
+            type="button" 
             onClick={handlePrevDayPage} 
             disabled={activeDayIndex === 0}
             className="p-1 hover:bg-white/5 rounded-lg disabled:opacity-30 transition-all text-slate-400 hover:text-white"
@@ -280,6 +290,95 @@ export default function TimeSlotPicker({
           </div>
         )}
       </div>
+
+      {/* Monthly Calendar Modal */}
+      {calendarModalOpen && (
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-[1000] flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="bg-slate-900 border border-white/10 rounded-2xl w-full max-w-xs overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200">
+            {/* Header */}
+            <div className="p-4 border-b border-white/5 bg-black/40 flex justify-between items-center">
+              <button 
+                type="button"
+                onClick={() => setCurrentMonthDate(prev => new Date(prev.getFullYear(), prev.getMonth() - 1, 1))}
+                className="p-1.5 hover:bg-white/5 rounded-lg transition-colors text-slate-400 hover:text-white"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+              <span className="text-[10px] font-black uppercase text-white tracking-widest font-mono">
+                {currentMonthDate.toLocaleDateString(lang === 'es' ? 'es-ES' : 'en-US', { month: 'long', year: 'numeric' })}
+              </span>
+              <button 
+                type="button"
+                onClick={() => setCurrentMonthDate(prev => new Date(prev.getFullYear(), prev.getMonth() + 1, 1))}
+                className="p-1.5 hover:bg-white/5 rounded-lg transition-colors text-slate-400 hover:text-white"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Grid */}
+            <div className="p-4">
+              <div className="grid grid-cols-7 gap-1 text-center text-[7.5px] font-black uppercase tracking-wider text-slate-500 mb-2 font-mono">
+                {['D', 'L', 'M', 'M', 'J', 'V', 'S'].map((dayName, idx) => (
+                  <div key={idx}>{dayName}</div>
+                ))}
+              </div>
+
+              <div className="grid grid-cols-7 gap-1 text-center">
+                {/* Blank days padding */}
+                {Array.from({ length: new Date(currentMonthDate.getFullYear(), currentMonthDate.getMonth(), 1).getDay() }).map((_, idx) => (
+                  <div key={`blank-${idx}`} className="p-2"></div>
+                ))}
+
+                {/* Days of month */}
+                {Array.from({ length: new Date(currentMonthDate.getFullYear(), currentMonthDate.getMonth() + 1, 0).getDate() }).map((_, idx) => {
+                  const dayNum = idx + 1;
+                  const dateStr = `${currentMonthDate.getFullYear()}-${String(currentMonthDate.getMonth() + 1).padStart(2, '0')}-${String(dayNum).padStart(2, '0')}`;
+                  const isSelected = selectedDate === dateStr;
+                  const isPast = (() => {
+                    const d = new Date(currentMonthDate.getFullYear(), currentMonthDate.getMonth(), dayNum);
+                    const today = new Date();
+                    today.setHours(0,0,0,0);
+                    return d < today;
+                  })();
+
+                  return (
+                    <button
+                      key={`day-${dayNum}`}
+                      type="button"
+                      disabled={isPast}
+                      onClick={() => {
+                        onChangeDate(dateStr);
+                        setCalendarModalOpen(false);
+                      }}
+                      className={`p-2 rounded-lg text-[9px] font-black font-mono transition-all select-none ${
+                        isSelected 
+                          ? 'bg-[#F5C518] text-black shadow-lg shadow-[#F5C518]/25 font-black scale-105' 
+                          : isPast 
+                          ? 'text-slate-700 cursor-not-allowed opacity-30'
+                          : 'text-slate-300 hover:bg-white/5'
+                      }`}
+                    >
+                      {dayNum}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="p-3 bg-black/20 border-t border-white/5 flex justify-end">
+              <button 
+                type="button"
+                onClick={() => setCalendarModalOpen(false)}
+                className="px-3.5 py-1.5 bg-white/5 hover:bg-white/10 text-white rounded-lg text-[8px] font-black uppercase border border-white/10 active:scale-95 transition-all"
+              >
+                {lang === 'es' ? 'Cerrar' : 'Close'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

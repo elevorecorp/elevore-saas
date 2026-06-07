@@ -31,6 +31,40 @@ function Icon({ name, className, style, ...props }) {
   return <LucideIcon className={className} style={style} {...props} />;
 }
 
+const playSynthPing = () => {
+  try {
+    const AudioContext = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContext) return;
+    const ctx = new AudioContext();
+    
+    // First chime (D5)
+    const osc1 = ctx.createOscillator();
+    const gain1 = ctx.createGain();
+    osc1.connect(gain1);
+    gain1.connect(ctx.destination);
+    osc1.type = 'sine';
+    osc1.frequency.setValueAtTime(587.33, ctx.currentTime);
+    gain1.gain.setValueAtTime(0.12, ctx.currentTime);
+    gain1.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.5);
+    osc1.start(ctx.currentTime);
+    osc1.stop(ctx.currentTime + 0.5);
+
+    // Second chime (A5)
+    const osc2 = ctx.createOscillator();
+    const gain2 = ctx.createGain();
+    osc2.connect(gain2);
+    gain2.connect(ctx.destination);
+    osc2.type = 'sine';
+    osc2.frequency.setValueAtTime(880, ctx.currentTime + 0.08);
+    gain2.gain.setValueAtTime(0.12, ctx.currentTime + 0.08);
+    gain2.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.6);
+    osc2.start(ctx.currentTime + 0.08);
+    osc2.stop(ctx.currentTime + 0.6);
+  } catch (err) {
+    console.warn("Synth chime failed:", err);
+  }
+};
+
 // =====================================================================
 // 📊 EMBEDDED CHART ENGINE (Quant SVG Lines & Bars)
 // =====================================================================
@@ -1612,7 +1646,9 @@ function RouteOptimizerModal({ todayJobs, onClose, lang }) {
 // BeforeAfterSlider Component
 function BeforeAfterSlider({ beforePhotos = [], afterPhotos = [] }) {
   const [activeIdx, setActiveIdx] = useState(0);
-  const [viewMode, setViewMode] = useState('after');
+  const [sliderPos, setSliderPos] = useState(50); // percentage: 0 to 100
+  const containerRef = useRef(null);
+  const [isDragging, setIsDragging] = useState(false);
   
   const total = Math.max(beforePhotos.length, afterPhotos.length);
   if (total === 0) return null;
@@ -1620,19 +1656,54 @@ function BeforeAfterSlider({ beforePhotos = [], afterPhotos = [] }) {
   const beforePhoto = beforePhotos[activeIdx] || null;
   const afterPhoto = afterPhotos[activeIdx] || null;
 
+  const handleMove = (clientX) => {
+    if (!containerRef.current) return;
+    const rect = containerRef.current.getBoundingClientRect();
+    const x = clientX - rect.left;
+    const pct = Math.max(0, Math.min(100, (x / rect.width) * 100));
+    setSliderPos(pct);
+  };
+
+  useEffect(() => {
+    const handleWindowMouseMove = (e) => {
+      if (isDragging) handleMove(e.clientX);
+    };
+    const handleWindowTouchMove = (e) => {
+      if (isDragging && e.touches[0]) handleMove(e.touches[0].clientX);
+    };
+    const handleWindowMouseUp = () => {
+      setIsDragging(false);
+    };
+
+    if (isDragging) {
+      window.addEventListener('mousemove', handleWindowMouseMove);
+      window.addEventListener('touchmove', handleWindowTouchMove);
+      window.addEventListener('mouseup', handleWindowMouseUp);
+      window.addEventListener('touchend', handleWindowMouseUp);
+    }
+
+    return () => {
+      window.removeEventListener('mousemove', handleWindowMouseMove);
+      window.removeEventListener('touchmove', handleWindowTouchMove);
+      window.removeEventListener('mouseup', handleWindowMouseUp);
+      window.removeEventListener('touchend', handleWindowMouseUp);
+    };
+  }, [isDragging]);
+
   return (
     <div className="g p-5 border border-white/10 rounded-2xl space-y-4 bg-black/40">
       <div className="flex justify-between items-center">
         <p className="text-[9px] font-black text-amber-500 uppercase tracking-widest flex items-center gap-1.5">
           <Icon name="columns" className="w-3.5 h-3.5 text-amber-500" />
-          Comparación Antes / Después
+          Desliza para Comparar Antes / Después
         </p>
         {total > 1 && (
           <div className="flex gap-1">
             {Array.from({ length: total }).map((_, i) => (
               <button 
                 key={i} 
-                onClick={() => { setActiveIdx(i); setViewMode('after'); }}
+                type="button"
+                onClick={() => { setActiveIdx(i); setSliderPos(50); }}
                 className={`text-[8px] font-black w-5 h-5 rounded-full flex items-center justify-center ${activeIdx === i ? 'bg-amber-500 text-black' : 'bg-white/5 text-slate-500'}`}
               >
                 {i + 1}
@@ -1642,58 +1713,47 @@ function BeforeAfterSlider({ beforePhotos = [], afterPhotos = [] }) {
         )}
       </div>
 
-      <div className="relative aspect-video w-full rounded-xl overflow-hidden border border-white/10 bg-slate-950 flex items-center justify-center">
-        {viewMode === 'before' && beforePhoto && (
-          <img src={beforePhoto} className="w-full h-full object-cover animate-in fade-in duration-300" alt="Before" />
+      <div 
+        ref={containerRef}
+        onMouseDown={(e) => { e.preventDefault(); setIsDragging(true); }}
+        onTouchStart={() => { setIsDragging(true); }}
+        className="relative aspect-video w-full rounded-xl overflow-hidden border border-white/10 bg-slate-950 select-none cursor-ew-resize"
+      >
+        {/* After Photo (Base Layer) */}
+        {afterPhoto ? (
+          <img src={afterPhoto} className="absolute inset-0 w-full h-full object-cover pointer-events-none" alt="After" />
+        ) : (
+          <div className="absolute inset-0 bg-zinc-900 flex items-center justify-center text-[10px] text-slate-600">N/A (DESPUÉS)</div>
         )}
-        {viewMode === 'after' && afterPhoto && (
-          <img src={afterPhoto} className="w-full h-full object-cover animate-in fade-in duration-300" alt="After" />
-        )}
-        {viewMode === 'side-by-side' && (
-          <div className="grid grid-cols-2 w-full h-full gap-0.5">
-            <div className="relative w-full h-full">
-              {beforePhoto ? <img src={beforePhoto} className="w-full h-full object-cover" alt="Before" /> : <div className="w-full h-full bg-zinc-900 flex items-center justify-center text-[8px] text-slate-600">N/A</div>}
-              <div className="absolute bottom-2 left-2 bg-black/70 px-2 py-0.5 rounded text-[8px] font-black text-red-400 border border-red-500/20">ANTES</div>
-            </div>
-            <div className="relative w-full h-full">
-              {afterPhoto ? <img src={afterPhoto} className="w-full h-full object-cover" alt="After" /> : <div className="w-full h-full bg-zinc-900 flex items-center justify-center text-[8px] text-slate-600">N/A</div>}
-              <div className="absolute bottom-2 right-2 bg-black/70 px-2 py-0.5 rounded text-[8px] font-black text-green-400 border border-green-500/20">DESPUÉS</div>
-            </div>
+        <div className="absolute bottom-2 right-2 bg-black/70 px-2 py-0.5 rounded text-[8px] font-black text-green-400 border border-green-500/20 z-10 pointer-events-none">🟢 DESPUÉS</div>
+
+        {/* Before Photo (Clipped Overlay Layer) */}
+        {beforePhoto ? (
+          <img 
+            src={beforePhoto} 
+            style={{ clipPath: `polygon(0 0, ${sliderPos}% 0, ${sliderPos}% 100%, 0 100%)` }}
+            className="absolute inset-0 w-full h-full object-cover pointer-events-none" 
+            alt="Before" 
+          />
+        ) : (
+          <div 
+            style={{ clipPath: `polygon(0 0, ${sliderPos}% 0, ${sliderPos}% 100%, 0 100%)` }}
+            className="absolute inset-0 bg-zinc-900 flex items-center justify-center text-[10px] text-slate-600"
+          >
+            N/A (ANTES)
           </div>
         )}
+        <div className="absolute bottom-2 left-2 bg-black/70 px-2 py-0.5 rounded text-[8px] font-black text-red-400 border border-red-500/20 z-10 pointer-events-none">🔴 ANTES</div>
 
-        {viewMode !== 'side-by-side' && (
-          <div className="absolute top-2 left-2 bg-black/70 px-2 py-0.5 rounded text-[8px] font-black border border-white/10 uppercase tracking-widest">
-            {viewMode === 'before' ? (
-              <span className="text-red-400">🔴 Antes</span>
-            ) : (
-              <span className="text-green-400">🟢 Después</span>
-            )}
+        {/* Drag Line & Circular Handle */}
+        <div 
+          style={{ left: `${sliderPos}%` }}
+          className="absolute inset-y-0 w-0.5 bg-amber-500 shadow-[0_0_10px_#f5c518] pointer-events-none animate-pulse"
+        >
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black border-2 border-amber-500 text-amber-500 flex items-center justify-center shadow-lg pointer-events-auto cursor-ew-resize active:scale-110 active:bg-amber-500 active:text-black transition-all">
+            <Icon name="chevrons-left-right" className="w-4 h-4 stroke-[2.5]" />
           </div>
-        )}
-      </div>
-
-      <div className="grid grid-cols-3 gap-1 bg-white/5 p-1 rounded-xl border border-white/5">
-        <button 
-          onClick={() => setViewMode('before')} 
-          disabled={!beforePhoto}
-          className={`py-1.5 rounded-lg text-[8px] font-black uppercase tracking-wider transition-all ${viewMode === 'before' ? 'bg-red-500/20 border border-red-500/30 text-red-400' : 'text-slate-500 hover:text-slate-400'}`}
-        >
-          Antes
-        </button>
-        <button 
-          onClick={() => setViewMode('side-by-side')} 
-          className={`py-1.5 rounded-lg text-[8px] font-black uppercase tracking-wider transition-all ${viewMode === 'side-by-side' ? 'bg-amber-500/20 border border-amber-500/30 text-amber-400' : 'text-slate-500 hover:text-slate-400'}`}
-        >
-          Dividido
-        </button>
-        <button 
-          onClick={() => setViewMode('after')} 
-          disabled={!afterPhoto}
-          className={`py-1.5 rounded-lg text-[8px] font-black uppercase tracking-wider transition-all ${viewMode === 'after' ? 'bg-green-500/20 border border-green-500/30 text-green-400' : 'text-slate-500 hover:text-slate-400'}`}
-        >
-          Después
-        </button>
+        </div>
       </div>
     </div>
   );
@@ -1922,6 +1982,9 @@ function Portal({ cjid }) {
   const [cardName, setCardName] = useState('');
   const [payStage, setPayStage] = useState(''); // '', 'connecting', 'verifying', 'authorizing', 'routing', 'success'
   const [payError, setPayError] = useState('');
+  const [pushNotify, setPushNotify] = useState(null);
+  const [chatOpen, setChatOpen] = useState(false);
+  const prevJobRef = useRef(null);
 
   const getCardBrand = (number) => {
     const clean = number.replace(/\D/g, '');
@@ -2272,6 +2335,92 @@ function Portal({ cjid }) {
   useEffect(() => { load(); }, [cjid]);
 
   useEffect(() => {
+    if (!cjid) return;
+    
+    const channel = sb.channel(`mission_realtime_${cjid}`)
+      .on('postgres_changes', {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'elevore_missions',
+        filter: `id=eq.${cjid}`
+      }, (payload) => {
+        if (payload.new) {
+          console.log("Realtime mission update received in Portal:", payload.new);
+          setJob(payload.new);
+        }
+      })
+      .subscribe();
+
+    return () => {
+      sb.removeChannel(channel);
+    };
+  }, [cjid]);
+
+  useEffect(() => {
+    if (!job) return;
+
+    if (prevJobRef.current && prevJobRef.current.id === job.id) {
+      const prev = prevJobRef.current;
+      const curr = job;
+      
+      let pushMsg = null;
+      if (curr.status !== prev.status) {
+        if (curr.status === 'in_progress') {
+          pushMsg = {
+            title: lang === 'es' ? '¡Servicio Iniciado! 🧼' : 'Service In Progress! 🧼',
+            text: lang === 'es' ? 'El equipo ha llegado y ha comenzado a trabajar.' : 'The crew has arrived and started the work.',
+            icon: 'play'
+          };
+        } else if (curr.status === 'completed') {
+          pushMsg = {
+            title: lang === 'es' ? '¡Servicio Completado! ✨' : 'Service Completed! ✨',
+            text: lang === 'es' ? 'El equipo ha terminado las tareas. Por favor revisa las fotos de antes/después.' : 'The crew has finished the tasks. Please check the before/after photos.',
+            icon: 'sparkles'
+          };
+        } else if (curr.status === 'paid') {
+          pushMsg = {
+            title: lang === 'es' ? '¡Pago Confirmado! 💳' : 'Payment Confirmed! 💳',
+            text: lang === 'es' ? 'Tu factura ha sido pagada. Tu recibo PDF está listo.' : 'Your invoice has been paid. Your receipt PDF is ready.',
+            icon: 'check-square'
+          };
+        }
+      } else if (curr.specs?.en_route && !prev.specs?.en_route) {
+        pushMsg = {
+          title: lang === 'es' ? '¡Equipo en Camino! 🚗' : 'Crew En Route! 🚗',
+          text: lang === 'es' ? 'El staff va en camino a tu ubicación. Sigue su ruta en el mapa.' : 'The crew is on the way to your location. Track their arrival on the map.',
+          icon: 'truck'
+        };
+      } else {
+        const oldMsgs = prev.specs?.chat_messages || [];
+        const newMsgs = curr.specs?.chat_messages || [];
+        if (newMsgs.length > oldMsgs.length) {
+          const lastMsg = newMsgs[newMsgs.length - 1];
+          if (lastMsg.sender === 'staff') {
+            pushMsg = {
+              title: lang === 'es' ? 'Mensaje del Equipo 💬' : 'Crew Message 💬',
+              text: lastMsg.text,
+              icon: 'message-square'
+            };
+          }
+        }
+      }
+      
+      if (pushMsg) {
+        setPushNotify(pushMsg);
+        playSynthPing();
+        setTimeout(() => {
+          setPushNotify(prevNotify => {
+            if (prevNotify && prevNotify.title === pushMsg.title) return null;
+            return prevNotify;
+          });
+        }, 4000);
+      }
+    }
+    
+    prevJobRef.current = job;
+  }, [job, lang]);
+
+  useEffect(() => {
     if (!assignedStaff?.id) return;
     
     // 1. Fetch initial coordinate from crew_locations
@@ -2352,6 +2501,30 @@ function Portal({ cjid }) {
       tt('Error: ' + err.message, 'red');
     }
     setMembershipSaving(false);
+  };
+
+  const sendChatMessage = async (text) => {
+    if (!text.trim()) return;
+    const newMsg = {
+      id: Math.random().toString(36).substring(2, 9),
+      sender: 'client',
+      text: text.trim(),
+      time: new Date().toISOString()
+    };
+    const updatedSpecs = {
+      ...(job.specs || {}),
+      chat_messages: [...(job.specs?.chat_messages || []), newMsg]
+    };
+    
+    setJob(prev => ({ ...prev, specs: updatedSpecs }));
+    
+    try {
+      const { error } = await sb.from('elevore_missions').update({ specs: updatedSpecs }).eq('id', job.id);
+      if (error) throw error;
+    } catch (err) {
+      console.error("Error sending chat message:", err);
+      tt("Failed to send message", "red");
+    }
   };
 
 
@@ -2559,8 +2732,101 @@ function Portal({ cjid }) {
   ];
 
   return (
-    <div className="min-h-screen p-5 bg-gradient-to-b from-slate-950 via-black to-zinc-900 animate-in fade-in duration-700">
+    <div className="min-h-screen p-5 bg-gradient-to-b from-slate-950 via-black to-zinc-900 animate-in fade-in duration-700 font-sans">
       {toast && <div className={`tst fixed top-5 left-1/2 -translate-x-1/2 z-[500] px-6 py-3 rounded-2xl font-black uppercase text-sm shadow-2xl ${toast.c === 'red' ? 'bg-red-600' : 'bg-green-600'} text-white`}>{toast.m}</div>}
+      
+      {pushNotify && (
+        <div className="fixed top-5 left-1/2 -translate-x-1/2 z-[1000] max-w-sm w-[90%] bg-slate-900/90 backdrop-blur-md border border-amber-500/30 rounded-2xl p-4 shadow-2xl flex items-start gap-3 animate-in slide-in-from-top duration-500">
+          <div className="w-8 h-8 rounded-xl bg-amber-500/10 flex items-center justify-center shrink-0">
+            <Icon name={pushNotify.icon || 'bell'} className="w-4 h-4 text-amber-500 animate-bounce" />
+          </div>
+          <div className="flex-1 text-left min-w-0">
+            <p className="text-[10px] font-black text-white uppercase tracking-wider">{pushNotify.title}</p>
+            <p className="text-[8.5px] text-slate-400 font-medium uppercase mt-0.5 leading-normal">{pushNotify.text}</p>
+          </div>
+          <button 
+            type="button"
+            onClick={() => setPushNotify(null)} 
+            className="text-slate-500 hover:text-white transition-colors p-0.5 shrink-0"
+          >
+            <Icon name="x" className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      )}
+
+      {chatOpen && (
+        <div className="fixed inset-y-0 right-0 max-w-sm w-full bg-slate-950/98 backdrop-blur-xl border-l border-white/10 z-[1000] flex flex-col shadow-2xl animate-in slide-in-from-right duration-300">
+          <div className="p-4 border-b border-white/10 flex justify-between items-center bg-black/60">
+            <div className="flex items-center gap-2">
+              <span className="w-2.5 h-2.5 rounded-full bg-green-500 animate-ping"></span>
+              <h3 className="text-xs font-black text-white uppercase tracking-widest font-display">Chat en Vivo con Técnico</h3>
+            </div>
+            <button 
+              type="button"
+              onClick={() => setChatOpen(false)} 
+              className="text-slate-400 hover:text-white transition-colors"
+            >
+              <Icon name="x" className="w-5 h-5" />
+            </button>
+          </div>
+
+          <div className="flex-1 overflow-y-auto p-4 space-y-3 flex flex-col">
+            {(job.specs?.chat_messages || []).length === 0 ? (
+              <div className="flex-1 flex flex-col items-center justify-center text-slate-500 text-[8.5px] uppercase font-bold italic py-12">
+                <Icon name="message-square" className="w-8 h-8 text-slate-700 mb-2 animate-bounce" />
+                No hay mensajes todavía.
+                <span className="text-[7px] font-medium not-italic text-slate-600 mt-1 uppercase">Escribe un mensaje para contactar al equipo.</span>
+              </div>
+            ) : (
+              (job.specs.chat_messages).map((msg) => {
+                const isMe = msg.sender === 'client';
+                return (
+                  <div key={msg.id} className={`flex flex-col max-w-[80%] ${isMe ? 'self-end items-end' : 'self-start items-start'}`}>
+                    <span className="text-[6.5px] text-slate-500 font-black uppercase mb-0.5 tracking-wider">
+                      {isMe ? 'Tú' : 'Técnico Elevore'} • {new Date(msg.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </span>
+                    <div className={`px-3.5 py-2 rounded-2xl text-[9.5px] font-medium leading-relaxed break-words shadow-md ${
+                      isMe 
+                        ? 'bg-amber-500 text-black rounded-tr-none' 
+                        : 'bg-zinc-800 text-white rounded-tl-none border border-white/5'
+                    }`}>
+                      {msg.text}
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+
+          <div className="p-3 border-t border-white/10 bg-black/40">
+            <form 
+              onSubmit={(e) => {
+                e.preventDefault();
+                const input = e.target.elements.chatInput;
+                if (input && input.value.trim()) {
+                  sendChatMessage(input.value);
+                  input.value = '';
+                }
+              }}
+              className="flex gap-2"
+            >
+              <input 
+                name="chatInput"
+                type="text" 
+                placeholder="Escribe un mensaje..."
+                className="flex-1 bg-white/5 border border-white/10 rounded-xl px-3.5 py-2 text-[10px] text-white outline-none focus:border-amber-500 font-semibold"
+                autoComplete="off"
+              />
+              <button 
+                type="submit" 
+                className="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-black font-black uppercase text-[8px] tracking-wider rounded-xl active:scale-95 transition-all shadow-lg shadow-amber-500/10"
+              >
+                Enviar
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
       
       {payStage && (
         <div className="fixed inset-0 bg-slate-950/95 backdrop-blur-lg z-[1000] flex flex-col items-center justify-center p-6 text-center animate-in fade-in duration-300">
@@ -2596,14 +2862,16 @@ function Portal({ cjid }) {
       )}
       <div className="max-w-md mx-auto space-y-5 pb-20">
         <div className="flex justify-end gap-2">{['en', 'es'].map(lg => (<button key={lg} onClick={() => setLang(lg)} className={`text-[8px] font-black px-3 py-1.5 rounded-xl ${lang === lg ? 'bg-amber-500 text-black' : 'bg-white/5 text-slate-500'}`}>{lg.toUpperCase()}</button>))}</div>
+        
         <div className="text-center space-y-3 relative z-10">
-          <div className="w-20 h-20 bg-gradient-to-br from-zinc-800 to-black border border-white/10 rounded-[2rem] mx-auto flex items-center justify-center font-black text-white text-4xl shadow-[0_0_40px_rgba(255,255,255,0.05)] transform transition-transform hover:scale-105">
+          <div className="w-20 h-20 bg-gradient-to-br from-zinc-800 to-black border border-white/10 rounded-[2rem] mx-auto flex items-center justify-center font-black text-white text-4xl shadow-[0_0_40px_rgba(255,255,255,0.05)] transform transition-transform hover:scale-105 relative group overflow-hidden">
+             <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
              {tenantSettings?.business_full_name ? tenantSettings.business_full_name.charAt(0).toUpperCase() : 'E'}
           </div>
-          <h1 className="text-2xl font-black uppercase tracking-[0.3em] text-transparent bg-clip-text bg-gradient-to-r from-white to-slate-400">
+          <h1 className="text-2xl font-black uppercase tracking-[0.3em] text-transparent bg-clip-text bg-gradient-to-r from-white to-slate-400 font-display">
              {tenantSettings?.business_full_name || 'ELEVORE'}
           </h1>
-          <p className="text-[9px] text-green-500 font-bold uppercase tracking-[0.4em]">{tr(lang, 'hub')}</p>
+          <p className="text-[9px] text-[#F5C518] font-bold uppercase tracking-[0.4em]">{tr(lang, 'hub')}</p>
         </div>
 
         {/* ── CLIENT DASHBOARD NAVIGATION TABS ── */}
@@ -2630,20 +2898,49 @@ function Portal({ cjid }) {
         {/* ── TAB 1: ACTIVE SERVICE TRACKER ── */}
         {activeTab === 'tracker' && (
           <div className="space-y-5 animate-in fade-in duration-500">
-            {urgent !== null && urgent > 0 && !job.approval_signature && <div className="gold py-3 px-5 rounded-2xl text-center font-black uppercase text-sm">⏰ {tr(lang, 'urgency')} {urgent}h — {tr(lang, 'lock')}</div>}
+            {urgent !== null && urgent > 0 && !job.approval_signature && <div className="gold py-3 px-5 rounded-2xl text-center font-black uppercase text-sm animate-pulse">⏰ {tr(lang, 'urgency')} {urgent}h — {tr(lang, 'lock')}</div>}
             
             {/* Core Detail Card */}
             <div className="g p-6 border-t-4 border-green-500 space-y-4 text-left">
-              <div className="flex justify-between items-center"><div><p className="text-[9px] font-black text-slate-500 uppercase">Client</p><h2 className="text-xl font-black italic uppercase text-white">{job.client_name}</h2></div><span className={`text-[8px] font-black px-3 py-1.5 rounded-xl uppercase ${job.status === 'paid' ? 'bg-blue-600 text-white' : job.status === 'in_progress' ? 'bg-green-600 text-white' : job.status === 'completed' ? 'bg-purple-600 text-white' : 'bg-amber-500 text-black'}`}>{job.status}</span></div>
-              <div className="text-[9px] text-slate-500 font-black uppercase space-y-1"><p>📋 {job.service_type?.toUpperCase()}</p><p>📅 {fmtD(job.scheduled_date)}</p><p>👥 {job.team_assigned || 'TBD'}</p><p>📍 {job.address}</p>{job.check_in_time && <p className="text-green-400">▶ {tr(lang, 'arrived')}: {new Date(job.check_in_time).toLocaleTimeString()}</p>}{job.check_out_time && <p className="text-purple-400">⏹ {tr(lang, 'done')}: {new Date(job.check_out_time).toLocaleTimeString()}</p>}</div>
-              <div><div className="flex justify-between text-[8px] font-black uppercase text-slate-500 mb-1"><span>Booked</span><span>{sm[job.status] || 0}%</span></div><div className="pb"><div className="pf" style={{ width: `${sm[job.status] || 0}%` }}></div></div></div>
+              <div className="flex justify-between items-center">
+                <div>
+                  <p className="text-[9px] font-black text-slate-500 uppercase">Cliente</p>
+                  <h2 className="text-xl font-black italic uppercase text-white leading-tight">{job.client_name}</h2>
+                </div>
+                <span className={`text-[8px] font-black px-3 py-1.5 rounded-xl uppercase ${
+                  job.status === 'paid' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 
+                  job.status === 'in_progress' ? 'bg-green-600 text-white shadow-lg shadow-green-500/20 animate-pulse' : 
+                  job.status === 'completed' ? 'bg-purple-600 text-white shadow-lg shadow-purple-500/20' : 
+                  'bg-amber-500 text-black shadow-lg shadow-amber-500/20'
+                }`}>
+                  {job.status}
+                </span>
+              </div>
+              <div className="text-[9px] text-slate-400 font-bold uppercase space-y-1">
+                <p>📋 {job.service_type?.toUpperCase()}</p>
+                <p>📅 {fmtD(job.scheduled_date)}</p>
+                <p>👥 {job.team_assigned || 'Por asignar'}</p>
+                <p>📍 {job.address}</p>
+                {job.check_in_time && <p className="text-green-400">▶ {tr(lang, 'arrived')}: {new Date(job.check_in_time).toLocaleTimeString()}</p>}
+                {job.check_out_time && <p className="text-purple-400">⏹ {tr(lang, 'done')}: {new Date(job.check_out_time).toLocaleTimeString()}</p>}
+              </div>
+              <div>
+                <div className="flex justify-between text-[8px] font-black uppercase text-slate-500 mb-1">
+                  <span>Progreso del Estado</span>
+                  <span>{sm[job.status] || 0}%</span>
+                </div>
+                <div className="pb">
+                  <div className="pf" style={{ width: `${sm[job.status] || 0}%` }}></div>
+                </div>
+              </div>
             </div>
 
             {/* Uber-Style Live Service Tracker */}
             {job.status !== 'lead' && (
-              <div className="g p-6 border-l-4 border-amber-500/80 space-y-6 relative overflow-hidden bg-black/60 shadow-[0_0_40px_rgba(245,197,24,0.05)] text-left animate-in slide-in-from-bottom duration-500">
-                <h3 className="text-[10px] font-black text-amber-500 uppercase tracking-widest flex items-center gap-2 mb-4 font-display">
-                  <Icon name="activity" className="w-4 h-4 text-amber-500 animate-pulse" />
+              <div className="g p-6 border-l-4 border-[#F5C518] space-y-6 relative overflow-hidden bg-black/60 shadow-[0_0_40px_rgba(245,197,24,0.05)] text-left animate-in slide-in-from-bottom duration-500">
+                <div className="absolute top-0 right-0 w-24 h-24 bg-[#F5C518]/5 rounded-full blur-2xl pointer-events-none" />
+                <h3 className="text-[10px] font-black text-[#F5C518] uppercase tracking-widest flex items-center gap-2 border-b border-white/5 pb-2 font-display">
+                  <Icon name="activity" className="w-4 h-4 text-[#F5C518] animate-pulse" />
                   {tr(lang, 'trackerTitle')}
                 </h3>
                 <div className="relative border-l border-white/10 pl-6 ml-3 space-y-6">
@@ -2651,27 +2948,30 @@ function Portal({ cjid }) {
                     const isDone = idx < activeStepIdx;
                     const isCurrent = idx === activeStepIdx;
                     
+                    // Assign icon depending on index
+                    const stepIcons = ['check-square', 'truck', 'play', 'sparkles', 'credit-card'];
+                    const stepIcon = stepIcons[idx] || 'compass';
+
                     return (
                       <div key={idx} className="relative">
                         {/* Circle Node */}
-                        <div className={`absolute -left-[31px] top-1 w-4 h-4 rounded-full border-2 transition-all duration-500 flex items-center justify-center
-                          ${isDone ? 'bg-amber-500 border-amber-500 shadow-[0_0_10px_rgba(245,197,24,0.4)]' :
-                            isCurrent ? 'bg-black border-amber-500 shadow-[0_0_15px_rgba(245,197,24,0.8)] animate-pulse' :
-                            'bg-zinc-900 border-zinc-700'
+                        <div className={`absolute -left-[31px] top-1 w-6 h-6 rounded-full border-2 transition-all duration-500 flex items-center justify-center
+                          ${isDone ? 'bg-[#F5C518] border-[#F5C518] text-black shadow-[0_0_10px_rgba(245,197,24,0.4)]' :
+                            isCurrent ? 'bg-black border-[#F5C518] text-[#F5C518] shadow-[0_0_15px_rgba(245,197,24,0.8)] animate-pulse' :
+                            'bg-zinc-900 border-zinc-700 text-slate-500'
                           }`}
                         >
-                          {isCurrent && <div className="w-1.5 h-1.5 bg-amber-500 rounded-full animate-ping"></div>}
-                          {isDone && <Icon name="check" className="w-2.5 h-2.5 text-black stroke-[3]" />}
+                          <Icon name={stepIcon} className="w-3 h-3 stroke-[2.5]" />
                         </div>
                         
-                        <div className="space-y-0.5">
+                        <div className="space-y-0.5 ml-2">
                           <h4 className={`text-[10px] font-black uppercase tracking-wider transition-colors
-                            ${isDone ? 'text-slate-300' : isCurrent ? 'text-amber-400 font-extrabold font-display' : 'text-slate-600'}
+                            ${isDone ? 'text-slate-300' : isCurrent ? 'text-[#F5C518] font-extrabold font-display' : 'text-slate-600'}
                           `}>
                             {step.title}
                           </h4>
                           <p className={`text-[8px] uppercase font-bold tracking-wider transition-colors
-                            ${isDone ? 'text-slate-500' : isCurrent ? 'text-slate-300' : 'text-slate-700'}
+                            ${isDone ? 'text-slate-500' : isCurrent ? 'text-slate-300 animate-pulse' : 'text-slate-700'}
                           `}>
                             {step.desc}
                           </p>
@@ -2686,10 +2986,17 @@ function Portal({ cjid }) {
             {/* Dynamic Route Map */}
             {job.status !== 'lead' && (
               <div className="space-y-2 text-left animate-in slide-in-from-bottom duration-500">
-                <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-1.5">
-                  <Icon name="map-pin" className="w-3.5 h-3.5 text-amber-500" />
-                  {tr(lang, 'routeMap')}
-                </p>
+                <div className="flex justify-between items-center pl-1">
+                  <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-1.5">
+                    <Icon name="map-pin" className="w-3.5 h-3.5 text-amber-500" />
+                    {tr(lang, 'routeMap')}
+                  </p>
+                  {job.specs?.en_route && (
+                    <span className="text-[7px] bg-emerald-500/10 text-emerald-400 font-bold px-2 py-0.5 rounded border border-emerald-500/20 uppercase tracking-widest animate-pulse">
+                      Vehículo en Camino 📡
+                    </span>
+                  )}
+                </div>
                 <MapComponent 
                   address={job.address} 
                   lat={job.dest_lat} 
@@ -2703,17 +3010,19 @@ function Portal({ cjid }) {
             {/* Balance Due Card */}
             <div className="g p-6 text-center space-y-4">
               <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest">{tr(lang, 'balance')}</p>
-              <h3 className="text-6xl font-black italic tracking-tighter text-white">{fmt$(balAfterDiscount)}</h3>
+              <h3 className="text-6xl font-black italic tracking-tighter text-white font-mono-values">{fmt$(balAfterDiscount)}</h3>
               {discountToApply > 0 && (
                 <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-500/10 border border-amber-500/25 rounded-full text-amber-400 text-[8.5px] font-black uppercase tracking-wider mx-auto">
                   🎁 {lang === 'es' ? 'Descuento de Referido Aplicado: -' : 'Referral Discount Applied: -'}${discountToApply}
                 </div>
               )}
-              <p className="text-[9px] text-green-500 font-black uppercase pt-1">💸 {tr(lang, 'pay')}: {tenantSettings?.zelle_phone || DEFAULT_CFG.ZELLE}</p>
+              <p className="text-[9px] text-[#F5C518] font-black uppercase pt-1 tracking-wider">
+                💸 {tr(lang, 'pay')}: <span className="text-white font-mono">{tenantSettings?.zelle_phone || DEFAULT_CFG.ZELLE}</span>
+              </p>
               
               <button
                 onClick={() => generateInvoiceReceiptPDF(job, tenantSettings, lang)}
-                className="w-full bg-white/5 hover:bg-white/10 border border-white/10 text-white hover:text-[#F5C518] hover:border-[#F5C518]/30 py-3 rounded-xl font-black uppercase active:scale-95 transition-all text-[9px] tracking-wider flex items-center justify-center gap-2 mt-2 shadow-lg"
+                className="w-full bg-white/5 hover:bg-white/10 border border-white/10 text-white hover:text-[#F5C518] hover:border-[#F5C518]/30 py-3.5 rounded-xl font-black uppercase active:scale-95 transition-all text-[9px] tracking-wider flex items-center justify-center gap-2 mt-2 shadow-lg"
               >
                 <Icon name="file-text" className="w-4 h-4" />
                 {job.status === 'paid' 
@@ -2735,6 +3044,43 @@ function Portal({ cjid }) {
                   <h3 className="text-[10px] font-black text-white uppercase tracking-widest font-display">{tr(lang, 'payCard')}</h3>
                 </div>
 
+                {/* Interactive Virtual Credit Card Mockup */}
+                <div className="relative w-full max-w-sm h-44 mx-auto rounded-2xl p-5 overflow-hidden bg-gradient-to-br from-zinc-950 via-[#0e1610] to-black border border-white/10 shadow-2xl flex flex-col justify-between group card-3d">
+                  <div className="absolute top-0 left-0 w-full h-[2px] bg-gradient-to-r from-emerald-500/30 via-[#F5C518]/20 to-transparent" />
+                  <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_120%,rgba(245,197,24,0.08),transparent)] pointer-events-none" />
+                  
+                  <div className="flex justify-between items-start relative z-10">
+                    <span className="text-[7.5px] font-black text-slate-400 uppercase tracking-[0.25em]">Elevore Client Pay</span>
+                    {getCardBrand(cardNo) === 'visa' && <span className="text-[12px] text-blue-400 font-black italic tracking-widest">VISA</span>}
+                    {getCardBrand(cardNo) === 'mastercard' && <span className="text-[12px] text-red-400 font-black italic tracking-widest">MC</span>}
+                    {getCardBrand(cardNo) === 'amex' && <span className="text-[12px] text-green-400 font-black italic tracking-widest">AMEX</span>}
+                    {getCardBrand(cardNo) === 'generic' && <Icon name="credit-card" className="w-4 h-4 text-slate-500" />}
+                  </div>
+
+                  {/* Golden Card Chip */}
+                  <div className="w-8 h-6 bg-gradient-to-br from-amber-200 via-amber-400 to-amber-600 rounded-md border border-white/10 flex flex-col justify-between p-0.5 opacity-80 mt-1">
+                    <div className="w-4.5 h-[1px] bg-black/30 rounded"></div>
+                    <div className="w-5 h-[1px] bg-black/30 rounded"></div>
+                    <div className="w-3.5 h-[1px] bg-black/30 rounded"></div>
+                  </div>
+
+                  {/* Card Number masked */}
+                  <div className="text-base font-black tracking-[0.2em] text-white font-mono-values relative z-10 py-1">
+                    {cardNo || '•••• •••• •••• ••••'}
+                  </div>
+
+                  <div className="flex justify-between items-end text-[7px] text-slate-400 uppercase font-black relative z-10">
+                    <div>
+                      <p className="text-[5px] text-slate-600 font-bold lowercase tracking-wider mb-0.5">Cardholder</p>
+                      <p className="text-white font-bold tracking-widest">{cardName.toUpperCase() || 'YOUR NAME'}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-[5px] text-slate-600 font-bold lowercase tracking-wider mb-0.5">Expires</p>
+                      <p className="text-white font-bold tracking-widest">{cardExp || 'MM/YY'}</p>
+                    </div>
+                  </div>
+                </div>
+
                 <div className="space-y-2">
                   <label className="text-[9px] font-black text-slate-400 uppercase tracking-wider block">{tr(lang, 'tipSelect')}</label>
                   <div className="grid grid-cols-5 gap-1.5">
@@ -2751,7 +3097,7 @@ function Portal({ cjid }) {
                         onClick={() => setTipOption(opt.id)}
                         className={`py-2 rounded-xl text-[9px] font-black tracking-wider transition-all border cursor-pointer ${
                           tipOption === opt.id 
-                            ? 'bg-amber-500 text-black border-amber-500 shadow-lg shadow-amber-500/20' 
+                            ? 'bg-amber-500 text-black border-amber-500 shadow-lg shadow-amber-500/25 font-black scale-105' 
                             : 'bg-white/5 text-slate-400 border-white/10 hover:bg-white/10'
                         }`}
                       >
@@ -2767,7 +3113,7 @@ function Portal({ cjid }) {
                         value={customTip}
                         onChange={(e) => setCustomTip(e.target.value)}
                         placeholder={tr(lang, 'customTip')}
-                        className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-xs text-white outline-none focus:border-amber-500 font-mono"
+                        className="inp w-full py-2.5 text-xs text-white"
                       />
                     </div>
                   )}
@@ -2775,58 +3121,50 @@ function Portal({ cjid }) {
 
                 <form onSubmit={(e) => handleCheckout(e, chargeTotal, calculatedTip)} className="space-y-4">
                   <div className="space-y-1">
-                    <label className="text-[8px] font-black text-slate-400 uppercase tracking-wider block">{tr(lang, 'cardNo')}</label>
-                    <div className="relative">
-                      <input
-                        type="text"
-                        value={cardNo}
-                        onChange={handleCardNoChange}
-                        placeholder="4000 1234 5678 9010"
-                        maxLength={19}
-                        className="w-full bg-white/5 border border-white/10 rounded-xl pl-3 pr-10 py-2.5 text-xs text-white outline-none focus:border-amber-500 font-mono tracking-widest"
-                      />
-                      <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center justify-center">
-                        {getCardBrand(cardNo) === 'visa' && <span className="text-[10px] text-blue-400 font-black italic">VISA</span>}
-                        {getCardBrand(cardNo) === 'mastercard' && <span className="text-[10px] text-red-400 font-black italic">MC</span>}
-                        {getCardBrand(cardNo) === 'amex' && <span className="text-[10px] text-green-400 font-black italic">AMEX</span>}
-                        {getCardBrand(cardNo) === 'generic' && <Icon name="credit-card" className="w-4 h-4 text-slate-500" />}
-                      </div>
-                    </div>
+                    <label className="text-[8px] font-black text-slate-500 uppercase tracking-wider block">{tr(lang, 'cardNo')}</label>
+                    <input
+                      type="text"
+                      value={cardNo}
+                      onChange={handleCardNoChange}
+                      placeholder="4000 1234 5678 9010"
+                      maxLength={19}
+                      className="inp w-full py-2.5 text-xs text-slate-200 font-mono tracking-widest"
+                    />
                   </div>
 
                   <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-1">
-                      <label className="text-[8px] font-black text-slate-400 uppercase tracking-wider block">{tr(lang, 'expiry')}</label>
+                      <label className="text-[8px] font-black text-slate-500 uppercase tracking-wider block">{tr(lang, 'expiry')}</label>
                       <input
                         type="text"
                         value={cardExp}
                         onChange={handleCardExpChange}
                         placeholder="MM/YY"
                         maxLength={5}
-                        className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-xs text-white outline-none focus:border-amber-500 font-mono tracking-widest"
+                        className="inp w-full py-2.5 text-xs text-slate-200 font-mono tracking-widest text-center"
                       />
                     </div>
                     <div className="space-y-1">
-                      <label className="text-[8px] font-black text-slate-400 uppercase tracking-wider block">{tr(lang, 'cvc')}</label>
+                      <label className="text-[8px] font-black text-slate-500 uppercase tracking-wider block">{tr(lang, 'cvc')}</label>
                       <input
                         type="password"
                         value={cardCvc}
                         onChange={handleCardCvcChange}
                         placeholder="123"
                         maxLength={4}
-                        className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-xs text-white outline-none focus:border-amber-500 font-mono tracking-widest"
+                        className="inp w-full py-2.5 text-xs text-slate-200 font-mono tracking-widest text-center"
                       />
                     </div>
                   </div>
 
                   <div className="space-y-1">
-                    <label className="text-[8px] font-black text-slate-400 uppercase tracking-wider block">{tr(lang, 'cardName')}</label>
+                    <label className="text-[8px] font-black text-slate-500 uppercase tracking-wider block">{tr(lang, 'cardName')}</label>
                     <input
                       type="text"
                       value={cardName}
                       onChange={(e) => setCardName(e.target.value)}
-                      placeholder="Jose Mario"
-                      className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-xs text-white outline-none focus:border-amber-500 font-medium uppercase tracking-wider"
+                      placeholder="Nombre del Titular"
+                      className="inp w-full py-2.5 text-xs text-slate-200 uppercase tracking-wider font-semibold"
                     />
                   </div>
 
@@ -2839,17 +3177,17 @@ function Portal({ cjid }) {
                   <div className="pt-2 border-t border-white/5 text-[9px] font-black uppercase text-slate-400 space-y-1">
                     <div className="flex justify-between">
                       <span>{tr(lang, 'balance')}</span>
-                      <span className="text-white">{fmt$(bal)}</span>
+                      <span className="text-white font-mono">{fmt$(bal)}</span>
                     </div>
                     {calculatedTip > 0 && (
                       <div className="flex justify-between text-green-400 font-display">
                         <span>{lang === 'es' ? 'Propina' : 'Tip'}</span>
-                        <span>+{fmt$(calculatedTip)}</span>
+                        <span className="font-mono">+{fmt$(calculatedTip)}</span>
                       </div>
                     )}
                     <div className="flex justify-between text-xs text-white pt-1 font-black">
                       <span>{tr(lang, 'totalAmount')}</span>
-                      <span className="text-amber-500">{fmt$(chargeTotal)}</span>
+                      <span className="text-[#F5C518] font-mono">{fmt$(chargeTotal)}</span>
                     </div>
                   </div>
 
@@ -2865,7 +3203,7 @@ function Portal({ cjid }) {
 
             {/* Approval Signature Pad */}
             {!job.approval_signature ? (
-              <div className="g p-6 border border-amber-500/30 space-y-4">
+              <div className="g p-6 border border-amber-500/30 space-y-4 text-left">
                 <SigPad onSave={saveApproval} label={tr(lang, 'approve')} />
               </div>
             ) : (
@@ -2876,11 +3214,14 @@ function Portal({ cjid }) {
             )}
 
             {/* Before/After Photos Slider */}
-            <BeforeAfterSlider beforePhotos={job.before_photos || []} afterPhotos={job.after_photos || []} />
+            <div className="space-y-1 text-left">
+              <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest pl-1">{tr(lang, 'sliderBeforeAfter')}</p>
+              <BeforeAfterSlider beforePhotos={job.before_photos || []} afterPhotos={job.after_photos || []} />
+            </div>
 
             {/* Final Confirmation Signature */}
             {job.approval_signature && job.after_photos?.length > 0 && !job.final_signature && (
-              <div className="g p-6 border border-purple-500/30 space-y-4">
+              <div className="g p-6 border border-purple-500/30 space-y-4 text-left">
                 <SigPad onSave={saveFinal} label={tr(lang, 'complete')} color="#a855f7" />
               </div>
             )}
@@ -2896,7 +3237,7 @@ function Portal({ cjid }) {
             {/* Rating Stars Feedback */}
             {job.status === 'paid' && !ratingDone && (
               <div className="g p-6 border border-white/5 bg-black/45 rounded-2xl text-center space-y-4 animate-in slide-in-from-bottom duration-500">
-                <p className="text-[9px] font-black text-amber-500 uppercase tracking-widest">{tr(lang, 'rating')}</p>
+                <p className="text-[9px] font-black text-[#F5C518] uppercase tracking-widest">{tr(lang, 'rating')}</p>
                 <div className="flex justify-center">
                   <Stars value={rating} onChange={(val) => { setRating(val); if (val >= 4) setFeedbackComment(''); }} size={8} />
                 </div>
@@ -3020,11 +3361,11 @@ function Portal({ cjid }) {
             )}
 
             {/* QR Portal share card */}
-            <div className="g p-5 flex items-center gap-4">
+            <div className="g p-5 flex items-center gap-4 text-left">
               <QR url={`${location.origin}${location.pathname}?mision=${job.id}`} size={75} />
-              <div className="text-left">
-                <p className="text-[8px] font-black text-slate-500 uppercase mb-1">Your Portal QR</p>
-                <p className="text-[7px] text-slate-600 italic">Scan anytime</p>
+              <div>
+                <p className="text-[8.5px] font-black text-slate-400 uppercase tracking-wider">Tu Código QR de Acceso</p>
+                <p className="text-[7.5px] text-slate-500 uppercase font-bold tracking-wide mt-1">Escanea en tu móvil para llevar este panel de control en camino.</p>
               </div>
             </div>
           </div>
@@ -3033,8 +3374,8 @@ function Portal({ cjid }) {
         {/* ── TAB 2: SERVICE HISTORY ── */}
         {activeTab === 'history' && (
           <div className="space-y-4 animate-in fade-in duration-500 text-left">
-            <div className="flex items-center gap-2 mb-2">
-              <Icon name="calendar" className="w-4 h-4 text-amber-500" />
+            <div className="flex items-center gap-2 mb-2 pl-1">
+              <Icon name="calendar" className="w-4 h-4 text-[#F5C518]" />
               <h3 className="text-xs font-black uppercase tracking-widest text-white">{lang === 'es' ? 'Historial de Servicios' : 'Service History'}</h3>
             </div>
             
@@ -3046,14 +3387,14 @@ function Portal({ cjid }) {
               clientMissions.map(m => {
                 const isSelected = m.id === job.id;
                 return (
-                  <div key={m.id} className={`g p-5 border transition-all relative overflow-hidden ${isSelected ? 'border-amber-500 bg-amber-500/5' : 'border-white/10 hover:border-white/20 bg-black/40'}`}>
+                  <div key={m.id} className={`g p-5 border transition-all relative overflow-hidden ${isSelected ? 'border-[#F5C518] bg-[#F5C518]/5' : 'border-white/10 hover:border-white/20 bg-black/40'}`}>
                     {isSelected && (
-                      <div className="absolute top-0 right-0 bg-amber-500 text-black text-[7px] font-black uppercase px-2 py-0.5 rounded-bl-lg">
+                      <div className="absolute top-0 right-0 bg-[#F5C518] text-black text-[7px] font-black uppercase px-2.5 py-1 rounded-bl-xl tracking-wider">
                         {lang === 'es' ? 'Seleccionado' : 'Active'}
                       </div>
                     )}
                     
-                    <div className="flex justify-between items-start mb-2">
+                    <div className="flex justify-between items-start mb-2 pr-14">
                       <div>
                         <h4 className="text-xs font-black text-white uppercase tracking-wider">{m.service_type}</h4>
                         <p className="text-[8px] text-slate-500 font-bold uppercase tracking-wider">{fmtD(m.scheduled_date)}</p>
@@ -3069,7 +3410,7 @@ function Portal({ cjid }) {
                     </div>
 
                     <div className="flex justify-between items-center text-[9px] font-black uppercase tracking-wider pt-2 border-t border-white/5">
-                      <span className="text-slate-400">{lang === 'es' ? 'Total' : 'Price'}: <span className="text-white">{fmt$(m.total_price)}</span></span>
+                      <span className="text-slate-400">{lang === 'es' ? 'Total' : 'Price'}: <span className="text-white font-mono">{fmt$(m.total_price)}</span></span>
                       
                       <div className="flex gap-2">
                         {!isSelected && (
@@ -3081,7 +3422,7 @@ function Portal({ cjid }) {
                               setActiveTab('tracker');
                               tt(lang === 'es' ? 'Cargando tracker para este servicio...' : 'Loading tracker for this service...', 'yellow');
                             }}
-                            className="px-2.5 py-1 bg-white/5 hover:bg-white/10 text-white rounded-lg text-[8px] font-black uppercase border border-white/10 active:scale-95 transition-all"
+                            className="px-2.5 py-1.5 bg-white/5 hover:bg-white/10 text-white rounded-lg text-[8px] font-black uppercase border border-white/10 active:scale-95 transition-all"
                           >
                             {lang === 'es' ? 'Ver / Pagar' : 'View / Pay'}
                           </button>
@@ -3128,11 +3469,11 @@ function Portal({ cjid }) {
         {/* ── TAB 3: SERVICE PREFERENCES ── */}
         {activeTab === 'preferences' && (
           <form onSubmit={saveClientPrefs} className="g p-6 space-y-4 text-left animate-in fade-in duration-500">
-            <div className="flex items-center gap-2 mb-2">
-              <Icon name="sliders" className="w-4 h-4 text-amber-500" />
+            <div className="flex items-center gap-2 mb-2 pl-1">
+              <Icon name="sliders" className="w-4 h-4 text-[#F5C518]" />
               <h3 className="text-xs font-black uppercase tracking-widest text-white">{lang === 'es' ? 'Preferencias de Servicio' : 'Service Preferences'}</h3>
             </div>
-            <p className="text-[8.5px] text-slate-400 leading-relaxed uppercase font-bold tracking-wider">
+            <p className="text-[8.5px] text-slate-400 leading-relaxed uppercase font-bold tracking-wider mb-2">
               {lang === 'es' 
                 ? 'Especifica las preferencias de tu hogar. Nuestro equipo de campo las leerá en su aplicación antes de iniciar el trabajo.' 
                 : 'Specify your home preferences. Our field staff will read these on their app before starting work.'}
@@ -3194,17 +3535,17 @@ function Portal({ cjid }) {
         {/* ── TAB 4: MEMBERSHIP & PERKS ── */}
         {activeTab === 'membership' && (() => {
           const defaultPlans = [
-            { id: 'none', name: 'None', price: 0, color: '#6b7280', perks: ['No active perks'] },
-            { id: 'basic', name: 'Basic Plan', price: 199, color: '#94a3b8', perks: ['2 Services / Mo', '5% Discount on Extras', 'Priority Scheduling'] },
-            { id: 'premium', name: 'Premium Plan', price: 349, color: '#3b82f6', perks: ['4 Services / Mo', '10% Discount on Extras', 'Free Oven Addon', 'Priority Scheduling'] },
-            { id: 'vip', name: 'VIP Plan', price: 549, color: '#fbbf24', perks: ['6 Services / Mo', '15% Discount on Extras', 'All Addons Included Free', 'Dedicated Support Team'] }
+            { id: 'none', name: 'Sin Membresía', price: 0, color: '#6b7280', perks: ['Sin beneficios activos'] },
+            { id: 'basic', name: 'Plan Básico', price: 199, color: '#94a3b8', perks: ['2 Servicios al Mes', '5% Descuento en Extras', 'Prioridad de Agenda'] },
+            { id: 'premium', name: 'Plan Premium', price: 349, color: '#3b82f6', perks: ['4 Servicios al Mes', '10% Descuento en Extras', 'Limpieza de Horno Gratis', 'Soporte Exclusivo'] },
+            { id: 'vip', name: 'Plan VIP Elevore', price: 549, color: '#F5C518', perks: ['6 Servicios al Mes', '15% Descuento en Extras', 'Todos los Extras Incluidos Gratis', 'Asistente de Hogar Dedicado'] }
           ];
           const rawPlans = (tenantSettings?.membership_plans && tenantSettings.membership_plans.length > 0) 
                            ? tenantSettings.membership_plans 
                            : defaultPlans;
           const plans = rawPlans.map(p => ({
             ...p,
-            perks: p.perks || (p.id === 'none' ? ['No active perks'] : [])
+            perks: p.perks || (p.id === 'none' ? ['Sin beneficios activos'] : [])
           }));
           const currentPlan = plans.find(p => p.id === membershipTier) 
                            || plans.find(p => p.id === 'none') 
@@ -3212,33 +3553,36 @@ function Portal({ cjid }) {
                            || defaultPlans[0];
 
           return (
-            <div className="space-y-4 text-left animate-in fade-in duration-500">
-              <div className="flex items-center gap-2 mb-2">
+            <div className="space-y-5 text-left animate-in fade-in duration-500">
+              <div className="flex items-center gap-2 mb-1 pl-1">
                 <Icon name="award" className="w-4 h-4 text-[#F5C518]" />
                 <h3 className="text-xs font-black uppercase tracking-widest text-white">{lang === 'es' ? 'Mi Membresía Elevore' : 'Elevore Membership'}</h3>
               </div>
 
+              {/* Active Plan Holographic Panel */}
               <div 
-                className="relative rounded-3xl p-6 overflow-hidden border text-left shadow-2xl transition-all duration-500"
+                className="relative rounded-3xl p-6 overflow-hidden border text-left shadow-2xl transition-all duration-500 card-3d"
                 style={{ 
                   borderColor: currentPlan.color + '40', 
                   background: `linear-gradient(135deg, ${currentPlan.color}15 0%, #000000 100%)`,
-                  boxShadow: `0 0 40px ${currentPlan.color}0a`
+                  boxShadow: `0 0 30px ${currentPlan.color}10`
                 }}
               >
-                <div className="absolute top-0 left-0 w-full h-[2px]" style={{ background: `linear-gradient(to right, ${currentPlan.color}, transparent)` }} />
+                <div className="absolute top-0 left-0 w-full h-[2.5px]" style={{ background: `linear-gradient(to right, ${currentPlan.color}, transparent)` }} />
+                <div className="absolute -right-8 -bottom-8 w-24 h-24 rounded-full blur-3xl opacity-20 pointer-events-none" style={{ background: currentPlan.color }} />
+                
                 <div className="flex justify-between items-start mb-4">
                   <div>
                     <p className="text-[7.5px] font-black text-slate-500 uppercase tracking-widest">{lang === 'es' ? 'PLAN ACTUAL' : 'CURRENT TIER'}</p>
-                    <h4 className="text-2xl font-black italic uppercase tracking-wider text-white" style={{ textShadow: `0 0 10px ${currentPlan.color}40` }}>{currentPlan.name}</h4>
+                    <h4 className="text-xl font-black italic uppercase tracking-wider text-white" style={{ textShadow: `0 0 10px ${currentPlan.color}40` }}>{currentPlan.name}</h4>
                   </div>
                   <div className="text-right">
-                    <p className="text-xs font-black text-white font-mono">${currentPlan.price}</p>
+                    <p className="text-lg font-black text-white font-mono">${currentPlan.price}</p>
                     <p className="text-[7px] text-slate-500 font-bold uppercase">{lang === 'es' ? 'al mes' : '/ month'}</p>
                   </div>
                 </div>
 
-                <div className="space-y-2">
+                <div className="space-y-2 border-t border-white/5 pt-3">
                   <p className="text-[8px] font-black text-slate-400 uppercase tracking-wider">{lang === 'es' ? 'Beneficios Activos:' : 'Active Perks:'}</p>
                   <div className="grid grid-cols-1 gap-1.5 pl-1">
                     {currentPlan.perks?.map((perk, i) => (
@@ -3251,26 +3595,40 @@ function Portal({ cjid }) {
                 </div>
               </div>
 
+              {/* Plans Grid */}
               <div className="g p-5 border border-white/10 space-y-4 bg-black/40">
-                <h4 className="text-[9px] font-black text-white uppercase tracking-widest">{lang === 'es' ? 'Cambiar Plan de Membresía' : 'Select a Membership Plan'}</h4>
-                <div className="grid grid-cols-1 gap-2.5">
+                <h4 className="text-[9px] font-black text-white uppercase tracking-widest border-b border-white/5 pb-1.5">{lang === 'es' ? 'Cambiar Plan de Membresía' : 'Select a Membership Plan'}</h4>
+                <div className="grid grid-cols-1 gap-3">
                   {plans.map(p => {
                     const isSelected = p.id === membershipTier;
+                    
+                    // Assign gradient border color depending on tier
+                    const borderColors = {
+                      none: 'border-white/5 hover:border-white/20 hover:bg-white/5',
+                      basic: isSelected ? 'border-[#94a3b8] bg-[#94a3b8]/5' : 'border-white/5 hover:border-[#94a3b8]/30 hover:bg-white/5',
+                      premium: isSelected ? 'border-blue-500 bg-blue-500/5 shadow-[0_0_15px_rgba(59,130,246,0.15)]' : 'border-white/5 hover:border-blue-500/30 hover:bg-white/5',
+                      vip: isSelected ? 'border-[#F5C518] bg-[#F5C518]/5 shadow-[0_0_20px_rgba(245,197,24,0.2)] pricing-highlight' : 'border-white/5 hover:border-[#F5C518]/30 hover:bg-white/5'
+                    };
+
                     return (
                       <button
                         key={p.id}
                         onClick={() => saveMembershipPlan(p.id)}
                         disabled={membershipSaving}
-                        className={`w-full p-4 rounded-2xl border transition-all text-left flex justify-between items-center cursor-pointer ${
-                          isSelected ? 'border-[#F5C518] bg-[#F5C518]/5 shadow-lg' : 'border-white/5 bg-white/5 hover:bg-white/10'
+                        className={`w-full p-4 rounded-2xl border transition-all text-left flex justify-between items-center cursor-pointer active:scale-[0.99] ${
+                          borderColors[p.id] || 'border-white/5'
                         }`}
                       >
                         <div>
                           <h5 className="text-xs font-black text-white uppercase tracking-wide flex items-center gap-1.5">
                             {p.name}
-                            {isSelected && <span className="text-[7px] font-black bg-[#F5C518] text-black px-1.5 py-0.5 rounded uppercase">Active</span>}
+                            {isSelected && <span className="text-[7px] font-black bg-[#F5C518] text-black px-1.5 py-0.5 rounded uppercase">Activo</span>}
                           </h5>
-                          <p className="text-[7px] text-slate-400 uppercase font-bold tracking-wider pt-0.5">{p.price > 0 ? (lang === 'es' ? `Facturado mensualmente • ${p.perks?.length} beneficios` : `Billed monthly • ${p.perks?.length} perks`) : (lang === 'es' ? 'Sin pago recurrente' : 'No recurring payment')}</p>
+                          <p className="text-[7px] text-slate-400 uppercase font-bold tracking-wider pt-0.5">
+                            {p.price > 0 
+                              ? (lang === 'es' ? `Facturado mensualmente • ${p.perks?.length} beneficios` : `Billed monthly • ${p.perks?.length} perks`) 
+                              : (lang === 'es' ? 'Sin pagos recurrentes' : 'No recurring payments')}
+                          </p>
                         </div>
                         <div className="text-right">
                           <span className="text-xs font-black text-white font-mono">${p.price}</span>
@@ -3289,8 +3647,8 @@ function Portal({ cjid }) {
         {activeTab === 'booking' && (() => {
           const { base, addonsTotal, discount, total } = getBookingEstimate();
           return (
-            <form onSubmit={handleCreateBooking} className="g p-6 space-y-4 text-left animate-in fade-in duration-500 bg-black/40 border-t-4 border-amber-500">
-              <div className="flex items-center gap-2 mb-2">
+            <form onSubmit={handleCreateBooking} className="g p-6 space-y-5 text-left animate-in fade-in duration-500 bg-black/40 border-t-4 border-amber-500">
+              <div className="flex items-center gap-2 mb-2 pl-1">
                 <Icon name="plus-circle" className="w-4 h-4 text-amber-500" />
                 <h3 className="text-xs font-black uppercase tracking-widest text-white">{lang === 'es' ? 'Agendar Nuevo Servicio' : 'Book New Service'}</h3>
               </div>
@@ -3317,9 +3675,9 @@ function Portal({ cjid }) {
                 lang={lang}
               />
 
-              <div className="space-y-2">
-                <label className="text-[8px] font-black uppercase text-slate-500 tracking-wider block">{lang === 'es' ? 'Añadir Servicios Extras' : 'Choose Addons'}</label>
-                <div className="grid grid-cols-2 gap-2">
+              <div className="space-y-2 border-t border-white/5 pt-3">
+                <label className="text-[8px] font-black uppercase text-slate-500 tracking-wider block mb-1">{lang === 'es' ? 'Añadir Servicios Extras' : 'Choose Addons'}</label>
+                <div className="grid grid-cols-2 gap-2.5">
                   {addonsList.map(a => {
                     const checked = bookingAddons.includes(a.id);
                     const isFree = membershipTier === 'vip' || (membershipTier === 'premium' && a.id === 'oven');
@@ -3334,14 +3692,14 @@ function Portal({ cjid }) {
                             setBookingAddons(prev => [...prev, a.id]);
                           }
                         }}
-                        className={`p-3 border rounded-xl flex items-center justify-between text-left transition-all cursor-pointer ${checked ? 'border-[#F5C518] bg-[#F5C518]/5' : 'border-white/5 bg-white/5 hover:bg-white/10'}`}
+                        className={`p-3 border rounded-xl flex items-center justify-between text-left transition-all cursor-pointer active:scale-95 ${checked ? 'border-[#F5C518] bg-[#F5C518]/5 shadow-md' : 'border-white/5 bg-white/5 hover:bg-white/10'}`}
                       >
                         <div>
-                          <p className="text-[8px] font-black text-white uppercase tracking-wider">{a.en}</p>
-                          <p className="text-[7px] text-slate-500 font-bold uppercase">{isFree ? (lang === 'es' ? 'INCLUIDO ✓' : 'INCLUDED ✓') : `+$${a.p}`}</p>
+                          <p className="text-[8.5px] font-black text-white uppercase tracking-wider">{a.en}</p>
+                          <p className="text-[7.5px] text-slate-500 font-bold uppercase">{isFree ? (lang === 'es' ? 'INCLUIDO ✓' : 'INCLUDED ✓') : `+$${a.p}`}</p>
                         </div>
-                        <div className={`w-3.5 h-3.5 rounded border flex items-center justify-center ${checked ? 'border-[#F5C518] bg-[#F5C518]' : 'border-slate-700'}`}>
-                          {checked && <Icon name="check" className="w-2.5 h-2.5 text-black stroke-[3]" />}
+                        <div className={`w-4 h-4 rounded border flex items-center justify-center ${checked ? 'border-[#F5C518] bg-[#F5C518]' : 'border-slate-700'}`}>
+                          {checked && <Icon name="check" className="w-3.5 h-3.5 text-black stroke-[3]" />}
                         </div>
                       </button>
                     );
@@ -3349,7 +3707,7 @@ function Portal({ cjid }) {
                 </div>
               </div>
 
-              <div className="space-y-1">
+              <div className="space-y-1 border-t border-white/5 pt-3">
                 <label className="text-[8px] font-black uppercase text-slate-500 tracking-wider block">{lang === 'es' ? 'Instrucciones Especiales' : 'Special Instructions'}</label>
                 <textarea 
                   rows={2}
@@ -3360,11 +3718,28 @@ function Portal({ cjid }) {
                 />
               </div>
 
+              {/* Receipt Break-down Details */}
               <div className="p-4 bg-black/60 border border-white/5 rounded-2xl text-[9px] font-black uppercase text-slate-400 space-y-1.5 font-mono">
-                <div className="flex justify-between"><span>{lang === 'es' ? 'Servicio Base' : 'Base Service'}</span><span className="text-white">${base}</span></div>
-                {addonsTotal > 0 && <div className="flex justify-between"><span>{lang === 'es' ? 'Extras' : 'Addons'}</span><span className="text-white">+${addonsTotal}</span></div>}
-                {discount > 0 && <div className="flex justify-between text-[#F5C518]"><span>{lang === 'es' ? `Descuento (${membershipTier})` : `Discount (${membershipTier})`}</span><span>-${discount.toFixed(2)}</span></div>}
-                <div className="flex justify-between text-xs text-white pt-1.5 border-t border-white/5 font-black"><span>{lang === 'es' ? 'Total Estimado' : 'Estimated Total'}</span><span className="text-[#F5C518]">${total.toFixed(2)}</span></div>
+                <div className="flex justify-between">
+                  <span>{lang === 'es' ? 'Servicio Base' : 'Base Service'}</span>
+                  <span className="text-white">${base}</span>
+                </div>
+                {addonsTotal > 0 && (
+                  <div className="flex justify-between">
+                    <span>{lang === 'es' ? 'Extras Seleccionados' : 'Selected Addons'}</span>
+                    <span className="text-white">+{fmt$(addonsTotal)}</span>
+                  </div>
+                )}
+                {discount > 0 && (
+                  <div className="flex justify-between text-green-400">
+                    <span>{lang === 'es' ? `Descuento de Membresía (${membershipTier.toUpperCase()})` : `Membership Discount (${membershipTier.toUpperCase()})`}</span>
+                    <span>-${discount.toFixed(2)}</span>
+                  </div>
+                )}
+                <div className="flex justify-between text-xs text-white pt-1.5 border-t border-white/5 font-black">
+                  <span>{lang === 'es' ? 'Total Estimado' : 'Estimated Total'}</span>
+                  <span className="text-[#F5C518] font-mono">${total.toFixed(2)}</span>
+                </div>
               </div>
 
               <button 
@@ -3400,8 +3775,8 @@ function Portal({ cjid }) {
                     : 'Invite your friends to Elevore! Share your personal link and you will both receive $25 off when they complete their first cleaning service.'}
                 </p>
 
-                <div className="space-y-2 pt-2">
-                  <label className="text-[8px] font-black uppercase text-slate-500 tracking-widest block">{lang === 'es' ? 'Tu Enlace Único' : 'Your Unique Link'}</label>
+                <div className="space-y-2 pt-2 border-t border-white/5">
+                  <label className="text-[8px] font-black uppercase text-slate-500 tracking-widest block">{lang === 'es' ? 'Tu Enlace Único de Compartir' : 'Your Personal Sharing Link'}</label>
                   <div className="flex gap-2">
                     <input 
                       readOnly 
@@ -3424,11 +3799,11 @@ function Portal({ cjid }) {
                 <div className="grid grid-cols-2 gap-3 pt-2">
                   <div className="bg-white/5 border border-white/5 p-3 rounded-2xl">
                     <p className="text-[7.5px] text-slate-500 uppercase font-black">{lang === 'es' ? 'Descuento Acumulado' : 'Total Discount Earned'}</p>
-                    <p className="text-xl font-black text-white mt-0.5">${totalDiscountEarned}</p>
+                    <p className="text-xl font-black text-white mt-0.5 font-mono-values">${totalDiscountEarned}</p>
                   </div>
                   <div className="bg-white/5 border border-white/5 p-3 rounded-2xl">
-                    <p className="text-[7.5px] text-slate-500 uppercase font-black">{lang === 'es' ? 'Disponible para Próxima Factura' : 'Available Discount'}</p>
-                    <p className="text-xl font-black text-emerald-400 mt-0.5">${availableDiscount}</p>
+                    <p className="text-[7.5px] text-slate-500 uppercase font-black">{lang === 'es' ? 'Disponible para Siguiente Turno' : 'Available Discount'}</p>
+                    <p className="text-xl font-black text-emerald-400 mt-0.5 font-mono-values">${availableDiscount}</p>
                   </div>
                 </div>
               </div>
@@ -3503,7 +3878,7 @@ function Portal({ cjid }) {
           </div>
         </div>
 
-        <button onClick={() => window.open(`https://wa.me/${job.client_phone?.replace(/\D/g, '') || ''}`)} className="w-full g py-4 rounded-2xl font-black uppercase text-[10px] text-green-400 border border-green-600/20 active:scale-95 flex items-center justify-center gap-2"><Icon name="message-circle" className="w-4 h-4" />{tr(lang, 'chat')}</button>
+        <button onClick={() => setChatOpen(true)} className="w-full g py-4 rounded-2xl font-black uppercase text-[10px] text-green-400 border border-green-600/20 active:scale-95 flex items-center justify-center gap-2 relative shadow-lg hover:border-green-500/30 transition-all"><Icon name="message-circle" className="w-4 h-4 animate-pulse" />{lang === 'es' ? 'Chat en Vivo con Técnico' : 'Live Chat with Crew'}</button>
         <p className="text-[7px] text-slate-700 text-center uppercase font-bold">{tr(lang, 'legal')}</p>
       </div>
     </div>
@@ -3514,6 +3889,64 @@ function Portal({ cjid }) {
 function StaffJob({ job, onBack, onRefresh, tt, recTime, upsell, update, employee, isOffline, lang, onAskCopilot }) {
   const [chk, setChk] = useState(() => job.specs?.checklist || {});
   const [localJob, setLocalJob] = useState(job);
+  
+  const [chatOpen, setChatOpen] = useState(false);
+
+  useEffect(() => {
+    if (!localJob?.id) return;
+    
+    const channel = sb.channel(`staff_mission_realtime_${localJob.id}`)
+      .on('postgres_changes', {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'elevore_missions',
+        filter: `id=eq.${localJob.id}`
+      }, (payload) => {
+        if (payload.new) {
+          console.log("Staff Realtime update received:", payload.new);
+          setLocalJob(prev => {
+            const prevMsgs = prev.specs?.chat_messages || [];
+            const newMsgs = payload.new.specs?.chat_messages || [];
+            if (newMsgs.length > prevMsgs.length) {
+              const lastMsg = newMsgs[newMsgs.length - 1];
+              if (lastMsg.sender === 'client') {
+                playSynthPing();
+              }
+            }
+            return payload.new;
+          });
+        }
+      })
+      .subscribe();
+
+    return () => {
+      sb.removeChannel(channel);
+    };
+  }, [localJob?.id]);
+
+  const sendChatMessage = async (text) => {
+    if (!text.trim()) return;
+    const newMsg = {
+      id: Math.random().toString(36).substring(2, 9),
+      sender: 'staff',
+      text: text.trim(),
+      time: new Date().toISOString()
+    };
+    const updatedSpecs = {
+      ...(localJob.specs || {}),
+      chat_messages: [...(localJob.specs?.chat_messages || []), newMsg]
+    };
+
+    setLocalJob(prev => ({ ...prev, specs: updatedSpecs }));
+
+    try {
+      const { error } = await sb.from('elevore_missions').update({ specs: updatedSpecs }).eq('id', localJob.id);
+      if (error) throw error;
+    } catch (err) {
+      console.error("Error sending chat message from staff:", err);
+      tt("Failed to send message", "red");
+    }
+  };
   const activeChecklist = useMemo(() => {
     return localJob.specs?.custom_checklist || CHECKS;
   }, [localJob.specs?.custom_checklist]);
@@ -4114,6 +4547,80 @@ function StaffJob({ job, onBack, onRefresh, tt, recTime, upsell, update, employe
   return (
     <div className="min-h-screen p-5 bg-gradient-to-b from-slate-950 via-black to-zinc-900 pb-24 animate-in fade-in relative">
       
+      {chatOpen && (
+        <div className="fixed inset-y-0 right-0 max-w-sm w-full bg-slate-950/98 backdrop-blur-xl border-l border-white/10 z-[1000] flex flex-col shadow-2xl animate-in slide-in-from-right duration-300 text-left">
+          <div className="p-4 border-b border-white/10 flex justify-between items-center bg-black/60">
+            <div className="flex items-center gap-2">
+              <span className="w-2.5 h-2.5 rounded-full bg-green-500 animate-ping"></span>
+              <h3 className="text-xs font-black text-white uppercase tracking-widest font-display">Chat en Vivo con Cliente</h3>
+            </div>
+            <button 
+              type="button"
+              onClick={() => setChatOpen(false)} 
+              className="text-slate-400 hover:text-white transition-colors"
+            >
+              <Icon name="x" className="w-5 h-5" />
+            </button>
+          </div>
+
+          <div className="flex-1 overflow-y-auto p-4 space-y-3 flex flex-col">
+            {(localJob.specs?.chat_messages || []).length === 0 ? (
+              <div className="flex-1 flex flex-col items-center justify-center text-slate-500 text-[8.5px] uppercase font-bold italic py-12">
+                <Icon name="message-square" className="w-8 h-8 text-slate-700 mb-2 animate-bounce" />
+                No hay mensajes todavía.
+                <span className="text-[7px] font-medium not-italic text-slate-600 mt-1 uppercase">Escribe un mensaje para contactar al cliente.</span>
+              </div>
+            ) : (
+              (localJob.specs.chat_messages).map((msg) => {
+                const isMe = msg.sender === 'staff';
+                return (
+                  <div key={msg.id} className={`flex flex-col max-w-[80%] ${isMe ? 'self-end items-end' : 'self-start items-start'}`}>
+                    <span className="text-[6.5px] text-slate-500 font-black uppercase mb-0.5 tracking-wider">
+                      {isMe ? 'Tú (Staff)' : 'Cliente'} • {new Date(msg.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </span>
+                    <div className={`px-3.5 py-2 rounded-2xl text-[9.5px] font-medium leading-relaxed break-words shadow-md ${
+                      isMe 
+                        ? 'bg-amber-500 text-black rounded-tr-none' 
+                        : 'bg-zinc-800 text-white rounded-tl-none border border-white/5'
+                    }`}>
+                      {msg.text}
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+
+          <div className="p-3 border-t border-white/10 bg-black/40">
+            <form 
+              onSubmit={(e) => {
+                e.preventDefault();
+                const input = e.target.elements.chatInput;
+                if (input && input.value.trim()) {
+                  sendChatMessage(input.value);
+                  input.value = '';
+                }
+              }}
+              className="flex gap-2"
+            >
+              <input 
+                name="chatInput"
+                type="text" 
+                placeholder="Escribe un mensaje..."
+                className="flex-1 bg-white/5 border border-white/10 rounded-xl px-3.5 py-2 text-[10px] text-white outline-none focus:border-amber-500 font-semibold"
+                autoComplete="off"
+              />
+              <button 
+                type="submit" 
+                className="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-black font-black uppercase text-[8px] tracking-wider rounded-xl active:scale-95 transition-all shadow-lg shadow-amber-500/10"
+              >
+                Enviar
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+      
       {/* 🔮 AI VISION HUD OVERLAY */}
       {isScanning && (
         <div className="fixed inset-0 bg-black/95 z-[5000] flex flex-col items-center justify-center p-6 mesh-bg">
@@ -4320,6 +4827,16 @@ function StaffJob({ job, onBack, onRefresh, tt, recTime, upsell, update, employe
               ) : (
                 <><Icon name="square" className="w-3 h-3" /> Check Out</>
               )}
+            </button>
+
+            {/* Live Chat Button */}
+            <button 
+              type="button"
+              onClick={() => setChatOpen(true)}
+              className="col-span-2 bg-[#F5C518] hover:bg-amber-400 text-black px-4 py-3 rounded-xl font-black text-[9px] active:scale-95 flex items-center justify-center gap-1.5 transition-all shadow-lg shadow-[#F5C518]/10"
+            >
+              <Icon name="message-square" className="w-3.5 h-3.5 animate-pulse" />
+              💬 Chat en Vivo con Cliente
             </button>
 
             {/* Open Maps Button */}

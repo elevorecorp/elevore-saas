@@ -17,12 +17,12 @@ setTimeout(async () => {
       args: ['--no-sandbox', '--disable-setuid-sandbox']
     });
     const page = await browser.newPage();
-    await page.setViewport({ width: 1280, height: 950 });
+    await page.setViewport({ width: 1280, height: 1200 });
 
     // Enable request interception to mock Supabase calls
     await page.setRequestInterception(true);
     
-    let lastInsertedPayload = null;
+    let lastUpdatedPayload = null;
 
     page.on('request', (request) => {
       const url = request.url();
@@ -35,7 +35,7 @@ setTimeout(async () => {
           status: 204,
           headers: {
             'access-control-allow-origin': '*',
-            'access-control-allow-methods': 'GET, POST, PUT, DELETE, OPTIONS',
+            'access-control-allow-methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
             'access-control-allow-headers': allowedHeaders,
             'access-control-max-age': '86400'
           }
@@ -44,12 +44,12 @@ setTimeout(async () => {
       }
 
       if (url.includes('/rest/v1/elevore_missions')) {
-        if (method === 'POST') {
-          console.log('[Puppeteer Intercept]: Intercepted POST to elevore_missions (booking creation)');
+        if (method === 'PATCH' || method === 'PUT') {
+          console.log('[Puppeteer Intercept]: Intercepted PATCH/PUT to elevore_missions');
           const body = JSON.parse(request.postData());
-          lastInsertedPayload = Array.isArray(body) ? body[0] : body;
+          lastUpdatedPayload = body;
           request.respond({
-            status: 201,
+            status: 200,
             headers: {
               'access-control-allow-origin': '*',
               'content-type': 'application/json'
@@ -60,20 +60,26 @@ setTimeout(async () => {
           console.log('[Puppeteer Intercept]: Mocking elevore_missions query...');
           const headers = request.headers();
           const accept = headers['accept'] || '';
-
+          
           const mockJob = {
             id: 'job-1',
-            client_name: 'Jose Test 1',
-            client_phone: '123456',
+            client_name: 'Jose Test Upgrades',
+            client_phone: '123456789',
             address: '100 E Pine St, Orlando, FL 32801',
-            service_type: 'Regular Cleaning',
+            service_type: 'Limpieza Regular',
             status: 'scheduled',
             scheduled_date: new Date().toISOString().split('T')[0],
             team_assigned: 'Team Alpha',
             tenant_id: 'tenant-1',
             total_price: 250,
             deposit_paid: 0,
-            specs: { lat: 28.5415, lng: -81.3788 }
+            specs: { 
+              lat: 28.5415, 
+              lng: -81.3788,
+              chat_messages: [
+                { id: '1', sender: 'staff', text: 'Hola Jose! Estamos listos para comenzar.', time: new Date().toISOString() }
+              ]
+            }
           };
 
           const responseBody = accept.includes('application/vnd.pgrst.object+json')
@@ -90,7 +96,6 @@ setTimeout(async () => {
           });
         }
       } else if (url.includes('/rest/v1/clients')) {
-        console.log('[Puppeteer Intercept]: Mocking clients query...');
         request.respond({
           status: 200,
           headers: {
@@ -100,14 +105,13 @@ setTimeout(async () => {
           body: JSON.stringify([
             {
               id: 'client-1',
-              name: 'Jose Test 1',
+              name: 'Jose Test Upgrades',
               membership: 'premium',
               specs: { preferences: { pets: 'Dog', entryCode: '1234' } }
             }
           ])
         });
       } else if (url.includes('/rest/v1/tenant_settings')) {
-        console.log('[Puppeteer Intercept]: Mocking tenant_settings query...');
         request.respond({
           status: 200,
           headers: {
@@ -118,12 +122,12 @@ setTimeout(async () => {
             {
               id: 'setting-1',
               tenant_id: 'tenant-1',
-              currency: 'USD'
+              currency: 'USD',
+              business_full_name: 'ELEVORE PREMIUM SERVICES'
             }
           ])
         });
       } else if (url.includes('/rest/v1/staff_profiles')) {
-        console.log('[Puppeteer Intercept]: Mocking staff_profiles query...');
         request.respond({
           status: 200,
           headers: {
@@ -134,11 +138,7 @@ setTimeout(async () => {
             {
               id: 'staff-1',
               tenant_id: 'tenant-1',
-              role: 'staff'
-            },
-            {
-              id: 'staff-2',
-              tenant_id: 'tenant-1',
+              name: 'Team Alpha',
               role: 'staff'
             }
           ])
@@ -156,92 +156,109 @@ setTimeout(async () => {
       console.error(`[BROWSER RUNTIME ERROR]:`, err.stack);
     });
 
-    console.log('Navigating to http://localhost:4173/?mision=job-1 ...');
+    console.log('Navigating to client portal...');
     await page.goto('http://localhost:4173/?mision=job-1', { waitUntil: 'networkidle0', timeout: 15000 });
 
-    // Wait for the portal to load
-    console.log('Waiting for portal layout to render...');
+    // Wait for the portal layout to render
     await page.waitForSelector('button', { timeout: 10000 });
-    
-    // Take pre-click screenshot
-    await page.screenshot({ path: 'scratch/portal_loaded.png' });
-    console.log('Saved loaded screenshot.');
+    console.log('Portal loaded.');
 
-    // Click the "Quick Booking" / "Reservar" tab
-    console.log('Searching for Booking Tab...');
+    // 1. OPEN CHAT DRAWER
+    console.log('Locating Live Chat button...');
     const buttons = await page.$$('button');
-    let foundTab = false;
+    let chatBtn = null;
     for (const btn of buttons) {
       const text = await page.evaluate(el => el.textContent, btn);
-      if (text.includes('Book Service') || text.includes('Reservar') || text.includes('Nuevo Servicio')) {
-        console.log(`Found tab button: "${text.trim()}". Clicking...`);
-        await btn.click();
-        foundTab = true;
+      if (text.includes('Chat en Vivo con Técnico') || text.includes('Live Chat')) {
+        chatBtn = btn;
         break;
       }
     }
 
-    if (!foundTab) {
-      throw new Error('Booking Tab button not found!');
-    }
+    if (chatBtn) {
+      console.log('Clicking Live Chat button...');
+      await chatBtn.click();
+      await new Promise(r => setTimeout(r, 800)); // wait for drawer animation
+      await page.screenshot({ path: 'scratch/portal_chat_open.png' });
+      console.log('Chat drawer open screenshot saved.');
 
-    // Wait for the booking form to transition in
-    await new Promise(r => setTimeout(r, 1000));
-    await page.screenshot({ path: 'scratch/portal_booking_tab.png' });
-    console.log('Saved booking tab screenshot.');
+      // Type a message
+      console.log('Typing message in chat...');
+      await page.type('input[name="chatInput"]', 'Hola! Necesito que presten especial atencion al balcon por favor.');
+      await new Promise(r => setTimeout(r, 200));
 
-    // Interact with the TimeSlotPicker
-    console.log('Finding TimeSlotPicker buttons...');
-    const timeSlotBtns = await page.$$('button');
-    let selectedSlot = false;
-    for (const btn of timeSlotBtns) {
-      const text = await page.evaluate(el => el.textContent, btn);
-      if (text.includes('10:00 AM') || text.includes('12:00 PM')) {
-        console.log(`Clicking slot: "${text.trim()}"`);
-        await btn.click();
-        selectedSlot = true;
-        break;
+      // Submit form
+      const sendBtn = await page.$('form button[type="submit"]');
+      if (sendBtn) {
+        console.log('Clicking Send Button...');
+        await sendBtn.click();
+        await new Promise(r => setTimeout(r, 1000));
+        console.log('Chat message submitted.');
       }
-    }
-
-    if (!selectedSlot) {
-      console.warn('Could not select a time slot button. Will proceed with defaults.');
-    }
-
-    // Capture screenshot before submit
-    await page.screenshot({ path: 'scratch/portal_booking_filled.png' });
-
-    // Find and click the Book / Agendar button
-    console.log('Submitting the booking form...');
-    const formButtons = await page.$$('button');
-    let submitted = false;
-    for (const btn of formButtons) {
-      const text = await page.evaluate(el => el.textContent, btn);
-      if (text.includes('Request Service') || text.includes('Solicitar Servicio') || text.includes('Confirm Booking') || text.includes('Agendar Servicio')) {
-        console.log(`Clicking confirm button: "${text.trim()}"`);
-        await btn.click();
-        submitted = true;
-        break;
-      }
-    }
-
-    if (!submitted) {
-      throw new Error('Could not find confirm booking button!');
-    }
-
-    // Wait for the Supabase request callback to be intercepted
-    await new Promise(r => setTimeout(r, 2000));
-
-    console.log('Success! Last inserted payload:', JSON.stringify(lastInsertedPayload, null, 2));
-    
-    if (lastInsertedPayload && lastInsertedPayload.specs && lastInsertedPayload.specs.booking_time) {
-      console.log('Test Passed! booking_time is successfully integrated in the mission specs.');
+      
+      await page.screenshot({ path: 'scratch/portal_chat_sent.png' });
     } else {
-      console.error('Test Failed! booking_time was not found or not structured correctly in the payload.');
+      throw new Error('Chat button not found!');
     }
+
+    // 2. OPEN CALENDAR MODAL
+    console.log('Navigating to Booking Tab...');
+    let bookingTab = null;
+    const tabBtns = await page.$$('button');
+    for (const btn of tabBtns) {
+      const text = await page.evaluate(el => el.textContent, btn);
+      if (text.includes('Reservas') || text.includes('Booking') || text.includes('Book Service') || text.includes('Agendar')) {
+        bookingTab = btn;
+        break;
+      }
+    }
+
+    if (bookingTab) {
+      console.log('Clicking Booking Tab...');
+      await bookingTab.click();
+      await new Promise(r => setTimeout(r, 1000));
+
+      // Click Calendario button
+      console.log('Locating Calendario button...');
+      const calBtns = await page.$$('button');
+      let calendarBtn = null;
+      for (const btn of calBtns) {
+        const text = await page.evaluate(el => el.textContent, btn);
+        if (text.includes('Calendario') || text.includes('Calendar')) {
+          calendarBtn = btn;
+          break;
+        }
+      }
+
+      if (calendarBtn) {
+        console.log('Clicking Calendario button...');
+        await calendarBtn.click();
+        await new Promise(r => setTimeout(r, 800)); // wait for modal animation
+        await page.screenshot({ path: 'scratch/portal_calendar_modal.png' });
+        console.log('Calendar modal screenshot saved.');
+
+        // Close calendar modal
+        const closeBtns = await page.$$('button');
+        for (const btn of closeBtns) {
+          const text = await page.evaluate(el => el.textContent, btn);
+          if (text.includes('Cerrar') || text.includes('Close')) {
+            console.log('Clicking Close Calendar Modal...');
+            await btn.click();
+            break;
+          }
+        }
+        await new Promise(r => setTimeout(r, 500));
+      } else {
+        console.warn('Calendar button not found in TimeSlotPicker!');
+      }
+    } else {
+      console.warn('Booking Tab button not found!');
+    }
+
+    console.log('E2E Upgrades Test Complete. Last updated payload:', JSON.stringify(lastUpdatedPayload, null, 2));
 
   } catch (error) {
-    console.error('Error during browser test:', error);
+    console.error('Error during upgrades browser test:', error);
   } finally {
     if (browser) {
       await browser.close();

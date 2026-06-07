@@ -17,12 +17,12 @@ setTimeout(async () => {
       args: ['--no-sandbox', '--disable-setuid-sandbox']
     });
     const page = await browser.newPage();
-    await page.setViewport({ width: 1280, height: 950 });
+    await page.setViewport({ width: 1280, height: 1200 }); // High viewport to see everything
 
     // Enable request interception to mock Supabase calls
     await page.setRequestInterception(true);
     
-    let lastInsertedPayload = null;
+    let lastUpdatedPayload = null;
 
     page.on('request', (request) => {
       const url = request.url();
@@ -35,7 +35,7 @@ setTimeout(async () => {
           status: 204,
           headers: {
             'access-control-allow-origin': '*',
-            'access-control-allow-methods': 'GET, POST, PUT, DELETE, OPTIONS',
+            'access-control-allow-methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
             'access-control-allow-headers': allowedHeaders,
             'access-control-max-age': '86400'
           }
@@ -44,12 +44,12 @@ setTimeout(async () => {
       }
 
       if (url.includes('/rest/v1/elevore_missions')) {
-        if (method === 'POST') {
-          console.log('[Puppeteer Intercept]: Intercepted POST to elevore_missions (booking creation)');
+        if (method === 'PATCH' || method === 'PUT') {
+          console.log('[Puppeteer Intercept]: Intercepted PATCH/PUT to elevore_missions (payment complete)');
           const body = JSON.parse(request.postData());
-          lastInsertedPayload = Array.isArray(body) ? body[0] : body;
+          lastUpdatedPayload = body;
           request.respond({
-            status: 201,
+            status: 200,
             headers: {
               'access-control-allow-origin': '*',
               'content-type': 'application/json'
@@ -60,13 +60,13 @@ setTimeout(async () => {
           console.log('[Puppeteer Intercept]: Mocking elevore_missions query...');
           const headers = request.headers();
           const accept = headers['accept'] || '';
-
+          
           const mockJob = {
             id: 'job-1',
-            client_name: 'Jose Test 1',
-            client_phone: '123456',
+            client_name: 'Jose Test Checkout',
+            client_phone: '123456789',
             address: '100 E Pine St, Orlando, FL 32801',
-            service_type: 'Regular Cleaning',
+            service_type: 'Limpieza Regular',
             status: 'scheduled',
             scheduled_date: new Date().toISOString().split('T')[0],
             team_assigned: 'Team Alpha',
@@ -100,7 +100,7 @@ setTimeout(async () => {
           body: JSON.stringify([
             {
               id: 'client-1',
-              name: 'Jose Test 1',
+              name: 'Jose Test Checkout',
               membership: 'premium',
               specs: { preferences: { pets: 'Dog', entryCode: '1234' } }
             }
@@ -118,7 +118,8 @@ setTimeout(async () => {
             {
               id: 'setting-1',
               tenant_id: 'tenant-1',
-              currency: 'USD'
+              currency: 'USD',
+              business_full_name: 'ELEVORE PREMIUM SERVICES'
             }
           ])
         });
@@ -134,12 +135,10 @@ setTimeout(async () => {
             {
               id: 'staff-1',
               tenant_id: 'tenant-1',
-              role: 'staff'
-            },
-            {
-              id: 'staff-2',
-              tenant_id: 'tenant-1',
-              role: 'staff'
+              name: 'Team Alpha',
+              role: 'staff',
+              wallet_balance: 100,
+              total_earned: 500
             }
           ])
         });
@@ -161,84 +160,86 @@ setTimeout(async () => {
 
     // Wait for the portal to load
     console.log('Waiting for portal layout to render...');
-    await page.waitForSelector('button', { timeout: 10000 });
+    try {
+      await page.waitForSelector('input[placeholder="4000 1234 5678 9010"]', { timeout: 10000 });
+    } catch (err) {
+      await page.screenshot({ path: 'scratch/portal_checkout_timeout.png' });
+      const html = await page.content();
+      console.log('Timeout HTML Dump:', html.substring(0, 1000));
+      throw err;
+    }
     
-    // Take pre-click screenshot
-    await page.screenshot({ path: 'scratch/portal_loaded.png' });
-    console.log('Saved loaded screenshot.');
+    // Scroll to the card section to view it clearly
+    await page.evaluate(() => {
+      const cardEl = document.querySelector('.card-3d');
+      if (cardEl) cardEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    });
+    await new Promise(r => setTimeout(r, 800));
 
-    // Click the "Quick Booking" / "Reservar" tab
-    console.log('Searching for Booking Tab...');
-    const buttons = await page.$$('button');
-    let foundTab = false;
-    for (const btn of buttons) {
+    // Take initial screenshot of checkout area (empty card)
+    await page.screenshot({ path: 'scratch/portal_checkout_empty.png' });
+    console.log('Saved empty checkout screenshot.');
+
+    // Click 15% tip button
+    console.log('Selecting 15% tip option...');
+    const tipBtns = await page.$$('button');
+    for (const btn of tipBtns) {
       const text = await page.evaluate(el => el.textContent, btn);
-      if (text.includes('Book Service') || text.includes('Reservar') || text.includes('Nuevo Servicio')) {
-        console.log(`Found tab button: "${text.trim()}". Clicking...`);
+      if (text.includes('15%')) {
+        console.log(`Found tip button: "${text.trim()}". Clicking...`);
         await btn.click();
-        foundTab = true;
         break;
       }
     }
+    await new Promise(r => setTimeout(r, 300));
 
-    if (!foundTab) {
-      throw new Error('Booking Tab button not found!');
-    }
+    // Fill in card information
+    console.log('Typing card number...');
+    await page.type('input[placeholder="4000 1234 5678 9010"]', '4242424242424242');
+    await new Promise(r => setTimeout(r, 200));
 
-    // Wait for the booking form to transition in
-    await new Promise(r => setTimeout(r, 1000));
-    await page.screenshot({ path: 'scratch/portal_booking_tab.png' });
-    console.log('Saved booking tab screenshot.');
+    console.log('Typing expiry date...');
+    await page.type('input[placeholder="MM/YY"]', '1229');
+    await new Promise(r => setTimeout(r, 200));
 
-    // Interact with the TimeSlotPicker
-    console.log('Finding TimeSlotPicker buttons...');
-    const timeSlotBtns = await page.$$('button');
-    let selectedSlot = false;
-    for (const btn of timeSlotBtns) {
-      const text = await page.evaluate(el => el.textContent, btn);
-      if (text.includes('10:00 AM') || text.includes('12:00 PM')) {
-        console.log(`Clicking slot: "${text.trim()}"`);
-        await btn.click();
-        selectedSlot = true;
-        break;
-      }
-    }
+    console.log('Typing CVC...');
+    await page.type('input[placeholder="123"]', '999');
+    await new Promise(r => setTimeout(r, 200));
 
-    if (!selectedSlot) {
-      console.warn('Could not select a time slot button. Will proceed with defaults.');
-    }
+    console.log('Typing cardholder name...');
+    await page.type('input[placeholder="Nombre del Titular"]', 'JOSE MARIO');
+    await new Promise(r => setTimeout(r, 500));
 
-    // Capture screenshot before submit
-    await page.screenshot({ path: 'scratch/portal_booking_filled.png' });
+    // Scroll to card mockup
+    await page.evaluate(() => {
+      const cardEl = document.querySelector('.card-3d');
+      if (cardEl) cardEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    });
+    await new Promise(r => setTimeout(r, 500));
 
-    // Find and click the Book / Agendar button
-    console.log('Submitting the booking form...');
-    const formButtons = await page.$$('button');
-    let submitted = false;
-    for (const btn of formButtons) {
-      const text = await page.evaluate(el => el.textContent, btn);
-      if (text.includes('Request Service') || text.includes('Solicitar Servicio') || text.includes('Confirm Booking') || text.includes('Agendar Servicio')) {
-        console.log(`Clicking confirm button: "${text.trim()}"`);
-        await btn.click();
-        submitted = true;
-        break;
-      }
-    }
+    // Take screenshot of filled virtual credit card
+    await page.screenshot({ path: 'scratch/portal_checkout_filled.png' });
+    console.log('Saved filled checkout screenshot.');
 
-    if (!submitted) {
-      throw new Error('Could not find confirm booking button!');
-    }
-
-    // Wait for the Supabase request callback to be intercepted
-    await new Promise(r => setTimeout(r, 2000));
-
-    console.log('Success! Last inserted payload:', JSON.stringify(lastInsertedPayload, null, 2));
-    
-    if (lastInsertedPayload && lastInsertedPayload.specs && lastInsertedPayload.specs.booking_time) {
-      console.log('Test Passed! booking_time is successfully integrated in the mission specs.');
+    // Submit checkout form
+    console.log('Submitting card checkout form...');
+    const payButton = await page.$('form button[type="submit"]');
+    if (payButton) {
+      console.log('Found Pay Button. Clicking...');
+      await payButton.click();
     } else {
-      console.error('Test Failed! booking_time was not found or not structured correctly in the payload.');
+      throw new Error('Pay button not found!');
     }
+
+    // Wait for the payment overlay and success transition
+    console.log('Waiting for payment flow to process and complete...');
+    await new Promise(r => setTimeout(r, 6500)); // The simulator takes about 5 seconds to run through connecting/verifying/authorizing/routing/success
+
+    // Take post-payment screenshot
+    await page.screenshot({ path: 'scratch/portal_checkout_success.png' });
+    console.log('Saved success checkout screenshot.');
+
+    console.log('Success! Last updated mission payload:', JSON.stringify(lastUpdatedPayload, null, 2));
 
   } catch (error) {
     console.error('Error during browser test:', error);
