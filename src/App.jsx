@@ -7417,7 +7417,75 @@ function AnimatedWords({ words }) {
   );
 }
 
+// ── Urgency Banner ────────────────────────────────────────────────────────────
+function UrgencyBanner({ onSignup, prefLang }) {
+  const [visible, setVisible] = React.useState(true);
+  const [timeLeft, setTimeLeft] = React.useState({ h: 23, m: 47, s: 12 });
+  React.useEffect(() => {
+    const interval = setInterval(() => {
+      setTimeLeft(prev => {
+        let { h, m, s } = prev;
+        s--;
+        if (s < 0) { s = 59; m--; }
+        if (m < 0) { m = 59; h--; }
+        if (h < 0) { h = 23; m = 59; s = 59; }
+        return { h, m, s };
+      });
+    }, 1000);
+    return () => clearInterval(interval);
+  }, []);
+  if (!visible) return null;
+  const pad = n => String(n).padStart(2, '0');
+  return (
+    <div className="fixed top-0 left-0 right-0 z-[60] bg-gradient-to-r from-amber-600 via-[#F5C518] to-amber-500 text-black py-2 px-4 flex items-center justify-center gap-3 text-[11px] font-black uppercase tracking-wider shadow-lg shadow-amber-500/30"
+      style={{ backgroundSize: '200% 100%', animation: 'shimmer 3s linear infinite' }}
+    >
+      <span className="hidden sm:inline">🔥 {prefLang === 'es' ? 'OFERTA LIMITADA: 30% de descuento en Empire Pro — solo hoy' : 'LIMITED OFFER: 30% OFF Empire Pro — Today Only'}</span>
+      <span className="sm:hidden">🔥 30% OFF Empire Pro</span>
+      <div className="flex items-center gap-1 bg-black/20 rounded-lg px-2.5 py-0.5 text-[10px] font-mono font-black tracking-widest">
+        {pad(timeLeft.h)}:{pad(timeLeft.m)}:{pad(timeLeft.s)}
+      </div>
+      <button onClick={onSignup} className="hidden sm:block bg-black text-[#F5C518] px-4 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-black/80 transition-all active:scale-95">
+        {prefLang === 'es' ? 'Reclamar →' : 'Claim →'}
+      </button>
+      <button onClick={() => setVisible(false)} className="absolute right-3 top-1/2 -translate-y-1/2 text-black/50 hover:text-black transition-colors text-xs font-black">✕</button>
+    </div>
+  );
+}
+
+// ── Integrations Logos Band ────────────────────────────────────────────────────
+function IntegrationsBand({ prefLang }) {
+  const integrations = [
+    { name: 'Stripe', icon: '💳', color: '#635BFF' },
+    { name: 'WhatsApp', icon: '💬', color: '#25D366' },
+    { name: 'Google Maps', icon: '🗺️', color: '#4285F4' },
+    { name: 'Resend', icon: '✉️', color: '#000000' },
+    { name: 'Supabase', icon: '🗄️', color: '#3ECF8E' },
+    { name: 'Twilio SMS', icon: '📱', color: '#F22F46' },
+    { name: 'Zapier', icon: '⚡', color: '#FF4A00' },
+    { name: 'Slack', icon: '💼', color: '#4A154B' },
+  ];
+  return (
+    <div className="border-y border-white/5 py-10 overflow-hidden" style={{ background: 'rgba(255,255,255,0.01)' }}>
+      <p className="text-center text-[9px] text-slate-600 font-black uppercase tracking-[0.3em] mb-7">
+        {prefLang === 'es' ? '🔌 Conectado con las herramientas que ya usas' : '🔌 Natively integrated with your existing stack'}
+      </p>
+      <div className="overflow-hidden">
+        <div className="marquee-track flex items-center gap-12" style={{ width: 'max-content' }}>
+          {[...integrations, ...integrations].map((integration, i) => (
+            <div key={i} className="flex items-center gap-2.5 px-5 py-2.5 rounded-xl bg-white/[0.03] border border-white/5 hover:border-white/10 hover:bg-white/[0.05] transition-all cursor-default flex-shrink-0 group">
+              <span className="text-xl">{integration.icon}</span>
+              <span className="text-[11px] font-black tracking-wider text-slate-400 group-hover:text-white transition-colors">{integration.name}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function LandingPage({ onLogin, onSignup, prefLang, setPrefLang }) {
+
   const [menuOpen, setMenuOpen] = useState(false);
   const [activeModal, setActiveModal] = useState(null);
   const [billingAnnual, setBillingAnnual] = useState(false);
@@ -7550,6 +7618,7 @@ function LandingPage({ onLogin, onSignup, prefLang, setPrefLang }) {
     { icon: 'message-square', color: 'from-green-500/20 to-green-500/5', border: 'border-green-500/30', text: 'green-400', label: 'WhatsApp CRM y Alertas Automáticas', desc: 'Automatice la comunicación: envíe cotizaciones de seguimiento, avisos de llegada y enlaces para reseñas de 5 estrellas.', big: true },
     { icon: 'brain', color: 'from-rose-500/20 to-rose-500/5', border: 'border-rose-500/30', text: 'rose-400', label: 'Asistente de Ingresos con IA', desc: 'Analice la demanda histórica y el clima para identificar oportunidades de upselling y proyectar el flujo de caja.' },
     { icon: 'layout-dashboard', color: 'from-yellow-500/20 to-yellow-500/5', border: 'border-yellow-500/30', text: 'yellow-400', label: 'Panel de Control en Tiempo Real', desc: 'Monitoree toda la operación de un vistazo: estados de despacho, temporizadores de trabajo activos y ubicaciones GPS.' },
+    { icon: 'mail', color: 'from-indigo-500/20 to-indigo-500/5', border: 'border-indigo-500/30', text: 'indigo-400', label: '🚀 Captación IA (Nuevo)', desc: 'Genera correos de ventas personalizados para prospectos fríos con IA y los envía a todos con un solo clic. Prospección masiva automatizada.', big: true },
   ] : [
     { icon: 'calendar', color: 'from-amber-500/20 to-amber-500/5', border: 'border-amber-500/30', text: 'amber-400', label: 'Mission Calendar & Smart Dispatch', desc: 'Drag-and-drop calendar automatically optimizes travel routes, schedules recurring visits, and notifies crews instantly.', big: true },
     { icon: 'camera', color: 'from-purple-500/20 to-purple-500/5', border: 'border-purple-500/30', text: 'purple-400', label: 'Before & After Photo Drive', desc: 'Provide undeniable proof of quality. Workers upload photos directly from the job site, automatically organized in the client history.' },
@@ -7557,13 +7626,16 @@ function LandingPage({ onLogin, onSignup, prefLang, setPrefLang }) {
     { icon: 'message-square', color: 'from-green-500/20 to-green-500/5', border: 'border-green-500/30', text: 'green-400', label: 'WhatsApp CRM & Auto Follow-ups', desc: 'Automate customer communications. Send customized quote follow-ups, arrival notices, and 5-star review request links.', big: true },
     { icon: 'brain', color: 'from-rose-500/20 to-rose-500/5', border: 'border-rose-500/30', text: 'rose-400', label: 'AI Revenue Predictor', desc: 'Analyze historical demand and seasons to identify upsell opportunities and predict monthly revenue with 94% accuracy.' },
     { icon: 'layout-dashboard', color: 'from-yellow-500/20 to-yellow-500/5', border: 'border-yellow-500/30', text: 'yellow-400', label: 'Real-Time Operations Dashboard', desc: 'Monitor your entire operation at a glance. Live dispatch states, active job timers, GPS locations, and daily gross revenues.' },
+    { icon: 'mail', color: 'from-indigo-500/20 to-indigo-500/5', border: 'border-indigo-500/30', text: 'indigo-400', label: '🚀 AI Cold Outreach (New)', desc: 'Generate hyper-personalized cold emails for each prospect using AI — then blast them all in one click. Fully automated lead prospecting at scale.', big: true },
   ];
 
   const testimonials = prefLang === 'es' ? [
     { name: 'Carlos Mendoza', biz: 'Mendoza Premium Cleaners', loc: 'Miami, FL', text: 'Antes de Elevore, me pasaba el día coordinando turnos en WhatsApp. El optimizador de rutas GPS y las confirmaciones automáticas redujeron mis ausencias a cero. ¡Pasamos de $9,500 a $27,800/mes!', stars: 5, avatar: 'CM', avatarColor: 'from-amber-500 to-orange-600' },
     { name: 'Jessica Sterling', biz: 'Apex Maintenance Co.', loc: 'Austin, TX', text: 'El mayor cambio fue el CRM de WhatsApp y las firmas de contratos digitales en sitio. El 90% de los clientes aprueban y pagan depósitos en menos de 10 minutos.', stars: 5, avatar: 'JS', avatarColor: 'from-purple-500 to-pink-600' },
     { name: 'Marcus Vance', biz: 'Vance Janitorial', loc: 'Atlanta, GA', text: 'Administrar 12 limpiadores comerciales solía requerir despacho manual constante. Con la asignación automática por ubicación de Elevore, ahorramos más de 15 horas/semana.', stars: 5, avatar: 'MV', avatarColor: 'from-blue-500 to-cyan-600' },
+    { name: 'Diana Reyes', biz: 'Brillante Home Services', loc: 'Phoenix, AZ', text: 'La función de Captación IA es un game-changer. En mi primera campaña envié 50 correos personalizados con un solo clic y conseguí 8 nuevos clientes esa semana.', stars: 5, avatar: 'DR', avatarColor: 'from-emerald-500 to-teal-600' },
   ] : [
+    { name: 'Diana Reyes', biz: 'Brillante Home Services', loc: 'Phoenix, AZ', text: 'The AI Cold Outreach is a total game-changer. My first campaign sent 50 personalized emails in one click — I landed 8 new clients that week alone.', stars: 5, avatar: 'DR', avatarColor: 'from-emerald-500 to-teal-600' },
     { name: 'Carlos Mendoza', biz: 'Mendoza Premium Cleaners', loc: 'Miami, FL', text: 'Scheduling was a nightmare. Since Elevore, the GPS routing and auto confirmations reduced our noshows to zero. We scaled from $9,500 to $27,800/month!', stars: 5, avatar: 'CM', avatarColor: 'from-amber-500 to-orange-600' },
     { name: 'Jessica Sterling', biz: 'Apex Maintenance Co.', loc: 'Austin, TX', text: 'The biggest shift was WhatsApp CRM and digital sign-offs. 90% of our clients approve and pay their deposit link in under 10 minutes directly on their phone.', stars: 5, avatar: 'JS', avatarColor: 'from-purple-500 to-pink-600' },
     { name: 'Marcus Vance', biz: 'Vance Janitorial', loc: 'Atlanta, GA', text: 'Managing 12 commercial cleaners used to require constant calls. With Elevores automated dispatch based on location, we save 15+ hours/week.', stars: 5, avatar: 'MV', avatarColor: 'from-blue-500 to-cyan-600' },
@@ -7578,13 +7650,16 @@ function LandingPage({ onLogin, onSignup, prefLang, setPrefLang }) {
   return (
     <div className="min-h-screen bg-[#030303] text-white selection:bg-[#F5C518] selection:text-black overflow-x-hidden land">
 
+      {/* 🔥 Urgency Banner */}
+      <UrgencyBanner onSignup={onSignup} prefLang={prefLang} />
+
       {/* Scroll Progress Bar */}
       <ScrollProgress />
       {/* Live toast popups */}
       <LiveToasts />
 
       {/* ═══ NAVBAR ═══ */}
-      <nav className="fixed top-0 left-0 w-full z-50 border-b border-white/5" style={{ background: 'rgba(3,3,3,0.88)', backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)' }}>
+      <nav className="fixed top-8 left-0 w-full z-50 border-b border-white/5" style={{ background: 'rgba(3,3,3,0.88)', backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)' }}>
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
           <button onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} className="flex items-center gap-3 group">
             <div className="relative w-9 h-9">
@@ -8035,6 +8110,9 @@ function LandingPage({ onLogin, onSignup, prefLang, setPrefLang }) {
         </div>
       </div>
 
+      {/* ═══ INTEGRATIONS BAND ═══ */}
+      <IntegrationsBand prefLang={prefLang} />
+
       {/* ═══ FEATURES BENTO ═══ */}
       <section id="features" className="max-w-7xl mx-auto px-6 py-32">
         <div className="text-center mb-20 space-y-4">
@@ -8087,15 +8165,34 @@ function LandingPage({ onLogin, onSignup, prefLang, setPrefLang }) {
       {/* ═══ METRICS ═══ */}
       <section className="py-24 relative overflow-hidden" style={{ background: 'linear-gradient(135deg, rgba(245,197,24,0.05) 0%, rgba(3,3,3,1) 40%, rgba(3,3,3,1) 60%, rgba(59,130,246,0.03) 100%)' }}>
         <div className="absolute inset-0 pointer-events-none" style={{ background: 'radial-gradient(ellipse at 50% 50%, rgba(245,197,24,0.04), transparent 70%)' }} />
-        <div className="max-w-5xl mx-auto px-6 grid grid-cols-2 md:grid-cols-4 gap-8">
-          {[{end:500,suffix:'+',label:'Businesses Live',icon:'building-2'},{end:94,suffix:'%',label:'Revenue Accuracy',icon:'target'},{end:4200,prefix:'$',suffix:'+',label:'Avg Job Value Boost',icon:'trending-up'},{end:99,suffix:'.4%',label:'QC Pass Rate',icon:'shield-check'}].map((s,i) => (
-            <div key={i} className={`reveal delay-${i*100} text-center space-y-3 p-6 rounded-2xl bg-white/[0.02] border border-white/5 hover:border-[#F5C518]/20 transition-all`}>
-              <div className="w-10 h-10 rounded-xl bg-[#F5C518]/10 border border-[#F5C518]/20 flex items-center justify-center mx-auto">
-                <Icon name={s.icon} className="w-5 h-5 text-[#F5C518]" />
+        <div className="max-w-6xl mx-auto px-6">
+          <p className="text-center text-[9px] text-slate-700 font-black uppercase tracking-[0.3em] mb-10">{prefLang === 'es' ? 'Resultados reales de operadores reales' : 'Real results from real operators'}</p>
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-5">
+            {[
+              { end: 500, suffix: '+', label: prefLang === 'es' ? 'Negocios Activos' : 'Businesses Live', icon: 'building-2', color: 'text-amber-400', glowColor: 'rgba(245,197,24,0.15)' },
+              { end: 94, suffix: '%', label: prefLang === 'es' ? 'Precisión de Ingresos IA' : 'AI Revenue Accuracy', icon: 'target', color: 'text-purple-400', glowColor: 'rgba(168,85,247,0.15)' },
+              { end: 4200, prefix: '$', suffix: '+', label: prefLang === 'es' ? 'Alza Promedio en Trabajos' : 'Avg Job Value Boost', icon: 'trending-up', color: 'text-green-400', glowColor: 'rgba(34,197,94,0.15)' },
+              { end: 99, suffix: '.4%', label: prefLang === 'es' ? 'Tasa de Aprobación QC' : 'QC Pass Rate', icon: 'shield-check', color: 'text-blue-400', glowColor: 'rgba(59,130,246,0.15)' },
+              { end: 2100000, prefix: '$', suffix: '', label: prefLang === 'es' ? 'Procesado este mes' : 'Processed this month', icon: 'dollar-sign', color: 'text-[#F5C518]', glowColor: 'rgba(245,197,24,0.2)', isMoney: true },
+            ].map((s, i) => (
+              <div key={i} className={`reveal delay-${i*100} text-center space-y-3 p-6 rounded-2xl bg-white/[0.02] border border-white/5 hover:border-white/10 transition-all duration-300 relative overflow-hidden group`}
+                style={{ '--glow': s.glowColor }}
+              >
+                <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 rounded-2xl" style={{ background: `radial-gradient(ellipse at 50% 0%, ${s.glowColor}, transparent 70%)` }} />
+                <div className={`w-10 h-10 rounded-xl bg-white/5 border border-white/8 flex items-center justify-center mx-auto relative z-10`}>
+                  <Icon name={s.icon} className={`w-5 h-5 ${s.color}`} />
+                </div>
+                {s.isMoney ? (
+                  <div className="relative z-10">
+                    <div className={`text-3xl font-black tracking-tighter ${s.color}`}>$2.1M</div>
+                    <div className="text-slate-500 text-[10px] font-black uppercase tracking-wider mt-1">{s.label}</div>
+                  </div>
+                ) : (
+                  <AnimatedStat end={s.end} prefix={s.prefix || ''} suffix={s.suffix || ''} label={s.label} />
+                )}
               </div>
-              <AnimatedStat end={s.end} prefix={s.prefix||''} suffix={s.suffix||''} label={s.label} />
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       </section>
 
@@ -8172,11 +8269,14 @@ function LandingPage({ onLogin, onSignup, prefLang, setPrefLang }) {
             <h2 className="reveal delay-100 text-4xl md:text-5xl font-black tracking-tighter">CEOs Who <span className="glow-text italic">Trust Elevore</span></h2>
             <p className="reveal delay-200 text-slate-500 text-base max-w-xl mx-auto">Real businesses, real numbers, real growth.</p>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             {testimonials.map((t, i) => (
-              <div key={i} className={`reveal delay-${i*100} bg-white/[0.03] border border-white/8 rounded-3xl p-8 space-y-5 hover:border-[#F5C518]/20 hover:-translate-y-2 transition-all duration-300 relative overflow-hidden group`}>
+              <div key={i} className={`reveal delay-${i*100} bg-white/[0.03] border rounded-3xl p-7 space-y-4 hover:-translate-y-2 transition-all duration-300 relative overflow-hidden group ${i === 0 ? 'border-[#F5C518]/30 bg-gradient-to-b from-[#F5C518]/5 to-transparent' : 'border-white/8 hover:border-[#F5C518]/20'}`}>
+                {i === 0 && (
+                  <div className="absolute top-4 right-4 text-[8px] font-black uppercase tracking-widest bg-[#F5C518] text-black px-2.5 py-1 rounded-full">🚀 New Feature</div>
+                )}
                 <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500" style={{ background: 'radial-gradient(ellipse at 50% 0%, rgba(245,197,24,0.04), transparent 60%)' }} />
-                <div className="flex gap-1">{Array(t.stars).fill(0).map((_,j) => <span key={j} className="text-[#F5C518] text-lg" style={{ textShadow:'0 0 10px rgba(245,197,24,0.5)' }}>★</span>)}</div>
+                <div className="flex gap-1">{Array(t.stars).fill(0).map((_,j) => <span key={j} className="text-[#F5C518] text-base" style={{ textShadow:'0 0 10px rgba(245,197,24,0.5)' }}>★</span>)}</div>
                 <p className="text-slate-300 leading-relaxed italic text-sm">"{t.text}"</p>
                 <div className="border-t border-white/5 pt-4 flex items-center gap-3">
                   <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${t.avatarColor} flex items-center justify-center text-white text-xs font-black flex-shrink-0`}>{t.avatar}</div>
