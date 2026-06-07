@@ -12829,7 +12829,20 @@ Instrucciones generales de formato:
               {/* ── HEADER ── */}
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pt-1">
                 <div>
-                  <p className="text-xs font-bold text-[#F5C518] uppercase tracking-[0.25em] mb-1">Good morning, {activeEmployee?.name || 'Admin'} 👋</p>
+                  <p className="text-xs font-bold text-[#F5C518] uppercase tracking-[0.25em] mb-1">
+                    {(() => {
+                      const hour = new Date().getHours();
+                      if (prefLang === 'es') {
+                        if (hour < 12) return `Buenos días, ${activeEmployee?.name || 'Admin'} 👋`;
+                        if (hour < 19) return `Buenas tardes, ${activeEmployee?.name || 'Admin'} 👋`;
+                        return `Buenas noches, ${activeEmployee?.name || 'Admin'} 👋`;
+                      } else {
+                        if (hour < 12) return `Good morning, ${activeEmployee?.name || 'Admin'} 👋`;
+                        if (hour < 19) return `Good afternoon, ${activeEmployee?.name || 'Admin'} 👋`;
+                        return `Good evening, ${activeEmployee?.name || 'Admin'} 👋`;
+                      }
+                    })()}
+                  </p>
                   <div className="flex items-center gap-4">
                     <h2 className="text-4xl font-black tracking-widest uppercase text-white font-display leading-none">COMMAND DECK</h2>
                     <button 
