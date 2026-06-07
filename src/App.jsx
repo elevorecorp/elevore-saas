@@ -7484,6 +7484,329 @@ function IntegrationsBand({ prefLang }) {
   );
 }
 
+// ── Live AI Sales Closer Sandbox ───────────────────────────────────────────
+function NegotiatorSandbox({ prefLang, onSignup }) {
+  const [persona, setPersona] = useState('cleaning'); // 'cleaning' | 'handyman'
+  const [discountApplied, setDiscountApplied] = useState(false);
+  const [confidence, setConfidence] = useState(35);
+  const [isTyping, setIsTyping] = useState(false);
+  const [inputVal, setInputVal] = useState('');
+  const [signed, setSigned] = useState(false);
+  const [sigName, setSigName] = useState('');
+  
+  const basePrice = persona === 'cleaning' ? 220 : 350;
+  const currentPrice = discountApplied ? Math.round(basePrice * 0.9) : basePrice;
+
+  const initialMsg = {
+    cleaning: {
+      es: '¡Hola! Soy el Asistente Comercial IA de CleanCo. Estoy listo para agendar tu Limpieza Profunda por $220. ¿Tienes alguna pregunta o te gustaría negociar un descuento especial de reserva hoy?',
+      en: 'Hi! I am the CleanCo AI Sales Assistant. I am ready to book your Deep Cleaning for $220. Do you have any questions or would you like to negotiate a special booking discount today?'
+    },
+    handyman: {
+      es: '¡Hola! Soy el Asistente Comercial IA de Handyman PRO. He preparado tu cotización de instalación por $350. ¿Tienes dudas del servicio o buscas una oferta para confirmar hoy?',
+      en: 'Hi! I am the Handyman PRO AI Sales Assistant. I have prepared your installation quote for $350. Do you have questions about the service or are you looking for an offer to confirm today?'
+    }
+  };
+
+  const [messages, setMessages] = useState([
+    { sender: 'bot', text: initialMsg[persona][prefLang === 'es' ? 'es' : 'en'], time: '12:00 PM' }
+  ]);
+
+  // Reset chat when persona or language changes
+  useEffect(() => {
+    setMessages([
+      { sender: 'bot', text: initialMsg[persona][prefLang === 'es' ? 'es' : 'en'], time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }
+    ]);
+    setDiscountApplied(false);
+    setConfidence(35);
+    setSigned(false);
+    setSigName('');
+  }, [persona, prefLang]);
+
+  const handleSend = (text) => {
+    if (!text.trim()) return;
+    const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    setMessages(prev => [...prev, { sender: 'user', text, time }]);
+    setIsTyping(true);
+    
+    // Simulate AI closer brain
+    setTimeout(() => {
+      setIsTyping(false);
+      const query = text.toLowerCase();
+      let reply = '';
+      let confidenceInc = 15;
+      
+      const isEs = prefLang === 'es';
+      
+      if (query.includes('descuento') || query.includes('caro') || query.includes('precio') || query.includes('rebaja') || query.includes('discount') || query.includes('price') || query.includes('expensive') || query.includes('cheaper') || query.includes('promo') || query.includes('oferta')) {
+        if (discountApplied) {
+          reply = isEs 
+            ? `¡Ya apliqué el descuento del 10%! Tu total bajó a $${currentPrice}. Firma abajo para confirmar esta tarifa.`
+            : `I have already applied the 10% discount! Your total is now $${currentPrice}. Sign below to lock it in.`;
+          confidenceInc = 10;
+        } else {
+          setDiscountApplied(true);
+          reply = isEs
+            ? `¡Excelente! Puedo autorizar un descuento de cierre inmediato del 10%. Tu servicio baja de $${basePrice} a $${Math.round(basePrice * 0.9)}. ¿Te parece bien?`
+            : `Great! I can authorize an immediate 10% closing discount. Your service drops from $${basePrice} to $${Math.round(basePrice * 0.9)}. Does that work for you?`;
+          confidenceInc = 35;
+        }
+      } else if (query.includes('seguro') || query.includes('garantia') || query.includes('garantía') || query.includes('insurance') || query.includes('guarantee') || query.includes('safe') || query.includes('insur')) {
+        reply = isEs
+          ? `¡100% garantizado! Contamos con seguro de responsabilidad civil por $2M y todos nuestros técnicos están asegurados y aprobados.`
+          : `100% guaranteed! We carry $2M in liability insurance and all technicians are fully bonded, background-checked, and insured.`;
+        confidenceInc = 20;
+      } else if (query.includes('producto') || query.includes('material') || query.includes('product') || query.includes('supply') || query.includes('cleaner')) {
+        reply = isEs
+          ? persona === 'cleaning'
+            ? 'Sí, llevamos todos los productos de limpieza ecológicos y aspiradoras HEPA profesionales. No necesitas proveer nada.'
+            : 'Los consumibles básicos y herramientas estándar están incluidos. Para refacciones específicas, te ayudamos a coordinar.'
+          : persona === 'cleaning'
+            ? 'Yes, all eco-friendly supplies, microfiber cloths, and professional HEPA vacuums are fully included. You don\'t need to provide anything.'
+            : 'Basic consumables and standard tools are included. For custom parts, your technician will coordinate with you.';
+        confidenceInc = 15;
+      } else if (query.includes('si') || query.includes('sí') || query.includes('yes') || query.includes('ok') || query.includes('claro') || query.includes('perfecto') || query.includes('perfect') || query.includes('accept') || query.includes('acepto')) {
+        reply = isEs
+          ? '¡Excelente! He preparado la firma del contrato digital. Escribe tu nombre abajo para agendar.'
+          : 'Fantastic! I have prepared the digital contract. Just type your name below to schedule.';
+        confidenceInc = 40;
+      } else {
+        reply = isEs
+          ? 'Perfecto. Podemos adaptar el servicio a tus necesidades exactas. ¿Tienes alguna otra duda o quieres proceder con el agendamiento?'
+          : 'Got it. We can tailor the service to your exact needs. Any other questions, or should we go ahead and book?';
+        confidenceInc = 10;
+      }
+
+      setMessages(prev => [...prev, { sender: 'bot', text: reply, time }]);
+      setConfidence(c => Math.min(100, c + confidenceInc));
+    }, 1000);
+  };
+
+  return (
+    <section className="py-24 relative overflow-hidden" style={{ background: 'linear-gradient(180deg, rgba(3,3,3,1) 0%, rgba(245,197,24,0.02) 50%, rgba(3,3,3,1) 100%)' }}>
+      <div className="absolute inset-0 dot-grid pointer-events-none opacity-25" />
+      <div className="max-w-7xl mx-auto px-6 relative z-10">
+        
+        <div className="text-center mb-16 space-y-4">
+          <div className="reveal inline-block text-[10px] font-black uppercase tracking-[0.3em] text-[#F5C518] border border-[#F5C518]/30 px-4 py-2 rounded-full bg-[#F5C518]/5">AI SALES CONVERSION ENGINE</div>
+          <h2 className="reveal delay-100 text-4xl md:text-5xl font-black tracking-tighter">
+            {prefLang === 'es' ? (
+              <>Prueba el Negociador IA<br /><span className="glow-text italic">en Tiempo Real.</span></>
+            ) : (
+              <>Test the AI Sales Closer<br /><span className="glow-text italic">in Real Time.</span></>
+            )}
+          </h2>
+          <p className="reveal delay-200 text-slate-400 text-base max-w-2xl mx-auto">
+            {prefLang === 'es' 
+              ? 'Mira cómo nuestra IA responde dudas, maneja objeciones y ofrece descuentos inteligentes para cerrar ventas 24/7 en piloto automático.'
+              : 'Interact directly with the AI assistant that closes leads, handles objections, and offers smart discounts to seal deals 24/7 on autopilot.'}
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-center">
+          
+          {/* Left Column: Control Panel & Explanation */}
+          <div className="lg:col-span-5 space-y-6 text-left">
+            <div className="bg-white/[0.02] border border-white/5 rounded-3xl p-6 space-y-6">
+              
+              {/* Persona Switcher */}
+              <div className="space-y-2">
+                <span className="text-[10px] font-black uppercase tracking-wider text-slate-500">{prefLang === 'es' ? '1. Elige una Empresa Simulada' : '1. Choose a Simulated Company'}</span>
+                <div className="grid grid-cols-2 gap-3">
+                  <button onClick={() => setPersona('cleaning')} className={`p-3 rounded-2xl border transition-all text-left flex items-center gap-3 ${persona === 'cleaning' ? 'border-[#F5C518] bg-[#F5C518]/10 text-white' : 'border-white/5 bg-white/[0.01] text-slate-400 hover:border-white/10 hover:text-white'}`}>
+                    <span className="text-2xl">🧹</span>
+                    <div>
+                      <p className="text-xs font-black">CleanCo</p>
+                      <p className="text-[9px] opacity-65">{prefLang === 'es' ? 'Limpieza de Casas' : 'House Cleaning'}</p>
+                    </div>
+                  </button>
+                  <button onClick={() => setPersona('handyman')} className={`p-3 rounded-2xl border transition-all text-left flex items-center gap-3 ${persona === 'handyman' ? 'border-[#F5C518] bg-[#F5C518]/10 text-white' : 'border-white/5 bg-white/[0.01] text-slate-400 hover:border-white/10 hover:text-white'}`}>
+                    <span className="text-2xl">🔧</span>
+                    <div>
+                      <p className="text-xs font-black">Handyman PRO</p>
+                      <p className="text-[9px] opacity-65">{prefLang === 'es' ? 'Servicios Técnicos' : 'Technical Services'}</p>
+                    </div>
+                  </button>
+                </div>
+              </div>
+
+              {/* Preset Objection Buttons */}
+              <div className="space-y-2">
+                <span className="text-[10px] font-black uppercase tracking-wider text-slate-500">{prefLang === 'es' ? '2. Hazle una pregunta difícil' : '2. Ask a tough question'}</span>
+                <div className="flex flex-col gap-2">
+                  {[
+                    { es: '¿Ofrecen algún descuento por reservar hoy?', en: 'Can I get a discount for booking today?', icon: '💰' },
+                    { es: '¿Están asegurados y tienen garantía?', en: 'Are you insured and do you have a guarantee?', icon: '🛡️' },
+                    { es: '¿Los productos de limpieza están incluidos?', en: 'Are cleaning supplies and tools included?', icon: '🧼' },
+                    { es: '¡Me interesa! Quiero reservar ahora.', en: 'Looks good! I want to book now.', icon: '✍️' }
+                  ].map((ob, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => handleSend(prefLang === 'es' ? ob.es : ob.en)}
+                      disabled={isTyping}
+                      className="w-full p-3 text-left rounded-xl bg-white/5 border border-white/8 hover:border-[#F5C518]/30 hover:bg-[#F5C518]/5 transition-all text-[11px] font-bold text-slate-300 flex items-center gap-2"
+                    >
+                      <span>{ob.icon}</span>
+                      <span>{prefLang === 'es' ? ob.es : ob.en}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Explanatory notes */}
+              <div className="pt-4 border-t border-white/5">
+                <div className="flex items-start gap-3 text-xs text-slate-400 leading-relaxed">
+                  <div className="w-5 h-5 rounded-lg bg-green-500/10 border border-green-500/20 flex items-center justify-center text-green-400 flex-shrink-0 mt-0.5">✓</div>
+                  <p>
+                    {prefLang === 'es' 
+                      ? 'Nuestros clientes reales reportan un incremento del 28% en la conversión de cotizaciones utilizando este chatbot de cierre con IA.' 
+                      : 'Real service businesses see a 28% boost in quote conversions by letting our AI handle custom negotiation directly in the client portal.'}
+                  </p>
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+          {/* Right Column: Dynamic Mock Smartphone Chat Screen */}
+          <div className="lg:col-span-7 flex justify-center">
+            <div className="w-full max-w-sm bg-[#0b0b12] border border-white/10 rounded-[40px] p-4 relative shadow-2xl overflow-hidden" style={{ minHeight: '520px' }}>
+              <div className="absolute inset-0 bg-gradient-to-b from-white/[0.01] via-transparent to-transparent pointer-events-none" />
+              
+              {/* Smartphone Notch / Top Details */}
+              <div className="w-full h-6 flex justify-between items-center px-4 mb-3">
+                <span className="text-[10px] text-slate-500 font-bold">12:00</span>
+                <div className="w-20 h-4 bg-black rounded-full border border-white/5 flex items-center justify-center gap-1">
+                  <div className="w-1.5 h-1.5 rounded-full bg-slate-800" />
+                  <div className="w-10 h-1 bg-slate-900 rounded-full" />
+                </div>
+                <div className="flex items-center gap-1.5 text-slate-500">
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                </div>
+              </div>
+
+              {/* Chat Header Widget */}
+              <div className="bg-[#12121c] border border-white/5 rounded-2xl p-3 mb-3 flex items-center justify-between text-left">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-full bg-[#F5C518]/10 border border-[#F5C518]/30 flex items-center justify-center text-[#F5C518] relative">
+                    <span className="text-xs font-black">🤖</span>
+                    <span className="absolute bottom-0 right-0 w-2 h-2 rounded-full bg-green-500 border border-black" />
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-black text-white">{persona === 'cleaning' ? 'CleanCo AI' : 'Handyman PRO AI'}</h4>
+                    <p className="text-[9px] text-green-400 font-bold uppercase tracking-wider">
+                      {prefLang === 'es' ? 'Negociador de Ventas' : 'AI Sales Closer'}
+                    </p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <p className="text-[8px] text-slate-500 uppercase font-black">{prefLang === 'es' ? 'Cotización Activa' : 'Active Quote'}</p>
+                  <p className="text-sm font-black text-[#F5C518] transition-all">
+                    ${currentPrice} <span className="text-[9px] text-slate-400 line-through font-normal">{discountApplied ? `$${basePrice}` : ''}</span>
+                  </p>
+                </div>
+              </div>
+
+              {/* Confidence Meter */}
+              <div className="bg-white/[0.02] border border-white/8 rounded-xl p-2.5 mb-3 space-y-1.5 text-left">
+                <div className="flex justify-between items-center text-[8px] uppercase tracking-wider font-black">
+                  <span className="text-slate-500">{prefLang === 'es' ? 'Probabilidad de Cierre' : 'Deal Confidence Level'}</span>
+                  <span className={confidence >= 80 ? 'text-green-400' : 'text-[#F5C518]'}>{confidence}%</span>
+                </div>
+                <div className="w-full h-1.5 bg-white/5 rounded-full overflow-hidden">
+                  <div className="h-full bg-gradient-to-r from-[#F5C518] to-green-500 transition-all duration-500" style={{ width: `${confidence}%` }} />
+                </div>
+              </div>
+
+              {/* Chat Messages Body */}
+              <div className="space-y-3 overflow-y-auto h-60 pr-1 text-left flex flex-col" style={{ scrollbarWidth: 'none' }}>
+                {messages.map((m, i) => (
+                  <div key={i} className={`max-w-[85%] p-3 rounded-2xl text-[11px] leading-relaxed relative animate-scale ${
+                    m.sender === 'user'
+                      ? 'bg-[#F5C518] text-black font-semibold ml-auto rounded-tr-none'
+                      : 'bg-[#1b1b26] border border-white/5 text-slate-200 mr-auto rounded-tl-none'
+                  }`}>
+                    <p>{m.text}</p>
+                    <span className={`text-[7px] block mt-1 text-right ${m.sender === 'user' ? 'text-black/55' : 'text-slate-500'}`}>{m.time}</span>
+                  </div>
+                ))}
+                
+                {isTyping && (
+                  <div className="bg-[#1b1b26] border border-white/5 text-slate-200 mr-auto rounded-2xl rounded-tl-none p-3 max-w-[50px]">
+                    <div className="flex gap-1 items-center justify-center h-2">
+                      <span className="w-1.5 h-1.5 bg-slate-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                      <span className="w-1.5 h-1.5 bg-slate-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                      <span className="w-1.5 h-1.5 bg-slate-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Interactive Digital Signature Block (Shown when confidence >= 80%) */}
+              {confidence >= 80 && (
+                <div className="mt-3 pt-3 border-t border-white/5 space-y-2 animate-scale text-left">
+                  <div className="flex justify-between items-center">
+                    <span className="text-[8px] font-black uppercase text-green-400 bg-green-500/10 px-2 py-0.5 rounded">✍️ {prefLang === 'es' ? 'Firma Digital Activa' : 'Digital Sign-Off Ready'}</span>
+                    <span className="text-[8px] text-slate-500 font-mono">ID: m_demo_42</span>
+                  </div>
+                  {signed ? (
+                    <div className="bg-green-500/10 border border-green-500/20 rounded-xl p-3 text-center space-y-1">
+                      <p className="text-[10px] text-green-400 font-black">🎉 {prefLang === 'es' ? 'CONTRATO FIRMADO Y AGENDADO' : 'CONTRACT SIGNED & SCHEDULED'}</p>
+                      <p className="text-[8px] text-slate-500 uppercase tracking-widest font-black">{prefLang === 'es' ? 'Firma de:' : 'Signed as:'} {sigName}</p>
+                    </div>
+                  ) : (
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        placeholder={prefLang === 'es' ? 'Escribe tu nombre para firmar' : 'Type your name to sign'}
+                        value={sigName}
+                        onChange={e => setSigName(e.target.value)}
+                        className="flex-1 bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-600 outline-none focus:border-[#F5C518]"
+                      />
+                      <button
+                        onClick={() => {
+                          if (!sigName.trim()) return alert(prefLang === 'es' ? 'Por favor escribe tu nombre primero.' : 'Please enter your name first.');
+                          setSigned(true);
+                          setConfidence(100);
+                        }}
+                        className="btn-gold px-4 py-2 text-[10px] font-black uppercase tracking-widest"
+                      >
+                        {prefLang === 'es' ? 'Firmar' : 'Sign'}
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Chat Input form */}
+              <form onSubmit={e => { e.preventDefault(); handleSend(inputVal); setInputVal(''); }} className="mt-3 pt-3 border-t border-white/5 flex gap-2">
+                <input
+                  type="text"
+                  placeholder={prefLang === 'es' ? 'Pregúntale algo al bot...' : 'Ask the bot anything...'}
+                  value={inputVal}
+                  onChange={e => setInputVal(e.target.value)}
+                  className="flex-1 bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-600 outline-none focus:border-[#F5C518] transition-all"
+                  disabled={signed}
+                />
+                <button
+                  type="submit"
+                  className="w-8 h-8 rounded-xl bg-white/5 hover:bg-white/10 flex items-center justify-center border border-white/10 hover:border-[#F5C518]/30 transition-all text-slate-400 hover:text-white"
+                  disabled={signed}
+                >
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                </button>
+              </form>
+
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+    </section>
+  );
+}
+
 function LandingPage({ onLogin, onSignup, prefLang, setPrefLang }) {
 
   const [menuOpen, setMenuOpen] = useState(false);
@@ -8112,6 +8435,9 @@ function LandingPage({ onLogin, onSignup, prefLang, setPrefLang }) {
 
       {/* ═══ INTEGRATIONS BAND ═══ */}
       <IntegrationsBand prefLang={prefLang} />
+
+      {/* ═══ AI NEGOTIATOR SANDBOX ═══ */}
+      <NegotiatorSandbox prefLang={prefLang} onSignup={onSignup} />
 
       {/* ═══ FEATURES BENTO ═══ */}
       <section id="features" className="max-w-7xl mx-auto px-6 py-32">
