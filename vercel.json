@@ -1,18 +1,35 @@
 {
-  "name": "elevore-saas",
   "framework": "vite",
   "crons": [
     {
-      "path": "/api/cron-quote-chase",
+      "path": "/api/cron-tasks?action=quote-chase",
       "schedule": "0 9 * * *"
     },
     {
-      "path": "/api/cron-win-back",
+      "path": "/api/cron-tasks?action=win-back",
       "schedule": "0 9 * * *"
     },
     {
-      "path": "/api/cron-weekly-payroll",
+      "path": "/api/cron-tasks?action=weekly-payroll",
       "schedule": "0 20 * * 0"
+    }
+  ],
+  "rewrites": [
+    {
+      "source": "/api/login-staff",
+      "destination": "/api/staff-auth?action=login"
+    },
+    {
+      "source": "/api/create-staff",
+      "destination": "/api/staff-auth?action=create"
+    },
+    {
+      "source": "/api/create-checkout-session",
+      "destination": "/api/checkout?action=session"
+    },
+    {
+      "source": "/api/create-payment-intent",
+      "destination": "/api/checkout?action=intent"
     }
   ]
 }
