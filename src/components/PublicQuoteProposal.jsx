@@ -142,6 +142,12 @@ export function PublicQuoteProposal({ quoteId }) {
   const [hasSigned, setHasSigned] = useState(false);
   const [payMethod, setPayMethod] = useState('card'); // 'card' or 'zelle'
 
+  // AI Sales Closer & Negotiator States
+  const [negotiatedDiscountPercent, setNegotiatedDiscountPercent] = useState(0);
+  const [chatMessages, setChatMessages] = useState([]);
+  const [inputVal, setInputVal] = useState('');
+  const [isTyping, setIsTyping] = useState(false);
+
   // Fetch initial proposal data
   useEffect(() => {
     async function loadData() {
@@ -195,7 +201,17 @@ export function PublicQuoteProposal({ quoteId }) {
         }
 
         setJob(jobDataToUse);
-        setLang(jobDataToUse.specs?.lang || 'es');
+        const activeLang = jobDataToUse.specs?.lang || 'es';
+        setLang(activeLang);
+        setChatMessages([
+          {
+            sender: 'closer',
+            text: activeLang === 'es'
+              ? '¡Hola! Soy tu Asistente de Cierre IA. Estoy autorizado para responder cualquier duda sobre tu servicio e incluso negociar un descuento exclusivo en tu cotización si confirmas hoy. ¿Tienes alguna pregunta o te gustaría una oferta especial?'
+              : 'Hello! I am your AI Sales Closer. I am authorized to answer any questions about your service and even negotiate an exclusive discount if you book today. Do you have any questions or would you like a special offer?',
+            time: new Date().toLocaleTimeString(activeLang === 'es' ? 'es-ES' : 'en-US', { hour: '2-digit', minute: '2-digit' })
+          }
+        ]);
         
         // Auto-select tier if already selected in specs
         if (jobDataToUse.specs?.selected_tier) {
@@ -270,7 +286,9 @@ export function PublicQuoteProposal({ quoteId }) {
       return acc + (addon ? addon.price : 0);
     }, 0);
 
-    const total = tierPrice + addonsCost;
+    const subtotalAndAddons = tierPrice + addonsCost;
+    const discountAmount = Math.round(subtotalAndAddons * (negotiatedDiscountPercent / 100));
+    const total = subtotalAndAddons - discountAmount;
     const depositPct = tenantSettings?.booking_deposit_pct !== undefined ? Number(tenantSettings.booking_deposit_pct) : 0.20;
     const deposit = Math.round(total * depositPct);
     const balance = total - deposit;
@@ -282,7 +300,7 @@ export function PublicQuoteProposal({ quoteId }) {
       deposit,
       balance
     };
-  }, [job, selectedTier, selectedAddons, tenantSettings]);
+  }, [job, selectedTier, selectedAddons, tenantSettings, negotiatedDiscountPercent]);
 
   // Canvas signature logic
   const getCoordinates = (e) => {
@@ -437,6 +455,68 @@ export function PublicQuoteProposal({ quoteId }) {
 
   const handlePrint = () => {
     window.print();
+  };
+
+  const handleSendMessage = (e) => {
+    e.preventDefault();
+    if (!inputVal.trim()) return;
+
+    const userText = inputVal.trim();
+    setInputVal('');
+
+    const timeNow = new Date().toLocaleTimeString(lang === 'es' ? 'es-ES' : 'en-US', { hour: '2-digit', minute: '2-digit' });
+    const newMsgs = [...chatMessages, { sender: 'user', text: userText, time: timeNow }];
+    setChatMessages(newMsgs);
+    setIsTyping(true);
+
+    setTimeout(() => {
+      setIsTyping(false);
+      const query = userText.toLowerCase();
+      let reply = '';
+      const isEs = lang === 'es';
+
+      if (query.includes('descuento') || query.includes('caro') || query.includes('precio') || query.includes('rebaja') || query.includes('discount') || query.includes('price') || query.includes('expensive') || query.includes('cheaper') || query.includes('promo') || query.includes('oferta') || query.includes('offer')) {
+        if (negotiatedDiscountPercent > 0) {
+          reply = isEs
+            ? `¡Ya he aplicado un descuento de cierre del ${negotiatedDiscountPercent}% en tu cotización! Puedes firmar en el panel inferior para asegurar tu reserva antes de que expire.`
+            : `I have already applied a ${negotiatedDiscountPercent}% closing discount to your proposal! You can sign below to lock it in before it expires.`;
+        } else {
+          reply = isEs
+            ? '¡Excelente! Queremos darte la mejor bienvenida. Estoy autorizado para darte un **Descuento de Cierre Inmediato del 10%** en el total de tu servicio si reservas hoy. ¿Deseas que lo aplique en tu cotización ahora mismo?'
+            : 'Great! We want to give you the warmest welcome. I am authorized to apply an **Immediate 10% Closing Discount** to your total service if you book today. Would you like me to apply it to your proposal right now?';
+        }
+      } else if (query.includes('si') || query.includes('sí') || query.includes('yes') || query.includes('ok') || query.includes('claro') || query.includes('aplica') || query.includes('apply') || query.includes('sure') || query.includes('perfecto') || query.includes('perfect') || query.includes('bueno')) {
+        const hasOffer = chatMessages.some(m => m.text.includes('10%'));
+        if (hasOffer && negotiatedDiscountPercent === 0) {
+          setNegotiatedDiscountPercent(10);
+          reply = isEs
+            ? '¡Descuento de Cierre IA del 10% Aplicado! 🎉 He actualizado los precios de tu cotización en el cuadro resumen de arriba. Ya puedes firmar digitalmente para confirmar con la tarifa rebajada.'
+            : '10% IA Closing Discount Applied! 🎉 I have updated your proposal pricing in the summary box above. You can now digitally sign to confirm with the reduced rate.';
+        } else if (negotiatedDiscountPercent > 0) {
+          reply = isEs
+            ? `¡El descuento de cierre del ${negotiatedDiscountPercent}% ya está activo en tu cotización!`
+            : `The ${negotiatedDiscountPercent}% closing discount is already active on your quote!`;
+        } else {
+          reply = isEs
+            ? '¿Te gustaría que aplique el descuento especial de bienvenida del 10% en tu cotización?'
+            : 'Would you like me to apply the special 10% welcome discount to your proposal?';
+        }
+      } else if (query.includes('tiempo') || query.includes('tarda') || query.includes('time') || query.includes('how long') || query.includes('horas') || query.includes('hours')) {
+        reply = isEs
+          ? `Para este servicio de tipo ${job.service_type}, estimamos un rango de labor eficiente. Puedes ver el detalle del espacio cotizado arriba en los "Detalles del Espacio".`
+          : `For this ${job.service_type} service, we estimate an efficient labor timeframe. You can see the space specs detailed above in the "Space Details" section.`;
+      } else if (query.includes('garantia') || query.includes('garantía') || query.includes('seguro') || query.includes('insurance') || query.includes('guarantee') || query.includes('safe')) {
+        reply = isEs
+          ? '¡Totalmente seguro! Todos nuestros servicios cuentan con garantía de satisfacción del 100%. Si algo no queda impecable, regresamos sin costo en menos de 24 horas.'
+          : 'Absolutely safe! All our services come with a 100% satisfaction guarantee. If anything is not spotless, we will come back to fix it for free within 24 hours.';
+      } else {
+        reply = isEs
+          ? 'Entendido. Si tienes alguna duda sobre el alcance del servicio, los horarios disponibles, o deseas negociar una tarifa especial, cuéntame y lo resolvemos de inmediato.'
+          : 'Understood. If you have any questions about the service scope, available timeslots, or wish to negotiate a special rate, let me know and we will sort it out instantly.';
+      }
+
+      setChatMessages(prev => [...prev, { sender: 'closer', text: reply, time: timeNow }]);
+    }, 1200);
   };
 
   // Helper translations shortcuts
@@ -852,6 +932,12 @@ export function PublicQuoteProposal({ quoteId }) {
                       <span className="text-white font-mono">+{fmt$(priceCalculations.addonsCost)}</span>
                     </div>
                   )}
+                  {negotiatedDiscountPercent > 0 && (
+                    <div className="flex justify-between text-[10px] text-green-400 font-bold border-t border-white/5 pt-2 mt-2">
+                      <span>🤖 DESCUENTO IA CLOSE (-{negotiatedDiscountPercent}%):</span>
+                      <span className="font-mono">-{fmt$(Math.round((priceCalculations.subtotal + priceCalculations.addonsCost) * (negotiatedDiscountPercent / 100)))}</span>
+                    </div>
+                  )}
                 </div>
 
                 <div className="space-y-2.5">
@@ -879,6 +965,64 @@ export function PublicQuoteProposal({ quoteId }) {
                     <TrendingUp className="w-4 h-4 text-emerald-400 flex-shrink-0 animate-bounce" />
                   </div>
                 )}
+              </div>
+
+              {/* AI Negotiator Chatbot Card */}
+              <div className="g p-5 bg-gradient-to-br from-slate-950 via-zinc-900 to-black border border-white/5 rounded-3xl shadow-xl space-y-3 relative overflow-hidden no-print">
+                <div className="absolute top-0 right-0 w-16 h-16 bg-[#F5C518]/5 rounded-full blur-2xl pointer-events-none"></div>
+                <div className="flex items-center justify-between border-b border-white/5 pb-2">
+                  <div className="flex items-center gap-2">
+                    <span className="relative flex h-2 w-2">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                    </span>
+                    <h4 className="text-[10px] font-black text-white uppercase tracking-widest flex items-center gap-1">
+                      <Sparkles className="w-3.5 h-3.5 text-[#F5C518]" />
+                      <span>AI Sales Closer</span>
+                    </h4>
+                  </div>
+                  <span className="text-[6.5px] font-black px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 uppercase tracking-widest">Autopilot Active</span>
+                </div>
+
+                {/* Messages Box */}
+                <div className="space-y-2.5 max-h-[160px] overflow-y-auto pr-1 text-[9px] scrollbar-thin" style={{ scrollbarWidth: 'none' }}>
+                  {chatMessages.map((msg, idx) => (
+                    <div key={idx} className={`flex flex-col ${msg.sender === 'user' ? 'items-end' : 'items-start'}`}>
+                      <div className={`p-3 rounded-2xl max-w-[85%] leading-relaxed ${
+                        msg.sender === 'user' 
+                          ? 'bg-[#F5C518]/10 text-white border border-[#F5C518]/25 rounded-tr-none' 
+                          : 'bg-white/[0.03] text-slate-300 border border-white/5 rounded-tl-none'
+                      }`}>
+                        {msg.text}
+                      </div>
+                      <span className="text-[6px] text-slate-600 font-bold uppercase tracking-wider mt-0.5 px-1">{msg.time}</span>
+                    </div>
+                  ))}
+                  {isTyping && (
+                    <div className="flex gap-1 items-center pl-2 py-1">
+                      <span className="w-1.5 h-1.5 bg-slate-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                      <span className="w-1.5 h-1.5 bg-slate-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                      <span className="w-1.5 h-1.5 bg-slate-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                    </div>
+                  )}
+                </div>
+
+                {/* Input Area */}
+                <form onSubmit={handleSendMessage} className="flex gap-2 border-t border-white/5 pt-2">
+                  <input
+                    type="text"
+                    value={inputVal}
+                    onChange={(e) => setInputVal(e.target.value)}
+                    placeholder={lang === 'es' ? 'Pregunta por servicios o negociar...' : 'Ask about services or negotiate...'}
+                    className="flex-1 bg-black/60 border border-white/10 rounded-xl px-3 py-2 text-[9px] text-white focus:outline-none focus:border-[#F5C518]/50 placeholder-slate-700 uppercase font-semibold"
+                  />
+                  <button
+                    type="submit"
+                    className="px-3 bg-gradient-to-r from-amber-500 to-[#F5C518] hover:from-amber-600 hover:to-[#E5B508] text-black font-black uppercase text-[8px] tracking-wider rounded-xl active:scale-95 transition-all shadow-md flex items-center justify-center cursor-pointer"
+                  >
+                    Send
+                  </button>
+                </form>
               </div>
 
               {/* SIGNATURE & PAYMENT SECTION CARD */}
