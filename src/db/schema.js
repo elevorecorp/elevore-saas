@@ -1,4 +1,10 @@
-import { pgTable, uuid, text, timestamp, numeric, jsonb, integer } from "drizzle-orm/pg-core";
+import { pgTable, uuid, text, timestamp, numeric, jsonb, integer, date, customType } from "drizzle-orm/pg-core";
+
+const pgVector = customType({
+  dataType() {
+    return "vector(768)";
+  },
+});
 
 export const tenants = pgTable("tenants", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -67,6 +73,8 @@ export const staffProfiles = pgTable("staff_profiles", {
   totalEarned: numeric("total_earned", { precision: 10, scale: 2 }).default("0.00"),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   staffEmail: text("staff_email"),
+  phone: text("phone"),
+  payoutPct: numeric("payout_pct").default("40"),
 });
 
 export const clients = pgTable("clients", {
@@ -77,6 +85,8 @@ export const clients = pgTable("clients", {
   email: text("email"),
   address: text("address"),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  birthday: date("birthday"),
+  embedding: pgVector("embedding"),
 });
 
 export const elevoreMissions = pgTable("elevore_missions", {
@@ -97,6 +107,7 @@ export const elevoreMissions = pgTable("elevore_missions", {
   checkOutTime: text("check_out_time"),
   finalSignature: text("final_signature"),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  embedding: pgVector("embedding"),
 });
 
 export const weeklyAudits = pgTable("weekly_audits", {
@@ -107,5 +118,36 @@ export const weeklyAudits = pgTable("weekly_audits", {
   totalRevenue: numeric("total_revenue").default("0.00"),
   jobsCompleted: integer("jobs_completed").default(0),
   milesSaved: numeric("miles_saved").default("0.00"),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const crewLocations = pgTable("crew_locations", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  tenantId: uuid("tenant_id").references(() => tenants.id, { onDelete: "cascade" }).notNull(),
+  staffId: uuid("staff_id").references(() => staffProfiles.id, { onDelete: "cascade" }).notNull().unique(),
+  lat: numeric("lat", { precision: 9, scale: 6 }).notNull(),
+  lng: numeric("lng", { precision: 9, scale: 6 }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const staffPayouts = pgTable("staff_payouts", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  tenantId: uuid("tenant_id").references(() => tenants.id, { onDelete: "cascade" }).notNull(),
+  staffId: uuid("staff_id").references(() => staffProfiles.id, { onDelete: "cascade" }).notNull(),
+  workerName: text("worker_name").notNull(),
+  amount: numeric("amount", { precision: 10, scale: 2 }).notNull(),
+  paymentMethod: text("payment_method").notNull().default("Zelle"),
+  referenceNote: text("reference_note"),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const auditLogs = pgTable("audit_logs", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  tableName: text("table_name").notNull(),
+  recordId: uuid("record_id").notNull(),
+  action: text("action").notNull(),
+  oldData: jsonb("old_data"),
+  newData: jsonb("new_data"),
+  changedBy: uuid("changed_by"),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });

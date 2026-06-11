@@ -17,7 +17,7 @@ import { generateInvoiceReceiptPDF, generateQuotePDF } from './utils/pdfGenerato
 // ⚙️ FEATURE FLAGS
 // Disable unstable or incomplete AI features for production release
 // =====================================================================
-const ENABLE_AI = true;
+const ENABLE_AI = false;
 // 🌟 DYNAMIC ICON ENGINE
 // Maps string names like "arrow-left" to high-performance React Icons
 // =====================================================================

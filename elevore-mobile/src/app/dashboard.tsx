@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, Alert, ActivityIndicator, ScrollView, Modal, Linking, Switch } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, Alert, ActivityIndicator, ScrollView, Modal, Linking, Switch, Platform } from 'react-native';
 import { supabase } from '../supabase';
 import { router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as Location from 'expo-location';
 
 export default function DashboardScreen() {
   const [session, setSession] = useState<any>(null);
@@ -18,6 +19,9 @@ export default function DashboardScreen() {
   // Wallet state
   const [walletBalance, setWalletBalance] = useState(0);
   const [totalEarned, setTotalEarned] = useState(0);
+
+  // Payout history state
+  const [payouts, setPayouts] = useState<any[]>([]);
   
   // Modal detail state
   const [selectedJob, setSelectedJob] = useState<any>(null);
@@ -75,6 +79,7 @@ export default function DashboardScreen() {
           
           // Set wallet balance from database profile directly
           await refreshStaffBalance(staffProfile.id);
+          await fetchStaffPayouts(staffProfile.id);
         } else {
           // No session or profile - redirect to login
           router.replace('/');
@@ -96,21 +101,48 @@ export default function DashboardScreen() {
     loadUserData();
   }, []);
 
-  // Simulated GPS Broadcaster when onDuty is active
+  // Real GPS Broadcaster when onDuty is active using expo-location
   useEffect(() => {
     if (!onDuty || !profile?.id || !profile?.tenant_id) return;
 
     let timer: NodeJS.Timeout;
-    
-    // Orlando coordinates base
-    let lat = 28.5383 + (Math.random() - 0.5) * 0.01;
-    let lng = -81.3792 + (Math.random() - 0.5) * 0.01;
+    let permissionGranted = false;
+
+    async function setupLocation() {
+      try {
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        if (status !== 'granted') {
+          console.warn('[GPS Broadcaster]: Location permission denied.');
+          Alert.alert(
+            'Permiso de Ubicación Requerido',
+            'Para transmitir tu posición a los clientes durante el turno, por favor habilita el permiso de ubicación.'
+          );
+          return;
+        }
+        permissionGranted = true;
+        // Broadcast immediately upon permission grant
+        await broadcastLocation();
+      } catch (e) {
+        console.warn('[GPS Broadcaster]: Permission error:', e);
+      }
+    }
 
     async function broadcastLocation() {
       try {
-        // Increment/move coordinates slightly to simulate driving
-        lat += (Math.random() - 0.5) * 0.0008;
-        lng += (Math.random() - 0.5) * 0.0008;
+        let lat = 0;
+        let lng = 0;
+
+        if (permissionGranted) {
+          const loc = await Location.getCurrentPositionAsync({
+            accuracy: Location.Accuracy.Balanced,
+          });
+          lat = loc.coords.latitude;
+          lng = loc.coords.longitude;
+        } else {
+          // Fallback to Orlando simulated coordinates if permission is denied or loading
+          lat = 28.5383 + (Math.random() - 0.5) * 0.01;
+          lng = -81.3792 + (Math.random() - 0.5) * 0.01;
+        }
 
         const { error } = await supabase
           .from('crew_locations')
@@ -125,15 +157,14 @@ export default function DashboardScreen() {
         if (error) {
           console.warn('[GPS Broadcaster]: Upsert failed:', error.message);
         } else {
-          console.log('[GPS Broadcaster]: Broadcasted coordinates:', lat, lng);
+          console.log('[GPS Broadcaster]: Broadcasted real-time coordinates:', lat, lng);
         }
       } catch (err) {
         console.warn('[GPS Broadcaster]: Error broadcasting:', err);
       }
     }
 
-    // Run immediately
-    broadcastLocation();
+    setupLocation();
 
     // Loop every 15 seconds
     timer = setInterval(broadcastLocation, 15000);
@@ -157,6 +188,21 @@ export default function DashboardScreen() {
       }
     } catch (err) {
       console.warn('Could not refresh staff balance:', err);
+    }
+  };
+
+  const fetchStaffPayouts = async (staffId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('staff_payouts')
+        .select('*')
+        .eq('staff_id', staffId)
+        .order('created_at', { ascending: false })
+        .limit(5);
+      if (error) throw error;
+      if (data) setPayouts(data);
+    } catch (err) {
+      console.warn('Could not fetch staff payouts:', err);
     }
   };
 
@@ -203,16 +249,32 @@ export default function DashboardScreen() {
             setLoading(true);
             try {
               if (profile && profile.id) {
-                // Update balance to 0 in Supabase staff_profiles
-                const { error } = await supabase
+                // 1. Create a real payout record in staff_payouts
+                const newPayoutRecord = {
+                  tenant_id: profile.tenant_id,
+                  staff_id: profile.id,
+                  worker_name: profile.name,
+                  amount: walletBalance,
+                  payment_method: 'Zelle',
+                  reference_note: 'Retiro solicitado desde la app móvil'
+                };
+                
+                const { error: payoutErr } = await supabase
+                  .from('staff_payouts')
+                  .insert([newPayoutRecord]);
+                
+                if (payoutErr) throw payoutErr;
+
+                // 2. Update balance to 0 in Supabase staff_profiles
+                const { error: profileErr } = await supabase
                   .from('staff_profiles')
                   .update({ wallet_balance: 0 })
                   .eq('id', profile.id);
                 
-                if (error) throw error;
+                if (profileErr) throw profileErr;
                 
-                // Add a mock payout record or log
                 await refreshStaffBalance(profile.id);
+                await fetchStaffPayouts(profile.id);
                 Alert.alert('¡Éxito!', 'Tu transferencia Zelle se está procesando. El dinero llegará en unos minutos.');
               }
             } catch (err) {
@@ -225,6 +287,88 @@ export default function DashboardScreen() {
         }
       ]
     );
+  };
+
+  const handleWhatsAppRouteAlert = async (job: any) => {
+    const phone = (job.client_phone || '').replace(/\D/g, '');
+    if (!phone) {
+      Alert.alert('Error', 'El cliente no tiene un número de teléfono registrado.');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      // 1. Fetch tenant_settings for the custom route template
+      const { data: settings } = await supabase
+        .from('tenant_settings')
+        .select('wa_template_route')
+        .eq('tenant_id', job.tenant_id)
+        .maybeSingle();
+
+      const baseTemplate = settings?.wa_template_route || 
+        'Hola {CLIENT_NAME}! ✨ El equipo de ELEVORE va en camino a tu ubicación. Sigue nuestra ruta en tiempo real aquí: {PORTAL_URL}';
+
+      // 2. Populate template fields
+      const portalUrl = `https://elevore-saas.vercel.app/?jid=${job.id}`;
+      const populatedText = baseTemplate
+        .replace(/{CLIENT_NAME}/g, job.client_name || 'Cliente')
+        .replace(/{SERVICE_TYPE}/g, job.service_type || 'Limpieza')
+        .replace(/{DATE}/g, job.scheduled_date || 'Hoy')
+        .replace(/{TEAM}/g, job.team_assigned || 'Cuadrilla')
+        .replace(/{ADDRESS}/g, job.address || 'Ubicación')
+        .replace(/{PORTAL_URL}/g, portalUrl)
+        .replace(/{JOB_ID}/g, job.id || '');
+
+      // 3. Trigger en_route status change in database
+      await supabase
+        .from('elevore_missions')
+        .update({ 
+          specs: { 
+            ...(job.specs || {}), 
+            en_route: true, 
+            en_route_at: new Date().toISOString() 
+          } 
+        })
+        .eq('id', job.id);
+
+      // Update local state if this is the active modal job
+      if (selectedJob && selectedJob.id === job.id) {
+        setSelectedJob((prev: any) => ({
+          ...prev,
+          specs: {
+            ...(prev?.specs || {}),
+            en_route: true,
+            en_route_at: new Date().toISOString()
+          }
+        }));
+      }
+      setJobs(prev => prev.map(j => j.id === job.id ? {
+        ...j,
+        specs: {
+          ...(j.specs || {}),
+          en_route: true,
+          en_route_at: new Date().toISOString()
+        }
+      } : j));
+
+      // 4. Launch native WhatsApp URL or wa.me fallback
+      const cleanPhone = phone.length === 10 ? '1' + phone : phone;
+      const url = `whatsapp://send?phone=${cleanPhone}&text=${encodeURIComponent(populatedText)}`;
+      const fallbackUrl = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(populatedText)}`;
+      
+      Linking.canOpenURL(url).then(supported => {
+        if (supported) {
+          Linking.openURL(url);
+        } else {
+          Linking.openURL(fallbackUrl);
+        }
+      });
+    } catch (err) {
+      console.error('Error sending WhatsApp route alert:', err);
+      Alert.alert('Error', 'No se pudo generar la alerta de WhatsApp.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleOpenMap = (address: string) => {
@@ -451,6 +595,26 @@ export default function DashboardScreen() {
             >
               <Text style={styles.cashoutBtnText}>💸 RETIRO A ZELLE</Text>
             </TouchableOpacity>
+
+            {/* Recent Payouts Ledger list */}
+            {payouts.length > 0 && (
+              <View style={styles.payoutsLedger}>
+                <Text style={styles.ledgerHeader}>HISTORIAL DE RETIROS (ÚLTIMOS 5)</Text>
+                {payouts.map((item) => (
+                  <View key={item.id} style={styles.ledgerRow}>
+                    <View>
+                      <Text style={styles.ledgerDate}>
+                        {new Date(item.created_at).toLocaleDateString()}
+                      </Text>
+                      <Text style={styles.ledgerRef} numberOfLines={1}>
+                        {item.reference_note || 'Retiro Zelle'}
+                      </Text>
+                    </View>
+                    <Text style={styles.ledgerAmount}>-${Number(item.amount).toFixed(2)}</Text>
+                  </View>
+                ))}
+              </View>
+            )}
           </View>
         )}
 
@@ -510,6 +674,16 @@ export default function DashboardScreen() {
                     onPress={() => handleOpenMap(selectedJob.address)}
                   >
                     <Text style={styles.mapBtnText}>📍 ABRIR EN MAPAS NATIVOS</Text>
+                  </TouchableOpacity>
+                </View>
+
+                <View style={styles.modalInfoCard}>
+                  <Text style={styles.modalLabel}>NOTIFICACIÓN AL CLIENTE</Text>
+                  <TouchableOpacity 
+                    style={styles.waAlertBtn}
+                    onPress={() => handleWhatsAppRouteAlert(selectedJob)}
+                  >
+                    <Text style={styles.waAlertBtnText}>📲 AVISAR "EN CAMINO" POR WHATSAPP</Text>
                   </TouchableOpacity>
                 </View>
 
@@ -1047,5 +1221,59 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     textAlign: 'center',
   },
+  payoutsLedger: {
+    marginTop: 20,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(16, 185, 129, 0.1)',
+    paddingTop: 15,
+  },
+  ledgerHeader: {
+    color: '#64748B',
+    fontSize: 8,
+    fontWeight: '900',
+    letterSpacing: 1,
+    marginBottom: 10,
+  },
+  ledgerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+    backgroundColor: 'rgba(255, 255, 255, 0.02)',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  ledgerDate: {
+    color: '#E2E8F0',
+    fontSize: 9,
+    fontWeight: '700',
+  },
+  ledgerRef: {
+    color: '#64748B',
+    fontSize: 7,
+    fontWeight: '600',
+    marginTop: 1,
+    maxWidth: 180,
+  },
+  ledgerAmount: {
+    color: '#ef4444',
+    fontSize: 10,
+    fontWeight: '900',
+  },
+  waAlertBtn: {
+    backgroundColor: 'rgba(37, 211, 102, 0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(37, 211, 102, 0.3)',
+    padding: 12,
+    borderRadius: 10,
+    alignItems: 'center',
+    marginTop: 12,
+  },
+  waAlertBtnText: {
+    color: '#25D366',
+    fontSize: 10,
+    fontWeight: '900',
+    letterSpacing: 0.5,
+  },
 });
-
