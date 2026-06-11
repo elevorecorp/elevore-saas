@@ -96,6 +96,53 @@ export default function DashboardScreen() {
     loadUserData();
   }, []);
 
+  // Simulated GPS Broadcaster when onDuty is active
+  useEffect(() => {
+    if (!onDuty || !profile?.id || !profile?.tenant_id) return;
+
+    let timer: NodeJS.Timeout;
+    
+    // Orlando coordinates base
+    let lat = 28.5383 + (Math.random() - 0.5) * 0.01;
+    let lng = -81.3792 + (Math.random() - 0.5) * 0.01;
+
+    async function broadcastLocation() {
+      try {
+        // Increment/move coordinates slightly to simulate driving
+        lat += (Math.random() - 0.5) * 0.0008;
+        lng += (Math.random() - 0.5) * 0.0008;
+
+        const { error } = await supabase
+          .from('crew_locations')
+          .upsert({
+            staff_id: profile.id,
+            tenant_id: profile.tenant_id,
+            lat: Number(lat.toFixed(6)),
+            lng: Number(lng.toFixed(6)),
+            updated_at: new Date().toISOString()
+          }, { onConflict: 'staff_id' });
+
+        if (error) {
+          console.warn('[GPS Broadcaster]: Upsert failed:', error.message);
+        } else {
+          console.log('[GPS Broadcaster]: Broadcasted coordinates:', lat, lng);
+        }
+      } catch (err) {
+        console.warn('[GPS Broadcaster]: Error broadcasting:', err);
+      }
+    }
+
+    // Run immediately
+    broadcastLocation();
+
+    // Loop every 15 seconds
+    timer = setInterval(broadcastLocation, 15000);
+
+    return () => {
+      clearInterval(timer);
+    };
+  }, [onDuty, profile?.id, profile?.tenant_id]);
+
   const refreshStaffBalance = async (staffId: string) => {
     try {
       const { data: latestProfile } = await supabase

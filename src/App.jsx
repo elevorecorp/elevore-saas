@@ -16858,6 +16858,31 @@ Instrucciones generales de formato:
                                 <p className="text-3xl font-black italic tracking-tighter text-white leading-none mt-1">{fmt$(bal)}</p>
                               </div>
                               <div className="flex gap-2">
+                                {(!job.team_assigned || job.team_assigned === '') && (
+                                  <button 
+                                    onClick={async () => {
+                                      tt('🤖 Despachando con IA...', 'blue');
+                                      try {
+                                        const res = await fetch(`/api/auto-dispatch?mission_id=${job.id}`, {
+                                          method: 'POST'
+                                        });
+                                        const data = await res.json();
+                                        if (data.success) {
+                                          tt(`✅ Asignado a: ${data.assignedWorker} (${data.distanceMeters ? data.distanceMeters + 'm' : 'Roster Fallback'})`, 'green');
+                                          refresh();
+                                        } else {
+                                          tt(`❌ Error: ${data.error}`, 'red');
+                                        }
+                                      } catch (err) {
+                                        tt('❌ Error de conexión al despachador.', 'red');
+                                      }
+                                    }} 
+                                    title="Auto-Dispatch with AI"
+                                    className="p-2.5 bg-amber-500/20 border border-amber-500/40 text-[#F5C518] rounded-xl hover:bg-amber-500 hover:text-black transition-all active:scale-95 animate-pulse"
+                                  >
+                                    <Icon name="cpu" className="w-4 h-4" />
+                                  </button>
+                                )}
                                 <button onClick={() => setChatJob(job)} className="p-2.5 bg-blue-900/35 border border-blue-500/10 text-blue-400 rounded-xl hover:bg-blue-600 hover:text-white transition-all"><Icon name="message-square" className="w-4 h-4" /></button>
                                 <button onClick={() => printInvoice(job)} className="p-2.5 bg-slate-800 text-[#F5C518] rounded-xl hover:scale-110 transition-all"><Icon name="file-text" className="w-4 h-4" /></button>
                                 <button onClick={() => {

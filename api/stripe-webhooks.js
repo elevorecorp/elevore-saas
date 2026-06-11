@@ -22,6 +22,21 @@ async function triggerInngestEvent(eventName, eventData) {
   }
 }
 
+async function triggerAutoDispatch(missionId, req) {
+  try {
+    const host = req.headers.host || process.env.VERCEL_URL || 'localhost:5173';
+    const protocol = host.includes('localhost') || host.includes('127.0.0.1') ? 'http' : 'https';
+    console.log(`[Webhook Trigger]: Fetching auto-dispatch for mission ${missionId} at ${protocol}://${host}`);
+    const response = await fetch(`${protocol}://${host}/api/auto-dispatch?mission_id=${missionId}`, {
+      method: 'POST'
+    });
+    const result = await response.json();
+    console.log('[Webhook Auto-Dispatch Trigger]: Result:', result);
+  } catch (err) {
+    console.error('[Webhook Auto-Dispatch Trigger]: Failed to call auto-dispatch endpoint:', err);
+  }
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method Not Allowed' });
@@ -137,6 +152,7 @@ export default async function handler(req, res) {
 
             console.log(`Mission ${mission_id} updated successfully.`);
             await triggerInngestEvent('elevore/mission.paid', { jobId: mission_id });
+            await triggerAutoDispatch(mission_id, req);
 
           } else {
             console.log(`Creating paid mission for customer ${client_name}...`);
@@ -165,6 +181,7 @@ export default async function handler(req, res) {
               console.log(`Paid mission created successfully with ID: ${inserted[0].id}`);
               // Trigger Google Review booster and background jobs
               await triggerInngestEvent('elevore/mission.paid', { jobId: inserted[0].id });
+              await triggerAutoDispatch(inserted[0].id, req);
             }
           }
         }

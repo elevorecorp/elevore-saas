@@ -457,7 +457,7 @@ export function PublicQuoteProposal({ quoteId }) {
     window.print();
   };
 
-  const handleSendMessage = (e) => {
+  const handleSendMessage = async (e) => {
     e.preventDefault();
     if (!inputVal.trim()) return;
 
@@ -465,58 +465,102 @@ export function PublicQuoteProposal({ quoteId }) {
     setInputVal('');
 
     const timeNow = new Date().toLocaleTimeString(lang === 'es' ? 'es-ES' : 'en-US', { hour: '2-digit', minute: '2-digit' });
-    const newMsgs = [...chatMessages, { sender: 'user', text: userText, time: timeNow }];
-    setChatMessages(newMsgs);
+    const updatedMessages = [...chatMessages, { sender: 'user', text: userText, time: timeNow }];
+    setChatMessages(updatedMessages);
     setIsTyping(true);
 
-    setTimeout(() => {
-      setIsTyping(false);
-      const query = userText.toLowerCase();
-      let reply = '';
-      const isEs = lang === 'es';
+    try {
+      const bizName = tenantSettings?.business_full_name || 'Elevore Premium Services';
+      
+      // Dynamic system instructions telling Gemini details about the job and pricing
+      const systemPrompt = `Eres el Agente IA de Cierre de Ventas y Negociación de ${bizName}. 
+Tu objetivo es ayudar al cliente ${job.client_name || 'Cliente'} a aprobar y confirmar su propuesta de servicio de "${job.service_type || 'Limpieza'}" en la dirección "${job.address}".
+El precio subtotal actual del servicio es de $${priceCalculations.subtotal} USD.
+El costo de servicios adicionales seleccionados es de $${priceCalculations.addonsCost} USD.
+El precio total actual es de $${priceCalculations.subtotal + priceCalculations.addonsCost} USD.
 
-      if (query.includes('descuento') || query.includes('caro') || query.includes('precio') || query.includes('rebaja') || query.includes('discount') || query.includes('price') || query.includes('expensive') || query.includes('cheaper') || query.includes('promo') || query.includes('oferta') || query.includes('offer')) {
-        if (negotiatedDiscountPercent > 0) {
-          reply = isEs
-            ? `¡Ya he aplicado un descuento de cierre del ${negotiatedDiscountPercent}% en tu cotización! Puedes firmar en el panel inferior para asegurar tu reserva antes de que expire.`
-            : `I have already applied a ${negotiatedDiscountPercent}% closing discount to your proposal! You can sign below to lock it in before it expires.`;
-        } else {
-          reply = isEs
-            ? '¡Excelente! Queremos darte la mejor bienvenida. Estoy autorizado para darte un **Descuento de Cierre Inmediato del 10%** en el total de tu servicio si reservas hoy. ¿Deseas que lo aplique en tu cotización ahora mismo?'
-            : 'Great! We want to give you the warmest welcome. I am authorized to apply an **Immediate 10% Closing Discount** to your total service if you book today. Would you like me to apply it to your proposal right now?';
-        }
-      } else if (query.includes('si') || query.includes('sí') || query.includes('yes') || query.includes('ok') || query.includes('claro') || query.includes('aplica') || query.includes('apply') || query.includes('sure') || query.includes('perfecto') || query.includes('perfect') || query.includes('bueno')) {
-        const hasOffer = chatMessages.some(m => m.text.includes('10%'));
-        if (hasOffer && negotiatedDiscountPercent === 0) {
-          setNegotiatedDiscountPercent(10);
-          reply = isEs
-            ? '¡Descuento de Cierre IA del 10% Aplicado! 🎉 He actualizado los precios de tu cotización en el cuadro resumen de arriba. Ya puedes firmar digitalmente para confirmar con la tarifa rebajada.'
-            : '10% IA Closing Discount Applied! 🎉 I have updated your proposal pricing in the summary box above. You can now digitally sign to confirm with the reduced rate.';
-        } else if (negotiatedDiscountPercent > 0) {
-          reply = isEs
-            ? `¡El descuento de cierre del ${negotiatedDiscountPercent}% ya está activo en tu cotización!`
-            : `The ${negotiatedDiscountPercent}% closing discount is already active on your quote!`;
-        } else {
-          reply = isEs
-            ? '¿Te gustaría que aplique el descuento especial de bienvenida del 10% en tu cotización?'
-            : 'Would you like me to apply the special 10% welcome discount to your proposal?';
-        }
-      } else if (query.includes('tiempo') || query.includes('tarda') || query.includes('time') || query.includes('how long') || query.includes('horas') || query.includes('hours')) {
-        reply = isEs
-          ? `Para este servicio de tipo ${job.service_type}, estimamos un rango de labor eficiente. Puedes ver el detalle del espacio cotizado arriba en los "Detalles del Espacio".`
-          : `For this ${job.service_type} service, we estimate an efficient labor timeframe. You can see the space specs detailed above in the "Space Details" section.`;
-      } else if (query.includes('garantia') || query.includes('garantía') || query.includes('seguro') || query.includes('insurance') || query.includes('guarantee') || query.includes('safe')) {
-        reply = isEs
-          ? '¡Totalmente seguro! Todos nuestros servicios cuentan con garantía de satisfacción del 100%. Si algo no queda impecable, regresamos sin costo en menos de 24 horas.'
-          : 'Absolutely safe! All our services come with a 100% satisfaction guarantee. If anything is not spotless, we will come back to fix it for free within 24 hours.';
-      } else {
-        reply = isEs
-          ? 'Entendido. Si tienes alguna duda sobre el alcance del servicio, los horarios disponibles, o deseas negociar una tarifa especial, cuéntame y lo resolvemos de inmediato.'
-          : 'Understood. If you have any questions about the service scope, available timeslots, or wish to negotiate a special rate, let me know and we will sort it out instantly.';
+Reglas de Negociación:
+1. Sé extremadamente educado, persuasivo, profesional y habla en español.
+2. Si el cliente duda del precio o te pide un descuento, una oferta o una rebaja, ofrécele un descuento especial de cierre inmediato del 10% por reservar hoy.
+3. Si el cliente acepta el descuento (o responde afirmativamente a la oferta del descuento), DEBES incluir exactamente la etiqueta "[APPLY_DISCOUNT: 10]" en tu respuesta. Esto es un disparador técnico interno.
+4. No menciones la etiqueta [APPLY_DISCOUNT: 10] explícitamente en tu habla normal con el cliente; simplemente añádela de forma discreta al final del texto.
+5. Si el descuento ya está activo (descuento actual: ${negotiatedDiscountPercent}%), recuérdale al cliente que ya cuenta con la mejor tarifa posible y motívalo a firmar en la parte inferior de la página para asegurar su reserva.
+6. Responde dudas generales:
+   - Garantía de Satisfacción: Reasegura al cliente que ofrecemos garantía del 100%. Si algo no queda impecable, regresamos gratis en 24 horas.
+   - Seguridad: Todo nuestro personal está asegurado y ha pasado filtros estrictos de antecedentes.
+   - Duración: Calculamos el tiempo necesario en base a las habitaciones y pies cuadrados.`;
+
+      // Map roles for the Gemini endpoint handler
+      const apiMessages = [
+        { role: 'system', content: systemPrompt },
+        ...updatedMessages.map(msg => ({
+          role: msg.sender === 'closer' ? 'assistant' : 'user',
+          content: msg.text
+        }))
+      ];
+
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-gemini-key': localStorage.getItem('elevore_gemini_key') || ''
+        },
+        body: JSON.stringify({
+          messages: apiMessages,
+          model: 'gemini-2.5-flash'
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Error al conectar con la IA de cierre.');
       }
 
-      setChatMessages(prev => [...prev, { sender: 'closer', text: reply, time: timeNow }]);
-    }, 1200);
+      const resData = await response.json();
+      let replyText = resData.text || '';
+
+      // Check if the AI applied the discount trigger
+      if (replyText.includes('[APPLY_DISCOUNT: 10]')) {
+        // Strip the technical trigger from text displayed in the chat bubble
+        replyText = replyText.replace(/\[APPLY_DISCOUNT:\s*10\]/g, '').trim();
+        
+        if (negotiatedDiscountPercent === 0) {
+          setNegotiatedDiscountPercent(10);
+          
+          // Persist the updated specs & discount in Supabase
+          try {
+            const updatedSpecs = {
+              ...(job.specs || {}),
+              selected_tier: selectedTier,
+              accepted_addons: selectedAddons,
+              ai_discount_applied: true,
+              discount_percent: 10
+            };
+            
+            const newTotalPrice = Math.round((priceCalculations.subtotal + priceCalculations.addonsCost) * 0.90);
+            
+            await sb.from('elevore_missions')
+              .update({
+                total_price: newTotalPrice,
+                specs: updatedSpecs
+              })
+              .eq('id', quoteId);
+          } catch (dbErr) {
+            console.error('Failed to sync discount to Supabase:', dbErr);
+          }
+        }
+      }
+
+      setIsTyping(false);
+      setChatMessages(prev => [...prev, { sender: 'closer', text: replyText, time: timeNow }]);
+
+    } catch (err) {
+      console.error('AI Sales Closer chat exception:', err);
+      setIsTyping(false);
+      const fallbackReply = lang === 'es'
+        ? 'Entendido. Por favor, si tienes alguna duda adicional o requieres programar directamente, contáctanos y con gusto te asistiremos.'
+        : 'Understood. Please let us know if you have any questions or want to lock in your date directly.';
+      setChatMessages(prev => [...prev, { sender: 'closer', text: fallbackReply, time: timeNow }]);
+    }
   };
 
   // Helper translations shortcuts
