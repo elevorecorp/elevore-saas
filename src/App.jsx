@@ -2431,7 +2431,7 @@ function Portal({ cjid }) {
           .eq('staff_id', assignedStaff.id)
           .maybeSingle();
         if (data) {
-          setCrewLocation({ lat: Number(data.lat), lng: Number(data.lng) });
+          setCrewLocation({ lat: Number(data.lat), lng: Number(data.lng), updatedAt: data.updated_at });
         }
       } catch (err) {
         console.warn("Error fetching initial crew location:", err);
@@ -2448,7 +2448,11 @@ function Portal({ cjid }) {
         filter: `staff_id=eq.${assignedStaff.id}`
       }, (payload) => {
         if (payload.new && payload.new.lat && payload.new.lng) {
-          setCrewLocation({ lat: Number(payload.new.lat), lng: Number(payload.new.lng) });
+          setCrewLocation({ 
+            lat: Number(payload.new.lat), 
+            lng: Number(payload.new.lng), 
+            updatedAt: payload.new.updated_at || new Date().toISOString() 
+          });
         }
       })
       .subscribe();
@@ -2992,9 +2996,16 @@ function Portal({ cjid }) {
                     {tr(lang, 'routeMap')}
                   </p>
                   {job.specs?.en_route && (
-                    <span className="text-[7px] bg-emerald-500/10 text-emerald-400 font-bold px-2 py-0.5 rounded border border-emerald-500/20 uppercase tracking-widest animate-pulse">
-                      Vehículo en Camino 📡
-                    </span>
+                    <div className="flex flex-col items-end">
+                      <span className="text-[7px] bg-emerald-500/10 text-emerald-400 font-bold px-2 py-0.5 rounded border border-emerald-500/20 uppercase tracking-widest animate-pulse">
+                        Vehículo en Camino 📡
+                      </span>
+                      {crewLocation?.updatedAt && (
+                        <span className="text-[6px] text-slate-500 uppercase font-black mt-1">
+                          {lang === 'es' ? 'GPS Actualizado: ' : 'GPS Updated: '}{new Date(crewLocation.updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                        </span>
+                      )}
+                    </div>
                   )}
                 </div>
                 <MapComponent 
@@ -8979,7 +8990,7 @@ function LandingPage({ onLogin, onSignup, prefLang, setPrefLang }) {
 // App Component
 export default function App() {
   const urlP = new URLSearchParams(window.location.search);
-  const cjid = urlP.get('mision');
+  const cjid = urlP.get('mision') || urlP.get('jid');
   const refCode = urlP.get('ref');
   const quoteId = urlP.get('propuesta') || urlP.get('quote') || urlP.get('cotizacion');
   const showBook = urlP.get('book') === 'true' || urlP.get('reservar') === 'true';
