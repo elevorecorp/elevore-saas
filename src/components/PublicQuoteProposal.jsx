@@ -147,6 +147,11 @@ export function PublicQuoteProposal({ quoteId }) {
   const [chatMessages, setChatMessages] = useState([]);
   const [inputVal, setInputVal] = useState('');
   const [isTyping, setIsTyping] = useState(false);
+  const messagesEndRef = useRef(null);
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [chatMessages]);
 
   // Fetch initial proposal data
   useEffect(() => {
@@ -1049,6 +1054,7 @@ Reglas de Negociación:
                       <span className="w-1.5 h-1.5 bg-slate-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
                     </div>
                   )}
+                  <div ref={messagesEndRef} />
                 </div>
 
                 {/* Input Area */}
