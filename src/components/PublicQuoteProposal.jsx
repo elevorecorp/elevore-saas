@@ -688,7 +688,7 @@ Reglas de Negociación:
             <span className="text-xl font-bold font-serif italic text-black">E</span>
           </div>
           <div>
-            <h1 className="text-xs font-black uppercase tracking-widest text-[#F5C518] font-display">{tenantSettings?.business_name || tenantName}</h1>
+            <h1 className="text-xs font-black uppercase tracking-widest text-[#F5C518] font-display">{tenantSettings?.business_name || 'Elevore'}</h1>
             <p className="text-[7.5px] text-slate-400 uppercase font-bold tracking-wider">Premium Client Proposal Portal</p>
           </div>
         </div>
