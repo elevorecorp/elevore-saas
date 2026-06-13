@@ -444,6 +444,77 @@ export default function DashboardScreen() {
     router.replace('/');
   }
 
+  const gamificationStats = React.useMemo(() => {
+    const completedJobs = jobs.filter(j => j.status === 'completed' || j.status === 'paid');
+    const completedCount = completedJobs.length;
+    
+    // Calculate Average Rating
+    const ratedJobs = completedJobs.filter(j => typeof j.client_rating === 'number' && j.client_rating > 0);
+    const avgRating = ratedJobs.length > 0 
+      ? Number((ratedJobs.reduce((sum, j) => sum + j.client_rating, 0) / ratedJobs.length).toFixed(1))
+      : 5.0;
+
+    // Calculate Active Streak (consecutive completed missions with no incident note)
+    const sortedCompleted = [...completedJobs].sort((a, b) => new Date(b.scheduled_date || b.created_at).getTime() - new Date(a.scheduled_date || a.created_at).getTime());
+    let activeStreak = 0;
+    for (const job of sortedCompleted) {
+      if (!job.incident_note) {
+        activeStreak++;
+      } else {
+        break;
+      }
+    }
+
+    // Calculate XP
+    const xp = (completedCount * 150) + Math.round(avgRating * 100);
+
+    // Determine Rank details
+    let rank = 'Bronce';
+    let color = '#cd7f32';
+    let bonusPct = 0;
+    let nextRank = 'Plata';
+    let nextRankXp = 600;
+    let progress = xp / 600;
+
+    if (xp >= 4500) {
+      rank = 'Platino';
+      color = '#38bdf8';
+      bonusPct = 8;
+      nextRank = 'Nivel Máximo 🚀';
+      nextRankXp = 4500;
+      progress = 1.0;
+    } else if (xp >= 2000) {
+      rank = 'Oro';
+      color = '#F5C518';
+      bonusPct = 5;
+      nextRank = 'Platino';
+      nextRankXp = 4500;
+      progress = (xp - 2000) / 2500;
+    } else if (xp >= 600) {
+      rank = 'Plata';
+      color = '#e2e8f0';
+      bonusPct = 2;
+      nextRank = 'Oro';
+      nextRankXp = 2000;
+      progress = (xp - 600) / 1400;
+    }
+
+    progress = Math.min(1.0, Math.max(0.0, progress));
+
+    return {
+      completedCount,
+      avgRating,
+      activeStreak,
+      xp,
+      rank,
+      color,
+      bonusPct,
+      nextRank,
+      nextRankXp,
+      progress
+    };
+  }, [jobs]);
+
   const renderJobCard = ({ item }: { item: any }) => {
     const isCompleted = item.status === 'completed' || item.status === 'paid';
     const isInProgress = item.status === 'in_progress';
@@ -546,6 +617,66 @@ export default function DashboardScreen() {
             />
           </View>
         </View>
+
+        {/* Gamification HUD Card */}
+        {profile?.role === 'staff' && (
+          <View style={[styles.gamifyCard, { borderColor: gamificationStats.color + '33' }]}>
+            <View style={styles.gamifyHeader}>
+              <View>
+                <Text style={styles.gamifyTitle}>RANGO OPERATIVO</Text>
+                <Text style={[styles.gamifyRankText, { color: gamificationStats.color }]}>
+                  ✨ {gamificationStats.rank.toUpperCase()}
+                </Text>
+              </View>
+              <View style={styles.streakContainer}>
+                <Text style={styles.streakFlame}>🔥</Text>
+                <View>
+                  <Text style={styles.streakCount}>{gamificationStats.activeStreak}</Text>
+                  <Text style={styles.streakLabel}>RACHA PERFECTA</Text>
+                </View>
+              </View>
+            </View>
+
+            {/* XP progress bar */}
+            <View style={styles.xpProgressWrapper}>
+              <View style={styles.xpRow}>
+                <Text style={styles.xpText}>{gamificationStats.xp} XP acumulados</Text>
+                <Text style={styles.xpNextText}>
+                  {gamificationStats.xp >= 4500 ? 'Rango Máximo' : `Siguiente Rango: ${gamificationStats.nextRankXp} XP`}
+                </Text>
+              </View>
+              <View style={styles.progressBarBg}>
+                <View 
+                  style={[
+                    styles.progressBarFill, 
+                    { 
+                      width: `${Math.round(gamificationStats.progress * 100)}%`,
+                      backgroundColor: gamificationStats.color
+                    }
+                  ]} 
+                />
+              </View>
+            </View>
+
+            {/* Quality stats row */}
+            <View style={styles.statsRow}>
+              <View style={styles.miniStat}>
+                <Text style={styles.miniStatVal}>{gamificationStats.completedCount}</Text>
+                <Text style={styles.miniStatLabel}>MISIONES</Text>
+              </View>
+              <View style={styles.miniStatSeparator} />
+              <View style={styles.miniStat}>
+                <Text style={styles.miniStatVal}>⭐ {gamificationStats.avgRating}</Text>
+                <Text style={styles.miniStatLabel}>RATING PROMEDIO</Text>
+              </View>
+              <View style={styles.miniStatSeparator} />
+              <View style={styles.miniStat}>
+                <Text style={[styles.miniStatVal, { color: '#10b981' }]}>+{gamificationStats.bonusPct}%</Text>
+                <Text style={styles.miniStatLabel}>BONO COMISIÓN</Text>
+              </View>
+            </View>
+          </View>
+        )}
 
         {/* Holographic Wallet Card */}
         {profile?.role === 'staff' && (
@@ -1248,5 +1379,115 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: '900',
     letterSpacing: 0.5,
+  },
+  gamifyCard: {
+    backgroundColor: 'rgba(15, 23, 42, 0.45)',
+    borderWidth: 1,
+    borderRadius: 20,
+    padding: 16,
+    marginBottom: 20,
+  },
+  gamifyHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  gamifyTitle: {
+    color: '#64748B',
+    fontSize: 8,
+    fontWeight: '900',
+    letterSpacing: 1.5,
+  },
+  gamifyRankText: {
+    fontSize: 20,
+    fontWeight: '900',
+    marginTop: 4,
+    letterSpacing: 1,
+  },
+  streakContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(239, 68, 68, 0.25)',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 12,
+  },
+  streakFlame: {
+    fontSize: 18,
+    marginRight: 6,
+  },
+  streakCount: {
+    color: '#ef4444',
+    fontSize: 12,
+    fontWeight: '900',
+    lineHeight: 12,
+  },
+  streakLabel: {
+    color: '#ef4444',
+    fontSize: 6,
+    fontWeight: '900',
+    letterSpacing: 0.5,
+  },
+  xpProgressWrapper: {
+    marginBottom: 16,
+  },
+  xpRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  xpText: {
+    color: '#E2E8F0',
+    fontSize: 9,
+    fontWeight: '800',
+  },
+  xpNextText: {
+    color: '#64748B',
+    fontSize: 8,
+    fontWeight: '700',
+  },
+  progressBarBg: {
+    height: 6,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    borderRadius: 3,
+    overflow: 'hidden',
+  },
+  progressBarFill: {
+    height: '100%',
+    borderRadius: 3,
+  },
+  statsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255, 255, 255, 0.05)',
+    paddingTop: 12,
+  },
+  miniStat: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  miniStatVal: {
+    color: 'white',
+    fontSize: 13,
+    fontWeight: '950',
+    fontFamily: Platform.select({ ios: 'Courier New', android: 'monospace', default: 'monospace' }),
+  },
+  miniStatLabel: {
+    color: '#64748B',
+    fontSize: 7,
+    fontWeight: '900',
+    letterSpacing: 0.5,
+    marginTop: 3,
+  },
+  miniStatSeparator: {
+    width: 1,
+    height: 16,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
   },
 });

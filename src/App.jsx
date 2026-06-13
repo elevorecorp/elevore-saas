@@ -11075,6 +11075,59 @@ Instrucciones:
     }).length;
   }, [jobs]);
 
+  const leaderboard = useMemo(() => {
+    if (!Array.isArray(staff) || !Array.isArray(jobs)) return [];
+
+    return staff.map(worker => {
+      const completedJobs = jobs.filter(j => 
+        (j.status === 'completed' || j.status === 'paid') && 
+        j.team_assigned && 
+        j.team_assigned.toLowerCase().includes(worker.name.toLowerCase())
+      );
+      const completedCount = completedJobs.length;
+
+      const ratedJobs = completedJobs.filter(j => typeof j.client_rating === 'number' && j.client_rating > 0);
+      const avgRating = ratedJobs.length > 0 
+        ? Number((ratedJobs.reduce((sum, j) => sum + j.client_rating, 0) / ratedJobs.length).toFixed(1))
+        : 5.0;
+
+      const workerJobsSorted = [...completedJobs].sort((a, b) => new Date(b.scheduled_date || b.created_at).getTime() - new Date(a.scheduled_date || a.created_at).getTime());
+      let streak = 0;
+      for (const j of workerJobsSorted) {
+        if (!j.incident_note) {
+          streak++;
+        } else {
+          break;
+        }
+      }
+
+      const xp = completedCount * 150 + Math.round(avgRating * 100);
+
+      let rank = 'Bronce';
+      let rankColor = 'text-amber-600 border-amber-500/20 bg-amber-500/5';
+      if (xp >= 4500) {
+        rank = 'Platino';
+        rankColor = 'text-sky-400 border-sky-500/20 bg-sky-500/5';
+      } else if (xp >= 2000) {
+        rank = 'Oro';
+        rankColor = 'text-yellow-500 border-yellow-500/20 bg-yellow-500/5';
+      } else if (xp >= 600) {
+        rank = 'Plata';
+        rankColor = 'text-slate-300 border-slate-500/20 bg-slate-500/5';
+      }
+
+      return {
+        ...worker,
+        completedCount,
+        avgRating,
+        streak,
+        xp,
+        rank,
+        rankColor
+      };
+    }).sort((a, b) => b.xp - a.xp);
+  }, [staff, jobs]);
+
   const seasons = season();
 
   // Authentication Pin matching logic
@@ -14864,10 +14917,73 @@ Instrucciones generales de formato:
                     <span className="text-[7.5px] font-black px-2 py-1 rounded-full bg-green-500/10 text-green-400 border border-green-500/25 uppercase tracking-wider">TEAM PAYROLL</span>
                   </div>
 
-                  <div className="grid grid-cols-1 gap-4">
-                    {staff.map(worker => (
-                      <WorkerCard key={worker.id} worker={worker} onCashout={handleCashout} fmt$={fmt$} />
-                    ))}
+                  <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-stretch">
+                    {/* LEADERBOARD (LEFT 7 COLS) */}
+                    <div className="xl:col-span-7 g p-5 bg-black/40 border border-white/5 rounded-2xl space-y-4 shadow-xl">
+                      <div className="flex justify-between items-center pb-2 border-b border-white/5">
+                        <div>
+                          <h4 className="text-xs font-black text-white uppercase tracking-widest flex items-center gap-1.5 font-display">
+                            🏆 Tabla de Posiciones y Rendimiento
+                          </h4>
+                          <p className="text-[7.5px] text-slate-500 uppercase font-bold mt-0.5">
+                            Ranking en base a misiones, calificaciones y rachas perfectas
+                          </p>
+                        </div>
+                        <span className="text-[7.5px] font-mono text-amber-400 bg-amber-400/10 border border-amber-400/25 px-2 py-0.5 rounded uppercase font-black">
+                          XP SYSTEM
+                        </span>
+                      </div>
+
+                      <div className="overflow-x-auto custom-scroll">
+                        <table className="w-full text-[9px] text-slate-300">
+                          <thead>
+                            <tr className="border-b border-white/5 text-slate-500 font-black uppercase text-left">
+                              <th className="py-2.5 text-center w-10">Pos.</th>
+                              <th className="py-2.5">Técnico</th>
+                              <th className="py-2.5 text-center">Rango</th>
+                              <th className="py-2.5 text-center">Misiones</th>
+                              <th className="py-2.5 text-center">Rating</th>
+                              <th className="py-2.5 text-center">Racha</th>
+                              <th className="py-2.5 text-right">XP</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-white/5 font-semibold">
+                            {leaderboard.map((worker, index) => {
+                              const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `${index + 1}.`;
+                              return (
+                                <tr key={worker.id} className="hover:bg-white/[0.02] transition-colors">
+                                  <td className="py-3 text-center font-black text-sm">{medal}</td>
+                                  <td className="py-3 font-bold text-white uppercase">{worker.name}</td>
+                                  <td className="py-3 text-center">
+                                    <span className={`px-2 py-0.5 rounded text-[7px] border font-black uppercase tracking-wider ${worker.rankColor}`}>
+                                      {worker.rank}
+                                    </span>
+                                  </td>
+                                  <td className="py-3 text-center font-black">{worker.completedCount}</td>
+                                  <td className="py-3 text-center font-black text-[#F5C518]">⭐ {worker.avgRating}</td>
+                                  <td className="py-3 text-center font-black text-red-500">🔥 {worker.streak}</td>
+                                  <td className="py-3 text-right font-mono font-black text-emerald-400">{worker.xp} XP</td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+
+                    {/* WORKER PAYOUT CARDS (RIGHT 5 COLS) */}
+                    <div className="xl:col-span-5 space-y-4">
+                      <div className="flex justify-between items-center pb-2 border-b border-white/5 mb-2">
+                        <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest font-display">
+                          💸 Gestión de Nómina y Saldos
+                        </h4>
+                      </div>
+                      <div className="space-y-4">
+                        {staff.map(worker => (
+                          <WorkerCard key={worker.id} worker={worker} onCashout={handleCashout} fmt$={fmt$} />
+                        ))}
+                      </div>
+                    </div>
                   </div>
                 </div>
               )}
