@@ -9800,7 +9800,7 @@ Para consentirte esta semana, te tenemos un beneficio especial: si reservas tu p
     }
 
     if (category === 'assistant' || category === 'copilot') {
-      return getHeuristicResponse(prompt, view, finance, tenantName, highRiskClients);
+      return getHeuristicResponse(prompt, view, finance, tenantName, []);
     }
 
     return `He procesado tu consulta sobre "${prompt}". Como tu copiloto, te informo que los sistemas operativos se encuentran estables.`;
@@ -12345,7 +12345,7 @@ Nómina pagada acumulada por empleado: ${JSON.stringify(finance.payroll)}
       setCopilotMsgs(prev => [...prev, { role: 'assistant', content: resContent }]);
     } catch (err) {
       console.warn("AI pipeline failed, using Sterling Local Heuristic Engine:", err);
-      const resContent = getHeuristicResponse(userText, view, finance, tenantName, highRiskClients);
+      const resContent = getHeuristicResponse(userText, view, finance, tenantName, []);
       setCopilotMsgs(prev => [...prev, { role: 'assistant', content: resContent }]);
     }
     setCopilotLoading(false);
