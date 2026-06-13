@@ -14,7 +14,8 @@ import {
   Download,
   AlertTriangle,
   ArrowRight,
-  TrendingUp
+  TrendingUp,
+  MessageSquare
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 
@@ -149,9 +150,33 @@ export function PublicQuoteProposal({ quoteId }) {
   const [isTyping, setIsTyping] = useState(false);
   const messagesEndRef = useRef(null);
 
+  // Direct Live Support/Inbox Chat States
+  const [chatMode, setChatMode] = useState('ai'); // 'ai' | 'support'
+  const [supportInputVal, setSupportInputVal] = useState('');
+  const [sendingSupport, setSendingSupport] = useState(false);
+
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [chatMessages]);
+  }, [chatMessages, job?.specs?.chat_messages, chatMode]);
+
+  // Real-time listener to keep proposal data in sync (e.g. support messages from CEO)
+  useEffect(() => {
+    if (!quoteId) return;
+    const channel = sb
+      .channel(`public_proposal_sync:${quoteId}`)
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'elevore_missions', filter: `id=eq.${quoteId}` },
+        (payload) => {
+          console.log('Real-time proposal update received:', payload.new);
+          setJob(payload.new);
+        }
+      )
+      .subscribe();
+    return () => {
+      sb.removeChannel(channel);
+    };
+  }, [quoteId]);
 
   // Fetch initial proposal data
   useEffect(() => {
@@ -565,6 +590,42 @@ Reglas de Negociación:
         ? 'Entendido. Por favor, si tienes alguna duda adicional o requieres programar directamente, contáctanos y con gusto te asistiremos.'
         : 'Understood. Please let us know if you have any questions or want to lock in your date directly.';
       setChatMessages(prev => [...prev, { sender: 'closer', text: fallbackReply, time: timeNow }]);
+    }
+  };
+
+  const handleSendSupportMessage = async (e) => {
+    e.preventDefault();
+    if (!supportInputVal.trim()) return;
+
+    const text = supportInputVal.trim();
+    setSupportInputVal('');
+    setSendingSupport(true);
+
+    const newMsg = {
+      id: Math.random().toString(36).substring(2, 9),
+      sender: 'client',
+      text,
+      time: new Date().toISOString()
+    };
+
+    const updatedSpecs = {
+      ...(job.specs || {}),
+      chat_messages: [...(job.specs?.chat_messages || []), newMsg]
+    };
+
+    // Optimistically update local state
+    setJob(prev => ({ ...prev, specs: updatedSpecs }));
+
+    try {
+      const { error } = await sb
+        .from('elevore_missions')
+        .update({ specs: updatedSpecs })
+        .eq('id', quoteId);
+      if (error) throw error;
+    } catch (err) {
+      console.error("Error sending support message:", err);
+    } finally {
+      setSendingSupport(false);
     }
   };
 
@@ -1016,63 +1077,155 @@ Reglas de Negociación:
                 )}
               </div>
 
-              {/* AI Negotiator Chatbot Card */}
-              <div className="g p-5 bg-gradient-to-br from-slate-950 via-zinc-900 to-black border border-white/5 rounded-3xl shadow-xl space-y-3 relative overflow-hidden no-print">
-                <div className="absolute top-0 right-0 w-16 h-16 bg-[#F5C518]/5 rounded-full blur-2xl pointer-events-none"></div>
+              {/* AI Negotiator / Live Support Chatbot Card */}
+              <div className="g p-5 bg-gradient-to-br from-slate-950 via-zinc-900 to-black border border-white/10 rounded-3xl shadow-xl space-y-3.5 relative overflow-hidden no-print">
+                <div className="absolute top-0 right-0 w-16 h-16 bg-[#F5C518]/5 rounded-full blur-3xl pointer-events-none"></div>
                 <div className="flex items-center justify-between border-b border-white/5 pb-2">
                   <div className="flex items-center gap-2">
                     <span className="relative flex h-2 w-2">
                       <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                       <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
                     </span>
-                    <h4 className="text-[10px] font-black text-white uppercase tracking-widest flex items-center gap-1">
-                      <Sparkles className="w-3.5 h-3.5 text-[#F5C518]" />
-                      <span>AI Sales Closer</span>
+                    <h4 className="text-[10px] font-black text-white uppercase tracking-widest flex items-center gap-1 font-display">
+                      {chatMode === 'ai' ? (
+                        <>
+                          <Sparkles className="w-3.5 h-3.5 text-[#F5C518]" />
+                          <span>AI Sales Closer</span>
+                        </>
+                      ) : (
+                        <>
+                          <MessageSquare className="w-3.5 h-3.5 text-blue-400" />
+                          <span>{lang === 'es' ? 'Bandeja de Entrada' : 'Support Inbox'}</span>
+                        </>
+                      )}
                     </h4>
                   </div>
-                  <span className="text-[6.5px] font-black px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 uppercase tracking-widest">Autopilot Active</span>
+                  <span className="text-[6.5px] font-black px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 uppercase tracking-widest">
+                    {chatMode === 'ai' ? 'Autopilot Active' : 'Human Support'}
+                  </span>
+                </div>
+
+                {/* Mode Selector Toggle */}
+                <div className="flex gap-1 bg-white/5 p-1 rounded-xl">
+                  <button
+                    type="button"
+                    onClick={() => setChatMode('ai')}
+                    className={`flex-1 py-1.5 text-[8px] font-black uppercase rounded-lg transition-all cursor-pointer ${
+                      chatMode === 'ai' 
+                        ? 'bg-gradient-to-b from-[#F5C518] to-amber-600 text-black shadow-md' 
+                        : 'text-slate-400 hover:text-white hover:bg-white/5'
+                    }`}
+                  >
+                    {lang === 'es' ? 'Asistente IA' : 'AI Agent'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setChatMode('support')}
+                    className={`flex-1 py-1.5 text-[8px] font-black uppercase rounded-lg transition-all cursor-pointer relative ${
+                      chatMode === 'support' 
+                        ? 'bg-gradient-to-b from-[#F5C518] to-amber-600 text-black shadow-md' 
+                        : 'text-slate-400 hover:text-white hover:bg-white/5'
+                    }`}
+                  >
+                    <span>{lang === 'es' ? 'Soporte Humano' : 'Live Support'}</span>
+                    {chatMode !== 'support' && (job?.specs?.chat_messages || []).some(m => m.sender !== 'client') && (
+                      <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-amber-500 rounded-full animate-pulse" />
+                    )}
+                  </button>
                 </div>
 
                 {/* Messages Box */}
-                <div className="space-y-2.5 max-h-[160px] overflow-y-auto pr-1 text-[9px] scrollbar-thin" style={{ scrollbarWidth: 'none' }}>
-                  {chatMessages.map((msg, idx) => (
-                    <div key={idx} className={`flex flex-col ${msg.sender === 'user' ? 'items-end' : 'items-start'}`}>
-                      <div className={`p-3 rounded-2xl max-w-[85%] leading-relaxed ${
-                        msg.sender === 'user' 
-                          ? 'bg-[#F5C518]/10 text-white border border-[#F5C518]/25 rounded-tr-none' 
-                          : 'bg-white/[0.03] text-slate-300 border border-white/5 rounded-tl-none'
-                      }`}>
-                        {msg.text}
-                      </div>
-                      <span className="text-[6px] text-slate-600 font-bold uppercase tracking-wider mt-0.5 px-1">{msg.time}</span>
-                    </div>
-                  ))}
-                  {isTyping && (
-                    <div className="flex gap-1 items-center pl-2 py-1">
-                      <span className="w-1.5 h-1.5 bg-slate-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                      <span className="w-1.5 h-1.5 bg-slate-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                      <span className="w-1.5 h-1.5 bg-slate-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
-                    </div>
+                <div className="space-y-2.5 h-[200px] overflow-y-auto pr-1 text-[9px] scrollbar-thin flex flex-col" style={{ scrollbarWidth: 'none' }}>
+                  {chatMode === 'ai' ? (
+                    <>
+                      {chatMessages.map((msg, idx) => (
+                        <div key={idx} className={`flex flex-col ${msg.sender === 'user' ? 'items-end' : 'items-start'}`}>
+                          <div className={`p-3 rounded-2xl max-w-[85%] leading-relaxed ${
+                            msg.sender === 'user' 
+                              ? 'bg-[#F5C518]/10 text-white border border-[#F5C518]/25 rounded-tr-none' 
+                              : 'bg-white/[0.03] text-slate-300 border border-white/5 rounded-tl-none'
+                          }`}>
+                            {msg.text}
+                          </div>
+                          <span className="text-[6px] text-slate-600 font-bold uppercase tracking-wider mt-0.5 px-1">{msg.time}</span>
+                        </div>
+                      ))}
+                      {isTyping && (
+                        <div className="flex gap-1 items-center pl-2 py-1">
+                          <span className="w-1.5 h-1.5 bg-slate-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                          <span className="w-1.5 h-1.5 bg-slate-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                          <span className="w-1.5 h-1.5 bg-slate-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <>
+                      {(job?.specs?.chat_messages || []).length === 0 ? (
+                        <div className="h-full flex-1 flex flex-col items-center justify-center text-center p-4 text-slate-500 space-y-2">
+                          <CheckCircle className="w-7 h-7 text-slate-700 animate-pulse" />
+                          <p className="text-[8px] font-black uppercase tracking-wider">{lang === 'es' ? 'Chat Directo con Soporte' : 'Direct Support Chat'}</p>
+                          <p className="text-[7.5px] uppercase font-bold text-slate-600 leading-normal">{lang === 'es' ? 'Escribe tu consulta abajo. Tus respuestas irán al CEO de la empresa.' : 'Send a message below. Your inquiries will be routed to the CEO.'}</p>
+                        </div>
+                      ) : (
+                        (job.specs.chat_messages).map((msg) => {
+                          const isMe = msg.sender === 'client';
+                          return (
+                            <div key={msg.id} className={`flex flex-col max-w-[85%] ${isMe ? 'self-end items-end' : 'self-start items-start'}`}>
+                              <span className="text-[6px] text-slate-500 font-black uppercase mb-0.5 tracking-wider">
+                                {isMe ? (lang === 'es' ? 'Tú' : 'You') : (msg.sender === 'admin' ? 'CEO Elevore' : (lang === 'es' ? 'Técnico Elevore' : 'Elevore Crew'))} • {new Date(msg.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                              </span>
+                              <div className={`px-3 py-2 rounded-2xl text-[9px] font-medium leading-relaxed break-words shadow-md ${
+                                isMe 
+                                  ? 'bg-amber-500 text-black rounded-tr-none font-semibold' 
+                                  : 'bg-zinc-800 text-white rounded-tl-none border border-white/5'
+                              }`}>
+                                {msg.text}
+                              </div>
+                            </div>
+                          );
+                        })
+                      )}
+                    </>
                   )}
                   <div ref={messagesEndRef} />
                 </div>
 
                 {/* Input Area */}
-                <form onSubmit={handleSendMessage} className="flex gap-2 border-t border-white/5 pt-2">
-                  <input
-                    type="text"
-                    value={inputVal}
-                    onChange={(e) => setInputVal(e.target.value)}
-                    placeholder={lang === 'es' ? 'Pregunta por servicios o negociar...' : 'Ask about services or negotiate...'}
-                    className="flex-1 bg-black/60 border border-white/10 rounded-xl px-3 py-2 text-[9px] text-white focus:outline-none focus:border-[#F5C518]/50 placeholder-slate-700 uppercase font-semibold"
-                  />
-                  <button
-                    type="submit"
-                    className="px-3 bg-gradient-to-r from-amber-500 to-[#F5C518] hover:from-amber-600 hover:to-[#E5B508] text-black font-black uppercase text-[8px] tracking-wider rounded-xl active:scale-95 transition-all shadow-md flex items-center justify-center cursor-pointer"
-                  >
-                    Send
-                  </button>
-                </form>
+                {chatMode === 'ai' ? (
+                  <form onSubmit={handleSendMessage} className="flex gap-2 border-t border-white/5 pt-2">
+                    <input
+                      type="text"
+                      value={inputVal}
+                      onChange={(e) => setInputVal(e.target.value)}
+                      placeholder={lang === 'es' ? 'Pregunta por servicios o negociar...' : 'Ask about services or negotiate...'}
+                      className="flex-1 bg-black/60 border border-white/10 rounded-xl px-3 py-2 text-[9px] text-white focus:outline-none focus:border-[#F5C518]/50 placeholder-slate-700 uppercase font-semibold"
+                    />
+                    <button
+                      type="submit"
+                      className="px-3 bg-gradient-to-r from-amber-500 to-[#F5C518] hover:from-amber-600 hover:to-[#E5B508] text-black font-black uppercase text-[8px] tracking-wider rounded-xl active:scale-95 transition-all shadow-md flex items-center justify-center cursor-pointer"
+                    >
+                      Send
+                    </button>
+                  </form>
+                ) : (
+                  <form onSubmit={handleSendSupportMessage} className="flex gap-2 border-t border-white/5 pt-2">
+                    <input
+                      type="text"
+                      value={supportInputVal}
+                      onChange={(e) => setSupportInputVal(e.target.value)}
+                      disabled={sendingSupport}
+                      placeholder={lang === 'es' ? 'Escribe al equipo de soporte...' : 'Type a message to support...'}
+                      className="flex-1 bg-black/60 border border-white/10 rounded-xl px-3 py-2 text-[9px] text-white focus:outline-none focus:border-amber-500 placeholder-slate-700 uppercase font-semibold"
+                    />
+                    <button
+                      type="submit"
+                      disabled={sendingSupport || !supportInputVal.trim()}
+                      className="px-4 bg-gradient-to-r from-amber-500 to-[#F5C518] hover:from-amber-600 hover:to-[#E5B508] disabled:opacity-45 text-black font-black uppercase text-[8px] tracking-wider rounded-xl active:scale-95 transition-all shadow-md flex items-center justify-center cursor-pointer"
+                    >
+                      {sendingSupport ? '...' : (lang === 'es' ? 'Enviar' : 'Send')}
+                    </button>
+                  </form>
+                )}
               </div>
 
               {/* SIGNATURE & PAYMENT SECTION CARD */}
