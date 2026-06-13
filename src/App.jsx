@@ -8,6 +8,7 @@ import { AICopilotMeetings } from './components/admin/AICopilotMeetings';
 import { SecurityLedger } from './components/admin/SecurityLedger';
 import { PublicQuoteProposal } from './components/PublicQuoteProposal';
 import { HyperDriveTab } from './components/admin/HyperDriveTab';
+import { ArmageddonTab } from './components/admin/ArmageddonTab';
 import { FeatureGate } from './components/shared/FeatureGate';
 import PublicBookingWidget from './components/public/PublicBookingWidget';
 import TimeSlotPicker from './components/public/TimeSlotPicker';
@@ -14449,7 +14450,8 @@ Instrucciones generales de formato:
                   { id: 'productivity', name: '📈 Rendimiento y Calidad' },
                   { id: 'automation', name: '🤖 Automatización y Mensajería' },
                   { id: 'cfo', name: '🔮 AI CFO y Flujo de Caja' },
-                  { id: 'hyperdrive', name: '⚡ HyperDrive (Leads & Booking)' }
+                  { id: 'hyperdrive', name: '⚡ HyperDrive (Leads & Booking)' },
+                  { id: 'armageddon', name: '💥 Modo Armagedón (AI Auto-Scale)' }
                 ].map(tab => (
                   <button
                     key={tab.id}
@@ -15732,6 +15734,15 @@ Instrucciones generales de formato:
                   refresh={refresh}
                   jobs={jobs}
                   staff={staff}
+                />
+              )}
+
+              {financeTab === 'armageddon' && (
+                <ArmageddonTab
+                  tt={tt}
+                  refresh={refresh}
+                  jobs={jobs}
+                  clients={clients}
                 />
               )}
 
