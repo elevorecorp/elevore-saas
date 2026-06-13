@@ -2880,33 +2880,67 @@ function Portal({ cjid }) {
           </div>
         </div>
         
-        <div className="text-center space-y-3 relative z-10">
-          <div className="w-20 h-20 bg-gradient-to-br from-zinc-800 to-black border border-white/10 rounded-[2rem] mx-auto flex items-center justify-center font-black text-white text-4xl shadow-[0_0_40px_rgba(255,255,255,0.05)] transform transition-transform hover:scale-105 relative group overflow-hidden">
-             <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
-             {tenantSettings?.business_full_name ? tenantSettings.business_full_name.charAt(0).toUpperCase() : 'E'}
+        {/* ══ PREMIUM CLIENT HERO CARD ══ */}
+        <div className="relative overflow-hidden rounded-3xl border border-white/10 shadow-2xl" style={{background:'linear-gradient(135deg,#0f0f14 0%,#1a160a 55%,#0a0a0a 100%)'}}>
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_left,rgba(245,197,24,0.07),transparent_65%)] pointer-events-none" />
+          <div className="absolute -top-10 -right-8 w-44 h-44 bg-[#F5C518]/5 rounded-full blur-3xl pointer-events-none" />
+          <div className="relative z-10 p-5">
+            {/* Identity Row */}
+            <div className="flex items-center gap-4">
+              <div className="w-14 h-14 rounded-2xl shrink-0 flex items-center justify-center font-black text-black text-2xl shadow-[0_0_30px_rgba(245,197,24,0.35)]" style={{background:'linear-gradient(135deg,#F5C518,#d97706)'}}>
+                {tenantSettings?.business_full_name ? tenantSettings.business_full_name.charAt(0).toUpperCase() : 'E'}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-[7px] text-[#F5C518] font-black uppercase tracking-[0.35em] mb-0.5">{tr(lang, 'hub')}</p>
+                <h1 className="text-lg font-black uppercase tracking-wider text-white leading-tight truncate">{tenantSettings?.business_full_name || 'ELEVORE'}</h1>
+                <div className="flex items-center gap-1.5 mt-0.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse shrink-0" />
+                  <p className="text-[9px] text-slate-400 font-bold truncate">{job.client_name}</p>
+                </div>
+              </div>
+              <span className={`text-[7px] font-black px-2.5 py-1.5 rounded-xl uppercase shrink-0 tracking-wide border ${
+                job.status==='paid'?'bg-blue-500/15 text-blue-300 border-blue-500/25':
+                job.status==='in_progress'?'bg-green-500/15 text-green-300 border-green-500/25 animate-pulse':
+                job.status==='completed'?'bg-purple-500/15 text-purple-300 border-purple-500/25':
+                'bg-[#F5C518]/15 text-[#F5C518] border-[#F5C518]/25'
+              }`}>
+                {job.status==='in_progress'?'● Live':job.status==='paid'?'✓ Paid':job.status==='completed'?'✓ Done':'◎ Active'}
+              </span>
+            </div>
+            {/* Financial Stats */}
+            <div className="grid grid-cols-3 mt-5 pt-4 border-t border-white/[0.05] text-center">
+              <div className="px-2">
+                <p className="text-[6.5px] font-black uppercase text-slate-600 tracking-widest">{lang==='es'?'Precio Total':'Total Price'}</p>
+                <p className="text-sm font-black text-white font-mono mt-0.5">{fmt$(job.total_price||0)}</p>
+              </div>
+              <div className="px-2 border-x border-white/[0.05]">
+                <p className="text-[6.5px] font-black uppercase text-slate-600 tracking-widest">{lang==='es'?'Pagado':'Paid'}</p>
+                <p className="text-sm font-black text-green-400 font-mono mt-0.5">{fmt$(job.deposit_paid||0)}</p>
+              </div>
+              <div className="px-2">
+                <p className="text-[6.5px] font-black uppercase text-slate-600 tracking-widest">{lang==='es'?'Balance':'Balance'}</p>
+                <p className={`text-sm font-black font-mono mt-0.5 ${Math.max(0,bal)>0?'text-amber-400':'text-green-400'}`}>{fmt$(Math.max(0,bal))}</p>
+              </div>
+            </div>
           </div>
-          <h1 className="text-2xl font-black uppercase tracking-[0.3em] text-transparent bg-clip-text bg-gradient-to-r from-white to-slate-400 font-display">
-             {tenantSettings?.business_full_name || 'ELEVORE'}
-          </h1>
-          <p className="text-[9px] text-[#F5C518] font-bold uppercase tracking-[0.4em]">{tr(lang, 'hub')}</p>
         </div>
 
         {/* ── CLIENT DASHBOARD NAVIGATION TABS ── */}
-        <div className="g p-1 rounded-2xl flex items-center justify-between border border-white/5 bg-black/40 backdrop-blur-md sticky top-2 z-[400] shadow-xl overflow-x-auto gap-1">
+        <div className="flex items-center gap-0.5 p-1 rounded-2xl border border-white/[0.06] bg-black/70 backdrop-blur-md sticky top-2 z-[400] shadow-2xl overflow-x-auto">
           {tabs.map(t => {
             const active = activeTab === t.id;
             return (
               <button
                 key={t.id}
                 onClick={() => setActiveTab(t.id)}
-                className={`flex-1 min-w-[72px] py-2.5 rounded-xl flex flex-col items-center justify-center gap-1 transition-all duration-300 cursor-pointer ${
+                className={`flex-1 min-w-[60px] py-2.5 rounded-xl flex flex-col items-center justify-center gap-1 transition-all duration-200 cursor-pointer ${
                   active
-                    ? 'bg-gradient-to-b from-[#F5C518] to-amber-500 text-black shadow-lg shadow-[#F5C518]/25 font-black scale-105'
-                    : 'text-slate-400 hover:bg-white/5 hover:text-white'
+                    ? 'bg-gradient-to-b from-[#F5C518] to-amber-600 text-black shadow-lg shadow-[#F5C518]/20 scale-[1.04]'
+                    : 'text-slate-600 hover:bg-white/5 hover:text-slate-300'
                 }`}
               >
-                <Icon name={t.icon} className={`w-4 h-4 ${active ? 'text-black' : 'text-slate-400'}`} />
-                <span className="text-[7.5px] font-black uppercase tracking-wider">{t.label}</span>
+                <Icon name={t.icon} className={`w-3.5 h-3.5 stroke-[2.5] ${active ? 'text-black' : 'text-slate-600'}`} />
+                <span className="text-[6.5px] font-black uppercase tracking-wide leading-tight">{t.label}</span>
               </button>
             );
           })}
@@ -2918,36 +2952,91 @@ function Portal({ cjid }) {
             {urgent !== null && urgent > 0 && !job.approval_signature && <div className="gold py-3 px-5 rounded-2xl text-center font-black uppercase text-sm animate-pulse">⏰ {tr(lang, 'urgency')} {urgent}h — {tr(lang, 'lock')}</div>}
             
             {/* Core Detail Card */}
-            <div className="g p-6 border-t-4 border-green-500 space-y-4 text-left">
-              <div className="flex justify-between items-center">
+            {/* ── PREMIUM SERVICE DETAIL CARD ── */}
+            <div className="relative overflow-hidden rounded-3xl border border-white/[0.07] shadow-xl" style={{background:'linear-gradient(150deg,#0b120c 0%,#090909 100%)'}}>
+              <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-green-500 via-emerald-400 to-transparent" />
+              <div className="absolute -bottom-8 -right-8 w-32 h-32 bg-green-500/5 rounded-full blur-2xl pointer-events-none" />
+              <div className="relative z-10 p-5 space-y-4">
+                {/* Service Hero */}
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1.5">
+                      <div className="w-7 h-7 rounded-lg bg-green-500/15 border border-green-500/20 flex items-center justify-center shrink-0">
+                        <Icon name="sparkles" className="w-3.5 h-3.5 text-green-400" />
+                      </div>
+                      <p className="text-[7.5px] font-black uppercase text-slate-500 tracking-widest">{lang==='es'?'Servicio Activo':'Active Service'}</p>
+                    </div>
+                    <h2 className="text-base font-black uppercase text-white leading-tight">{job.service_type?.toUpperCase()||'CLEANING'}</h2>
+                    <p className="text-[8px] font-bold text-slate-500 mt-0.5">#{cjid?.slice(-8)?.toUpperCase()}</p>
+                  </div>
+                  <span className={`text-[7px] font-black px-2.5 py-1.5 rounded-xl uppercase shrink-0 tracking-wide border ${
+                    job.status==='paid'?'bg-blue-500/10 text-blue-300 border-blue-500/20':
+                    job.status==='in_progress'?'bg-green-500/10 text-green-300 border-green-500/20 animate-pulse':
+                    job.status==='completed'?'bg-purple-500/10 text-purple-300 border-purple-500/20':
+                    'bg-amber-500/10 text-amber-300 border-amber-500/20'
+                  }`}>{job.status?.replace('_',' ')}</span>
+                </div>
+                {/* Info Icon Grid */}
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="flex items-center gap-2.5 bg-white/[0.025] border border-white/[0.05] rounded-2xl p-3">
+                    <div className="w-7 h-7 rounded-xl bg-blue-500/10 flex items-center justify-center shrink-0">
+                      <Icon name="calendar" className="w-3.5 h-3.5 text-blue-400" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-[6px] font-black uppercase text-slate-600 tracking-widest">{lang==='es'?'Fecha':'Date'}</p>
+                      <p className="text-[9px] font-black text-slate-200 truncate">{fmtD(job.scheduled_date)}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2.5 bg-white/[0.025] border border-white/[0.05] rounded-2xl p-3">
+                    <div className="w-7 h-7 rounded-xl bg-amber-500/10 flex items-center justify-center shrink-0">
+                      <Icon name="users" className="w-3.5 h-3.5 text-amber-400" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-[6px] font-black uppercase text-slate-600 tracking-widest">{lang==='es'?'Equipo':'Team'}</p>
+                      <p className="text-[9px] font-black text-slate-200 truncate">{job.team_assigned||(lang==='es'?'Por asignar':'TBD')}</p>
+                    </div>
+                  </div>
+                  <div className="col-span-2 flex items-center gap-2.5 bg-white/[0.025] border border-white/[0.05] rounded-2xl p-3">
+                    <div className="w-7 h-7 rounded-xl bg-red-500/10 flex items-center justify-center shrink-0">
+                      <Icon name="map-pin" className="w-3.5 h-3.5 text-red-400" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-[6px] font-black uppercase text-slate-600 tracking-widest">{lang==='es'?'Dirección':'Address'}</p>
+                      <p className="text-[9px] font-black text-slate-200 truncate">{job.address}</p>
+                    </div>
+                  </div>
+                  {job.check_in_time && (
+                    <div className="flex items-center gap-2.5 bg-green-500/[0.05] border border-green-500/15 rounded-2xl p-3">
+                      <div className="w-7 h-7 rounded-xl bg-green-500/10 flex items-center justify-center shrink-0">
+                        <Icon name="play" className="w-3 h-3 text-green-400" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-[6px] font-black uppercase text-green-700 tracking-widest">{tr(lang,'arrived')}</p>
+                        <p className="text-[9px] font-black text-green-300">{new Date(job.check_in_time).toLocaleTimeString()}</p>
+                      </div>
+                    </div>
+                  )}
+                  {job.check_out_time && (
+                    <div className="flex items-center gap-2.5 bg-purple-500/[0.05] border border-purple-500/15 rounded-2xl p-3">
+                      <div className="w-7 h-7 rounded-xl bg-purple-500/10 flex items-center justify-center shrink-0">
+                        <Icon name="square" className="w-3 h-3 text-purple-400" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-[6px] font-black uppercase text-purple-700 tracking-widest">{tr(lang,'done')}</p>
+                        <p className="text-[9px] font-black text-purple-300">{new Date(job.check_out_time).toLocaleTimeString()}</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+                {/* Glowing Progress Bar */}
                 <div>
-                  <p className="text-[9px] font-black text-slate-500 uppercase">Cliente</p>
-                  <h2 className="text-xl font-black italic uppercase text-white leading-tight">{job.client_name}</h2>
-                </div>
-                <span className={`text-[8px] font-black px-3 py-1.5 rounded-xl uppercase ${
-                  job.status === 'paid' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 
-                  job.status === 'in_progress' ? 'bg-green-600 text-white shadow-lg shadow-green-500/20 animate-pulse' : 
-                  job.status === 'completed' ? 'bg-purple-600 text-white shadow-lg shadow-purple-500/20' : 
-                  'bg-amber-500 text-black shadow-lg shadow-amber-500/20'
-                }`}>
-                  {job.status}
-                </span>
-              </div>
-              <div className="text-[9px] text-slate-400 font-bold uppercase space-y-1">
-                <p>📋 {job.service_type?.toUpperCase()}</p>
-                <p>📅 {fmtD(job.scheduled_date)}</p>
-                <p>👥 {job.team_assigned || 'Por asignar'}</p>
-                <p>📍 {job.address}</p>
-                {job.check_in_time && <p className="text-green-400">▶ {tr(lang, 'arrived')}: {new Date(job.check_in_time).toLocaleTimeString()}</p>}
-                {job.check_out_time && <p className="text-purple-400">⏹ {tr(lang, 'done')}: {new Date(job.check_out_time).toLocaleTimeString()}</p>}
-              </div>
-              <div>
-                <div className="flex justify-between text-[8px] font-black uppercase text-slate-500 mb-1">
-                  <span>Progreso del Estado</span>
-                  <span>{sm[job.status] || 0}%</span>
-                </div>
-                <div className="pb">
-                  <div className="pf" style={{ width: `${sm[job.status] || 0}%` }}></div>
+                  <div className="flex justify-between text-[7px] font-black uppercase text-slate-600 mb-1.5">
+                    <span>{lang==='es'?'Progreso del Servicio':'Service Progress'}</span>
+                    <span className="text-[#F5C518]">{sm[job.status]||0}%</span>
+                  </div>
+                  <div className="h-1.5 w-full bg-white/[0.04] rounded-full overflow-hidden">
+                    <div className="h-full bg-gradient-to-r from-[#F5C518] to-amber-500 rounded-full transition-all duration-700 shadow-[0_0_8px_rgba(245,197,24,0.5)]" style={{width:`${sm[job.status]||0}%`}} />
+                  </div>
                 </div>
               </div>
             </div>
@@ -4753,35 +4842,90 @@ function StaffJob({ job, onBack, onRefresh, tt, recTime, upsell, update, employe
         </div>
       )}
 
-      <button onClick={onBack} className="mb-5 flex items-center gap-2 text-slate-500 font-black uppercase text-[9px]"><Icon name="arrow-left" className="w-4 h-4" />Back</button>
       <div className="max-w-md mx-auto space-y-5">
-        <div className="g p-6 border-t-4 border-green-500 relative overflow-hidden">
-          {localJob.specs?.ai_vision_qc && (
-            <div className="absolute top-0 right-0 bg-green-500/20 text-green-400 px-3 py-1 rounded-bl-xl text-[7px] font-black uppercase tracking-widest border border-green-500/30">
-              AI QC Verified
+        {/* ══ PREMIUM MISSION CARD ══ */}
+        <div className="relative overflow-hidden rounded-3xl border border-white/10 shadow-2xl" style={{background:'linear-gradient(150deg,#060e08 0%,#0a0a0a 100%)'}}>
+          <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-green-500 via-emerald-400 to-transparent" />
+          <div className="absolute -top-8 -right-8 w-36 h-36 bg-green-500/5 rounded-full blur-3xl pointer-events-none" />
+          <div className="relative z-10 p-5">
+            {/* Header row: back + badges */}
+            <div className="flex items-center justify-between mb-4">
+              <button onClick={onBack} className="flex items-center gap-2 text-slate-400 hover:text-white bg-white/5 hover:bg-white/10 border border-white/[0.07] rounded-xl px-3 py-2 transition-all active:scale-95">
+                <Icon name="arrow-left" className="w-3.5 h-3.5" />
+                <span className="text-[9px] font-black uppercase tracking-wider">{lang==='es'?'Volver':'Back'}</span>
+              </button>
+              <div className="flex items-center gap-1.5">
+                {localJob.specs?.ai_vision_qc && (
+                  <span className="text-[7px] font-black px-2 py-1.5 rounded-xl uppercase tracking-wide bg-green-500/10 text-green-400 border border-green-500/20 flex items-center gap-1">
+                    <Icon name="shield-check" className="w-3 h-3" /> QC ✓
+                  </span>
+                )}
+                {isOffline && (
+                  <span className="text-[7px] font-black px-2 py-1.5 rounded-xl uppercase tracking-wide bg-amber-500/10 text-amber-400 border border-amber-500/20">📶 Offline</span>
+                )}
+              </div>
             </div>
-          )}
-          <h2 className="text-xl font-black uppercase italic text-white mb-1">{localJob.client_name}</h2>
-          <p className="text-[9px] text-slate-500 uppercase">{localJob.service_type} • {localJob.address}</p>
-          {employee && <p className="text-[8px] text-green-400 font-black uppercase mt-1">👤 Active Worker: {employee.name}</p>}
-          {localJob.specs?.en_route && !localJob.check_in_time && !localJob.check_out_time && (
-            <>
-              {gpsStatus === 'active' && (
-                <div className="mt-2.5 p-2 bg-blue-950/40 border border-blue-500/20 text-blue-400 rounded-xl text-[8.5px] font-black uppercase flex items-center gap-1.5 animate-pulse">
-                  <span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
-                  📡 Transmitiendo GPS en vivo al cliente...
-                </div>
+            {/* Mission Identity */}
+            <div className="flex items-start gap-3 mb-4">
+              <div className="w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 shadow-[0_0_20px_rgba(34,197,94,0.25)]" style={{background:'linear-gradient(135deg,#16a34a,#15803d)'}}>
+                <Icon name="briefcase" className="w-6 h-6 text-white" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-[7px] text-green-400 font-black uppercase tracking-[0.3em] mb-0.5">{lang==='es'?'Misión Activa':'Active Mission'}</p>
+                <h2 className="text-lg font-black uppercase text-white leading-tight truncate">{localJob.client_name}</h2>
+                <p className="text-[9px] font-bold text-amber-400 mt-0.5 uppercase truncate">{localJob.service_type}</p>
+              </div>
+            </div>
+            {/* Status Pills */}
+            <div className="flex flex-wrap gap-1.5">
+              <span className="flex items-center gap-1.5 bg-white/5 border border-white/[0.06] rounded-xl px-2.5 py-1.5 text-[8px] font-black uppercase text-slate-400 max-w-[190px]">
+                <Icon name="map-pin" className="w-3 h-3 text-red-400 shrink-0" />
+                <span className="truncate">{localJob.address}</span>
+              </span>
+              {employee && (
+                <span className="flex items-center gap-1.5 bg-green-500/10 border border-green-500/20 rounded-xl px-2.5 py-1.5 text-[8px] font-black uppercase text-green-400">
+                  <Icon name="user-check" className="w-3 h-3" /> {employee.name}
+                </span>
               )}
-              {gpsStatus === 'error' && (
-                <div className="mt-2.5 p-2 bg-amber-955/20 border border-orange-600/30 text-amber-400 rounded-xl text-[8.5px] font-black uppercase flex items-center gap-1.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
-                  ⚠️ GPS Inactivo (Sin permisos o señal). El cliente no verá tu ruta.
-                </div>
+              {localJob.specs?.en_route && !localJob.check_in_time && (
+                <span className="flex items-center gap-1.5 bg-blue-500/10 border border-blue-500/20 rounded-xl px-2.5 py-1.5 text-[8px] font-black uppercase text-blue-400 animate-pulse">
+                  <Icon name="truck" className="w-3 h-3" /> {lang==='es'?'En Camino':'En Route'}
+                </span>
               )}
-            </>
-          )}
-
-          <div className="grid grid-cols-2 gap-2 mt-4">
+              {localJob.check_in_time && !localJob.check_out_time && (
+                <span className="flex items-center gap-1.5 bg-green-500/10 border border-green-500/20 rounded-xl px-2.5 py-1.5 text-[8px] font-black uppercase text-green-300 animate-pulse">
+                  <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-ping" />
+                  {lang==='es'?'En Servicio':'In Service'}
+                </span>
+              )}
+              {localJob.check_out_time && (
+                <span className="flex items-center gap-1.5 bg-purple-500/10 border border-purple-500/20 rounded-xl px-2.5 py-1.5 text-[8px] font-black uppercase text-purple-300">
+                  <Icon name="check-circle" className="w-3 h-3" /> {lang==='es'?'Finalizado':'Completed'}
+                </span>
+              )}
+            </div>
+            {/* GPS Status */}
+            {localJob.specs?.en_route && !localJob.check_in_time && !localJob.check_out_time && (
+              <>
+                {gpsStatus==='active' && (
+                  <div className="mt-3 p-2.5 bg-blue-950/40 border border-blue-500/20 text-blue-400 rounded-xl text-[8px] font-black uppercase flex items-center gap-2 animate-pulse">
+                    <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
+                    📡 {lang==='es'?'Transmitiendo GPS en vivo al cliente...':'Live GPS broadcasting to client...'}
+                  </div>
+                )}
+                {gpsStatus==='error' && (
+                  <div className="mt-3 p-2.5 bg-amber-950/20 border border-orange-600/30 text-amber-400 rounded-xl text-[8px] font-black uppercase flex items-center gap-2">
+                    <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                    ⚠️ {lang==='es'?'GPS Inactivo. El cliente no verá tu ruta.':'GPS Inactive. Client cannot see your route.'}
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        </div>
+        {/* Actions Card */}
+        <div className="g p-5 relative overflow-hidden">
+          <div className="grid grid-cols-2 gap-2">
             {/* Voy En Camino Button */}
             <button 
               disabled={loadingAction || localJob.specs?.en_route}
