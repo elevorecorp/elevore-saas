@@ -170,8 +170,8 @@ const DEFAULT_CFG = {
 };
 
 const T = {
-  en: { balance: 'Balance Due', pay: 'Pay via Zelle', approve: 'Sign to Approve Quote', before: 'Before', after: 'After', complete: 'Sign to Confirm Completion', review: 'Leave a Google Review', refer: 'Refer a Friend — Both Get $25 Off', syncing: 'Syncing...', hub: 'Live Mission Hub', arrived: 'Team Arrived', done: 'Completed', rating: 'Rate your service', submit: 'Submit Rating', chat: 'Message us', legal: 'Digital signatures are legally binding', urgency: 'Quote expires in', lock: 'Lock in your price!', refTitle: 'Referral Program', refDesc: 'Share your link with friends. Both get $25 off when they complete their first booking!', copied: 'Copied! 🎁', stepApproved: 'Quote Approved', stepEnRoute: 'Team En Route', stepInService: 'In Service', stepQC: 'Quality Control', stepCompletedPaid: 'Completed & Paid', sliderBeforeAfter: 'Before / After Comparison', trackerTitle: 'Uber-Style Live Service Tracker', destLocation: 'Destination Location', routeMap: 'Live Destination Map', payCard: 'Pay Securely with Card', cardNo: 'Card Number', expiry: 'Expiry (MM/YY)', cvc: 'CVC', cardName: 'Name on Card', tipSelect: 'Select a Tip for the Team', customTip: 'Custom Tip ($)', paying: 'Processing payment...', paySuccess: 'Payment completed!', totalAmount: 'Total to Pay', tabActive: 'Active Tracker', tabHistory: 'History', tabPreferences: 'Preferences', tabMembership: 'Membership', tabBooking: 'Book Service', tabReferral: 'Referral Hub' },
-  es: { balance: 'Saldo Pendiente', pay: 'Paga por Zelle', approve: 'Firma para Aprobar tu Cotización', before: 'Antes', after: 'Después', complete: 'Firma para Confirmar que Quedó Bien', review: 'Déjanos una Reseña', refer: 'Refiere un Amigo — Ambos Reciben $25', syncing: 'Cargando...', hub: 'Estado del Servicio', arrived: 'El equipo llegó', done: 'Completado', rating: 'Califica el servicio', submit: 'Enviar Calificación', chat: 'Escríbenos', legal: 'Las firmas digitales tienen validez legal', urgency: 'Cotización vence en', lock: '¡Bloquea tu precio!', refTitle: 'Programa de Referidos', refDesc: 'Comparte tu link con amigos. ¡Ambos reciben $25 de descuento en su próximo servicio!', copied: '¡Link Copiado! 🎁', stepApproved: 'Cotización Aprobada', stepEnRoute: 'Equipo en Camino', stepInService: 'En Servicio', stepQC: 'Control de Calidad', stepCompletedPaid: 'Completado y Pagado', sliderBeforeAfter: 'Comparación Antes / Después', trackerTitle: 'Rastreador en Vivo del Servicio', destLocation: 'Ubicación de Destino', routeMap: 'Mapa de Destino en Vivo', payCard: 'Pagar con Tarjeta de Forma Segura', cardNo: 'Número de Tarjeta', expiry: 'Expiración (MM/AA)', cvc: 'CVC', cardName: 'Nombre en la Tarjeta', tipSelect: 'Selecciona una Propina para el Equipo', customTip: 'Propina Personalizada ($)', paying: 'Procesando pago...', paySuccess: '¡Pago realizado con éxito!', totalAmount: 'Total a Pagar', tabActive: 'Servicio Activo', tabHistory: 'Historial', tabPreferences: 'Preferencias', tabMembership: 'Membresía', tabBooking: 'Agendar', tabReferral: 'Referidos' }
+  en: { balance: 'Balance Due', pay: 'Pay via Zelle', approve: 'Sign to Approve Quote', before: 'Before', after: 'After', complete: 'Sign to Confirm Completion', review: 'Leave a Google Review', refer: 'Refer a Friend — Both Get $25 Off', syncing: 'Syncing...', hub: 'Live Mission Hub', arrived: 'Team Arrived', done: 'Completed', rating: 'Rate your service', submit: 'Submit Rating', chat: 'Message us', legal: 'Digital signatures are legally binding', urgency: 'Quote expires in', lock: 'Lock in your price!', refTitle: 'Referral Program', refDesc: 'Share your link with friends. Both get $25 off when they complete their first booking!', copied: 'Copied! 🎁', stepApproved: 'Quote Approved', stepEnRoute: 'Team En Route', stepInService: 'In Service', stepQC: 'Quality Control', stepCompletedPaid: 'Completed & Paid', sliderBeforeAfter: 'Before / After Comparison', trackerTitle: 'Uber-Style Live Service Tracker', destLocation: 'Destination Location', routeMap: 'Live Destination Map', payCard: 'Pay Securely with Card', cardNo: 'Card Number', expiry: 'Expiry (MM/YY)', cvc: 'CVC', cardName: 'Name on Card', tipSelect: 'Select a Tip for the Team', customTip: 'Custom Tip ($)', paying: 'Processing payment...', paySuccess: 'Payment completed!', totalAmount: 'Total to Pay', tabActive: 'Active Tracker', tabHistory: 'History', tabPreferences: 'Preferences', tabMembership: 'Membership', tabBooking: 'Book Service', tabReferral: 'Referral Hub', tabChat: 'Messages' },
+  es: { balance: 'Saldo Pendiente', pay: 'Paga por Zelle', approve: 'Firma para Aprobar tu Cotización', before: 'Antes', after: 'Después', complete: 'Firma para Confirmar que Quedó Bien', review: 'Déjanos una Reseña', refer: 'Refiere un Amigo — Ambos Reciben $25', syncing: 'Cargando...', hub: 'Estado del Servicio', arrived: 'El equipo llegó', done: 'Completado', rating: 'Califica el servicio', submit: 'Enviar Calificación', chat: 'Escríbenos', legal: 'Las firmas digitales tienen validez legal', urgency: 'Cotización vence en', lock: '¡Bloquea tu precio!', refTitle: 'Programa de Referidos', refDesc: 'Comparte tu link con amigos. ¡Ambos reciben $25 de descuento en su próximo servicio!', copied: '¡Link Copiado! 🎁', stepApproved: 'Cotización Aprobada', stepEnRoute: 'Equipo en Camino', stepInService: 'En Servicio', stepQC: 'Control de Calidad', stepCompletedPaid: 'Completado y Pagado', sliderBeforeAfter: 'Comparación Antes / Después', trackerTitle: 'Rastreador en Vivo del Servicio', destLocation: 'Ubicación de Destino', routeMap: 'Mapa de Destino en Vivo', payCard: 'Pagar con Tarjeta de Forma Segura', cardNo: 'Número de Tarjeta', expiry: 'Expiración (MM/AA)', cvc: 'CVC', cardName: 'Nombre en la Tarjeta', tipSelect: 'Selecciona una Propina para el Equipo', customTip: 'Propina Personalizada ($)', paying: 'Procesando pago...', paySuccess: '¡Pago realizado con éxito!', totalAmount: 'Total a Pagar', tabActive: 'Servicio Activo', tabHistory: 'Historial', tabPreferences: 'Preferencias', tabMembership: 'Membresía', tabBooking: 'Agendar', tabReferral: 'Referidos', tabChat: 'Mensajes' }
 };
 const tr = (l, k) => T[l]?.[k] || T.en[k] || k;
 
@@ -2729,6 +2729,7 @@ function Portal({ cjid }) {
 
   const tabs = [
     { id: 'tracker', label: tr(lang, 'tabActive'), icon: 'compass' },
+    { id: 'chat', label: tr(lang, 'tabChat'), icon: 'message-square' },
     { id: 'history', label: tr(lang, 'tabHistory'), icon: 'calendar' },
     { id: 'preferences', label: tr(lang, 'tabPreferences'), icon: 'sliders' },
     { id: 'membership', label: tr(lang, 'tabMembership'), icon: 'award' },
@@ -2866,7 +2867,18 @@ function Portal({ cjid }) {
         </div>
       )}
       <div className="max-w-md mx-auto space-y-5 pb-20">
-        <div className="flex justify-end gap-2">{['en', 'es'].map(lg => (<button key={lg} onClick={() => setLang(lg)} className={`text-[8px] font-black px-3 py-1.5 rounded-xl ${lang === lg ? 'bg-amber-500 text-black' : 'bg-white/5 text-slate-500'}`}>{lg.toUpperCase()}</button>))}</div>
+        <div className="flex justify-between items-center w-full">
+          <button 
+            onClick={() => window.location.search = ''} 
+            className="flex items-center gap-1.5 text-[8px] font-black px-3 py-1.5 rounded-xl bg-red-950/20 hover:bg-red-900/30 text-red-400 border border-red-500/20 transition-all active:scale-95 uppercase tracking-wider"
+          >
+            <Icon name="log-out" className="w-3 h-3" />
+            <span>{lang === 'es' ? 'Salir' : 'Exit'}</span>
+          </button>
+          <div className="flex gap-2">
+            {['en', 'es'].map(lg => (<button key={lg} onClick={() => setLang(lg)} className={`text-[8px] font-black px-3 py-1.5 rounded-xl ${lang === lg ? 'bg-amber-500 text-black' : 'bg-white/5 text-slate-500'}`}>{lg.toUpperCase()}</button>))}
+          </div>
+        </div>
         
         <div className="text-center space-y-3 relative z-10">
           <div className="w-20 h-20 bg-gradient-to-br from-zinc-800 to-black border border-white/10 rounded-[2rem] mx-auto flex items-center justify-center font-black text-white text-4xl shadow-[0_0_40px_rgba(255,255,255,0.05)] transform transition-transform hover:scale-105 relative group overflow-hidden">
@@ -3858,6 +3870,73 @@ function Portal({ cjid }) {
             </div>
           );
         })()}
+
+        {activeTab === 'chat' && (
+          <div className="space-y-4 animate-in fade-in duration-300 text-left">
+            <div className="g p-5 bg-gradient-to-br from-slate-950 via-zinc-900 to-black border border-white/5 rounded-2xl relative overflow-hidden shadow-2xl space-y-4">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/5 rounded-full blur-3xl pointer-events-none"></div>
+              <div className="flex justify-between items-center border-b border-white/5 pb-2">
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
+                  <h3 className="text-xs font-black text-white uppercase tracking-widest font-display">
+                    {lang === 'es' ? 'Mensajes del Servicio' : 'Live Mission Chat'}
+                  </h3>
+                </div>
+                <p className="text-[7.5px] text-slate-500 font-bold uppercase tracking-widest">
+                  ID: #{job.id?.slice(0,8)}
+                </p>
+              </div>
+              <div className="h-64 overflow-y-auto space-y-3 p-3 flex flex-col bg-black/40 rounded-xl border border-white/5">
+                {(job.specs?.chat_messages || []).length === 0 ? (
+                  <div className="flex-1 flex flex-col items-center justify-center text-slate-500 text-[8.5px] uppercase font-bold italic py-12">
+                    <Icon name="message-square" className="w-8 h-8 text-slate-700 mb-2 animate-bounce" />
+                    {lang === 'es' ? 'No hay mensajes todavía.' : 'No messages yet.'}
+                    <span className="text-[7px] font-medium not-italic text-slate-600 mt-1 uppercase">
+                      {lang === 'es' ? 'Escribe un mensaje para contactar al equipo.' : 'Type a message to contact the crew.'}
+                    </span>
+                  </div>
+                ) : (
+                  (job.specs.chat_messages).map((msg) => {
+                    const isMe = msg.sender === 'client';
+                    return (
+                      <div key={msg.id} className={`flex flex-col max-w-[85%] ${isMe ? 'self-end items-end' : 'self-start items-start'}`}>
+                        <span className="text-[6.5px] text-slate-500 font-black uppercase mb-0.5 tracking-wider">
+                          {isMe ? (lang === 'es' ? 'Tú' : 'You') : (msg.sender === 'admin' ? 'CEO Elevore' : (lang === 'es' ? 'Técnico Elevore' : 'Elevore Crew'))} • {new Date(msg.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                        <div className={`px-3.5 py-2 rounded-2xl text-[9.5px] font-medium leading-relaxed break-words shadow-md ${isMe ? 'bg-amber-500 text-black rounded-tr-none' : 'bg-zinc-800 text-white rounded-tl-none border border-white/5'}`}>{msg.text}</div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+              <form 
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  const input = e.target.elements.chatInput;
+                  if (input && input.value.trim()) {
+                    sendChatMessage(input.value);
+                    input.value = '';
+                  }
+                }}
+                className="flex gap-2"
+              >
+                <input 
+                  name="chatInput"
+                  type="text" 
+                  placeholder={lang === 'es' ? 'Escribe un mensaje...' : 'Type a message...'}
+                  className="flex-1 bg-white/5 border border-white/10 rounded-xl px-3.5 py-2 text-[10px] text-white outline-none focus:border-amber-500 font-semibold"
+                  autoComplete="off"
+                />
+                <button 
+                  type="submit" 
+                  className="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-black font-black uppercase text-[8px] tracking-wider rounded-xl active:scale-95 transition-all shadow-lg shadow-amber-500/10"
+                >
+                  {lang === 'es' ? 'Enviar' : 'Send'}
+                </button>
+              </form>
+            </div>
+          </div>
+        )}
 
         {/* ── SHARED FOOTER ACCORDIONS/CARDS ── */}
         <div className="relative rounded-3xl overflow-hidden border border-[#F5C518]/25 bg-gradient-to-br from-[#0e0d02] via-[#121106] to-black p-6 space-y-4 shadow-[0_0_40px_rgba(245,197,24,0.05)] text-left">
@@ -12889,6 +12968,10 @@ Instrucciones generales de formato:
                   <Icon name="shield-check" className="w-4 h-4" />
                   <span>Misiones</span>
                 </button>
+                <button onClick={() => { setAStaff(null); setView('staff_inbox'); setMobileMenuOpen(false); }} className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all duration-200 active:scale-95 ${view === 'staff_inbox' ? 'bg-[#F5C518] text-black shadow-lg shadow-[#F5C518]/15' : 'text-slate-400 hover:bg-white/5 hover:text-white'}`}>
+                  <Icon name="message-square" className="w-4 h-4" />
+                  <span>Bandeja de Entrada</span>
+                </button>
                 {ENABLE_AI && (
                   <button onClick={() => { setAIOpen(true); setMobileMenuOpen(false); }} className="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl text-[9px] font-black uppercase tracking-widest text-slate-400 hover:bg-white/5 hover:text-white transition-all active:scale-95">
                     <Icon name="brain" className="w-4 h-4 text-amber-400" />
@@ -13035,7 +13118,7 @@ Instrucciones generales de formato:
           {/* =====================================================================
               👷 STAFF OPERATIONS WORKSPACE
               ===================================================================== */}
-          {role === 'staff' && (() => {
+          {role === 'staff' && view === 'staff' && (() => {
             const badgeDescriptions = {
               empire: { emoji: '👑', label: 'Empire Admin', description: 'Control total de operaciones y Command Deck del sistema Elevore.' },
               veteran: { emoji: '🛡️', label: 'Veteran Staff', description: 'Has completado exitosamente 3 o más misiones asignadas.' },
@@ -13189,6 +13272,15 @@ Instrucciones generales de formato:
                     >
                       <Icon name={onDuty ? "power" : "play"} className="w-3.5 h-3.5" />
                       {onDuty ? 'Terminar Turno' : 'Iniciar Turno'}
+                    </button>
+
+                    {/* Cerrar Sesión Button */}
+                    <button
+                      onClick={handleLogout}
+                      className="px-4 py-2.5 bg-red-950/20 hover:bg-red-900/30 text-red-400 border border-red-500/20 rounded-xl text-[9px] font-black uppercase tracking-wider flex items-center justify-center gap-1.5 active:scale-95 transition-all"
+                    >
+                      <Icon name="log-out" className="w-3.5 h-3.5" />
+                      <span>{prefLang === 'es' ? 'Cerrar Sesión' : 'Logout'}</span>
                     </button>
 
                     {ENABLE_AI && (
@@ -13617,6 +13709,17 @@ Instrucciones generales de formato:
               </div>
             );
           })()}
+
+          {role === 'staff' && view === 'staff_inbox' && (
+            <StaffInbox
+              jobs={jobs}
+              activeEmployee={activeEmployee}
+              sb={sb}
+              setJobs={setJobs}
+              tt={tt}
+              prefLang={prefLang}
+            />
+          )}
 
           {/* =====================================================================
               ✉️ ADMIN REALTIME CENTRAL INBOX
@@ -16657,7 +16760,7 @@ Instrucciones generales de formato:
                     { id: 'reminders', name: `🔔 Recordatorios (${remindersBadgeCount})` },
                     { id: 'drive', name: '📸 Photo Drive' },
                     { id: 'map', name: '🗺️ IA Dispatcher' },
-                    ENABLE_AI && { id: 'meetings', name: '🎙️ Reuniones IA' },
+                    { id: 'meetings', name: '🎙️ Reuniones IA' },
                     { id: 'deploy', name: '📝 Nueva Cotización' }
                   ].filter(Boolean).map(tab => (
                     <button
@@ -17834,7 +17937,7 @@ Instrucciones generales de formato:
                   { id: 'reminders', name: `🔔 Recordatorios (${remindersBadgeCount})` },
                   { id: 'drive', name: '📸 Photo Drive' },
                   { id: 'map', name: '🗺️ IA Dispatcher' },
-                  ENABLE_AI && { id: 'meetings', name: '🎙️ Reuniones IA' },
+                  { id: 'meetings', name: '🎙️ Reuniones IA' },
                   { id: 'deploy', name: '📝 Nueva Cotización' }
                 ].filter(Boolean).map(tab => (
                   <button
@@ -17890,7 +17993,7 @@ Instrucciones generales de formato:
             </FeatureGate>
           )}
 
-          {ENABLE_AI && role === 'admin' && view === 'operations' && operationsTab === 'meetings' && (
+          {role === 'admin' && view === 'operations' && operationsTab === 'meetings' && (
             <FeatureGate
               requiredPlan="premium"
               currentPlan={currentPlan}
@@ -17904,7 +18007,7 @@ Instrucciones generales de formato:
                     { id: 'reminders', name: `🔔 Recordatorios (${remindersBadgeCount})` },
                     { id: 'drive', name: '📸 Photo Drive' },
                     { id: 'map', name: '🗺️ IA Dispatcher' },
-                    ENABLE_AI && { id: 'meetings', name: '🎙️ Reuniones IA' },
+                    { id: 'meetings', name: '🎙️ Reuniones IA' },
                     { id: 'deploy', name: '📝 Nueva Cotización' }
                   ].filter(Boolean).map(tab => (
                     <button
@@ -19349,6 +19452,266 @@ Respond ONLY in this exact JSON format (no explanation, no markdown, just raw JS
             ===================================================================== */}
         {renderCopilot()}
 
+      </div>
+    </div>
+  );
+}
+
+export function StaffInbox({ jobs, activeEmployee, sb, setJobs, tt, prefLang = 'es' }) {
+  const [selectedJobId, setSelectedJobId] = useState(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [replyText, setReplyText] = useState('');
+  const [sending, setSending] = useState(false);
+
+  const myMissions = useMemo(() => {
+    if (!activeEmployee?.name) return [];
+    return jobs.filter(j => 
+      j.team_assigned === activeEmployee.name &&
+      ['scheduled', 'in_progress', 'completed', 'paid'].includes(j.status)
+    );
+  }, [jobs, activeEmployee]);
+
+  const filteredMissions = useMemo(() => {
+    const query = searchQuery.toLowerCase().trim();
+    if (!query) return myMissions;
+    return myMissions.filter(j => 
+      j.client_name?.toLowerCase().includes(query) ||
+      j.service_type?.toLowerCase().includes(query) ||
+      j.address?.toLowerCase().includes(query)
+    );
+  }, [myMissions, searchQuery]);
+
+  const selectedJob = useMemo(() => {
+    return myMissions.find(j => j.id === selectedJobId) || null;
+  }, [myMissions, selectedJobId]);
+
+  const messages = useMemo(() => {
+    return selectedJob?.specs?.chat_messages || [];
+  }, [selectedJob]);
+
+  const handleSend = async (textToSend) => {
+    const cleanText = textToSend || replyText.trim();
+    if (!cleanText || !selectedJob) return;
+    setSending(true);
+
+    const newMsg = {
+      id: Math.random().toString(36).substring(2, 9),
+      sender: 'staff',
+      text: cleanText,
+      time: new Date().toISOString()
+    };
+
+    const updatedSpecs = {
+      ...(selectedJob.specs || {}),
+      chat_messages: [...messages, newMsg]
+    };
+
+    setJobs(prev => prev.map(j => j.id === selectedJob.id ? { ...j, specs: updatedSpecs } : j));
+    setReplyText('');
+
+    try {
+      const { error } = await sb.from('elevore_missions').update({ specs: updatedSpecs }).eq('id', selectedJob.id);
+      if (error) throw error;
+    } catch (err) {
+      console.error("Error sending staff message:", err);
+      tt(prefLang === 'es' ? "Error al enviar mensaje" : "Error sending message", "red");
+    } finally {
+      setSending(false);
+    }
+  };
+
+  const templates = prefLang === 'es' ? [
+    "Voy en camino al domicilio. 👷🚗",
+    "He llegado al sitio de la misión. 🏁",
+    "Servicio completado. Favor de verificar. 👍",
+    "Tuve un contratiempo, llego en 15 minutos. ⚠️",
+    "¿Podrías proporcionarme más detalles del problema?"
+  ] : [
+    "I'm on my way to the location. 👷🚗",
+    "I have arrived at the job site. 🏁",
+    "Service completed. Please verify. 👍",
+    "Running a bit late, arriving in 15 minutes. ⚠️",
+    "Could you provide more details about the issue?"
+  ];
+
+  return (
+    <div className="space-y-5 animate-in fade-in pb-24 text-left">
+      <div>
+        <p className="text-xs font-bold text-[#F5C518] uppercase tracking-[0.25em] mb-1">
+          {prefLang === 'es' ? 'Mensajes de Campo' : 'Field Communications'}
+        </p>
+        <h2 className="text-3xl font-black tracking-widest uppercase text-white font-display leading-none">
+          {prefLang === 'es' ? 'Bandeja de Entrada' : 'Staff Inbox'}
+        </h2>
+        <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider mt-1.5">
+          {prefLang === 'es' ? 'Comunícate en tiempo real con tus clientes asignados y la administración' : 'Chat in real-time with your assigned clients and administration'}
+        </p>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 h-[600px]">
+        <div className="lg:col-span-4 flex flex-col g border border-white/5 bg-slate-950/60 rounded-2xl overflow-hidden h-full">
+          <div className="p-4 border-b border-white/5">
+            <div className="relative">
+              <input
+                type="text"
+                placeholder={prefLang === 'es' ? "Buscar misión..." : "Search mission..."}
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                className="inp text-xs pl-8 py-2.5 w-full bg-black/40 border border-white/10 rounded-xl text-white outline-none focus:border-amber-500"
+              />
+              <div className="absolute left-2.5 top-3 text-slate-500">
+                <Icon name="search" className="w-3.5 h-3.5" />
+              </div>
+            </div>
+          </div>
+
+          <div className="flex-1 overflow-y-auto nsb p-2 space-y-1.5 custom-scroll">
+            {filteredMissions.length === 0 ? (
+              <div className="text-center text-slate-500 text-[9px] uppercase font-bold py-12">
+                {prefLang === 'es' ? 'No tienes misiones con chat activo' : 'No active mission chats'}
+              </div>
+            ) : (
+              filteredMissions.map(j => {
+                const isSelected = j.id === selectedJobId;
+                const msgs = j.specs?.chat_messages || [];
+                const lastMsg = msgs[msgs.length - 1];
+                const hasUnread = msgs.length > 0 && lastMsg.sender !== 'staff';
+
+                return (
+                  <button
+                    key={j.id}
+                    onClick={() => setSelectedJobId(j.id)}
+                    className={`w-full text-left p-3.5 rounded-xl border transition-all active:scale-[0.98] ${
+                      isSelected 
+                        ? 'bg-amber-500/10 border-amber-500/30 text-white shadow-lg shadow-amber-500/5' 
+                        : 'bg-black/20 border-white/5 text-slate-400 hover:bg-white/[0.02] hover:text-white'
+                    }`}
+                  >
+                    <div className="flex justify-between items-start">
+                      <span className="text-[10px] font-black uppercase tracking-wider truncate max-w-[150px]">
+                        {j.client_name}
+                      </span>
+                      <span className="text-[7px] font-mono text-slate-500">
+                        #{j.id?.slice(0,6).toUpperCase()}
+                      </span>
+                    </div>
+                    <p className="text-[8px] font-bold text-slate-500 uppercase mt-0.5 tracking-wider truncate">
+                      {j.service_type}
+                    </p>
+                    {lastMsg ? (
+                      <p className={`text-[8.5px] mt-2 truncate ${hasUnread ? 'text-amber-400 font-extrabold' : 'text-slate-400 font-normal'}`}>
+                        {lastMsg.sender === 'staff' ? 'Tú: ' : (lastMsg.sender === 'admin' ? 'Admin: ' : 'Cliente: ')}
+                        {lastMsg.text}
+                      </p>
+                    ) : (
+                      <p className="text-[8.5px] text-slate-600 mt-2 italic uppercase font-bold">
+                        {prefLang === 'es' ? 'Sin mensajes' : 'No messages'}
+                      </p>
+                    )}
+                  </button>
+                );
+              })
+            )}
+          </div>
+        </div>
+
+        <div className="lg:col-span-8 flex flex-col g border border-white/5 bg-slate-950/60 rounded-2xl overflow-hidden h-full">
+          {selectedJob ? (
+            <div className="flex flex-col h-full min-h-0">
+              <div className="p-4 border-b border-white/5 bg-gradient-to-r from-white/[0.01] to-transparent flex items-center justify-between flex-shrink-0">
+                <div>
+                  <h3 className="text-xs font-black text-white uppercase tracking-wider font-display">
+                    {selectedJob.client_name}
+                  </h3>
+                  <p className="text-[8px] text-[#F5C518] font-bold uppercase tracking-wider mt-0.5">
+                    {selectedJob.service_type} • {selectedJob.address}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className={`text-[7px] font-black px-2 py-0.5 rounded-lg border uppercase ${
+                    selectedJob.status === 'in_progress'
+                      ? 'bg-amber-500/10 border-amber-500/20 text-amber-400'
+                      : 'bg-green-500/10 border-green-500/20 text-green-400'
+                  }`}>
+                    {selectedJob.status}
+                  </span>
+                </div>
+              </div>
+
+              <div className="px-4 py-2 border-b border-white/5 bg-black/40 flex items-center gap-1.5 overflow-x-auto nsb shrink-0">
+                <span className="text-[7.5px] font-black uppercase text-slate-500 shrink-0">
+                  {prefLang === 'es' ? 'Respuestas Rápidas:' : 'Quick Replies:'}
+                </span>
+                {templates.map((tmpl, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => handleSend(tmpl)}
+                    disabled={sending}
+                    className="text-[7.5px] font-bold uppercase tracking-wider px-2 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-slate-300 border border-white/5 transition-all whitespace-nowrap active:scale-95 disabled:opacity-50"
+                  >
+                    {tmpl}
+                  </button>
+                ))}
+              </div>
+
+              <div className="flex-1 overflow-y-auto p-4 space-y-3 flex flex-col bg-black/30 custom-scroll">
+                {messages.length === 0 ? (
+                  <div className="flex-1 flex flex-col items-center justify-center text-slate-500 text-[8.5px] uppercase font-bold italic py-12">
+                    <Icon name="message-square" className="w-8 h-8 text-slate-800 mb-2" />
+                    {prefLang === 'es' ? 'Inicia la conversación con el cliente' : 'Start the conversation with the client'}
+                  </div>
+                ) : (
+                  messages.map(msg => {
+                    const isMe = msg.sender === 'staff';
+                    return (
+                      <div key={msg.id} className={`flex flex-col max-w-[75%] ${isMe ? 'self-end items-end' : 'self-start items-start'}`}>
+                        <span className="text-[6.5px] text-slate-500 font-black uppercase mb-0.5 tracking-wider">
+                          {isMe ? (prefLang === 'es' ? 'Tú (Técnico)' : 'You (Staff)') : (msg.sender === 'admin' ? 'CEO Elevore' : (prefLang === 'es' ? 'Cliente' : 'Client'))} • {new Date(msg.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                        <div className={`px-3.5 py-2 rounded-2xl text-[9.5px] font-medium leading-relaxed break-words shadow-md ${
+                          isMe 
+                            ? 'bg-amber-500 text-black rounded-tr-none' 
+                            : 'bg-zinc-800 text-white rounded-tl-none border border-white/5'
+                        }`}>{msg.text}</div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+
+              <div className="p-3 border-t border-white/5 bg-black/60 shrink-0">
+                <form 
+                  onSubmit={e => {
+                    e.preventDefault();
+                    handleSend();
+                  }}
+                  className="flex gap-2"
+                >
+                  <input
+                    type="text"
+                    placeholder={prefLang === 'es' ? "Escribe un mensaje al cliente..." : "Type a message to the client..."}
+                    value={replyText}
+                    onChange={e => setReplyText(e.target.value)}
+                    disabled={sending}
+                    className="flex-1 bg-white/5 border border-white/10 rounded-xl px-3.5 py-2 text-[10.5px] text-white placeholder-slate-500 outline-none focus:border-amber-500 font-semibold"
+                  />
+                  <button
+                    type="submit"
+                    disabled={sending || !replyText.trim()}
+                    className="px-5 py-2 bg-amber-500 hover:bg-amber-400 disabled:opacity-40 disabled:hover:bg-amber-500 text-black font-black uppercase text-[8.5px] tracking-wider rounded-xl active:scale-95 transition-all shadow-lg shadow-amber-500/10"
+                  >
+                    {prefLang === 'es' ? 'Enviar' : 'Send'}
+                  </button>
+                </form>
+              </div>
+            </div>
+          ) : (
+            <div className="flex-1 flex flex-col items-center justify-center text-slate-500 text-[9.5px] uppercase font-bold italic">
+              <Icon name="message-square" className="w-12 h-12 text-slate-800 mb-3 animate-pulse" />
+              {prefLang === 'es' ? 'Selecciona una misión para iniciar chat' : 'Select a mission to start chatting'}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
