@@ -9809,19 +9809,31 @@ Para consentirte esta semana, te tenemos un beneficio especial: si reservas tu p
   const callUniversalAI = async ({ prompt, systemPrompt, category }) => {
     if (typeof window !== 'undefined' && window.ai) {
       try {
-        if (window.ai.assistant) {
-          const session = await window.ai.assistant.create({
-            systemPrompt: systemPrompt || undefined
+        const runWithTimeout = async (promise, ms = 2000) => {
+          let timeoutId;
+          const timeoutPromise = new Promise((_, reject) => {
+            timeoutId = setTimeout(() => reject(new Error('window.ai call timed out')), ms);
           });
-          const result = await session.prompt(prompt);
+          try {
+            return await Promise.race([promise, timeoutPromise]);
+          } finally {
+            clearTimeout(timeoutId);
+          }
+        };
+
+        if (window.ai.assistant) {
+          const session = await runWithTimeout(window.ai.assistant.create({
+            systemPrompt: systemPrompt || undefined
+          }), 2000);
+          const result = await runWithTimeout(session.prompt(prompt), 3000);
           session.destroy();
           if (result && result.trim()) {
             console.log("[Chrome AI] Gemini Nano completion success.");
             return result;
           }
         } else if (window.ai.createTextSession) {
-          const session = await window.ai.createTextSession();
-          const result = await session.prompt(systemPrompt ? `${systemPrompt}\n\n${prompt}` : prompt);
+          const session = await runWithTimeout(window.ai.createTextSession(), 2000);
+          const result = await runWithTimeout(session.prompt(systemPrompt ? `${systemPrompt}\n\n${prompt}` : prompt), 3000);
           session.destroy();
           if (result && result.trim()) {
             console.log("[Chrome AI Legacy] Gemini Nano completion success.");
@@ -9829,7 +9841,7 @@ Para consentirte esta semana, te tenemos un beneficio especial: si reservas tu p
           }
         }
       } catch (e) {
-        console.warn("window.ai call failed, falling back to local heuristics:", e);
+        console.warn("window.ai call failed or timed out, falling back to local heuristics:", e);
       }
     }
 
