@@ -5214,21 +5214,30 @@ function StaffJob({ job, onBack, onRefresh, tt, recTime, upsell, update, employe
 // AI Advisor Component
 // STRICT PRIVACY PROTECTION: When 'isStaff' is true, it strictly operates as an Operational Task Assistant.
 // It will NEVER mention financial goals, MRR, balances, or revenue!
-function AIAdvisor({ jobs, clients, staff, isStaff, activeUser, onClose, tt, onOpenReport, initialQuery }) {
+function AIAdvisor({ jobs, clients, staff, isStaff, activeUser, onClose, tt, onOpenReport, initialQuery, tenantSettings }) {
   const initialText = isStaff 
     ? `¡Hola ${activeUser}! Soy tu **Manual de Operaciones con IA**. Estoy aquí para ayudarte en tu trabajo de campo. 🛠️ Pregúntame cómo limpiar orificios, parchar drywall, remover manchas de alfombras, o cómo actuar frente a un cliente difícil.`
     : `¡Hola ${activeUser}! Soy tu **Asesor de IA Elevore**. Estoy conectado a tu base de datos en tiempo real. 📊 ¿En qué puedo ayudarte hoy?`;
 
   // Local settings for LLM provider (Ollama)
-  const [aiProvider, setAIProvider] = useState(() => localStorage.getItem('elevore_ai_provider') || 'ollama');
+  const [aiProvider, setAIProvider] = useState(() => tenantSettings?.ai_provider || localStorage.getItem('elevore_ai_provider') || 'ollama');
   const [ollamaUrl, setOllamaUrl] = useState(() => {
     const saved = localStorage.getItem('elevore_ollama_url');
     if (saved === 'http://localhost:11434') return 'http://127.0.0.1:11434';
     return saved || 'http://127.0.0.1:11434';
   });
   const [ollamaModel, setOllamaModel] = useState(() => localStorage.getItem('elevore_ollama_model') || 'llama3.2');
-  const [geminiModel, setGeminiModel] = useState(() => localStorage.getItem('elevore_gemini_model') || 'gemini-2.5-flash');
-  const [geminiKey, setGeminiKey] = useState(() => localStorage.getItem('elevore_gemini_key') || '');
+  const [geminiModel, setGeminiModel] = useState(() => tenantSettings?.gemini_model || localStorage.getItem('elevore_gemini_model') || 'gemini-2.5-flash');
+  const [geminiKey, setGeminiKey] = useState(() => tenantSettings?.gemini_key || localStorage.getItem('elevore_gemini_key') || '');
+  
+  useEffect(() => {
+    if (tenantSettings) {
+      if (tenantSettings.ai_provider) setAIProvider(tenantSettings.ai_provider);
+      if (tenantSettings.gemini_model) setGeminiModel(tenantSettings.gemini_model);
+      if (tenantSettings.gemini_key) setGeminiKey(tenantSettings.gemini_key);
+    }
+  }, [tenantSettings]);
+
   const [showSettings, setShowSettings] = useState(false);
   const [connStatus, setConnStatus] = useState('idle'); // idle, testing, connected, error
 
@@ -9892,6 +9901,9 @@ Para consentirte esta semana, te tenemos un beneficio especial: si reservas tu p
   const [settingsResendKey, setSettingsResendKey] = useState('');
   const [settingsSenderEmail, setSettingsSenderEmail] = useState('');
   const [settingsN8nUrl, setSettingsN8nUrl] = useState('');
+  const [settingsAIProvider, setSettingsAIProvider] = useState('ollama');
+  const [settingsGeminiModel, setSettingsGeminiModel] = useState('gemini-2.5-flash');
+  const [settingsGeminiKey, setSettingsGeminiKey] = useState('');
 
   useEffect(() => {
     if (tenantSettings) {
@@ -9906,6 +9918,9 @@ Para consentirte esta semana, te tenemos un beneficio especial: si reservas tu p
       setSettingsResendKey(tenantSettings.custom_resend_key || '');
       setSettingsSenderEmail(tenantSettings.sender_email || '');
       setSettingsN8nUrl(tenantSettings.n8n_webhook_url || '');
+      setSettingsAIProvider(tenantSettings.ai_provider || 'ollama');
+      setSettingsGeminiModel(tenantSettings.gemini_model || 'gemini-2.5-flash');
+      setSettingsGeminiKey(tenantSettings.gemini_key || '');
       
       if (tenantSettings.wa_template_booking) setBookingTemplateText(tenantSettings.wa_template_booking);
       if (tenantSettings.wa_template_route) setRouteTemplateText(tenantSettings.wa_template_route);
@@ -9929,7 +9944,10 @@ Para consentirte esta semana, te tenemos un beneficio especial: si reservas tu p
         booking_multiplier_moveout: Number(settingsMultMoveout) || 1.60,
         custom_resend_key: settingsResendKey,
         sender_email: settingsSenderEmail,
-        n8n_webhook_url: settingsN8nUrl
+        n8n_webhook_url: settingsN8nUrl,
+        ai_provider: settingsAIProvider,
+        gemini_model: settingsGeminiModel,
+        gemini_key: settingsGeminiKey
       };
 
       const { error } = await sb
@@ -9968,9 +9986,9 @@ Instrucciones:
 3. El mensaje debe ser directo, tener emojis y no sonar robótico.
 4. Devuelve únicamente el texto del mensaje de WhatsApp, sin introducciones ni comillas ni formatos markdown.`;
 
-      const aiProvider = localStorage.getItem('elevore_ai_provider') || 'ollama';
-      const geminiModel = localStorage.getItem('elevore_gemini_model') || 'gemini-2.5-flash';
-      const geminiKey = localStorage.getItem('elevore_gemini_key') || '';
+      const aiProvider = tenantSettings?.ai_provider || localStorage.getItem('elevore_ai_provider') || 'ollama';
+      const geminiModel = tenantSettings?.gemini_model || localStorage.getItem('elevore_gemini_model') || 'gemini-2.5-flash';
+      const geminiKey = tenantSettings?.gemini_key || localStorage.getItem('elevore_gemini_key') || '';
       const ollamaUrl = localStorage.getItem('elevore_ollama_url') || 'http://127.0.0.1:11434';
       const ollamaModel = localStorage.getItem('elevore_ollama_model') || 'llama3.2';
 
@@ -11487,9 +11505,9 @@ Instrucciones generales de formato:
 2. Usa emojis de forma moderada para hacerlo visualmente atractivo.
 3. Devuelve ÚNICAMENTE el texto final para copiar y enviar en WhatsApp, sin introducciones ni comentarios ni markdown.`;
 
-      const aiProvider = localStorage.getItem('elevore_ai_provider') || 'ollama';
-      const geminiModel = localStorage.getItem('elevore_gemini_model') || 'gemini-2.5-flash';
-      const geminiKey = localStorage.getItem('elevore_gemini_key') || '';
+      const aiProvider = tenantSettings?.ai_provider || localStorage.getItem('elevore_ai_provider') || 'ollama';
+      const geminiModel = tenantSettings?.gemini_model || localStorage.getItem('elevore_gemini_model') || 'gemini-2.5-flash';
+      const geminiKey = tenantSettings?.gemini_key || localStorage.getItem('elevore_gemini_key') || '';
       const ollamaUrl = localStorage.getItem('elevore_ollama_url') || 'http://127.0.0.1:11434';
       const ollamaModel = localStorage.getItem('elevore_ollama_model') || 'llama3.2';
 
@@ -12070,9 +12088,9 @@ Nómina pagada acumulada por empleado: ${JSON.stringify(finance.payroll)}
       try {
         let res;
         let usedProvider = 'ollama';
-        const aiProvider = localStorage.getItem('elevore_ai_provider') || 'ollama';
-        const geminiModel = localStorage.getItem('elevore_gemini_model') || 'gemini-2.5-flash';
-        const geminiKey = localStorage.getItem('elevore_gemini_key') || '';
+        const aiProvider = tenantSettings?.ai_provider || localStorage.getItem('elevore_ai_provider') || 'ollama';
+        const geminiModel = tenantSettings?.gemini_model || localStorage.getItem('elevore_gemini_model') || 'gemini-2.5-flash';
+        const geminiKey = tenantSettings?.gemini_key || localStorage.getItem('elevore_gemini_key') || '';
 
         const shouldForceGemini = (view === 'landing' || aiProvider === 'gemini' || aiProvider === 'antigravity');
 
@@ -12299,9 +12317,9 @@ Instrucciones generales de formato:
 2. Usa emojis de forma moderada para hacerlo visualmente atractivo.
 3. Devuelve ÚNICAMENTE el texto final para copiar y enviar en WhatsApp, sin introducciones ni comentarios ni markdown.`;
 
-        const aiProvider = localStorage.getItem('elevore_ai_provider') || 'ollama';
-        const geminiModel = localStorage.getItem('elevore_gemini_model') || 'gemini-2.5-flash';
-        const geminiKey = localStorage.getItem('elevore_gemini_key') || '';
+        const aiProvider = tenantSettings?.ai_provider || localStorage.getItem('elevore_ai_provider') || 'ollama';
+        const geminiModel = tenantSettings?.gemini_model || localStorage.getItem('elevore_gemini_model') || 'gemini-2.5-flash';
+        const geminiKey = tenantSettings?.gemini_key || localStorage.getItem('elevore_gemini_key') || '';
         const ollamaUrl = localStorage.getItem('elevore_ollama_url') || 'http://127.0.0.1:11434';
         const ollamaModel = localStorage.getItem('elevore_ollama_model') || 'llama3.2';
 
@@ -12839,7 +12857,7 @@ Instrucciones generales de formato:
       <Toast />
       {quickMode && <QQ onClose={() => setQM(false)} />}
       {chatJob && <ChatModal />}
-      {aiOpen && <AIAdvisor jobs={jobs} clients={clients} staff={staff} isStaff={role === 'staff'} activeUser={activeEmployee?.name || 'User'} onClose={() => { setAIOpen(false); setAIQuery(null); }} tt={tt} onOpenReport={() => { setAIOpen(false); setAIReportOpen(true); }} initialQuery={aiQuery} />}
+      {aiOpen && <AIAdvisor jobs={jobs} clients={clients} staff={staff} isStaff={role === 'staff'} activeUser={activeEmployee?.name || 'User'} onClose={() => { setAIOpen(false); setAIQuery(null); }} tt={tt} onOpenReport={() => { setAIOpen(false); setAIReportOpen(true); }} initialQuery={aiQuery} tenantSettings={tenantSettings} />}
       {aiReportOpen && <AIReportModal jobs={jobs} clients={clients} staff={staff} onClose={() => setAIReportOpen(false)} tt={tt} />}
 
       {/* 🔮 ALERTA SOS OVERLAY */}
@@ -17576,6 +17594,21 @@ Instrucciones generales de formato:
                           <label className="text-[9px] font-black uppercase text-slate-500 tracking-widest pl-1">n8n Webhook URL</label>
                           <input type="url" placeholder="https://..." className="inp w-full text-xs" value={settingsN8nUrl} onChange={e => setSettingsN8nUrl(e.target.value)} />
                         </div>
+                        <div className="space-y-1">
+                          <label className="text-[9px] font-black uppercase text-slate-500 tracking-widest pl-1">AI Provider (Multi-tenant SaaS)</label>
+                          <select className="inp w-full text-xs bg-black text-white" value={settingsAIProvider} onChange={e => setSettingsAIProvider(e.target.value)}>
+                            <option value="ollama">Ollama (Local / Free)</option>
+                            <option value="gemini">Gemini (Cloud / API Key)</option>
+                          </select>
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-[9px] font-black uppercase text-slate-500 tracking-widest pl-1">SaaS Tenant Gemini API Key</label>
+                          <input type="password" placeholder="AIzaSy..." className="inp w-full font-mono text-xs" value={settingsGeminiKey} onChange={e => setSettingsGeminiKey(e.target.value)} />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-[9px] font-black uppercase text-slate-500 tracking-widest pl-1">SaaS Tenant Gemini Model</label>
+                          <input type="text" placeholder="gemini-2.5-flash" className="inp w-full text-xs" value={settingsGeminiModel} onChange={e => setSettingsGeminiModel(e.target.value)} />
+                        </div>
                       </div>
                     </div>
                     
@@ -18458,9 +18491,9 @@ Respond ONLY in this exact JSON format (no explanation, no markdown, just raw JS
                     let ollamaUrl = localStorage.getItem('elevore_ollama_url') || 'http://127.0.0.1:11434';
                     if (ollamaUrl === 'http://localhost:11434') ollamaUrl = 'http://127.0.0.1:11434';
                     const ollamaModel = localStorage.getItem('elevore_ollama_model') || 'llama3.2';
-                    const aiProvider = localStorage.getItem('elevore_ai_provider') || 'ollama';
-                    const geminiModel = localStorage.getItem('elevore_gemini_model') || 'gemini-2.5-flash';
-                    const geminiKey = localStorage.getItem('elevore_gemini_key') || '';
+                    const aiProvider = tenantSettings?.ai_provider || localStorage.getItem('elevore_ai_provider') || 'ollama';
+                    const geminiModel = tenantSettings?.gemini_model || localStorage.getItem('elevore_gemini_model') || 'gemini-2.5-flash';
+                    const geminiKey = tenantSettings?.gemini_key || localStorage.getItem('elevore_gemini_key') || '';
 
                     const controller = new AbortController();
                     const timeoutDuration = 90000; // 90s for local Ollama
