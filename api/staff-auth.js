@@ -138,38 +138,29 @@ export default async function handler(req, res) {
       const cleanEmail = email.trim().toLowerCase();
       const passcodeStr = String(passcode).trim();
 
-      // Query staff_profiles with this passcode (bypassing RLS safely on server side)
-      const { data: profiles, error: pinErr } = await sbAdmin
-        .from('staff_profiles')
-        .select('*')
-        .eq('passcode', passcodeStr);
+      // Call the secure RPC function to authenticate the staff member bypassing RLS safely
+      const { data: matchedStaff, error: pinErr } = await sbAdmin
+        .rpc('login_staff_secure', {
+          p_email: cleanEmail,
+          p_passcode: passcodeStr
+        });
 
       if (pinErr) {
-        console.error('Error fetching staff profile by PIN:', pinErr);
+        console.error('Error fetching staff profile by PIN RPC:', pinErr);
         return res.status(500).json({ error: `Database error: ${pinErr.message}` });
       }
 
-      let matchedStaff = null;
-      if (profiles && profiles.length > 0) {
-        for (const profile of profiles) {
-          const storedEmail = (profile.staff_email || profile.name || '').toLowerCase();
-          if (storedEmail.includes(cleanEmail) || cleanEmail.includes(storedEmail)) {
-            matchedStaff = profile;
-            break;
-          }
-        }
-      }
-
-      if (matchedStaff) {
+      if (matchedStaff && matchedStaff.length > 0) {
+        const staffProfile = matchedStaff[0];
         const { data: tenant } = await sbAdmin
           .from('tenants')
           .select('*')
-          .eq('id', matchedStaff.tenant_id)
+          .eq('id', staffProfile.tenant_id)
           .maybeSingle();
 
         return res.status(200).json({
           success: true,
-          profile: matchedStaff,
+          profile: staffProfile,
           tenantName: tenant?.business_name || 'ELEVORE EMPIRE'
         });
       }
