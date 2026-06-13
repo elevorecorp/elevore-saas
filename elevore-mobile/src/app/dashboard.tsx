@@ -78,8 +78,8 @@ export default function DashboardScreen() {
           if (storedTenantName) setTenantName(storedTenantName);
           
           // Set wallet balance from database profile directly
-          await refreshStaffBalance(staffProfile.id);
-          await fetchStaffPayouts(staffProfile.id);
+          await refreshStaffBalance(staffProfile.id, staffProfile.passcode);
+          await fetchStaffPayouts(staffProfile.id, staffProfile.passcode);
         } else {
           // No session or profile - redirect to login
           router.replace('/');
@@ -174,31 +174,32 @@ export default function DashboardScreen() {
     };
   }, [onDuty, profile?.id, profile?.tenant_id]);
 
-  const refreshStaffBalance = async (staffId: string) => {
+  const refreshStaffBalance = async (staffId: string, passcode: string) => {
     try {
-      const { data: latestProfile } = await supabase
-        .from('staff_profiles')
-        .select('wallet_balance, total_earned')
-        .eq('id', staffId)
-        .maybeSingle();
+      const { data, error } = await supabase
+        .rpc('get_staff_profile_secure', {
+          p_staff_id: staffId,
+          p_passcode: passcode
+        });
       
-      if (latestProfile) {
-        setWalletBalance(latestProfile.wallet_balance || 0);
-        setTotalEarned(latestProfile.total_earned || 0);
+      if (error) throw error;
+      
+      if (data && data.length > 0) {
+        setWalletBalance(Number(data[0].wallet_balance) || 0);
+        setTotalEarned(Number(data[0].total_earned) || 0);
       }
     } catch (err) {
       console.warn('Could not refresh staff balance:', err);
     }
   };
 
-  const fetchStaffPayouts = async (staffId: string) => {
+  const fetchStaffPayouts = async (staffId: string, passcode: string) => {
     try {
       const { data, error } = await supabase
-        .from('staff_payouts')
-        .select('*')
-        .eq('staff_id', staffId)
-        .order('created_at', { ascending: false })
-        .limit(5);
+        .rpc('get_staff_payouts_secure', {
+          p_staff_id: staffId,
+          p_passcode: passcode
+        });
       if (error) throw error;
       if (data) setPayouts(data);
     } catch (err) {
@@ -249,32 +250,16 @@ export default function DashboardScreen() {
             setLoading(true);
             try {
               if (profile && profile.id) {
-                // 1. Create a real payout record in staff_payouts
-                const newPayoutRecord = {
-                  tenant_id: profile.tenant_id,
-                  staff_id: profile.id,
-                  worker_name: profile.name,
-                  amount: walletBalance,
-                  payment_method: 'Zelle',
-                  reference_note: 'Retiro solicitado desde la app móvil'
-                };
+                const { error: rpcErr } = await supabase
+                  .rpc('request_cashout_secure', {
+                    p_staff_id: profile.id,
+                    p_passcode: profile.passcode
+                  });
                 
-                const { error: payoutErr } = await supabase
-                  .from('staff_payouts')
-                  .insert([newPayoutRecord]);
+                if (rpcErr) throw rpcErr;
                 
-                if (payoutErr) throw payoutErr;
-
-                // 2. Update balance to 0 in Supabase staff_profiles
-                const { error: profileErr } = await supabase
-                  .from('staff_profiles')
-                  .update({ wallet_balance: 0 })
-                  .eq('id', profile.id);
-                
-                if (profileErr) throw profileErr;
-                
-                await refreshStaffBalance(profile.id);
-                await fetchStaffPayouts(profile.id);
+                await refreshStaffBalance(profile.id, profile.passcode);
+                await fetchStaffPayouts(profile.id, profile.passcode);
                 Alert.alert('¡Éxito!', 'Tu transferencia Zelle se está procesando. El dinero llegará en unos minutos.');
               }
             } catch (err) {
@@ -416,30 +401,18 @@ export default function DashboardScreen() {
           text: 'Sí, Completado',
           onPress: async () => {
             try {
-              const { error } = await supabase
-                .from('elevore_missions')
-                .update({ status: 'completed' })
-                .eq('id', job.id);
+              const { data, error: rpcErr } = await supabase
+                .rpc('complete_mission_secure', {
+                  p_mission_id: job.id,
+                  p_staff_id: profile.id,
+                  p_passcode: profile.passcode
+                });
 
-              if (error) throw error;
+              if (rpcErr) throw rpcErr;
               
-              // If staff profile is available, give a payout commission (simulated XP/Reward)
-              if (profile && profile.id) {
-                // Fetch current job price to calculate commission (e.g. 15% payout pct)
-                const commission = (job.total_price || 0) * ((profile.payout_pct || 15) / 100);
-                
-                // Add to balance
-                const { error: profileErr } = await supabase
-                  .from('staff_profiles')
-                  .update({
-                    wallet_balance: walletBalance + commission,
-                    total_earned: totalEarned + commission
-                  })
-                  .eq('id', profile.id);
-                  
-                if (!profileErr) {
-                  await refreshStaffBalance(profile.id);
-                }
+              if (data && data.length > 0) {
+                setWalletBalance(Number(data[0].wallet_balance) || 0);
+                setTotalEarned(Number(data[0].total_earned) || 0);
               }
 
               // Update local lists
