@@ -588,7 +588,7 @@ Reglas de Negociación:
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-gemini-key': localStorage.getItem('elevore_gemini_key') || ''
+          'x-gemini-key': tenantSettings?.gemini_key || localStorage.getItem('elevore_gemini_key') || ''
         },
         body: JSON.stringify({
           messages: apiMessages,
