@@ -6577,27 +6577,71 @@ function LoginFlow({ onLoginSuccess, onBack, tt }) {
   const handleClientLogin = async (e) => {
     e.preventDefault();
     if (!phone) return tt('Phone number is required', 'red');
+    if (!email) return tt('Email is required', 'red');
     setLoading(true);
-    tt('Searching portals...', 'yellow');
+    tt('Verificando y enviando enlace seguro...', 'yellow');
     try {
       const cleanPhone = phone.replace(/\D/g, '');
+      const cleanEmail = email.trim().toLowerCase();
+      
       const { data, error } = await sb
         .from('elevore_missions')
-        .select('id')
-        .ilike('client_phone', `%${cleanPhone}%`)
+        .select('id, client_name, client_email, client_phone, tenant_id')
+        .eq('client_email', cleanEmail)
         .order('created_at', { ascending: false })
         .limit(1);
         
       if (error || !data || data.length === 0) {
         setLoading(false);
-        return tt('No portal found for this phone number', 'red');
+        return tt('No se encontró reservación para este correo', 'red');
       }
       
-      tt('Access Granted! Redirecting...', 'green');
-      window.location.search = `?mision=${data[0].id}`;
+      const mission = data[0];
+      const dbPhone = mission.client_phone?.replace(/\D/g, '') || '';
+      
+      if (dbPhone !== cleanPhone) {
+        setLoading(false);
+        return tt('El número de teléfono no coincide', 'red');
+      }
+      
+      const host = window.location.host;
+      const protocol = window.location.protocol;
+      const secureLink = `${protocol}//${host}/?mision=${mission.id}`;
+      
+      const mailRes = await fetch('/api/send-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          tenant_id: mission.tenant_id,
+          to: cleanEmail,
+          subject: '🔑 Enlace de Acceso Seguro a tu Portal - Elevore',
+          html: `
+            <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #0c0f17; color: #ffffff; border-radius: 12px; border: 1px solid rgba(255,255,255,0.05);">
+              <h2 style="color: #F5C518; text-transform: uppercase; letter-spacing: 2px;">Acceso Seguro</h2>
+              <p>Hola, <b>${mission.client_name}</b>.</p>
+              <p>Has solicitado un enlace de acceso seguro para entrar a tu Portal de Cliente. Para ingresar, haz clic en el siguiente botón:</p>
+              <div style="text-align: center; margin: 30px 0;">
+                <a href="${secureLink}" style="background-color: #F5C518; color: #000000; padding: 12px 30px; text-decoration: none; border-radius: 8px; font-weight: bold; text-transform: uppercase; font-size: 12px; display: inline-block;">
+                  Entrar a Mi Portal
+                </a>
+              </div>
+              <p style="font-size: 10px; color: #64748b;">Si no solicitaste este enlace, puedes ignorar este correo de forma segura.</p>
+            </div>
+          `
+        })
+      });
+      
+      if (!mailRes.ok) {
+        throw new Error('No se pudo enviar el enlace por correo electrónico.');
+      }
+      
+      tt('¡Enlace de acceso seguro enviado a tu correo! ✓', 'green');
+      setEmail('');
+      setPhone('');
+      setLoading(false);
     } catch (err) {
       setLoading(false);
-      tt('Connection error. Try again.', 'red');
+      tt('Error: ' + err.message, 'red');
     }
   };
 
@@ -6671,14 +6715,18 @@ function LoginFlow({ onLoginSuccess, onBack, tt }) {
         {tab === 'client' && (
           <form onSubmit={handleClientLogin} className="space-y-4 text-left">
             <div className="space-y-1">
+              <label className="text-[9px] font-black uppercase text-slate-500 tracking-widest pl-1">Registered Email</label>
+              <input required type="email" placeholder="client@example.com" className="inp w-full py-4 text-sm" value={email} onChange={e => setEmail(e.target.value)} disabled={loading} />
+            </div>
+            <div className="space-y-1">
               <label className="text-[9px] font-black uppercase text-slate-500 tracking-widest pl-1">Registered Phone</label>
               <input required type="tel" placeholder="Ej: (407) 952-4228" className="inp w-full py-4 text-sm" value={phone} onChange={e => setPhone(e.target.value)} disabled={loading} />
             </div>
             <p className="text-[7.5px] text-slate-500 leading-normal uppercase font-bold tracking-wider pt-1">
-              * Enter the phone number you used for your booking. We\'ll automatically find your active mission portal and referral link.
+              * Por seguridad, te enviaremos un enlace de acceso temporal y único a tu correo electrónico registrado para poder entrar a tu portal.
             </p>
             <button type="submit" disabled={loading} className="w-full btn-gold py-4 rounded-xl font-black uppercase text-sm shadow-[0_0_30px_rgba(245,197,24,0.2)] mt-4 active:scale-95 transition-all flex items-center justify-center gap-2">
-              {loading ? <Icon name="loader-2" className="w-5 h-5 animate-spin" /> : 'Find My Portal →'}
+              {loading ? <Icon name="loader-2" className="w-5 h-5 animate-spin" /> : 'Enviar Enlace Seguro →'}
             </button>
           </form>
         )}
