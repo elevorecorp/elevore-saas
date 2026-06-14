@@ -6106,7 +6106,8 @@ function OnboardingFlow({ onBack, onLoginSuccess, tt }) {
 
   const handleGoogleSignup = async () => {
     if (!form.ownerName.trim() || !form.company.trim() || !form.phone.trim()) {
-      return tt('Completa Nombre, Empresa y Teléfono primero.', 'red');
+      alert("⚠️ Para registrar tu negocio con Google, primero ingresa tu Nombre, Nombre del Negocio y Celular en el formulario.");
+      return tt('Por favor, completa los campos del formulario.', 'red');
     }
     setLoading(true);
     tt('Guardando datos y redirigiendo a Google...', 'blue');
@@ -10829,6 +10830,28 @@ Instrucciones:
 
   // Restore session on mount and listen to auth events
   useEffect(() => {
+    // Check for Supabase redirect errors in URL (hash or query)
+    const handleUrlErrors = () => {
+      try {
+        const hashParams = new URLSearchParams(window.location.hash.substring(1));
+        const queryParams = new URLSearchParams(window.location.search);
+        
+        const error = hashParams.get('error') || queryParams.get('error');
+        const errorDescription = hashParams.get('error_description') || queryParams.get('error_description');
+        
+        if (error || errorDescription) {
+          const cleanDesc = decodeURIComponent(errorDescription || error || '').replace(/\+/g, ' ');
+          tt(`Error de Google Auth: ${cleanDesc || 'Fallo de autenticación'}`, 'red');
+          // Clear error from URL hash/query without reloading
+          const cleanUrl = window.location.pathname + window.location.search.replace(/[?&]error[^&]*/g, '');
+          window.history.replaceState({}, document.title, cleanUrl);
+        }
+      } catch (err) {
+        console.error("Error parsing URL params:", err);
+      }
+    };
+    handleUrlErrors();
+
     const restoreSession = async () => {
       try {
         const { data: { session } } = await sb.auth.getSession();
