@@ -10,6 +10,7 @@ import { PublicQuoteProposal } from './components/PublicQuoteProposal';
 import { HyperDriveTab } from './components/admin/HyperDriveTab';
 import { ArmageddonTab } from './components/admin/ArmageddonTab';
 import { FeatureGate } from './components/shared/FeatureGate';
+import { SaaSAdminView } from './components/admin/SaaSAdminView';
 import PublicBookingWidget from './components/public/PublicBookingWidget';
 import TimeSlotPicker from './components/public/TimeSlotPicker';
 import { generateInvoiceReceiptPDF, generateQuotePDF } from './utils/pdfGenerator';
@@ -9403,6 +9404,18 @@ export default function App() {
     return googleIdentity.identity_data?.email || googleIdentity.email || null;
   }, [googleIdentity]);
 
+  const isSuperAdmin = useMemo(() => {
+    if (!user || !user.email) return false;
+    const adminEmails = [
+      'josemario@elevorecorp.com',
+      'josemarioal14@gmail.com',
+      'debug_josemario@elevorecorp.com',
+      'debug_josemario@gmail.com',
+      'elevorecorporation@gmail.com'
+    ];
+    return adminEmails.includes(user.email.toLowerCase());
+  }, [user]);
+
   const handleUpgradeSuccess = async (plan) => {
     if (!tenant) return;
     const newStatus = `active_${plan}`;
@@ -10139,6 +10152,38 @@ Para consentirte esta semana, te tenemos un beneficio especial: si reservas tu p
       tt('Error saving settings: ' + err.message, 'red');
     }
     setLoad(false);
+  };
+
+  const handleDeleteAccount = async () => {
+    if (!tenantId) return;
+    const confirmName = prompt(`⚠️ ADVERTENCIA: Esta acción eliminará permanentemente la base de datos de tu empresa y todos los accesos. Esta acción no se puede deshacer.\n\nPara confirmar, escribe el nombre completo de tu negocio: "${tenantName}"`);
+    if (confirmName !== tenantName) {
+      tt("El nombre no coincide. Cancelando eliminación.", "yellow");
+      return;
+    }
+    const confirmDelete = prompt(`Escribe "DELETE" en mayúsculas para proceder con la eliminación definitiva de la cuenta:`);
+    if (confirmDelete !== "DELETE") {
+      tt("Confirmación cancelada.", "yellow");
+      return;
+    }
+
+    setLoad(true);
+    try {
+      const { data, error } = await sb.rpc('delete_tenant_account', { target_tenant_id: tenantId });
+      if (error) throw error;
+      
+      if (data) {
+        tt("Cuenta y base de datos eliminadas con éxito.", "green");
+        await sb.auth.signOut();
+        window.location.reload();
+      } else {
+        throw new Error("No se pudo completar la eliminación. Inténtalo de nuevo.");
+      }
+    } catch (err) {
+      tt("Error al eliminar cuenta: " + err.message, "red");
+    } finally {
+      setLoad(false);
+    }
   };
 
   const reactivateClientWithAI = async (client) => {
@@ -13356,7 +13401,8 @@ Instrucciones generales de formato:
                 { id: 'operations', label: 'Operaciones', icon: 'shield-check' },
                 { id: 'crm', label: 'Clientes & CRM', icon: 'users' },
                 { id: 'intel', label: 'Finanzas & Equipos', icon: 'bar-chart-2' },
-                { id: 'settings', label: 'Configuración', icon: 'settings' }
+                { id: 'settings', label: 'Configuración', icon: 'settings' },
+                ...(isSuperAdmin ? [{ id: 'saas_admin', label: 'SaaS Admin 🔑', icon: 'key' }] : [])
               ].map(item => {
                 const isActive = view === item.id;
                 return (
@@ -18377,6 +18423,36 @@ Instrucciones generales de formato:
                       </div>
                     </div>
                   </div>
+
+                  {/* Danger Zone: Account Deletion */}
+                  <div className="g p-8 border-t-4 border-red-650 bg-black/40 space-y-6 mt-8">
+                    <div>
+                      <h2 className="text-xl font-black uppercase tracking-widest text-white flex items-center gap-2">
+                        <Icon name="trash-2" className="w-5 h-5 text-red-500" /> Danger Zone: Close Business
+                      </h2>
+                      <p className="text-[10px] text-slate-400 font-bold uppercase mt-0.5">
+                        Eliminar permanentemente tu cuenta de CEO y todas las bases de datos de tu empresa
+                      </p>
+                    </div>
+
+                    <div className="bg-red-500/5 border border-red-500/20 p-5 rounded-2xl space-y-4">
+                      <p className="text-xs text-red-400 font-bold uppercase tracking-wider leading-relaxed">
+                        ⚠️ ATENCIÓN: Esta acción es irreversible
+                      </p>
+                      <p className="text-[10px] text-slate-400 font-semibold leading-relaxed">
+                        Al presionar el botón de abajo, se eliminarán de forma definitiva tu tenant ({tenantName || 'tu empresa'}), la configuración de la empresa, perfiles de empleados, historial de clientes, cobros de Zelle y registros de misiones. Se te cerrará la sesión de forma inmediata y no podrás recuperar la información.
+                      </p>
+                      
+                      <div className="pt-2">
+                        <button
+                          onClick={handleDeleteAccount}
+                          className="px-6 py-3.5 bg-red-600 hover:bg-red-700 border border-red-500 text-white rounded-xl text-[10px] font-black uppercase tracking-widest active:scale-95 transition-all flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(239,68,68,0.15)]"
+                        >
+                          <Icon name="trash-2" className="w-4 h-4" /> Eliminar Mi Cuenta de Negocio
+                        </button>
+                      </div>
+                    </div>
+                  </div>
                 </>
               )}
 
@@ -18501,6 +18577,10 @@ Instrucciones generales de formato:
                 </div>
               )}
             </div>
+          )}
+
+          {role === 'admin' && view === 'saas_admin' && isSuperAdmin && (
+            <SaaSAdminView user={user} tt={tt} />
           )}
 
           {role === 'admin' && view === 'intel' && financeTab === 'payroll' && (
