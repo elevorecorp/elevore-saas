@@ -9640,16 +9640,6 @@ export default function App() {
     activeEmployeeRef.current = activeEmployee;
   }, [activeEmployee]);
 
-  // Keep activeFinanceCategory synced with financeTab changes
-  useEffect(() => {
-    if (['overview', 'payroll', 'tax', 'cfo'].includes(financeTab)) {
-      setActiveFinanceCategory('financial');
-    } else if (['cac', 'analytics', 'hyperdrive'].includes(financeTab)) {
-      setActiveFinanceCategory('growth');
-    } else {
-      setActiveFinanceCategory('operations');
-    }
-  }, [financeTab]);
   const [editingStaff, setEditingStaff] = useState(null);
   const [selectedClient, setSelectedClient] = useState(null);
   const [membersTab, setMembersTab] = useState('vip');
@@ -9667,6 +9657,17 @@ export default function App() {
   const [calYear, setCalYear] = useState(new Date().getFullYear());
   const [financeTab, setFinanceTab] = useState('overview');
   const [activeFinanceCategory, setActiveFinanceCategory] = useState('financial');
+
+  // Keep activeFinanceCategory synced with financeTab changes
+  useEffect(() => {
+    if (['overview', 'payroll', 'tax', 'cfo'].includes(financeTab)) {
+      setActiveFinanceCategory('financial');
+    } else if (['cac', 'analytics', 'hyperdrive'].includes(financeTab)) {
+      setActiveFinanceCategory('growth');
+    } else {
+      setActiveFinanceCategory('operations');
+    }
+  }, [financeTab]);
   const [operationsTab, setOperationsTab] = useState('calendar');
   const [crmTab, setCrmTab] = useState('dna');
   
