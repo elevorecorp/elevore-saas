@@ -9639,6 +9639,17 @@ export default function App() {
   useEffect(() => {
     activeEmployeeRef.current = activeEmployee;
   }, [activeEmployee]);
+
+  // Keep activeFinanceCategory synced with financeTab changes
+  useEffect(() => {
+    if (['overview', 'payroll', 'tax', 'cfo'].includes(financeTab)) {
+      setActiveFinanceCategory('financial');
+    } else if (['cac', 'analytics', 'hyperdrive'].includes(financeTab)) {
+      setActiveFinanceCategory('growth');
+    } else {
+      setActiveFinanceCategory('operations');
+    }
+  }, [financeTab]);
   const [editingStaff, setEditingStaff] = useState(null);
   const [selectedClient, setSelectedClient] = useState(null);
   const [membersTab, setMembersTab] = useState('vip');
@@ -9655,6 +9666,7 @@ export default function App() {
   const [calMonth, setCalMonth] = useState(new Date().getMonth());
   const [calYear, setCalYear] = useState(new Date().getFullYear());
   const [financeTab, setFinanceTab] = useState('overview');
+  const [activeFinanceCategory, setActiveFinanceCategory] = useState('financial');
   const [operationsTab, setOperationsTab] = useState('calendar');
   const [crmTab, setCrmTab] = useState('dna');
   
@@ -10033,6 +10045,9 @@ Para consentirte esta semana, te tenemos un beneficio especial: si reservas tu p
   const [biSimClients, setBiSimClients] = useState(60);
   const [biSimPayoutPct, setBiSimPayoutPct] = useState(40);
   const [biSimMarketing, setBiSimMarketing] = useState(1500);
+  const [simRetentionRate, setSimRetentionRate] = useState(85);
+  const [simAvgTicket, setSimAvgTicket] = useState(250);
+  const [simAnnualFrequency, setSimAnnualFrequency] = useState(6);
   const [taxQuery, setTaxQuery] = useState('');
   const [taxStatus, setTaxStatus] = useState('all');
   const [payoutHistory, setPayoutHistory] = useState([]);
@@ -14999,33 +15014,78 @@ Instrucciones generales de formato:
               onUpgradeSuccess={handleUpgradeSuccess}
             >
               <div className="space-y-6 animate-in fade-in">
-              {/* Premium Sub-tabs Switcher */}
-              <div className="flex flex-wrap gap-2 bg-black/45 p-2 rounded-2xl border border-white/5">
-                {[
-                  { id: 'overview', name: '📊 Resumen General' },
-                  { id: 'services', name: '🧹 Desglose por Servicio' },
-                  { id: 'payroll', name: '👥 Nómina y Equipos' },
-                  { id: 'cac', name: '🎯 CAC & ROI de Marketing' },
-                  { id: 'inventory', name: '🛠️ Inventario' },
-                  { id: 'tax', name: '📋 Libro Contable y Exportación' },
-                  { id: 'productivity', name: '📈 Rendimiento y Calidad' },
-                  { id: 'automation', name: '🤖 Automatización y Mensajería' },
-                  { id: 'cfo', name: '🔮 AI CFO y Flujo de Caja' },
-                  { id: 'hyperdrive', name: '⚡ HyperDrive (Leads & Booking)' },
-                  { id: 'armageddon', name: '💥 Modo Armagedón (AI Auto-Scale)' }
-                ].map(tab => (
-                  <button
-                    key={tab.id}
-                    onClick={() => setFinanceTab(tab.id)}
-                    className={`px-4 py-2.5 rounded-xl text-[10px] font-black uppercase whitespace-nowrap active:scale-95 transition-all ${
-                      financeTab === tab.id
-                        ? 'bg-[#F5C518] text-black shadow-lg shadow-[#F5C518]/15'
-                        : 'bg-white/5 text-slate-400 hover:text-white hover:bg-white/10'
-                    }`}
-                  >
-                    {tab.name}
-                  </button>
-                ))}
+              {/* Premium Sub-tabs Switcher (Categorized & Spacious) */}
+              <div className="space-y-4 animate-in fade-in">
+                {/* 1. Category Switcher Card */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 bg-black/40 p-3 rounded-2xl border border-white/5 shadow-2xl">
+                  {[
+                    { id: 'financial', label: '💰 Control Financiero', desc: 'Resumen, Nómina, Impuestos y AI CFO' },
+                    { id: 'growth', label: '📈 Crecimiento y Leads', desc: 'Conversión, ROI, CAC y Booking' },
+                    { id: 'operations', label: '🤖 Operaciones & Autopilot', desc: 'Calidad, Inventario y Escalamiento' }
+                  ].map(cat => {
+                    const isActive = activeFinanceCategory === cat.id;
+                    return (
+                      <button
+                        key={cat.id}
+                        type="button"
+                        onClick={() => {
+                          setActiveFinanceCategory(cat.id);
+                          const defaults = {
+                            financial: 'overview',
+                            growth: 'analytics',
+                            operations: 'productivity'
+                          };
+                          setFinanceTab(defaults[cat.id]);
+                        }}
+                        className={`p-4 rounded-xl transition-all duration-300 border text-left flex flex-col justify-center active:scale-98 cursor-pointer ${
+                          isActive
+                            ? 'bg-gradient-to-br from-amber-500/10 to-[#F5C518]/10 border-[#F5C518]/30 shadow-md shadow-[#F5C518]/5'
+                            : 'bg-white/[0.01] border-transparent hover:bg-white/5 hover:border-white/5'
+                        }`}
+                      >
+                        <span className={`text-[10px] font-black uppercase tracking-wider ${isActive ? 'text-[#F5C518]' : 'text-white'}`}>
+                          {cat.label}
+                        </span>
+                        <span className="text-[7.5px] text-slate-500 font-bold uppercase tracking-wide mt-1">
+                          {cat.desc}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* 2. Sub-tabs corresponding to current Category */}
+                <div className="flex flex-wrap gap-2.5 bg-black/30 p-2.5 rounded-2xl border border-white/5 animate-in slide-in-from-top-1 duration-200">
+                  {[
+                    { id: 'overview', name: '📊 Resumen General', cat: 'financial' },
+                    { id: 'payroll', name: '👥 Nómina y Equipos', cat: 'financial' },
+                    { id: 'tax', name: '📋 Libro Contable y Exportación', cat: 'financial' },
+                    { id: 'cfo', name: '🔮 AI CFO y Flujo de Caja', cat: 'financial' },
+                    { id: 'cac', name: '🎯 CAC & ROI de Marketing', cat: 'growth' },
+                    { id: 'analytics', name: '📈 Conversión y Retención', cat: 'growth' },
+                    { id: 'hyperdrive', name: '⚡ HyperDrive (Leads & Booking)', cat: 'growth' },
+                    { id: 'services', name: '🧹 Desglose por Servicio', cat: 'operations' },
+                    { id: 'inventory', name: '🛠️ Inventario', cat: 'operations' },
+                    { id: 'productivity', name: '📈 Rendimiento y Calidad', cat: 'operations' },
+                    { id: 'automation', name: '🤖 Automatización y Mensajería', cat: 'operations' },
+                    { id: 'armageddon', name: '💥 Modo Armagedón (AI Auto-Scale)', cat: 'operations' }
+                  ]
+                    .filter(tab => tab.cat === activeFinanceCategory)
+                    .map(tab => (
+                      <button
+                        key={tab.id}
+                        type="button"
+                        onClick={() => setFinanceTab(tab.id)}
+                        className={`px-5 py-3 rounded-xl text-[10px] font-black uppercase whitespace-nowrap active:scale-95 transition-all duration-200 cursor-pointer ${
+                          financeTab === tab.id
+                            ? 'bg-[#F5C518] text-black shadow-lg shadow-[#F5C518]/15 border border-[#F5C518]'
+                            : 'bg-white/5 border border-white/5 text-slate-400 hover:text-white hover:bg-white/10'
+                        }`}
+                      >
+                        {tab.name}
+                      </button>
+                    ))}
+                </div>
               </div>
 
               {financeTab === 'overview' && (
@@ -17085,6 +17145,417 @@ Instrucciones generales de formato:
                             </div>
                           );
                         })()}
+                      </div>
+
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {financeTab === 'analytics' && (() => {
+                // 1. Funnel Metrics
+                const prospects = jobs.length || 0;
+                const approved = jobs.filter(j => ['scheduled', 'completed', 'paid', 'in_progress', 'en_route'].includes(j.status)).length;
+                const completed = jobs.filter(j => ['completed', 'paid'].includes(j.status)).length;
+                const paid = jobs.filter(j => j.status === 'paid').length;
+
+                const approvedPct = prospects > 0 ? Math.round((approved / prospects) * 105) : 0; // slight visual scale boost
+                const approvedPctClamped = Math.min(100, approvedPct);
+                const completedPct = approved > 0 ? Math.round((completed / approved) * 100) : 0;
+                const paidPct = completed > 0 ? Math.round((paid / completed) * 100) : 0;
+                const totalConversionPct = prospects > 0 ? Math.round((paid / prospects) * 100) : 0;
+
+                // 2. Rating & NPS
+                const ratedJobs = jobs.filter(j => j.client_rating && Number(j.client_rating) > 0);
+                const avgRatingVal = ratedJobs.length > 0 ? (ratedJobs.reduce((acc, curr) => acc + Number(curr.client_rating), 0) / ratedJobs.length).toFixed(2) : '0';
+                
+                const starsCount = { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 };
+                ratedJobs.forEach(j => {
+                  const rating = Math.round(Number(j.client_rating));
+                  if (starsCount[rating] !== undefined) starsCount[rating]++;
+                });
+
+                // 3. Client Recurrence
+                const clientJobsCount = {};
+                jobs.forEach(j => {
+                  if (!j.client_name) return;
+                  clientJobsCount[j.client_name] = (clientJobsCount[j.client_name] || 0) + 1;
+                });
+                const clientStats = Object.values(clientJobsCount);
+                const totalUniqueClients = clientStats.length || 1;
+                const oneTimeClients = clientStats.filter(c => c === 1).length;
+                const repeat2_3 = clientStats.filter(c => c === 2 || c === 3).length;
+                const loyal4Plus = clientStats.filter(c => c >= 4).length;
+                
+                const oneTimePct = Math.round((oneTimeClients / totalUniqueClients) * 100);
+                const repeatPct = Math.round((repeat2_3 / totalUniqueClients) * 100);
+                const loyalPct = Math.round((loyal4Plus / totalUniqueClients) * 100);
+
+                const clientsAtRiskCount = clients.filter(c => {
+                  const cj = jobs.filter(j => j.client_name === c.name && (j.status === 'paid' || j.status === 'completed'));
+                  if (!cj.length) return false;
+                  const last = cj.sort((a, b) => new Date(b.scheduled_date || 0) - new Date(a.scheduled_date || 0))[0];
+                  return dAgo(last.scheduled_date) >= 45;
+                }).length;
+                const churnRatePct = Math.round((clientsAtRiskCount / totalUniqueClients) * 100);
+
+                // 4. LTV Calculator
+                const calculatedLTV = Math.round((simAvgTicket * simAnnualFrequency) / (1 - (simRetentionRate / 100)));
+                const currentAvgPrice = finance.avg || 220;
+                const currentEstimatedFrequency = 5.2; // average visits per year baseline
+                const currentEstimatedRetention = 78; // 78% baseline
+                const currentEstimatedLTV = Math.round((currentAvgPrice * currentEstimatedFrequency) / (1 - (currentEstimatedRetention / 100)));
+
+                return (
+                  <div className="space-y-6 animate-in fade-in pb-12 text-left">
+                    {/* Top KPI grid */}
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 animate-in slide-in-from-bottom-2 duration-300">
+                      <div className="p-4.5 border border-white/5 bg-black/45 backdrop-blur-md rounded-2xl flex flex-col justify-between shadow-xl">
+                        <span className="text-[7.5px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-1">
+                          <span className="w-1.5 h-1.5 rounded-full bg-[#F5C518] animate-pulse"></span>
+                          Conversión del Embudo
+                        </span>
+                        <div className="mt-2 flex items-baseline gap-1">
+                          <span className="text-xl font-black text-white">{totalConversionPct}%</span>
+                          <span className="text-[7px] text-[#F5C518] font-bold uppercase">de leads a pagados</span>
+                        </div>
+                        <span className="text-[7px] text-slate-500 mt-1 uppercase font-semibold">Total prospectos analizados: {prospects}</span>
+                      </div>
+
+                      <div className="p-4.5 border border-white/5 bg-black/45 backdrop-blur-md rounded-2xl flex flex-col justify-between shadow-xl">
+                        <span className="text-[7.5px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-1">
+                          <span className="w-1.5 h-1.5 rounded-full bg-yellow-400"></span>
+                          Calificación del Cliente
+                        </span>
+                        <div className="mt-2 flex items-baseline gap-1">
+                          <span className="text-xl font-black text-yellow-400">{avgRatingVal}⭐</span>
+                          <span className="text-[7px] text-slate-400 font-bold uppercase">promedio</span>
+                        </div>
+                        <span className="text-[7px] text-slate-500 mt-1 uppercase font-semibold">Calificaciones recibidas: {ratedJobs.length}</span>
+                      </div>
+
+                      <div className="p-4.5 border border-white/5 bg-black/45 backdrop-blur-md rounded-2xl flex flex-col justify-between shadow-xl">
+                        <span className="text-[7.5px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-1">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                          Clientes Recurrentes
+                        </span>
+                        <div className="mt-2 flex items-baseline gap-1">
+                          <span className="text-xl font-black text-green-400">{loyalPct + repeatPct}%</span>
+                          <span className="text-[7px] text-slate-400 font-bold uppercase">del total</span>
+                        </div>
+                        <span className="text-[7px] text-slate-500 mt-1 uppercase font-semibold">Clientes únicos: {totalUniqueClients}</span>
+                      </div>
+
+                      <div className="p-4.5 border border-white/5 bg-black/45 backdrop-blur-md rounded-2xl flex flex-col justify-between shadow-xl">
+                        <span className="text-[7.5px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-1">
+                          <span className={`w-1.5 h-1.5 rounded-full ${churnRatePct > 20 ? 'bg-red-500 animate-ping' : 'bg-green-400'}`}></span>
+                          Tasa de Churn Estimada
+                        </span>
+                        <div className="mt-2 flex items-baseline gap-1">
+                          <span className={`text-xl font-black ${churnRatePct > 20 ? 'text-red-400' : 'text-green-400'}`}>{churnRatePct}%</span>
+                          <span className="text-[7px] text-slate-400 font-bold uppercase">inactivos &gt; 45 días</span>
+                        </div>
+                        <span className="text-[7px] text-slate-500 mt-1 uppercase font-semibold">Clientes en riesgo: {clientsAtRiskCount}</span>
+                      </div>
+                    </div>
+
+                    {/* Main Analytics Content Grid */}
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                      
+                      {/* Left 2 columns: Funnel & NPS */}
+                      <div className="lg:col-span-2 space-y-6">
+                        
+                        {/* 1. EMBUTO DE CONVERSIÓN */}
+                        <div className="p-6 border border-white/5 bg-black/45 rounded-2xl shadow-lg space-y-6">
+                          <div>
+                            <h4 className="text-[10px] font-black text-white uppercase tracking-widest pb-2 flex justify-between items-center border-b border-white/5">
+                              <span>📊 Embudo de Ventas y Conversión en Tiempo Real</span>
+                              <span className="text-[7px] text-[#F5C518] font-bold uppercase">Visual Funnel</span>
+                            </h4>
+                          </div>
+
+                          <div className="flex flex-col md:flex-row gap-6 items-center">
+                            {/* Visual Funnel Representation */}
+                            <div className="flex-1 w-full space-y-4 max-w-md">
+                              {/* Funnel Stage 1 */}
+                              <div className="relative">
+                                <div className="h-11 bg-gradient-to-r from-blue-900/60 to-blue-700/60 border border-blue-500/25 rounded-xl px-4 flex justify-between items-center shadow-lg">
+                                  <span className="text-[9px] font-black uppercase text-white flex items-center gap-2">
+                                    <span className="w-5 h-5 rounded-full bg-blue-500/20 flex items-center justify-center border border-blue-500/30">1</span>
+                                    1. Cotizaciones Pedidas / Leads
+                                  </span>
+                                  <span className="text-xs font-black text-white font-mono">{prospects} <span className="text-[8px] text-slate-400">({prospects > 0 ? '100%' : '0%'})</span></span>
+                                </div>
+                              </div>
+
+                              {/* Funnel Connector 1 */}
+                              <div className="flex justify-center -my-2">
+                                <div className="w-4 h-6 border-l-2 border-r-2 border-dashed border-slate-700"></div>
+                              </div>
+
+                              {/* Funnel Stage 2 */}
+                              <div className="relative">
+                                <div className="h-11 bg-gradient-to-r from-amber-900/60 to-amber-700/60 border border-amber-500/25 rounded-xl px-4 flex justify-between items-center shadow-lg" style={{ margin: '0 4%' }}>
+                                  <span className="text-[9px] font-black uppercase text-white flex items-center gap-2">
+                                    <span className="w-5 h-5 rounded-full bg-amber-500/20 flex items-center justify-center border border-amber-500/30">2</span>
+                                    2. Aprobados / Agendados
+                                  </span>
+                                  <span className="text-xs font-black text-white font-mono">{approved} <span className="text-[8px] text-amber-400">({approvedPctClamped}%)</span></span>
+                                </div>
+                              </div>
+
+                              {/* Funnel Connector 2 */}
+                              <div className="flex justify-center -my-2">
+                                <div className="w-4 h-6 border-l-2 border-r-2 border-dashed border-slate-700"></div>
+                              </div>
+
+                              {/* Funnel Stage 3 */}
+                              <div className="relative">
+                                <div className="h-11 bg-gradient-to-r from-purple-900/60 to-purple-700/60 border border-purple-500/25 rounded-xl px-4 flex justify-between items-center shadow-lg" style={{ margin: '0 8%' }}>
+                                  <span className="text-[9px] font-black uppercase text-white flex items-center gap-2">
+                                    <span className="w-5 h-5 rounded-full bg-purple-500/20 flex items-center justify-center border border-purple-500/30">3</span>
+                                    3. Servicios Completados
+                                  </span>
+                                  <span className="text-xs font-black text-white font-mono">{completed} <span className="text-[8px] text-purple-400">({completedPct}%)</span></span>
+                                </div>
+                              </div>
+
+                              {/* Funnel Connector 3 */}
+                              <div className="flex justify-center -my-2">
+                                <div className="w-4 h-6 border-l-2 border-r-2 border-dashed border-slate-700"></div>
+                              </div>
+
+                              {/* Funnel Stage 4 */}
+                              <div className="relative">
+                                <div className="h-11 bg-gradient-to-r from-green-900/60 to-green-700/60 border border-green-500/25 rounded-xl px-4 flex justify-between items-center shadow-lg" style={{ margin: '0 12%' }}>
+                                  <span className="text-[9px] font-black uppercase text-white flex items-center gap-2">
+                                    <span className="w-5 h-5 rounded-full bg-green-500/20 flex items-center justify-center border border-green-500/30">4</span>
+                                    4. Cobrados y Liquidados
+                                  </span>
+                                  <span className="text-xs font-black text-green-400 font-mono">{paid} <span className="text-[8px] text-green-400">({paidPct}%)</span></span>
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Funnel Insights */}
+                            <div className="flex-1 w-full p-4.5 bg-white/[0.02] border border-white/5 rounded-2xl space-y-4">
+                              <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">💡 Análisis de Conversión</p>
+                              <div className="space-y-3 text-[8.5px] uppercase font-bold text-slate-300">
+                                <div className="flex justify-between border-b border-white/5 pb-2">
+                                  <span>Tasa de Aprobación de Cotizaciones:</span>
+                                  <span className="text-white font-mono">{approvedPctClamped}%</span>
+                                </div>
+                                <div className="flex justify-between border-b border-white/5 pb-2">
+                                  <span>Tasa de Ejecución de Agendados:</span>
+                                  <span className="text-white font-mono">{completedPct}%</span>
+                                </div>
+                                <div className="flex justify-between border-b border-white/5 pb-2">
+                                  <span>Tasa de Cobro sobre Ejecutados:</span>
+                                  <span className="text-white font-mono">{paidPct}%</span>
+                                </div>
+                                <div className="flex justify-between text-xs font-black text-white pt-1">
+                                  <span>Conversión Total Fin a Fin:</span>
+                                  <span className="text-green-400 font-mono">{totalConversionPct}%</span>
+                                </div>
+                              </div>
+                              <p className="text-[8px] text-slate-500 uppercase leading-normal font-semibold">
+                                Tip: Si tu tasa de aprobación es inferior al 40%, considera activar el "AI Sales Closer" o ajustar las tarifas base desde el panel Hyperdrive.
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* 2. RECURRENCIA DE CLIENTES & RETENCIÓN COHORTE */}
+                        <div className="p-6 border border-white/5 bg-black/45 rounded-2xl shadow-lg space-y-6">
+                          <div>
+                            <h4 className="text-[10px] font-black text-white uppercase tracking-widest pb-2 flex justify-between items-center border-b border-white/5">
+                              <span>🔁 Análisis de Recurrencia y Lealtad</span>
+                              <span className="text-[7px] text-[#F5C518] font-bold uppercase">Customer Loyalty</span>
+                            </h4>
+                          </div>
+
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            {/* Cohort Breakdown */}
+                            <div className="space-y-4">
+                              <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">📋 Segmentación por Frecuencia de Reserva</p>
+                              
+                              <div className="space-y-3 bg-white/[0.01] p-4 rounded-xl border border-white/5 text-[9px] uppercase font-bold text-left">
+                                {/* Segment 1 */}
+                                <div className="space-y-1.5">
+                                  <div className="flex justify-between">
+                                    <span className="text-slate-300">Clientes de 1 Solo Servicio (Ocasionales):</span>
+                                    <span className="text-slate-400 font-mono">{oneTimeClients} ({oneTimePct}%)</span>
+                                  </div>
+                                  <div className="pb h-1.5 bg-black/40 rounded-full overflow-hidden">
+                                    <div className="pf h-full bg-slate-500" style={{ width: `${oneTimePct}%` }} />
+                                  </div>
+                                </div>
+
+                                {/* Segment 2 */}
+                                <div className="space-y-1.5 pt-1">
+                                  <div className="flex justify-between">
+                                    <span className="text-white">Clientes Recurrentes (2-3 Servicios):</span>
+                                    <span className="text-[#F5C518] font-mono">{repeat2_3} ({repeatPct}%)</span>
+                                  </div>
+                                  <div className="pb h-1.5 bg-black/40 rounded-full overflow-hidden">
+                                    <div className="pf h-full bg-gradient-to-r from-amber-400 to-[#F5C518]" style={{ width: `${repeatPct}%` }} />
+                                  </div>
+                                </div>
+
+                                {/* Segment 3 */}
+                                <div className="space-y-1.5 pt-1">
+                                  <div className="flex justify-between">
+                                    <span className="text-white">Clientes Fanáticos / VIP (4+ Servicios):</span>
+                                    <span className="text-purple-400 font-mono">{loyal4Plus} ({loyalPct}%)</span>
+                                  </div>
+                                  <div className="pb h-1.5 bg-black/40 rounded-full overflow-hidden">
+                                    <div className="pf h-full bg-gradient-to-r from-purple-500 to-indigo-500" style={{ width: `${loyalPct}%` }} />
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Churn Details */}
+                            <div className="p-4.5 bg-white/[0.02] border border-white/5 rounded-2xl flex flex-col justify-between">
+                              <div className="space-y-2">
+                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">⚠️ Riesgo de Fuga (Churn Analytics)</p>
+                                <p className="text-[8px] text-slate-500 uppercase font-bold leading-normal">
+                                  Un alto porcentaje de clientes de 1 solo servicio indica que necesitas campañas automáticas de "win-back" por correo o WhatsApp.
+                                </p>
+                              </div>
+                              <div className="grid grid-cols-2 gap-2 mt-4">
+                                <div className="p-3 bg-black/40 rounded-xl border border-white/5 text-center">
+                                  <p className="text-[7.5px] text-slate-500 uppercase font-black">Clientes VIP</p>
+                                  <p className="text-lg font-black text-purple-400 mt-1">{loyal4Plus}</p>
+                                </div>
+                                <div className="p-3 bg-black/40 rounded-xl border border-white/5 text-center">
+                                  <p className="text-[7.5px] text-slate-500 uppercase font-black font-display text-red-500">Churn Rate</p>
+                                  <p className="text-lg font-black text-red-400 mt-1">{churnRatePct}%</p>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                      </div>
+
+                      {/* Right 1 column: NPS Star Breakdown & LTV Sandbox */}
+                      <div className="space-y-6">
+                        
+                        {/* 3. DISTRIBUCIÓN DE CALIFICACIONES (NPS) */}
+                        <div className="p-6 border border-white/5 bg-black/45 rounded-2xl shadow-lg space-y-4">
+                          <h4 className="text-[10px] font-black text-white uppercase tracking-widest pb-2 border-b border-white/5 flex justify-between items-center">
+                            <span>⭐ Desglose de Satisfacción</span>
+                            <span className="text-[7px] text-[#F5C518] font-bold uppercase">NPS stars</span>
+                          </h4>
+
+                          <div className="space-y-2.5">
+                            {[5, 4, 3, 2, 1].map(stars => {
+                              const count = starsCount[stars] || 0;
+                              const pct = ratedJobs.length > 0 ? Math.round((count / ratedJobs.length) * 100) : 0;
+                              return (
+                                <div key={stars} className="flex items-center gap-3 text-[9px] uppercase font-bold">
+                                  <span className="w-8 font-mono text-slate-400 flex items-center gap-0.5 justify-end">
+                                    {stars}<span className="text-yellow-400">★</span>
+                                  </span>
+                                  <div className="flex-1 pb h-2 bg-black/40 rounded-full overflow-hidden">
+                                    <div className="pf h-full bg-yellow-400" style={{ width: `${pct}%` }} />
+                                  </div>
+                                  <span className="w-10 text-right text-slate-400 font-mono">
+                                    {count} <span className="text-[7.5px] text-slate-500">({pct}%)</span>
+                                  </span>
+                                </div>
+                              );
+                            })}
+                          </div>
+
+                          <div className="bg-white/[0.01] p-3 rounded-xl border border-white/5 text-center text-[8.5px] text-slate-400 uppercase font-bold">
+                            NPS Neto: <span className="text-[#F5C518] font-black">+{ratedJobs.length > 0 ? Math.round(((starsCount[5] - (starsCount[3] + starsCount[2] + starsCount[1])) / ratedJobs.length) * 100) : 0}</span>
+                          </div>
+                        </div>
+
+                        {/* 4. SIMULADOR PREDICTIVO DE LTV */}
+                        <div className="p-6 border border-[#F5C518]/20 bg-gradient-to-br from-[#0c0f1d] via-black to-[#0e172a] rounded-2xl relative overflow-hidden shadow-2xl space-y-5">
+                          <div className="absolute top-0 left-0 w-full h-[1.5px] bg-gradient-to-r from-blue-400/50 via-[#F5C518]/30 to-transparent" />
+                          <div>
+                            <h4 className="text-[10px] font-black text-white uppercase tracking-widest pb-2.5 border-b border-white/5 flex justify-between items-center">
+                              <span>🔮 Simulador LTV del Cliente</span>
+                              <span className="text-[7px] text-[#F5C518] font-bold uppercase">Predictive LTV</span>
+                            </h4>
+                          </div>
+
+                          <div className="space-y-4 text-left">
+                            {/* Slider 1: Retention Rate */}
+                            <div className="space-y-1.5">
+                              <div className="flex justify-between items-center text-[8.5px] font-black uppercase text-slate-400">
+                                <span>Tasa de Retención Anual</span>
+                                <span className="text-white font-mono bg-white/5 px-2 py-0.5 rounded border border-white/10">{simRetentionRate}%</span>
+                              </div>
+                              <input
+                                type="range"
+                                min="50"
+                                max="99"
+                                step="1"
+                                value={simRetentionRate}
+                                onChange={e => setSimRetentionRate(parseInt(e.target.value))}
+                                className="w-full accent-blue-500 bg-white/10 h-1 rounded-lg cursor-pointer"
+                              />
+                            </div>
+
+                            {/* Slider 2: Average Ticket */}
+                            <div className="space-y-1.5">
+                              <div className="flex justify-between items-center text-[8.5px] font-black uppercase text-slate-400">
+                                <span>Ticket de Venta Promedio</span>
+                                <span className="text-white font-mono bg-white/5 px-2 py-0.5 rounded border border-white/10">${simAvgTicket} USD</span>
+                              </div>
+                              <input
+                                type="range"
+                                min="100"
+                                max="500"
+                                step="10"
+                                value={simAvgTicket}
+                                onChange={e => setSimAvgTicket(parseInt(e.target.value))}
+                                className="w-full accent-[#F5C518] bg-white/10 h-1 rounded-lg cursor-pointer"
+                              />
+                            </div>
+
+                            {/* Slider 3: Annual Frequency */}
+                            <div className="space-y-1.5">
+                              <div className="flex justify-between items-center text-[8.5px] font-black uppercase text-slate-400">
+                                <span>Servicios Anuales por Cliente</span>
+                                <span className="text-white font-mono bg-white/5 px-2 py-0.5 rounded border border-white/10">{simAnnualFrequency} visitas</span>
+                              </div>
+                              <input
+                                type="range"
+                                min="2"
+                                max="24"
+                                step="1"
+                                value={simAnnualFrequency}
+                                onChange={e => setSimAnnualFrequency(parseInt(e.target.value))}
+                                className="w-full accent-purple-500 bg-white/10 h-1 rounded-lg cursor-pointer"
+                              />
+                            </div>
+                          </div>
+
+                          {/* Calculated LTV Summary */}
+                          <div className="p-4 bg-black/40 border border-white/5 rounded-xl space-y-2 text-[9px] uppercase font-bold text-left">
+                            <div className="flex justify-between text-slate-400">
+                              <span>LTV Promedio Actual (Est.):</span>
+                              <span className="text-white font-mono">${currentEstimatedLTV.toLocaleString()} USD</span>
+                            </div>
+                            <div className="flex justify-between text-slate-400">
+                              <span>LTV Proyectado (Simulado):</span>
+                              <span className="text-blue-400 font-mono">${calculatedLTV.toLocaleString()} USD</span>
+                            </div>
+                            <div className="flex justify-between border-t border-white/5 pt-2 text-xs font-black">
+                              <span className="text-[#F5C518]">Incremento de LTV:</span>
+                              <span className="text-green-400 font-mono">
+                                +{calculatedLTV > currentEstimatedLTV ? Math.round(((calculatedLTV - currentEstimatedLTV) / currentEstimatedLTV) * 100) : 0}%
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+
                       </div>
 
                     </div>

@@ -32,6 +32,57 @@ export const MapTab = ({ jobs, staff, operationsTab, setOperationsTab, tt, refre
   const [activeAnomaly, setActiveAnomaly] = useState(null); // { jobA, jobB }
   const terminalEndRef = useRef(null);
 
+  const [crewLocations, setCrewLocations] = useState([]);
+
+  // Coordinate projection from Orlando base (lat = 28.5383, lng = -81.3792) to SVG 500x400
+  const projectCoords = (lat, lng) => {
+    const centerLat = 28.5383;
+    const centerLng = -81.3792;
+    const scale = 2500;
+    const x = 250 + (lng - centerLng) * scale;
+    const y = 200 - (lat - centerLat) * scale;
+    return {
+      x: Math.max(35, Math.min(465, x)),
+      y: Math.max(35, Math.min(365, y))
+    };
+  };
+
+  // Live telemetry GPS subscription
+  useEffect(() => {
+    const fetchLocations = async () => {
+      try {
+        const { data, error } = await sb.from('crew_locations').select('*');
+        if (error) throw error;
+        if (data) {
+          setCrewLocations(data);
+        }
+      } catch (err) {
+        console.warn("Failed to fetch crew locations:", err.message);
+      }
+    };
+    fetchLocations();
+
+    const channel = sb.channel('admin_crew_locations')
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'crew_locations'
+      }, (payload) => {
+        if (payload.eventType === 'DELETE') {
+          setCrewLocations(prev => prev.filter(loc => loc.id !== payload.old.id));
+        } else if (payload.eventType === 'INSERT') {
+          setCrewLocations(prev => [...prev.filter(loc => loc.staff_id !== payload.new.staff_id), payload.new]);
+        } else if (payload.eventType === 'UPDATE') {
+          setCrewLocations(prev => prev.map(loc => loc.staff_id === payload.new.staff_id ? payload.new : loc));
+        }
+      })
+      .subscribe();
+
+    return () => {
+      sb.removeChannel(channel);
+    };
+  }, []);
+
   // Auto-scroll terminal
   useEffect(() => {
     if (terminalEndRef.current) {
@@ -74,6 +125,13 @@ export const MapTab = ({ jobs, staff, operationsTab, setOperationsTab, tt, refre
   // Coordinate nodes for SVG map rendering
   const getCoordinatesForMap = () => {
     return routeJobs.map((job, idx) => {
+      const lat = job.specs?.lat || job.check_in_lat;
+      const lng = job.specs?.lng || job.check_in_lng;
+      if (lat && lng) {
+        const projected = projectCoords(lat, lng);
+        return { id: job.id, name: job.client_name, address: job.address, x: projected.x, y: projected.y, lat, lng };
+      }
+      
       const charCodeSum = (job.client_name || 'X').split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
       const x = 90 + (charCodeSum % 320);
       const y = 90 + ((charCodeSum * 3) % 220);
@@ -578,6 +636,29 @@ export const MapTab = ({ jobs, staff, operationsTab, setOperationsTab, tt, refre
                       <circle cx="6" cy="6" r="4" fill="#F5C518" />
                     </g>
                   )}
+
+                  {/* Active Telemetry Crew Locations (Real-Time GPS) */}
+                  {crewLocations.map((loc) => {
+                    const projected = projectCoords(loc.lat, loc.lng);
+                    const staffMember = staff.find(s => s.id === loc.staff_id || String(s.id) === String(loc.staff_id));
+                    const label = staffMember ? staffMember.name : 'Crew';
+                    
+                    return (
+                      <g key={loc.id} className="transition-all duration-1000 ease-in-out">
+                        <circle cx={projected.x} cy={projected.y} r="10" fill="#fbbf24" className="animate-ping opacity-25" />
+                        <circle cx={projected.x} cy={projected.y} r="5.5" fill="#F5C518" stroke="#000" strokeWidth="1.5" />
+                        <text
+                          x={projected.x}
+                          y={projected.y - 10}
+                          textAnchor="middle"
+                          fill="#F5C518"
+                          className="text-[6.5px] font-mono font-black uppercase tracking-wide bg-black/80 px-1 rounded select-none"
+                        >
+                          {label} (LIVE)
+                        </text>
+                      </g>
+                    );
+                  })}
                 </svg>
               )}
             </div>

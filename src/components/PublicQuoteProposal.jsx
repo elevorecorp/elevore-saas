@@ -154,6 +154,7 @@ export function PublicQuoteProposal({ quoteId }) {
   const [chatMode, setChatMode] = useState('ai'); // 'ai' | 'support'
   const [supportInputVal, setSupportInputVal] = useState('');
   const [sendingSupport, setSendingSupport] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -288,6 +289,60 @@ export function PublicQuoteProposal({ quoteId }) {
       loadData();
     }
   }, [quoteId]);
+
+  // Sync proposal choices (tier & addons) to Supabase in real-time
+  useEffect(() => {
+    if (!job || isSuccess) return;
+
+    const savedTier = job.specs?.selected_tier || 'better';
+    const savedAddons = job.specs?.accepted_addons || [];
+
+    const isDifferent = selectedTier !== savedTier ||
+      JSON.stringify(selectedAddons.sort()) !== JSON.stringify(savedAddons.sort());
+
+    if (!isDifferent) return;
+
+    setIsSyncing(true);
+
+    const debounceTimer = setTimeout(async () => {
+      try {
+        const updatedSpecs = {
+          ...(job.specs || {}),
+          selected_tier: selectedTier,
+          accepted_addons: selectedAddons,
+          oven: selectedAddons.includes('oven'),
+          fridge: selectedAddons.includes('fridge'),
+          windows: selectedAddons.includes('windows'),
+          pethair: selectedAddons.includes('pethair'),
+          garage: selectedAddons.includes('garage')
+        };
+
+        const updatedPrice = priceCalculations.total;
+
+        const { error } = await sb.from('elevore_missions')
+          .update({
+            total_price: updatedPrice,
+            specs: updatedSpecs
+          })
+          .eq('id', quoteId);
+
+        if (error) throw error;
+
+        // Keep local job in sync to prevent refetch loops
+        setJob(prev => ({
+          ...prev,
+          total_price: updatedPrice,
+          specs: updatedSpecs
+        }));
+      } catch (err) {
+        console.warn("Failed to sync choices to Supabase in real-time:", err);
+      } finally {
+        setIsSyncing(false);
+      }
+    }, 1000); // 1s debounce
+
+    return () => clearTimeout(debounceTimer);
+  }, [selectedTier, selectedAddons, quoteId, job, isSuccess, priceCalculations.total]);
 
   // Adjust canvas scale for high DPI
   useEffect(() => {
@@ -883,9 +938,17 @@ Reglas de Negociación:
                 <div className="absolute top-0 right-0 w-24 h-24 bg-[#F5C518]/5 rounded-full blur-2xl pointer-events-none"></div>
                 
                 <div className="space-y-1">
-                  <span className="text-[8px] font-black bg-[#F5C518]/10 text-[#F5C518] border border-[#F5C518]/25 px-2.5 py-1 rounded-lg uppercase tracking-widest">
-                    {ls.title}
-                  </span>
+                  <div className="flex justify-between items-center flex-wrap gap-2">
+                    <span className="text-[8px] font-black bg-[#F5C518]/10 text-[#F5C518] border border-[#F5C518]/25 px-2.5 py-1 rounded-lg uppercase tracking-widest">
+                      {ls.title}
+                    </span>
+                    <span className="text-[7.5px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-1.5 bg-white/5 border border-white/10 px-2 py-0.5 rounded">
+                      <span className={`w-1.5 h-1.5 rounded-full ${isSyncing ? 'bg-amber-500 animate-ping' : 'bg-green-500 animate-pulse'}`}></span>
+                      {isSyncing 
+                        ? (lang === 'es' ? 'Sincronizando elecciones...' : 'Syncing choices...') 
+                        : (lang === 'es' ? 'Sincronizado en tiempo real' : 'Synced in real-time')}
+                    </span>
+                  </div>
                   <h2 className="text-xl font-black uppercase tracking-wide text-white mt-1 italic font-display">{ls.subtitle}</h2>
                 </div>
 

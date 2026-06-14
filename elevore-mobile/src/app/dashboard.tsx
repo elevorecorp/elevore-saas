@@ -33,6 +33,11 @@ export default function DashboardScreen() {
     'Inspección Final de Calidad': false,
   });
 
+  // Notifications states
+  const [notifications, setNotifications] = useState<any[]>([]);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
+
   useEffect(() => {
     async function loadUserData() {
       setLoading(true);
@@ -173,6 +178,130 @@ export default function DashboardScreen() {
       clearInterval(timer);
     };
   }, [onDuty, profile?.id, profile?.tenant_id]);
+
+  // Real-time listener for missions & in-app push notifications
+  useEffect(() => {
+    if (!profile?.name || !profile?.tenant_id) return;
+
+    // Helper utility to calculate day difference (dAgo)
+    const getDaysAgo = (dateStr: string) => {
+      if (!dateStr) return 999;
+      const tDate = new Date(dateStr);
+      const diff = new Date().getTime() - tDate.getTime();
+      return Math.floor(diff / (1000 * 60 * 60 * 24));
+    };
+
+    const channel = supabase
+      .channel(`staff_missions_realtime:${profile.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'elevore_missions',
+          filter: `tenant_id=eq.${profile.tenant_id}`
+        },
+        async (payload: any) => {
+          const team = payload.new?.team_assigned || payload.old?.team_assigned || '';
+          const isAssigned = team.toLowerCase().includes(profile.name.toLowerCase());
+
+          if (!isAssigned) return;
+
+          console.log('[Real-time Staff Mission Event]:', payload.eventType, payload.new);
+
+          // Re-fetch missions to keep state in sync
+          await fetchMissions(profile.name, profile.tenant_id);
+
+          // Generate notification details
+          let title = '';
+          let body = '';
+          const now = new Date().toISOString();
+
+          if (payload.eventType === 'INSERT') {
+            title = '🆕 Nueva Misión Asignada';
+            body = `Se te ha asignado una nueva misión: ${payload.new.service_type || 'Servicio'} para ${payload.new.client_name || 'Cliente'} en ${payload.new.address || 'TBD'}.`;
+          } else if (payload.eventType === 'UPDATE') {
+            const oldStatus = payload.old?.status || '';
+            const newStatus = payload.new?.status || '';
+            const clientName = payload.new?.client_name || 'Cliente';
+            const serviceType = payload.new?.service_type || 'Servicio';
+
+            if (oldStatus !== newStatus && newStatus) {
+              title = '🔄 Estado de Misión Actualizado';
+              body = `La misión "${serviceType}" de ${clientName} cambió su estado a: ${newStatus.toUpperCase()}.`;
+            } else {
+              const oldMsgs = payload.old?.specs?.chat_messages || [];
+              const newMsgs = payload.new?.specs?.chat_messages || [];
+              if (newMsgs.length > oldMsgs.length) {
+                const lastMsg = newMsgs[newMsgs.length - 1];
+                if (lastMsg.sender === 'admin') {
+                  title = '💬 Mensaje del CEO (Soporte)';
+                  body = `El CEO te envió un mensaje: "${lastMsg.text}"`;
+                }
+              }
+            }
+          }
+
+          if (title && body) {
+            const newNotification = {
+              id: Math.random().toString(36).substring(2, 9),
+              title,
+              body,
+              time: now,
+              read: false
+            };
+
+            setNotifications(prev => {
+              const updated = [newNotification, ...prev];
+              AsyncStorage.setItem(`elevore_notifications_${profile.id}`, JSON.stringify(updated));
+              return updated;
+            });
+            setUnreadCount(prev => prev + 1);
+
+            // Display standard alert
+            Alert.alert(title, body);
+          }
+        }
+      )
+      .subscribe();
+
+    // Load initial notifications from AsyncStorage
+    async function loadNotifications() {
+      try {
+        const stored = await AsyncStorage.getItem(`elevore_notifications_${profile.id}`);
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          setNotifications(parsed);
+          setUnreadCount(parsed.filter((n: any) => !n.read).length);
+        }
+      } catch (err) {
+        console.warn('Failed to load local notifications:', err);
+      }
+    }
+    loadNotifications();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [profile?.name, profile?.tenant_id, profile?.id]);
+
+  const openNotificationsModal = async () => {
+    setShowNotifications(true);
+    if (profile?.id) {
+      const readNotifications = notifications.map(n => ({ ...n, read: true }));
+      setNotifications(readNotifications);
+      setUnreadCount(0);
+      await AsyncStorage.setItem(`elevore_notifications_${profile.id}`, JSON.stringify(readNotifications));
+    }
+  };
+
+  const clearNotifications = async () => {
+    if (profile?.id) {
+      setNotifications([]);
+      setUnreadCount(0);
+      await AsyncStorage.removeItem(`elevore_notifications_${profile.id}`);
+    }
+  };
 
   const refreshStaffBalance = async (staffId: string, passcode: string) => {
     try {
@@ -592,9 +721,20 @@ export default function DashboardScreen() {
           </View>
         </View>
         
-        <TouchableOpacity onPress={handleSignOut} style={styles.logoutBtn}>
-          <Text style={styles.logoutBtnText}>SALIR</Text>
-        </TouchableOpacity>
+        <View style={styles.headerRightActions}>
+          <TouchableOpacity onPress={openNotificationsModal} style={styles.notificationBellBtn}>
+            <Text style={styles.bellEmoji}>🔔</Text>
+            {unreadCount > 0 && (
+              <View style={styles.unreadBadge}>
+                <Text style={styles.unreadBadgeText}>{unreadCount}</Text>
+              </View>
+            )}
+          </TouchableOpacity>
+          
+          <TouchableOpacity onPress={handleSignOut} style={styles.logoutBtn}>
+            <Text style={styles.logoutBtnText}>SALIR</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* SHIFT & WALLET SECTION */}
@@ -842,6 +982,58 @@ export default function DashboardScreen() {
           </View>
         </Modal>
       )}
+
+      {/* NOTIFICATIONS CENTER MODAL */}
+      <Modal
+        visible={showNotifications}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowNotifications(false)}
+      >
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalAccentBar} />
+            
+            <View style={styles.modalHeader}>
+              <View>
+                <Text style={styles.modalClientName}>CENTRO DE ALERTAS</Text>
+                <Text style={styles.modalServiceType}>Notificaciones y Turnos en Vivo</Text>
+              </View>
+              <TouchableOpacity onPress={() => setShowNotifications(false)} style={styles.closeModalBtn}>
+                <Text style={styles.closeModalBtnText}>✕</Text>
+              </TouchableOpacity>
+            </View>
+
+            {notifications.length > 0 && (
+              <TouchableOpacity onPress={clearNotifications} style={styles.clearAllBtn}>
+                <Text style={styles.clearAllText}>✕ LIMPIAR HISTORIAL</Text>
+              </TouchableOpacity>
+            )}
+
+            <FlatList
+              data={notifications}
+              keyExtractor={(item) => item.id}
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={{ paddingBottom: 30 }}
+              ListEmptyComponent={
+                <View style={[styles.emptyContainer, { borderWidth: 0, marginTop: 40 }]}>
+                  <Text style={styles.emptyText}>🔔 SIN ALERTAS NUEVAS</Text>
+                  <Text style={styles.emptySubText}>Cualquier cambio de misiones se notificará aquí en vivo.</Text>
+                </View>
+              }
+              renderItem={({ item }) => (
+                <View style={[styles.notificationItem, !item.read && styles.notificationItemUnread]}>
+                  <Text style={styles.notificationTitle}>{item.title}</Text>
+                  <Text style={styles.notificationBody}>{item.body}</Text>
+                  <Text style={styles.notificationTime}>
+                    {new Date(item.time).toLocaleDateString([], { day: 'numeric', month: 'short' })} • {new Date(item.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  </Text>
+                </View>
+              )}
+            />
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -1489,5 +1681,77 @@ const styles = StyleSheet.create({
     width: 1,
     height: 16,
     backgroundColor: 'rgba(255, 255, 255, 0.05)',
+  },
+  headerRightActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  notificationBellBtn: {
+    position: 'relative',
+    padding: 8,
+    borderRadius: 8,
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.05)',
+  },
+  bellEmoji: {
+    fontSize: 16,
+  },
+  unreadBadge: {
+    position: 'absolute',
+    top: -4,
+    right: -4,
+    backgroundColor: '#ef4444',
+    borderRadius: 8,
+    minWidth: 16,
+    height: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 4,
+  },
+  unreadBadgeText: {
+    color: '#ffffff',
+    fontSize: 8,
+    fontWeight: '900',
+  },
+  notificationItem: {
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255, 255, 255, 0.05)',
+  },
+  notificationItemUnread: {
+    backgroundColor: 'rgba(245, 197, 24, 0.04)',
+    borderLeftWidth: 3,
+    borderLeftColor: '#F5C518',
+  },
+  notificationTitle: {
+    color: '#ffffff',
+    fontSize: 12,
+    fontWeight: '900',
+    marginBottom: 4,
+  },
+  notificationBody: {
+    color: '#94A3B8',
+    fontSize: 11,
+    fontWeight: '600',
+    lineHeight: 16,
+  },
+  notificationTime: {
+    color: '#64748B',
+    fontSize: 9,
+    fontWeight: '700',
+    marginTop: 6,
+  },
+  clearAllBtn: {
+    paddingVertical: 10,
+    alignItems: 'center',
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255, 255, 255, 0.05)',
+  },
+  clearAllText: {
+    color: '#64748B',
+    fontSize: 10,
+    fontWeight: '800',
   },
 });
