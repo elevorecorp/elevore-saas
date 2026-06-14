@@ -11749,19 +11749,20 @@ Instrucciones generales de formato:
       const bal = (job.total_price || 0) - (job.deposit_paid || 0);
       const portal = `${location.origin}${location.pathname}?mision=${job.id}`;
       const ref = `${location.origin}${location.pathname}?ref=${job.client_name?.replace(/\s/g, '_')}&t=${tenantId}`;
+      const businessName = tenantSettings?.business_name || tenantSettings?.business_full_name || 'Elevore';
       const msgs = {
-        confirm: `Hola ${job.client_name}! ✨ Elevore confirma tu servicio de ${job.service_type?.toUpperCase()} para el ${fmtD(job.scheduled_date)}. Balance: ${fmt$(bal)}. Zelle: ${tenantSettings?.zelle_phone || DEFAULT_CFG.ZELLE} 🏠`,
-        reminder: `Hola ${job.client_name}! 🔔 Recordatorio de tu servicio Elevore para el ${fmtD(job.scheduled_date)}. Balance: ${fmt$(bal)}. ¡Escríbenos si tienes dudas!`,
+        confirm: `Hola ${job.client_name}! ✨ ${businessName} confirma tu servicio de ${job.service_type?.toUpperCase()} para el ${fmtD(job.scheduled_date)}. Balance: ${fmt$(bal)}. Zelle: ${tenantSettings?.zelle_phone || DEFAULT_CFG.ZELLE} 🏠`,
+        reminder: `Hola ${job.client_name}! 🔔 Recordatorio de tu servicio ${businessName} para el ${fmtD(job.scheduled_date)}. Balance: ${fmt$(bal)}. ¡Escríbenos si tienes dudas!`,
         review: `Hola ${job.client_name}! 🌟 ¡Gracias por elegirnos! Déjanos una reseña aquí: ${DEFAULT_CFG.GOOGLE} ⭐⭐⭐⭐⭐`,
         referral: `Hola ${job.client_name}! 🎁 Refiere a un amigo, ¡AMBOS obtienen $25 de descuento! Enlace: ${ref}`,
-        quote: `Hola ${job.client_name}! 📋 Tu cotización Elevore:\n\n🏠 ${job.service_type?.toUpperCase()}\n📅 ${fmtD(job.scheduled_date)}\n💰 ${fmt$(job.total_price)}\n⚖️ Balance: ${fmt$(bal)}\n\n👉 Firma aquí: ${portal}\n\n⏰ Expira en 24h. Zelle: ${tenantSettings?.zelle_phone || DEFAULT_CFG.ZELLE}`,
-        portal: `Hola ${job.client_name}! ✨ Sigue tu servicio ELEVORE en tiempo real: ${portal}`,
+        quote: `Hola ${job.client_name}! 📋 Tu cotización ${businessName}:\n\n🏠 ${job.service_type?.toUpperCase()}\n📅 ${fmtD(job.scheduled_date)}\n💰 ${fmt$(job.total_price)}\n⚖️ Balance: ${fmt$(bal)}\n\n👉 Firma aquí: ${portal}\n\n⏰ Expira en 24h. Zelle: ${tenantSettings?.zelle_phone || DEFAULT_CFG.ZELLE}`,
+        portal: `Hola ${job.client_name}! ✨ Sigue tu servicio de ${businessName.toUpperCase()} en tiempo real: ${portal}`,
         retention: `Hola ${job.client_name}! 🏠 Ha pasado un tiempo. Reserva esta semana y obtén 10% de descuento. ¡Escríbenos! 🌟`,
         winback: `Hola ${job.client_name}! 😊 ¡Te extrañamos! Reserva hoy con un descuento especial de cliente leal.`,
       };
       const p = job.client_phone?.replace(/\D/g, '') || '';
       const ph = p.length === 10 ? '1' + p : p;
-      const fallbackMsg = msgs[type] || `Hola ${job.client_name}! Elevore te contacta sobre tu servicio de ${job.service_type?.toUpperCase()}. Portal: ${portal}`;
+      const fallbackMsg = msgs[type] || `Hola ${job.client_name}! ${businessName} te contacta sobre tu servicio de ${job.service_type?.toUpperCase()}. Portal: ${portal}`;
       const finalUrl = `https://wa.me/${ph}?text=${encodeURIComponent(fallbackMsg)}`;
       if (waWindow) {
         waWindow.location.href = finalUrl;
@@ -12551,13 +12552,14 @@ Instrucciones generales de formato:
         const bal = (chatJob.total_price || 0) - (chatJob.deposit_paid || 0);
         const portal = `${location.origin}${location.pathname}?mision=${chatJob.id}`;
         const ref = `${location.origin}${location.pathname}?ref=${chatJob.client_name?.replace(/\s/g, '_')}&t=${tenantId}`;
+        const businessName = tenantSettings?.business_name || tenantSettings?.business_full_name || 'Elevore';
         const msgs = {
-          confirm: `Hola ${chatJob.client_name}! ✨ Elevore confirma tu servicio de ${chatJob.service_type?.toUpperCase()} para el ${fmtD(chatJob.scheduled_date)}. Balance: ${fmt$(bal)}. Zelle: ${tenantSettings?.zelle_phone || DEFAULT_CFG.ZELLE} 🏠`,
-          reminder: `Hola ${chatJob.client_name}! 🔔 Recordatorio de tu servicio Elevore para el ${fmtD(chatJob.scheduled_date)}. Balance: ${fmt$(bal)}. ¡Escríbenos si tienes dudas!`,
+          confirm: `Hola ${chatJob.client_name}! ✨ ${businessName} confirma tu servicio de ${chatJob.service_type?.toUpperCase()} para el ${fmtD(chatJob.scheduled_date)}. Balance: ${fmt$(bal)}. Zelle: ${tenantSettings?.zelle_phone || DEFAULT_CFG.ZELLE} 🏠`,
+          reminder: `Hola ${chatJob.client_name}! 🔔 Recordatorio de tu servicio ${businessName} para el ${fmtD(chatJob.scheduled_date)}. Balance: ${fmt$(bal)}. ¡Escríbenos si tienes dudas!`,
           review: `Hola ${chatJob.client_name}! 🌟 ¡Gracias por elegirnos! Déjanos una reseña aquí: ${DEFAULT_CFG.GOOGLE} ⭐⭐⭐⭐⭐`,
-          quote: `Hola ${chatJob.client_name}! 📋 Tu cotización Elevore:\n\n🏠 ${chatJob.service_type?.toUpperCase()}\n📅 ${fmtD(chatJob.scheduled_date)}\n💰 ${chatJob.total_price}\n⚖️ Balance: ${fmt$(bal)}\n\n👉 Firma aquí: ${portal}\n\n⏰ Expira en 24h. Zelle: ${tenantSettings?.zelle_phone || DEFAULT_CFG.ZELLE}`,
+          quote: `Hola ${chatJob.client_name}! 📋 Tu cotización ${businessName}:\n\n🏠 ${chatJob.service_type?.toUpperCase()}\n📅 ${fmtD(chatJob.scheduled_date)}\n💰 ${chatJob.total_price}\n⚖️ Balance: ${fmt$(bal)}\n\n👉 Firma aquí: ${portal}\n\n⏰ Expira en 24h. Zelle: ${tenantSettings?.zelle_phone || DEFAULT_CFG.ZELLE}`,
         };
-        setChatMsg(msgs[type] || `Hola ${chatJob.client_name}! Elevore te contacta sobre tu servicio de ${chatJob.service_type?.toUpperCase()}. Portal: ${portal}`);
+        setChatMsg(msgs[type] || `Hola ${chatJob.client_name}! ${businessName} te contacta sobre tu servicio de ${chatJob.service_type?.toUpperCase()}. Portal: ${portal}`);
         tt(`Plantilla cargada (Fallback)`);
       }
       setLoad(false);

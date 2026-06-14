@@ -453,7 +453,8 @@ export const generateInvoiceReceiptPDF = async (job, tenantSettings, lang = 'en'
     const filePrefix = isPaid ? 'Receipt' : 'Invoice';
     const clientNameClean = job.client_name ? job.client_name.replace(/\s+/g, '_') : 'Client';
     
-    link.download = `Elevore_${filePrefix}_${clientNameClean}.pdf`;
+    const businessNameClean = tenantSettings?.business_name ? tenantSettings.business_name.replace(/\s+/g, '_') : 'Company';
+    link.download = `${businessNameClean}_${filePrefix}_${clientNameClean}.pdf`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
