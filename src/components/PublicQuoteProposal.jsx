@@ -290,6 +290,39 @@ export function PublicQuoteProposal({ quoteId }) {
     }
   }, [quoteId]);
 
+  // Calculate pricing based on Selected Tier and Add-ons
+  const priceCalculations = useMemo(() => {
+    if (!job) return { subtotal: 0, addonsCost: 0, total: 0, deposit: 0, balance: 0 };
+    
+    const base = job.total_price || 150;
+    
+    // Tier multipliers
+    let tierPrice = base;
+    if (selectedTier === 'good') tierPrice = Math.round(base * 0.85);
+    else if (selectedTier === 'best') tierPrice = Math.round(base * 1.3);
+
+    // Addons Cost
+    const addonsCost = selectedAddons.reduce((acc, addonId) => {
+      const addon = ADDONS_LIST.find(a => a.id === addonId);
+      return acc + (addon ? addon.price : 0);
+    }, 0);
+
+    const subtotalAndAddons = tierPrice + addonsCost;
+    const discountAmount = Math.round(subtotalAndAddons * (negotiatedDiscountPercent / 100));
+    const total = subtotalAndAddons - discountAmount;
+    const depositPct = tenantSettings?.booking_deposit_pct !== undefined ? Number(tenantSettings.booking_deposit_pct) : 0.20;
+    const deposit = Math.round(total * depositPct);
+    const balance = total - deposit;
+
+    return {
+      subtotal: tierPrice,
+      addonsCost,
+      total,
+      deposit,
+      balance
+    };
+  }, [job, selectedTier, selectedAddons, tenantSettings, negotiatedDiscountPercent]);
+
   // Sync proposal choices (tier & addons) to Supabase in real-time
   useEffect(() => {
     if (!job || isSuccess) return;
@@ -353,39 +386,6 @@ export function PublicQuoteProposal({ quoteId }) {
       canvas.height = rect.height;
     }
   }, [loading, isSuccess]);
-
-  // Calculate pricing based on Selected Tier and Add-ons
-  const priceCalculations = useMemo(() => {
-    if (!job) return { subtotal: 0, addonsCost: 0, total: 0, deposit: 0, balance: 0 };
-    
-    const base = job.total_price || 150;
-    
-    // Tier multipliers
-    let tierPrice = base;
-    if (selectedTier === 'good') tierPrice = Math.round(base * 0.85);
-    else if (selectedTier === 'best') tierPrice = Math.round(base * 1.3);
-
-    // Addons Cost
-    const addonsCost = selectedAddons.reduce((acc, addonId) => {
-      const addon = ADDONS_LIST.find(a => a.id === addonId);
-      return acc + (addon ? addon.price : 0);
-    }, 0);
-
-    const subtotalAndAddons = tierPrice + addonsCost;
-    const discountAmount = Math.round(subtotalAndAddons * (negotiatedDiscountPercent / 100));
-    const total = subtotalAndAddons - discountAmount;
-    const depositPct = tenantSettings?.booking_deposit_pct !== undefined ? Number(tenantSettings.booking_deposit_pct) : 0.20;
-    const deposit = Math.round(total * depositPct);
-    const balance = total - deposit;
-
-    return {
-      subtotal: tierPrice,
-      addonsCost,
-      total,
-      deposit,
-      balance
-    };
-  }, [job, selectedTier, selectedAddons, tenantSettings, negotiatedDiscountPercent]);
 
   // Canvas signature logic
   const getCoordinates = (e) => {
