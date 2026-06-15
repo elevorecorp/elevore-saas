@@ -126,7 +126,7 @@ export const HyperDriveTab = ({ tt, refresh, jobs, staff }) => {
           status: 'scheduled',
           scheduled_date: new Date(Date.now() + 86400000 * 2).toISOString().split('T')[0] + 'T09:00:00',
           total_price: netTotal,
-          team_assigned: staff.find((s) => s.role === 'staff')?.name || 'Equipo Alpha',
+          team_assigned: (Array.isArray(staff) && staff.find((s) => s.role === 'staff')?.name) || 'Equipo Alpha',
           specs: {
             sqft: sqftSize,
             addons: selectedAddons,

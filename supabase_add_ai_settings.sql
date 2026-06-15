@@ -9,7 +9,7 @@ ALTER TABLE public.tenant_settings
 ADD COLUMN IF NOT EXISTS ai_provider TEXT DEFAULT 'ollama';
 
 ALTER TABLE public.tenant_settings 
-ADD COLUMN IF NOT EXISTS gemini_model TEXT DEFAULT 'gemini-2.5-flash';
+ADD COLUMN IF NOT EXISTS gemini_model TEXT DEFAULT 'gemini-1.5-flash';
 
 ALTER TABLE public.tenant_settings 
 ADD COLUMN IF NOT EXISTS gemini_key TEXT;

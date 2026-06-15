@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { sb } from '../../supabase';
 import { 
   Sparkles, Calendar, Clock, MapPin, User, Phone, Mail, 
-  Shield, Check, Info, Leaf, Loader2, Heart, Award
+  Shield, Check, Info, Leaf, Loader2, Heart, Award, XCircle
 } from 'lucide-react';
 import TimeSlotPicker from './TimeSlotPicker';
 
@@ -183,6 +183,7 @@ export default function PublicBookingWidget({ tenantId: propTenantId }) {
       const specs = {
         sqft: form.sqft,
         addons: selectedAddonDetails,
+        date: form.bookingDate,
         time: form.bookingTime,
         green_discount_applied: isGreenSlot(),
         notes: form.customNotes,
@@ -282,6 +283,162 @@ export default function PublicBookingWidget({ tenantId: propTenantId }) {
       <div className="min-h-screen bg-black flex flex-col items-center justify-center text-white">
         <Loader2 className="w-10 h-10 animate-spin text-[#F5C518] mb-4" />
         <p className="text-[10px] uppercase font-bold tracking-widest text-slate-500">Cargando Portal de Reservas...</p>
+      </div>
+    );
+  }
+
+  // Handle Stripe Success Callback Screen
+  const urlParams = new URLSearchParams(window.location.search);
+  const isSuccess = urlParams.get('booking_success') === 'true';
+  const isCancel = urlParams.get('booking_cancel') === 'true';
+
+  if (isSuccess) {
+    const clientName = urlParams.get('client_name') || '';
+    const clientEmail = urlParams.get('client_email') || '';
+    const clientPhone = urlParams.get('client_phone') || '';
+    const address = urlParams.get('address') || '';
+    const serviceType = urlParams.get('service_type') || '';
+    const amount = urlParams.get('amount') || '0';
+    let specsObj = {};
+    try {
+      const specsStr = urlParams.get('specs');
+      if (specsStr) {
+        specsObj = JSON.parse(decodeURIComponent(specsStr));
+      }
+    } catch (e) {
+      console.error(e);
+    }
+
+    const businessName = settings?.businessFullName || tenantInfo?.business_name || 'Elevore';
+
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-black to-zinc-950 text-white py-12 px-4 md:px-8 flex flex-col items-center justify-center">
+        <div className="max-w-xl w-full bg-slate-900/60 border border-white/5 backdrop-blur-md rounded-3xl p-8 space-y-6 text-center shadow-2xl relative overflow-hidden font-sans">
+          <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-500/5 rounded-full blur-3xl pointer-events-none"></div>
+          
+          <div className="w-16 h-16 bg-emerald-500/10 border border-emerald-500/30 rounded-full flex items-center justify-center mx-auto mb-4 animate-bounce">
+            <Check className="w-8 h-8 text-emerald-400 stroke-[3]" />
+          </div>
+
+          <div className="space-y-2">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-500/10 border border-emerald-500/25 rounded-full text-emerald-400 text-[8px] font-black uppercase tracking-widest">
+              Pago y Reserva Confirmada ✓
+            </span>
+            <h1 className="text-3xl font-black uppercase tracking-tight text-white font-display">
+              ¡Gracias, {clientName.split(' ')[0]}!
+            </h1>
+            <p className="text-[10px] text-slate-400 uppercase font-bold tracking-widest">
+              Tu servicio con {businessName.toUpperCase()} ha sido programado y asegurado con éxito.
+            </p>
+          </div>
+
+          <div className="bg-black/45 border border-white/5 rounded-2xl p-5 text-left space-y-3 text-[10px] uppercase font-bold tracking-wider font-mono">
+            <div className="flex justify-between border-b border-white/5 pb-2">
+              <span className="text-slate-500">Servicio:</span>
+              <span className="text-white">{serviceType}</span>
+            </div>
+            {specsObj.sqft && (
+              <div className="flex justify-between border-b border-white/5 pb-2">
+                <span className="text-slate-500">Tamaño:</span>
+                <span className="text-white font-mono">{specsObj.sqft} SQFT</span>
+              </div>
+            )}
+            {specsObj.date && (
+              <div className="flex justify-between border-b border-white/5 pb-2">
+                <span className="text-slate-500">Fecha:</span>
+                <span className="text-white font-mono">{specsObj.date}</span>
+              </div>
+            )}
+            {specsObj.time && (
+              <div className="flex justify-between border-b border-white/5 pb-2">
+                <span className="text-slate-500">Horario:</span>
+                <span className="text-white font-mono">{specsObj.time} HS</span>
+              </div>
+            )}
+            <div className="flex justify-between border-b border-white/5 pb-2">
+              <span className="text-slate-500">Dirección:</span>
+              <span className="text-white truncate max-w-[200px]">{address}</span>
+            </div>
+            <div className="flex justify-between border-b border-white/5 pb-2">
+              <span className="text-slate-500">Monto Pagado:</span>
+              <span className="text-emerald-400 font-mono font-black">${amount} USD</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-slate-500">Contacto:</span>
+              <span className="text-slate-300 font-mono text-[9px] lowercase font-semibold">{clientEmail}</span>
+            </div>
+          </div>
+
+          <div className="p-4 bg-white/[0.02] border border-white/5 rounded-2xl flex gap-3 items-center text-left">
+            <Info className="w-5 h-5 text-amber-500 flex-shrink-0" />
+            <p className="text-[7.5px] text-slate-400 uppercase font-bold leading-normal">
+              Hemos enviado un correo de confirmación a **{clientEmail}**. En breve nuestro equipo de operaciones se pondrá en contacto contigo para los últimos detalles de acceso.
+            </p>
+          </div>
+
+          <div className="pt-2 flex gap-3">
+            <button
+              onClick={() => window.location.href = window.location.origin}
+              className="flex-1 py-3.5 bg-white/5 hover:bg-white/10 text-white rounded-xl text-[9px] font-black uppercase border border-white/10 active:scale-95 transition-all"
+            >
+              Volver al Inicio
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (isCancel) {
+    const businessName = settings?.businessFullName || tenantInfo?.business_name || 'Elevore';
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-black to-zinc-950 text-white py-12 px-4 md:px-8 flex flex-col items-center justify-center">
+        <div className="max-w-md w-full bg-slate-900/60 border border-white/5 backdrop-blur-md rounded-3xl p-8 space-y-6 text-center shadow-2xl relative overflow-hidden font-sans">
+          <div className="absolute top-0 right-0 w-64 h-64 bg-red-500/5 rounded-full blur-3xl pointer-events-none"></div>
+          
+          <div className="w-16 h-16 bg-red-500/10 border border-red-500/30 rounded-full flex items-center justify-center mx-auto mb-4">
+            <XCircle className="w-8 h-8 text-red-400" />
+          </div>
+
+          <div className="space-y-2">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-red-500/10 border border-red-500/25 rounded-full text-red-400 text-[8px] font-black uppercase tracking-widest">
+              Pago Cancelado
+            </span>
+            <h1 className="text-2xl font-black uppercase tracking-tight text-white font-display">
+              Reserva Cancelada
+            </h1>
+            <p className="text-[10px] text-slate-400 uppercase font-bold tracking-widest leading-relaxed">
+              El proceso de pago fue interrumpido o cancelado. No se ha realizado ningún cobro en tu tarjeta.
+            </p>
+          </div>
+
+          <div className="p-4 bg-white/[0.02] border border-white/5 rounded-2xl flex gap-3 items-center text-left">
+            <Info className="w-5 h-5 text-amber-500 flex-shrink-0" />
+            <p className="text-[7.5px] text-slate-400 uppercase font-bold leading-normal">
+              Puedes intentar agendar de nuevo. Si tienes dudas o problemas con el método de pago, no dudes en contactar a **{businessName}**.
+            </p>
+          </div>
+
+          <div className="pt-2 flex gap-3">
+            <button
+              onClick={() => {
+                const searchParams = new URLSearchParams(window.location.search);
+                searchParams.delete('booking_cancel');
+                searchParams.set('book', 'true');
+                window.location.href = window.location.origin + window.location.pathname + '?' + searchParams.toString();
+              }}
+              className="flex-1 py-3.5 bg-[#F5C518] hover:bg-amber-400 text-black rounded-xl text-[9px] font-black uppercase active:scale-95 transition-all shadow-[0_0_20px_rgba(245,197,24,0.1)]"
+            >
+              Intentar de nuevo
+            </button>
+            <button
+              onClick={() => window.location.href = window.location.origin}
+              className="flex-1 py-3.5 bg-white/5 hover:bg-white/10 text-white rounded-xl text-[9px] font-black uppercase border border-white/10 active:scale-95 transition-all"
+            >
+              Ir al Inicio
+            </button>
+          </div>
+        </div>
       </div>
     );
   }

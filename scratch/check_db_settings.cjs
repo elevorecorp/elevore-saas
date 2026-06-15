@@ -6,7 +6,7 @@ async function main() {
   try {
     console.log("=== INSPECTING CURRENT TENANT SETTINGS ===");
     const settings = await sql`
-      SELECT tenant_id, business_full_name, custom_resend_key, sender_email 
+      SELECT tenant_id, business_full_name, gemini_key, zelle_phone
       FROM tenant_settings;
     `;
     console.table(settings);

@@ -112,6 +112,8 @@ export default function TimeSlotPicker({
       let hour = '';
       if (m.scheduled_date.includes('T')) {
         hour = m.scheduled_date.split('T')[1].substring(0, 5); // HH:MM
+      } else if (m.scheduled_date.includes(' ')) {
+        hour = m.scheduled_date.split(' ')[1].substring(0, 5); // HH:MM
       } else {
         // Fallback for simple date entries
         hour = '08:00';

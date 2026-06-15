@@ -5,8 +5,8 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '');
 
 // Initialize Supabase Client
 const supabaseUrl = process.env.VITE_SUPABASE_URL || '';
-const supabaseAnonKey = process.env.VITE_SUPABASE_ANON_KEY || '';
-const sb = (supabaseUrl && supabaseAnonKey) ? createClient(supabaseUrl, supabaseAnonKey) : null;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY || '';
+const sb = (supabaseUrl && supabaseServiceKey) ? createClient(supabaseUrl, supabaseServiceKey) : null;
 
 // Trigger background Inngest event if needed
 async function triggerInngestEvent(eventName, eventData) {
@@ -130,6 +130,10 @@ export default async function handler(req, res) {
               specs: updatedSpecs
             };
 
+            if (specs.date && specs.time) {
+              updateData.scheduled_date = `${specs.date}T${specs.time}:00`;
+            }
+
             if (payment_type === 'full') {
               updateData.status = 'paid';
               updateData.total_price = totalPrice;
@@ -156,6 +160,7 @@ export default async function handler(req, res) {
 
           } else {
             console.log(`Creating paid mission for customer ${client_name}...`);
+            const scheduledDateVal = (specs.date && specs.time) ? `${specs.date}T${specs.time}:00` : null;
             const { data: inserted, error } = await sb
               .from('elevore_missions')
               .insert({
@@ -167,6 +172,7 @@ export default async function handler(req, res) {
                 service_type,
                 status: 'paid',
                 total_price: totalPrice,
+                scheduled_date: scheduledDateVal,
                 specs,
                 created_at: new Date().toISOString()
               })
