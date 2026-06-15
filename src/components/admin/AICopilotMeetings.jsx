@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import * as Icons from 'lucide-react';
 import { sb } from '../../supabase';
+import { fetchAIChat } from '../../utils/ai';
 
 const Icon = ({ name, className, style, ...props }) => {
   if (!name) return null;
@@ -184,7 +185,7 @@ export const AICopilotMeetings = ({ jobs, staff, tt, refresh, activeUser }) => {
       } catch (e) {}
     }
     setGeneratingSummary(true);
-    tt('Procesando transcripción con Ollama local...', 'blue');
+    tt('Procesando transcripción con Copiloto Cloud...', 'blue');
 
     const rawTranscripts = transcripts.length > 0 ? transcripts : [
       { speaker: activeUser || 'Administrador (Tú)', text: 'Buenos días equipo. Sincronización de ruta para hoy en Pine St.', time: '10:00:02' },
@@ -197,39 +198,62 @@ export const AICopilotMeetings = ({ jobs, staff, tt, refresh, activeUser }) => {
     const transcriptText = rawTranscripts.map(t => `[${t.time}] ${t.speaker}: ${t.text}`).join('\n');
 
     try {
-      const response = await fetch(`${ollamaUrl}/api/chat`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          model: ollamaModel,
-          messages: [
-            {
-              role: 'system',
-              content: 'Eres el copiloto de IA de Elevore SaaS. Tu tarea es analizar la transcripción de la reunión matutina de coordinación de cuadrillas y extraer: (1) Resumen Ejecutivo, (2) Alertas reportadas, y (3) Tareas de plan de acción. Responde con un tono formal y ejecutivo en español.'
-            },
-            {
-              role: 'user',
-              content: `Analiza esta transcripción y genera las minutas:\n\n${transcriptText}`
-            }
-          ],
-          stream: false
-        })
-      });
+      const chatResult = await fetchAIChat([
+        {
+          role: 'system',
+          content: 'Eres el copiloto de IA de Elevore SaaS. Tu tarea es analizar la transcripción de la reunión matutina de coordinación de cuadrillas y extraer: (1) Resumen Ejecutivo, (2) Alertas reportadas, y (3) Tareas de plan de acción. Responde con un tono formal y ejecutivo en español.'
+        },
+        {
+          role: 'user',
+          content: `Analiza esta transcripción y genera las minutas:\n\n${transcriptText}`
+        }
+      ], 'gemini-1.5-flash');
 
-      if (!response.ok) throw new Error(`HTTP error ${response.status}`);
-      const data = await response.json();
-      const content = data.message?.content || 'No se pudo generar la minuta.';
+      if (!chatResult.ok) throw new Error(chatResult.error || 'Unknown AI error');
+      const content = chatResult.text || 'No se pudo generar la minuta.';
       setAiSummaryContent(content);
       setGeneratingSummary(false);
       setShowSummary(true);
-      tt('Minutas y plan de acción generado con Ollama local ✓', 'green');
+      tt('Minutas y plan de acción generado con Gemini Cloud ✓', 'green');
     } catch (err) {
-      console.warn('Ollama offline, running heuristic local parser:', err);
-      const content = generateLocalFallbackSummary(rawTranscripts);
-      setAiSummaryContent(content);
-      setGeneratingSummary(false);
-      setShowSummary(true);
-      tt('Minutas generadas con motor heurístico local ✓', 'green');
+      console.warn('Gemini Cloud unavailable or not configured, trying Ollama local:', err);
+      try {
+        // Intento 2: Ollama local (si está instalado y encendido)
+        const response = await fetch(`${ollamaUrl}/api/chat`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            model: ollamaModel,
+            messages: [
+              {
+                role: 'system',
+                content: 'Eres el copiloto de IA de Elevore SaaS. Tu tarea es analizar la transcripción de la reunión matutina de coordinación de cuadrillas y extraer: (1) Resumen Ejecutivo, (2) Alertas reportadas, y (3) Tareas de plan de acción. Responde con un tono formal y ejecutivo en español.'
+              },
+              {
+                role: 'user',
+                content: `Analiza esta transcripción y genera las minutas:\n\n${transcriptText}`
+              }
+            ],
+            stream: false
+          })
+        });
+
+        if (!response.ok) throw new Error(`HTTP error ${response.status}`);
+        const data = await response.json();
+        const content = data.message?.content || 'No se pudo generar la minuta.';
+        setAiSummaryContent(content);
+        setGeneratingSummary(false);
+        setShowSummary(true);
+        tt('Minutas y plan de acción generado con Ollama local ✓', 'green');
+      } catch (ollamaErr) {
+        console.warn('Ollama offline, running heuristic local parser:', ollamaErr);
+        // Intento 3: Parser Heurístico local (siempre funciona, sin red)
+        const content = generateLocalFallbackSummary(rawTranscripts);
+        setAiSummaryContent(content);
+        setGeneratingSummary(false);
+        setShowSummary(true);
+        tt('Minutas generadas con motor heurístico local ✓', 'green');
+      }
     }
   };
 

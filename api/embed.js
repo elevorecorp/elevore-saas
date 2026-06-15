@@ -18,7 +18,23 @@ export default async function handler(req, res) {
 
   try {
     const { text = '', model = 'text-embedding-004' } = req.body || {};
-    const apiKey = req.headers['x-gemini-key'] || req.headers['authorization']?.replace('Bearer ', '') || process.env.GEMINI_API_KEY;
+    const getValidKey = (...keys) => {
+      for (const k of keys) {
+        if (k) {
+          const trimmed = String(k).trim();
+          if (trimmed !== '' && trimmed !== 'null' && trimmed !== 'undefined' && trimmed !== 'None') {
+            return trimmed;
+          }
+        }
+      }
+      return null;
+    };
+
+    const apiKey = getValidKey(
+      req.headers['x-gemini-key'],
+      req.headers['authorization']?.replace('Bearer ', ''),
+      process.env.GEMINI_API_KEY
+    );
 
     if (!apiKey) {
       return res.status(400).json({ error: 'GEMINI_API_KEY is not configured on the server environment. Please configure it in Vercel or enter it in your App settings.' });

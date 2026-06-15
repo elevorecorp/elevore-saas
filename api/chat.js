@@ -17,13 +17,28 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { messages = [], model = 'gemini-2.5-flash' } = req.body || {};
-    const apiKey = req.headers['x-gemini-key'] || 
-                   req.headers['authorization']?.replace('Bearer ', '') || 
-                   process.env.GEMINI_API_KEY ||
-                   process.env.VITE_GEMINI_KEY ||
-                   process.env.GEMINI_KEY ||
-                   process.env.VITE_GEMINI_API_KEY;
+    const { messages = [], model = 'gemini-2.0-flash' } = req.body || {};
+
+    const getValidKey = (...keys) => {
+      for (const k of keys) {
+        if (k) {
+          const trimmed = String(k).trim();
+          if (trimmed !== '' && trimmed !== 'null' && trimmed !== 'undefined' && trimmed !== 'None') {
+            return trimmed;
+          }
+        }
+      }
+      return null;
+    };
+
+    const apiKey = getValidKey(
+      req.headers['x-gemini-key'],
+      req.headers['authorization']?.replace('Bearer ', ''),
+      process.env.GEMINI_API_KEY,
+      process.env.VITE_GEMINI_KEY,
+      process.env.GEMINI_KEY,
+      process.env.VITE_GEMINI_API_KEY
+    );
 
     if (!apiKey) {
       return res.status(400).json({ error: 'GEMINI_API_KEY is not configured on the server environment. Please configure it in Vercel (as GEMINI_API_KEY or VITE_GEMINI_KEY) and trigger a Redeploy, or enter it locally in settings.' });
@@ -52,7 +67,7 @@ export default async function handler(req, res) {
     const callGemini = async (mdl) => {
       const targetUrl = `https://generativelanguage.googleapis.com/v1beta/models/${mdl}:generateContent?key=${apiKey}`;
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 8000);
+      const timeoutId = setTimeout(() => controller.abort(), 15000);
       try {
         const response = await fetch(targetUrl, {
           method: 'POST',
@@ -82,7 +97,8 @@ export default async function handler(req, res) {
               }
             ],
             generationConfig: {
-              temperature: 0.7
+              temperature: 0.7,
+              maxOutputTokens: 4096
             }
           })
         });
@@ -95,14 +111,12 @@ export default async function handler(req, res) {
     let activeModel = model;
     let response = await callGemini(activeModel);
 
-    // If 503 (high demand) or 429 (rate limit) and we used gemini-2.5-flash, fallback to gemini-1.5-flash
-    if (!response.ok && activeModel === 'gemini-2.5-flash') {
+    // If response fails, try fallback model chain
+    if (!response.ok && activeModel !== 'gemini-1.5-flash') {
       const errText = await response.clone().text();
-      if (response.status === 503 || response.status === 429 || errText.includes('high demand') || errText.includes('UNAVAILABLE')) {
-        console.warn(`[FALLBACK] gemini-2.5-flash unavailable (Status ${response.status}). Retrying with gemini-1.5-flash...`);
-        activeModel = 'gemini-1.5-flash';
-        response = await callGemini(activeModel);
-      }
+      console.warn(`[FALLBACK] Model ${activeModel} failed (${response.status}). Retrying with gemini-1.5-flash...`);
+      activeModel = 'gemini-1.5-flash';
+      response = await callGemini(activeModel);
     }
 
     if (!response.ok) {

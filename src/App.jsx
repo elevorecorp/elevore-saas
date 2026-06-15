@@ -8558,7 +8558,7 @@ function LandingPage({ onLogin, onSignup, prefLang, setPrefLang }) {
                         <Icon name={step.icon} className="w-4 h-4" />
                       </div>
                       <div>
-                        <span className={`text-[8px] font-mono tracking-widest uppercase ${isActive ? 'text-[#F5C518]' : 'text-slate-600'}`}>Paso {(idx + 1).toString().padStart(2, '0')}</span>
+                        <span className={`text-[8px] font-mono tracking-widest uppercase ${isActive ? 'text-[#F5C518]' : 'text-slate-600'}`}>{prefLang === 'es' ? 'Paso' : 'Step'} {(idx + 1).toString().padStart(2, '0')}</span>
                         <h3 className={`text-sm font-black ${isActive ? 'text-white' : 'text-slate-400'}`}>{step.title}</h3>
                       </div>
                     </button>
@@ -8870,6 +8870,85 @@ function LandingPage({ onLogin, onSignup, prefLang, setPrefLang }) {
         </div>
       </section>
 
+      {/* ═══ DASHBOARD SHOWCASE ═══ */}
+      <section className="border-t border-white/5 py-32 relative overflow-hidden" style={{ background: 'linear-gradient(180deg, #030303 0%, rgba(245,197,24,0.02) 50%, #030303 100%)' }}>
+        <div className="absolute inset-0 dot-grid pointer-events-none opacity-15" />
+        <div className="max-w-7xl mx-auto px-6 relative z-10">
+          <div className="text-center mb-16 space-y-4">
+            <div className="reveal inline-block text-[10px] font-black uppercase tracking-[0.3em] text-[#F5C518] border border-[#F5C518]/30 px-4 py-2 rounded-full bg-[#F5C518]/5 shimmer-badge">The Command Center</div>
+            <h2 className="reveal delay-100 text-4xl md:text-6xl font-black tracking-tighter">
+              {prefLang === 'es' ? <><span className="glow-text italic">Un vistazo</span> lo controla todo.</> : <>One Glance.<br /><span className="glow-text italic">Total Control.</span></>}
+            </h2>
+            <p className="reveal delay-200 text-slate-400 text-lg max-w-2xl mx-auto">
+              {prefLang === 'es' ? 'El panel de Elevore Empire te muestra el estado de cada misión, ingresos en tiempo real, ubicaciones GPS y puntuaciones de IA — todo en una sola pantalla.' : 'The Elevore Empire dashboard shows you every mission status, real-time revenue, GPS fleet locations, and AI scores — all on one screen.'}
+            </p>
+          </div>
+
+          {/* Dashboard Image with decorative browser chrome frame */}
+          <div className="reveal delay-300 relative group">
+            <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(245,197,24,0.08),transparent_60%)] rounded-3xl blur-2xl" />
+            <div className="relative browser-frame">
+              {/* Browser top bar */}
+              <div className="bg-[#0f0f1a] border-b border-white/5 px-5 py-3 flex items-center gap-3">
+                <div className="flex gap-2">
+                  <div className="w-3 h-3 rounded-full bg-red-500/60" />
+                  <div className="w-3 h-3 rounded-full bg-yellow-500/60" />
+                  <div className="w-3 h-3 rounded-full bg-green-500/60" />
+                </div>
+                <div className="flex-1 mx-4">
+                  <div className="bg-white/5 border border-white/5 rounded-lg px-4 py-1.5 flex items-center gap-2 max-w-xs mx-auto">
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-slate-600"><circle cx="12" cy="12" r="10" /><path d="M12 8v4l3 3" /></svg>
+                    <span className="text-[10px] text-slate-500 font-mono">app.elevore.app/dashboard</span>
+                    <div className="ml-auto w-2 h-2 rounded-full bg-green-400" />
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 text-[10px] text-slate-600 font-black">
+                  <div className="live-dot" style={{ width: '8px', height: '8px' }} />
+                  <span className="hidden sm:inline">LIVE</span>
+                </div>
+              </div>
+              {/* Dashboard image */}
+              <div className="relative overflow-hidden" style={{ maxHeight: '520px' }}>
+                <img
+                  src="/dashboard-mockup.png"
+                  alt="Elevore Empire Dashboard — AI-powered field service management"
+                  className="w-full object-cover object-top group-hover:scale-[1.01] transition-transform duration-700"
+                  style={{ filter: 'contrast(1.05) brightness(0.95)' }}
+                />
+                {/* Live overlay indicators */}
+                <div className="absolute top-4 right-4 flex flex-col gap-2">
+                  <div className="bg-black/90 border border-white/10 rounded-xl px-3 py-2 backdrop-blur-sm flex items-center gap-2">
+                    <div className="live-dot" style={{ width: '6px', height: '6px' }} />
+                    <span className="text-[10px] text-green-400 font-black uppercase tracking-wider">12 Active Missions</span>
+                  </div>
+                  <div className="bg-black/90 border border-[#F5C518]/20 rounded-xl px-3 py-2 backdrop-blur-sm">
+                    <span className="text-[10px] text-[#F5C518] font-black">$4,820 Today</span>
+                  </div>
+                </div>
+                <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-[#0a0a10] to-transparent" />
+              </div>
+            </div>
+          </div>
+
+          {/* Feature highlights below the screenshot */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-10">
+            {[
+              { icon: 'zap', label: prefLang === 'es' ? 'Despacho en 1-Clic' : '1-Click Dispatch', color: 'text-amber-400', bg: 'bg-amber-400/10', border: 'border-amber-400/20' },
+              { icon: 'map-pin', label: prefLang === 'es' ? 'Flota GPS en Vivo' : 'Live GPS Fleet', color: 'text-blue-400', bg: 'bg-blue-400/10', border: 'border-blue-400/20' },
+              { icon: 'bar-chart-2', label: prefLang === 'es' ? 'BI de Ingresos con IA' : 'AI Revenue BI', color: 'text-purple-400', bg: 'bg-purple-400/10', border: 'border-purple-400/20' },
+              { icon: 'bell', label: prefLang === 'es' ? 'Alertas en Tiempo Real' : 'Real-Time Alerts', color: 'text-green-400', bg: 'bg-green-400/10', border: 'border-green-400/20' },
+            ].map((item, i) => (
+              <div key={i} className={`reveal delay-${i*100} flex items-center gap-3 p-4 rounded-2xl bg-white/[0.02] border border-white/5 hover:border-white/10 transition-all`}>
+                <div className={`w-9 h-9 rounded-xl ${item.bg} border ${item.border} flex items-center justify-center flex-shrink-0`}>
+                  <Icon name={item.icon} className={`w-4 h-4 ${item.color}`} />
+                </div>
+                <span className="text-sm font-black text-slate-300">{item.label}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* ═══ HOW IT WORKS ═══ */}
       <section className="section-dark border-t border-white/5 py-32 relative overflow-hidden">
         <div className="absolute inset-0 dot-grid pointer-events-none opacity-20" />
@@ -9027,6 +9106,109 @@ function LandingPage({ onLogin, onSignup, prefLang, setPrefLang }) {
                 </div>
               </div>
             ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ═══ COMPETITOR COMPARISON ═══ */}
+      <section className="border-t border-white/5 py-32 relative overflow-hidden section-deeper">
+        <div className="absolute inset-0" style={{ background: 'radial-gradient(ellipse at 50% 0%, rgba(245,197,24,0.04) 0%, transparent 60%)' }} />
+        <div className="max-w-6xl mx-auto px-6 relative z-10">
+          <div className="text-center mb-16 space-y-4">
+            <div className="reveal inline-block text-[10px] font-black uppercase tracking-[0.3em] text-rose-400 border border-rose-400/30 px-4 py-2 rounded-full bg-rose-400/5">Head-to-Head</div>
+            <h2 className="reveal delay-100 text-4xl md:text-6xl font-black tracking-tighter">
+              {prefLang === 'es' ? <>Por qué Elevore <span className="glow-text italic">Gana Siempre</span></> : <>Why Operators <span className="glow-text italic">Choose Elevore</span></>}
+            </h2>
+            <p className="reveal delay-200 text-slate-400 text-lg max-w-2xl mx-auto">
+              {prefLang === 'es' ? 'Comparamos características por características. Spoiler: no hay competencia.' : "We compared feature by feature against the biggest names. Here's what we found."}
+            </p>
+          </div>
+
+          <div className="reveal overflow-x-auto pt-4">
+            <div className="min-w-[640px]">
+              <div className="grid grid-cols-5 gap-3 mb-3">
+                <div className="col-span-2 flex items-end pb-3">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-600">Feature</span>
+                </div>
+                {[
+                  { name: 'Elevore', sub: 'Empire', highlight: true, color: 'from-amber-500/20 to-amber-500/5', border: 'border-[#F5C518]/40', textColor: 'text-[#F5C518]', icon: '⭐' },
+                  { name: 'Jobber', sub: 'Standard', highlight: false, color: 'from-slate-800/50 to-slate-900/50', border: 'border-white/10', textColor: 'text-slate-400', icon: '' },
+                  { name: 'Housecall', sub: 'Pro', highlight: false, color: 'from-slate-800/50 to-slate-900/50', border: 'border-white/10', textColor: 'text-slate-400', icon: '' },
+                  { name: 'ServiceM8', sub: 'Pro', highlight: false, color: 'from-slate-800/50 to-slate-900/50', border: 'border-white/10', textColor: 'text-slate-400', icon: '' },
+                ].map((col, i) => (
+                  <div key={i} className={`bg-gradient-to-b ${col.color} border ${col.border} rounded-2xl p-4 text-center relative ${col.highlight ? 'shadow-lg' : ''}`}
+                    style={col.highlight ? { boxShadow: '0 0 40px rgba(245,197,24,0.1)' } : {}}>
+                    {col.highlight && (
+                      <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-[#F5C518] text-black text-[8px] font-black uppercase tracking-widest px-3 py-1 rounded-full whitespace-nowrap">
+                        {prefLang === 'es' ? '⭐ MEJOR' : '⭐ BEST'}
+                      </div>
+                    )}
+                    <p className={`text-sm font-black ${col.textColor}`}>{col.icon} {col.name}</p>
+                    <p className="text-[9px] text-slate-500 font-bold uppercase tracking-wider mt-0.5">{col.sub}</p>
+                  </div>
+                ))}
+              </div>
+
+              {[
+                { feature: prefLang === 'es' ? 'IA de Despacho Inteligente' : 'AI Smart Dispatch', vals: ['full', 'partial', false, false] },
+                { feature: prefLang === 'es' ? 'Rastreo GPS en Tiempo Real' : 'Real-Time GPS Tracking', vals: ['full', 'partial', 'partial', false] },
+                { feature: prefLang === 'es' ? 'CRM WhatsApp Integrado' : 'WhatsApp CRM Built-In', vals: ['full', false, false, false] },
+                { feature: prefLang === 'es' ? 'Firmas Digitales en Sitio' : 'On-Site Digital Signatures', vals: ['full', 'partial', 'full', 'partial'] },
+                { feature: prefLang === 'es' ? 'Control de Calidad por IA' : 'AI Photo Quality Control', vals: ['full', false, false, false] },
+                { feature: prefLang === 'es' ? 'Motor de Cotización Triple' : 'Good-Better-Best Quote Engine', vals: ['full', false, 'partial', false] },
+                { feature: prefLang === 'es' ? 'Predictor de Ingresos IA' : 'AI Revenue Predictor', vals: ['full', false, false, false] },
+                { feature: prefLang === 'es' ? 'Captación IA (Cold Outreach)' : 'AI Cold Outreach Engine 🚀', vals: ['full', false, false, false] },
+                { feature: prefLang === 'es' ? 'Precio de entrada (mensual)' : 'Starting Price (monthly)', vals: ['$97', '$49', '$65', '$29'] },
+              ].map((row, ri) => (
+                <div key={ri} className="grid grid-cols-5 gap-3 mb-2 rounded-2xl transition-colors hover:bg-white/[0.02]">
+                  <div className="col-span-2 flex items-center p-3">
+                    <span className="text-sm font-bold text-slate-300">{row.feature}</span>
+                  </div>
+                  {row.vals.map((v, vi) => (
+                    <div key={vi} className={`flex items-center justify-center p-3 rounded-2xl ${
+                      vi === 0 ? 'bg-[#F5C518]/[0.04] border border-[#F5C518]/10' : 'bg-white/[0.01]'
+                    }`}>
+                      {v === 'full' ? (
+                        <div className={`w-7 h-7 rounded-xl flex items-center justify-center ${vi === 0 ? 'bg-[#F5C518]/20' : 'bg-green-500/15'}`}>
+                          <Icon name="check" className={`w-4 h-4 ${vi === 0 ? 'text-[#F5C518]' : 'text-green-400'}`} />
+                        </div>
+                      ) : v === 'partial' ? (
+                        <div className="w-7 h-7 rounded-xl bg-yellow-500/10 flex items-center justify-center">
+                          <Icon name="minus" className="w-4 h-4 text-yellow-500" />
+                        </div>
+                      ) : v === false ? (
+                        <div className="w-7 h-7 rounded-xl bg-white/[0.03] flex items-center justify-center">
+                          <Icon name="x" className="w-4 h-4 text-slate-700" />
+                        </div>
+                      ) : (
+                        <span className={`text-xs font-black ${vi === 0 ? 'text-[#F5C518]' : 'text-slate-400'}`}>{v}</span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              ))}
+
+              <div className="flex items-center gap-6 mt-6 pt-6 border-t border-white/5 justify-center">
+                {[
+                  { icon: 'check', color: 'text-[#F5C518]', bg: 'bg-[#F5C518]/15', label: prefLang === 'es' ? 'Incluido' : 'Included' },
+                  { icon: 'minus', color: 'text-yellow-500', bg: 'bg-yellow-500/10', label: prefLang === 'es' ? 'Parcial' : 'Partial' },
+                  { icon: 'x', color: 'text-slate-600', bg: 'bg-white/5', label: prefLang === 'es' ? 'No disponible' : 'Not Available' },
+                ].map((item, i) => (
+                  <div key={i} className="flex items-center gap-2">
+                    <div className={`w-6 h-6 rounded-lg ${item.bg} flex items-center justify-center`}>
+                      <Icon name={item.icon} className={`w-3 h-3 ${item.color}`} />
+                    </div>
+                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">{item.label}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div className="text-center mt-10">
+            <button onClick={onSignup} className="btn-gold px-12 py-5 text-sm uppercase tracking-widest">
+              {prefLang === 'es' ? 'Comience Gratis — Sin Tarjeta' : 'Start Free — No Card Required'} →
+            </button>
           </div>
         </div>
       </section>
@@ -9270,6 +9452,41 @@ function LandingPage({ onLogin, onSignup, prefLang, setPrefLang }) {
 
       {/* ═══ FAQ ═══ */}
       <FAQSection prefLang={prefLang} onSignup={onSignup} />
+
+      {/* ═══ LIVE ACTIVITY WALL ═══ */}
+      <section className="border-t border-white/5 py-20 relative overflow-hidden" style={{ background: 'linear-gradient(180deg, #010102 0%, rgba(245,197,24,0.015) 50%, #010102 100%)' }}>
+        <div className="max-w-6xl mx-auto px-6">
+          <div className="text-center mb-12">
+            <div className="reveal inline-flex items-center gap-2.5 text-[10px] font-black uppercase tracking-[0.3em] text-green-400 border border-green-400/30 px-5 py-2 rounded-full bg-green-400/5">
+              <span className="live-dot" />
+              {prefLang === 'es' ? 'Plataforma en Vivo Ahora' : 'Platform Live Right Now'}
+            </div>
+          </div>
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-5">
+            {[
+              { icon: 'zap', label: prefLang === 'es' ? 'Trabajos Despachados Hoy' : 'Jobs Dispatched Today', value: '1,284', delta: '+12 last hour', color: 'text-amber-400', bg: 'bg-amber-400/10', border: 'border-amber-400/20', glow: 'rgba(245,197,24,0.12)' },
+              { icon: 'dollar-sign', label: prefLang === 'es' ? 'Ingresos Procesados' : 'Revenue Processed', value: '$487K', delta: '+$14K this hour', color: 'text-green-400', bg: 'bg-green-400/10', border: 'border-green-400/20', glow: 'rgba(34,197,94,0.12)' },
+              { icon: 'star', label: prefLang === 'es' ? 'Reseñas 5 Estrellas' : '5-Star Reviews', value: '3,902', delta: '+18 today', color: 'text-purple-400', bg: 'bg-purple-400/10', border: 'border-purple-400/20', glow: 'rgba(168,85,247,0.12)' },
+              { icon: 'users', label: prefLang === 'es' ? 'Clientes Activos' : 'Active Clients', value: '28,471', delta: '+43 this week', color: 'text-blue-400', bg: 'bg-blue-400/10', border: 'border-blue-400/20', glow: 'rgba(59,130,246,0.12)' },
+            ].map((stat, i) => (
+              <div key={i} className={`reveal delay-${i*100} relative p-6 rounded-3xl bg-white/[0.02] border border-white/5 hover:border-white/10 overflow-hidden group transition-all duration-300`}>
+                <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500" style={{ background: `radial-gradient(ellipse at 50% 0%, ${stat.glow}, transparent 70%)` }} />
+                <div className={`w-10 h-10 rounded-2xl ${stat.bg} border ${stat.border} flex items-center justify-center mb-4 relative z-10`}>
+                  <Icon name={stat.icon} className={`w-5 h-5 ${stat.color}`} />
+                </div>
+                <div className="relative z-10">
+                  <div className={`text-3xl font-black tracking-tighter ${stat.color} mb-1`}>{stat.value}</div>
+                  <div className="text-xs font-black text-slate-400 mb-2">{stat.label}</div>
+                  <div className="flex items-center gap-1.5">
+                    <div className="live-dot" style={{ width: '6px', height: '6px', flexShrink: 0 }} />
+                    <span className="text-[9px] text-green-400 font-bold uppercase tracking-wider">{stat.delta}</span>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
 
       {/* ═══ FINAL CTA ═══ */}
       <section className="border-t border-white/5 py-36 relative overflow-hidden">
@@ -9527,37 +9744,6 @@ export default function App() {
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
   const [googleAccessToken, setGoogleAccessToken] = useState(null);
 
-  const isTrialExpired = useMemo(() => {
-    if (!tenant) return false;
-    const isSubscribed = tenant.stripe_subscription_status && tenant.stripe_subscription_status.startsWith('active');
-    if (isSubscribed) return false;
-    if (tenant.stripe_subscription_status === 'free') return false;
-    const trialEnds = new Date(tenant.trial_ends_at || 0);
-    return new Date() > trialEnds;
-  }, [tenant]);
-
-  const currentPlan = useMemo(() => {
-    if (!tenant) return 'free';
-    if (isTrialExpired) return 'free';
-    const status = tenant.stripe_subscription_status || 'trialing';
-    if (status.includes('vip')) return 'vip';
-    if (status.includes('premium')) return 'premium';
-    if (status.includes('basic')) return 'basic';
-    if (status === 'trialing') return 'premium'; // Trial has premium access
-    if (status === 'free') return 'free';
-    return 'free';
-  }, [tenant, isTrialExpired]);
-
-  const googleIdentity = useMemo(() => {
-    if (!user || !user.identities) return null;
-    return user.identities.find(id => id.provider === 'google');
-  }, [user]);
-
-  const googleEmail = useMemo(() => {
-    if (!googleIdentity) return null;
-    return googleIdentity.identity_data?.email || googleIdentity.email || null;
-  }, [googleIdentity]);
-
   const isSuperAdmin = useMemo(() => {
     if (!user || !user.email) return false;
     const adminEmails = [
@@ -9569,6 +9755,41 @@ export default function App() {
     ];
     return adminEmails.includes(user.email.toLowerCase());
   }, [user]);
+
+  const isTrialExpired = useMemo(() => {
+    if (!tenant) return false;
+    if (isSuperAdmin) return false;
+    const isSubscribed = tenant.stripe_subscription_status && tenant.stripe_subscription_status.startsWith('active');
+    if (isSubscribed) return false;
+    if (tenant.stripe_subscription_status === 'free') return false;
+    if (tenant.stripe_subscription_status === 'lifetime') return false;
+    const trialEnds = new Date(tenant.trial_ends_at || 0);
+    return new Date() > trialEnds;
+  }, [tenant, isSuperAdmin]);
+
+  const currentPlan = useMemo(() => {
+    if (!tenant) return 'free';
+    if (isSuperAdmin) return 'vip';
+    if (isTrialExpired) return 'free';
+    const status = tenant.stripe_subscription_status || 'trialing';
+    if (status === 'lifetime') return 'vip';
+    if (status.includes('vip')) return 'vip';
+    if (status.includes('premium')) return 'premium';
+    if (status.includes('basic')) return 'basic';
+    if (status === 'trialing') return 'premium'; // Trial has premium access
+    if (status === 'free') return 'free';
+    return 'free';
+  }, [tenant, isTrialExpired, isSuperAdmin]);
+
+  const googleIdentity = useMemo(() => {
+    if (!user || !user.identities) return null;
+    return user.identities.find(id => id.provider === 'google');
+  }, [user]);
+
+  const googleEmail = useMemo(() => {
+    if (!googleIdentity) return null;
+    return googleIdentity.identity_data?.email || googleIdentity.email || null;
+  }, [googleIdentity]);
 
   const handleUpgradeSuccess = async (plan) => {
     if (!tenant) return;

@@ -18,6 +18,7 @@ import {
   MessageSquare
 } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { fetchAIChat } from '../utils/ai';
 
 // =====================================================================
 // BILINGUAL TRANSLATIONS DICTIONARY
@@ -584,24 +585,17 @@ Reglas de Negociación:
         }))
       ];
 
-      const response = await fetch('/api/chat', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-gemini-key': tenantSettings?.gemini_key || localStorage.getItem('elevore_gemini_key') || ''
-        },
-        body: JSON.stringify({
-          messages: apiMessages,
-          model: 'gemini-2.5-flash'
-        })
-      });
+      const chatResult = await fetchAIChat(
+        apiMessages,
+        'gemini-1.5-flash',
+        tenantSettings?.gemini_key || localStorage.getItem('elevore_gemini_key') || ''
+      );
 
-      if (!response.ok) {
-        throw new Error('Error al conectar con la IA de cierre.');
+      if (!chatResult.ok) {
+        throw new Error(chatResult.error || 'Error al conectar con la IA de cierre.');
       }
 
-      const resData = await response.json();
-      let replyText = resData.text || '';
+      let replyText = chatResult.text || '';
 
       // Check if the AI applied the discount trigger
       if (replyText.includes('[APPLY_DISCOUNT: 10]')) {

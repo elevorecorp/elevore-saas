@@ -225,6 +225,58 @@ export default function PublicBookingWidget({ tenantId: propTenantId }) {
     }
   };
 
+  const handleBookDraft = async (e) => {
+    e.preventDefault();
+    if (!form.clientName || !form.clientEmail || !form.clientPhone || !form.address) {
+      alert('Por favor completa todos tus datos personales.');
+      return;
+    }
+    if (!form.bookingDate) {
+      alert('Por favor selecciona una fecha de servicio.');
+      return;
+    }
+
+    setBookingLoading(true);
+    try {
+      const pricing = calculatePricing();
+      const selectedAddonDetails = (settings?.addons || []).filter(a => form.selectedAddons.includes(a.id));
+
+      const specs = {
+        sqft: form.sqft,
+        addons: selectedAddonDetails,
+        time: form.bookingTime,
+        green_discount_applied: isGreenSlot(),
+        notes: form.customNotes,
+        date_booked: new Date().toISOString()
+      };
+
+      const { data, error } = await sb
+        .from('elevore_missions')
+        .insert({
+          client_name: form.clientName.toUpperCase(),
+          client_email: form.clientEmail,
+          client_phone: form.clientPhone,
+          address: form.address,
+          service_type: form.serviceType,
+          status: 'lead',
+          scheduled_date: form.bookingDate + 'T' + form.bookingTime + ':00',
+          total_price: pricing.total,
+          deposit_paid: 0,
+          tenant_id: tenantId,
+          specs: specs
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      window.location.href = window.location.origin + window.location.pathname + '?propuesta=' + data.id;
+    } catch (err) {
+      alert('Error al cotizar borrador: ' + err.message);
+      setBookingLoading(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-black flex flex-col items-center justify-center text-white">
@@ -508,6 +560,19 @@ export default function PublicBookingWidget({ tenantId: propTenantId }) {
                     <Loader2 className="w-4 h-4 animate-spin text-black" />
                   ) : (
                     <>🚀 Confirmar y Pagar en Stripe</>
+                  )}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleBookDraft}
+                  disabled={bookingLoading}
+                  className="w-full bg-white/5 hover:bg-white/10 text-[#F5C518] py-4 rounded-xl font-black uppercase tracking-widest text-[10px] active:scale-95 transition-all border border-[#F5C518]/20 hover:border-[#F5C518]/50 flex items-center justify-center gap-2"
+                >
+                  {bookingLoading ? (
+                    <Loader2 className="w-4 h-4 animate-spin text-[#F5C518]" />
+                  ) : (
+                    <>💬 Cotizar y Negociar Descuento con IA</>
                   )}
                 </button>
               </div>

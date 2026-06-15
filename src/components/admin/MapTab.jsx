@@ -473,7 +473,9 @@ export const MapTab = ({ jobs, staff, operationsTab, setOperationsTab, tt, refre
           { id: 'reminders', name: '🔔 Recordatorios' },
           { id: 'drive', name: '📸 Photo Drive' },
           { id: 'map', name: '🗺️ IA Dispatcher' },
+          { id: 'meetings', name: '🎙️ Reuniones IA' },
           { id: 'deploy', name: '📝 Nueva Cotización' },
+          { id: 'hyperdrive', name: '⚡ HyperDrive (Booking & Ads)' }
         ].map((tab) => (
           <button
             key={tab.id}

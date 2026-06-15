@@ -61,7 +61,7 @@ export const tenantSettings = pgTable("tenant_settings", {
   timezone: text("timezone").default("America/New_York"),
   ownerPhone: text("owner_phone"),
   aiProvider: text("ai_provider").default("ollama"),
-  geminiModel: text("gemini_model").default("gemini-2.5-flash"),
+  geminiModel: text("gemini_model").default("gemini-1.5-flash"),
   geminiKey: text("gemini_key"),
 });
 

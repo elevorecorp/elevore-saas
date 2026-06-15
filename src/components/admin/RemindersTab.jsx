@@ -83,6 +83,7 @@ export const RemindersTab = ({
           { id: 'map', name: '🗺️ IA Dispatcher' },
           { id: 'meetings', name: '🎙️ Reuniones IA' },
           { id: 'deploy', name: '📝 Nueva Cotización' },
+          { id: 'hyperdrive', name: '⚡ HyperDrive (Booking & Ads)' }
         ].map((tab) => (
           <button
             key={tab.id}
