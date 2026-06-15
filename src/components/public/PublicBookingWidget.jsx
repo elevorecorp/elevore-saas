@@ -14,6 +14,7 @@ export default function PublicBookingWidget({ tenantId: propTenantId }) {
   const [settings, setSettings] = useState(null);
   const [loading, setLoading] = useState(true);
   const [bookingLoading, setBookingLoading] = useState(false);
+  const [referrer, setReferrer] = useState('');
 
   // Form states
   const [form, setForm] = useState({
@@ -29,12 +30,16 @@ export default function PublicBookingWidget({ tenantId: propTenantId }) {
     customNotes: ''
   });
 
-  // Load tenant ID from search query if not specified
+  // Load tenant ID and referrer from search query if not specified
   useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
     if (!tenantId) {
-      const urlParams = new URLSearchParams(window.location.search);
       const t = urlParams.get('t') || urlParams.get('tenant') || '';
       setTenantId(t);
+    }
+    const ref = urlParams.get('ref') || '';
+    if (ref) {
+      setReferrer(ref.replace(/_/g, ' '));
     }
   }, [tenantId]);
 
@@ -151,12 +156,18 @@ export default function PublicBookingWidget({ tenantId: propTenantId }) {
     const subtotal = basePrice + addonTotal;
     
     // Apply 10% Ruta Verde discount if date is Monday/Wednesday
-    const discount = isGreenSlot() ? subtotal * 0.10 : 0;
-    const total = subtotal - discount;
+    const greenDiscount = isGreenSlot() ? subtotal * 0.10 : 0;
+    
+    // Apply $25 referral discount if customer was referred
+    const referralDiscount = referrer ? 25 : 0;
+    
+    const total = Math.max(0, subtotal - greenDiscount - referralDiscount);
 
     return {
       subtotal: Math.round(subtotal),
-      discount: Math.round(discount),
+      discount: Math.round(greenDiscount + referralDiscount),
+      greenDiscount: Math.round(greenDiscount),
+      referralDiscount: Math.round(referralDiscount),
       total: Math.round(total)
     };
   };
@@ -186,6 +197,7 @@ export default function PublicBookingWidget({ tenantId: propTenantId }) {
         date: form.bookingDate,
         time: form.bookingTime,
         green_discount_applied: isGreenSlot(),
+        referred_by: referrer || undefined,
         notes: form.customNotes,
         date_booked: new Date().toISOString()
       };
@@ -247,6 +259,7 @@ export default function PublicBookingWidget({ tenantId: propTenantId }) {
         addons: selectedAddonDetails,
         time: form.bookingTime,
         green_discount_applied: isGreenSlot(),
+        referred_by: referrer || undefined,
         notes: form.customNotes,
         date_booked: new Date().toISOString()
       };
@@ -492,6 +505,21 @@ export default function PublicBookingWidget({ tenantId: propTenantId }) {
           {/* Main Booking Form Column */}
           <div className="lg:col-span-3 space-y-6">
             
+            {/* Referral Welcome Banner */}
+            {referrer && (
+              <div className="g p-5 border border-amber-500/20 bg-amber-500/5 rounded-2xl flex gap-3.5 items-center animate-in slide-in-from-top duration-300">
+                <div className="w-10 h-10 rounded-full bg-amber-500/15 border border-amber-500/35 flex items-center justify-center text-[#F5C518]">
+                  <Sparkles className="w-5 h-5" />
+                </div>
+                <div>
+                  <p className="text-[10px] font-black uppercase text-[#F5C518] tracking-widest">🎁 ¡INVITACIÓN DE REGALO DE {referrer.toUpperCase()}!</p>
+                  <p className="text-[9.5px] text-slate-300 font-medium leading-relaxed mt-0.5">
+                    Tu amigo te ha regalado un descuento exclusivo de **$25 USD** en tu primera reserva de limpieza. El descuento ya se encuentra aplicado al total de tu cotización.
+                  </p>
+                </div>
+              </div>
+            )}
+
             {/* Step 1: Client Information */}
             <div className="g p-6 border border-white/5 bg-black/40 rounded-2xl space-y-4">
               <h2 className="text-[11px] font-black text-[#F5C518] uppercase tracking-widest flex items-center gap-2 border-b border-white/5 pb-2">
@@ -690,7 +718,14 @@ export default function PublicBookingWidget({ tenantId: propTenantId }) {
                 {isGreenSlot() && (
                   <div className="flex justify-between text-[9px] font-black uppercase text-emerald-400">
                     <span className="flex items-center gap-1">🍀 Descuento Ruta Verde</span>
-                    <span className="font-mono">-${pricing.discount}</span>
+                    <span className="font-mono">-${pricing.greenDiscount}</span>
+                  </div>
+                )}
+
+                {referrer && (
+                  <div className="flex justify-between text-[9px] font-black uppercase text-[#F5C518]">
+                    <span className="flex items-center gap-1">🎁 Descuento de Referido</span>
+                    <span className="font-mono">-${pricing.referralDiscount}</span>
                   </div>
                 )}
               </div>
